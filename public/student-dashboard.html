@@ -1298,7 +1298,13 @@ function renderSubmissions(submissions){
     container.innerHTML = `<div class="empty-state">No submissions yet</div>`;
     return;
   }
-  container.innerHTML = submissions.map(sub=>`
+  container.innerHTML = submissions.map(sub=>{
+    const reviewed = sub.status === "Approved" || sub.status === "Rejected";
+    // BUG FIX 3: only reviewed submissions can be deleted by the student.
+    const deleteBtn = reviewed
+      ? `<button class="primary-btn" style="background:linear-gradient(90deg,#b91c1c,#ef4444);margin-top:10px;font-size:13px;padding:8px 14px;" onclick="deleteSubmission('${sub._id}')">🗑 Delete this submission</button>`
+      : "";
+    return `
     <div class="submission-card">
       <h3>${sub.task || "Submitted Task"}</h3>
       <p><b>Domain :</b> ${sub.domain}</p>
@@ -1313,8 +1319,38 @@ function renderSubmissions(submissions){
         <h4>Coordinator Review</h4>
         <p>${sub.feedback || "No Feedback Yet"}</p>
       </div>
+      ${deleteBtn}
     </div>
-  `).join("");
+  `;}).join("");
+}
+
+async function deleteSubmission(id){
+  const r = await Swal.fire({
+    title: "Delete this submission?",
+    text: "Once deleted, you cannot recover it. This will also remove the uploaded screenshot/PDF.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, delete",
+    confirmButtonColor: "#ef4444",
+    background: "#101820", color: "#ffffff"
+  });
+  if(!r.isConfirmed) return;
+  try{
+    const res = await fetch("/submissions/" + encodeURIComponent(id), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employeeId: employeeId })
+    });
+    const d = await res.json();
+    if(d.success){
+      Swal.fire({ icon:"success", title:"Deleted", text:"Submission removed.", background:"#101820", color:"#ffffff", confirmButtonColor:"#10b981" });
+      loadStudentSubmissions();
+    } else {
+      Swal.fire({ icon:"error", title:"Delete failed", text:d.message||"Could not delete.", background:"#101820", color:"#ffffff" });
+    }
+  }catch(e){
+    Swal.fire({ icon:"error", title:"Network error", background:"#101820", color:"#ffffff" });
+  }
 }
 
 function updateAttendanceButton(submissions){
@@ -1602,6 +1638,12 @@ function startStudentSSE(){
             background:'#0d1629',color:'#edf2ff'
           });
           loadNotifications();
+          // BUG FIX 1: if the coordinator marked/updated this student's class
+          // attendance, refresh the attendance widget immediately so the
+          // student does not have to manually refresh the page.
+          if(n && (n.title === 'Class attendance marked' || n.title === 'Class attendance updated')){
+            loadAttendance();
+          }
         }
         if(payload.event === 'notice-updated'){ loadNotice(); }
       }catch(_){}
@@ -1613,6 +1655,21 @@ function startStudentSSE(){
 loadNotifications();
 startStudentSSE();
 
+</script>
+
+<!-- ===== Real-time chat (Domain Chat + General Chat) ===== -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/chat-widget.js"></script>
+<script>
+(function(){
+  if(!window.TenChat || !student) return;
+  TenChat.init({
+    role: "student",
+    name: ((student.firstName||"") + " " + (student.lastName||"")).trim() || student.employeeId,
+    employeeId: student.employeeId,
+    domain: student.domain || ""
+  });
+})();
 </script>
 </body>
 </html>

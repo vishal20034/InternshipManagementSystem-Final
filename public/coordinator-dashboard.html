@@ -459,7 +459,7 @@ body::before {
         </div>
         <input type="text" id="attSearch" placeholder="🔍 Search student..." oninput="renderAttendanceTab()"
           style="flex:1;min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);border-radius:10px;padding:10px 14px;color:white;font-size:14px;outline:none;">
-        <button class="refresh-btn" onclick="loadAttendanceTab()"><span>↻</span> Refresh</button>
+        <button class="refresh-btn" onclick="attRoster=[];loadAttendanceTab()"><span>↻</span> Refresh</button>
       </div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
         Mark <b>Present / Absent</b> for each student for the selected date. This is independent of task approval. You can edit any entry later.
@@ -717,11 +717,16 @@ async function loadAttendanceTab(){
   const container = document.getElementById("attendanceContainer");
   container.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Loading students...</div></div>`;
   try{
-    // roster (cache once)
+    // roster (cache once) — dedup by employeeId as a safety net (BUG FIX 2)
     if(!attRoster.length){
       const ro = await fetch("/coordinator/student-overview/" + encodeURIComponent(domainStr));
       const rd = await ro.json();
-      attRoster = rd.students || [];
+      const seen = new Set();
+      attRoster = (rd.students || []).filter(s => {
+        const k = s.employeeId || s._id;
+        if(seen.has(k)) return false;
+        seen.add(k); return true;
+      });
     }
     // attendance for the selected date
     const ar = await fetch("/coordinator/attendance/" + encodeURIComponent(domainStr) + "?date=" + dateKey);
@@ -742,7 +747,11 @@ async function loadAttendanceTab(){
 function renderAttendanceTab(){
   const container = document.getElementById("attendanceContainer");
   const q = (document.getElementById("attSearch").value||"").toLowerCase();
-  const list = attRoster.filter(s => (s.name+" "+s.employeeId).toLowerCase().includes(q));
+  // Dedup by employeeId here too — defends against any stray duplicates.
+  const seen = new Set();
+  const list = attRoster
+    .filter(s => { const k = s.employeeId || s._id; if(seen.has(k)) return false; seen.add(k); return true; })
+    .filter(s => (s.name+" "+s.employeeId).toLowerCase().includes(q));
   if(!list.length){
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No students found</div></div>`;
     return;
@@ -754,11 +763,19 @@ function renderAttendanceTab(){
     const selfBadge = selfStatus
       ? `<span class="status-pill ${selfStatus==="Present"?"approved":"rejected"}">Self: ${selfStatus}</span>`
       : `<span class="status-pill pending">Self: not marked</span>`;
-    const pBtn = `<button class="btn ${coordStatus==="Present"?"btn-approve":""}" style="${coordStatus==="Present"?"":"background:rgba(255,255,255,0.06);"}" onclick="markCoordAttendance('${s.employeeId}','Present')">✅ Present</button>`;
-    const aBtn = `<button class="btn ${coordStatus==="Absent"?"btn-reject":""}" style="${coordStatus==="Absent"?"":"background:rgba(255,255,255,0.06);"}" onclick="markCoordAttendance('${s.employeeId}','Absent')">❌ Absent</button>`;
     const current = coordStatus
       ? `<span class="status-pill ${coordStatus==="Present"?"approved":"rejected"}">Class: ${coordStatus}</span>`
       : `<span class="status-pill pending">Class: not marked</span>`;
+    // BUG FIX 2: when coordinator already marked today, show ONE "Edit" button
+    // (which opens a small swap dialog) instead of the Present/Absent pair.
+    let actions;
+    if(coordStatus){
+      actions = `<button class="btn" style="background:rgba(245,197,66,0.12);border:1px solid rgba(245,197,66,0.3);color:#f5c542;" onclick="editCoordAttendance('${s.employeeId}','${coordStatus}')">✏️ Edit</button>`;
+    } else {
+      const pBtn = `<button class="btn btn-approve" onclick="markCoordAttendance('${s.employeeId}','Present')">✅ Present</button>`;
+      const aBtn = `<button class="btn btn-reject"  onclick="markCoordAttendance('${s.employeeId}','Absent')">❌ Absent</button>`;
+      actions = pBtn + " " + aBtn;
+    }
     return `
       <div class="submission-card">
         <div class="card-top">
@@ -771,10 +788,25 @@ function renderAttendanceTab(){
           </div>
         </div>
         <div class="feedback-actions" style="margin-top:8px;">
-          ${pBtn} ${aBtn}
+          ${actions}
         </div>
       </div>`;
   }).join("");
+}
+
+async function editCoordAttendance(employeeId, currentStatus){
+  const next = currentStatus === "Present" ? "Absent" : "Present";
+  const r = await Swal.fire({
+    title: "Edit Class Attendance",
+    text: "Change " + employeeId + " from " + currentStatus + " to " + next + "?",
+    icon: "question", showCancelButton: true,
+    confirmButtonText: "Yes, change to " + next,
+    confirmButtonColor: next === "Present" ? "#10b981" : "#f43f5e",
+    background:"#090e1a", color:"#e2eaf7"
+  });
+  if(!r.isConfirmed) return;
+  // Reuse the same POST endpoint; the backend updates an existing record idempotently.
+  await markCoordAttendance(employeeId, next);
 }
 
 async function markCoordAttendance(employeeId, status){
@@ -1601,7 +1633,24 @@ function renderSubmissions(submissions){
 
 </script>
 
-
+<!-- ===== Real-time chat (Domain + General + Staff) ===== -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/chat-widget.js"></script>
+<script>
+(function(){
+  if(!window.TenChat) return;
+  var username = sessionStorage.getItem("coordinatorUsername") || "";
+  var domain = "";
+  try { domain = JSON.parse(sessionStorage.getItem("coordinatorDomain")) || ""; } catch(e){}
+  if(!username) return;
+  TenChat.init({
+    role: "coordinator",
+    name: username,
+    username: username,
+    domain: domain
+  });
+})();
+</script>
 
 </body>
 </html>

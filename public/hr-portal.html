@@ -1433,5 +1433,19 @@ function genCert(i,type){
 
 loadOverview();
 </script>
+
+<!-- ===== Real-time chat (General + Staff + HR Internal) ===== -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="/chat-widget.js"></script>
+<script>
+(function(){
+  if(!window.TenChat || !hrUser) return;
+  TenChat.init({
+    role: "hr",
+    name: hrUser.name || hrUser.username,
+    username: hrUser.username
+  });
+})();
+</script>
 </body>
 </html>
