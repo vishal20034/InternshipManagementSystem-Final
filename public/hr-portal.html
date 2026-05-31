@@ -551,6 +551,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">These students passed both coordinator and HR approval. Generate and download their certificates below.</p>
       <div id="certApprovedContainer"><div class="loading"><div class="spinner"></div></div></div>
     </div>
+  </div>
+
   <!-- PROMOTIONS -->
   <div class="view" id="view-promotions">
     <div class="doc-tabs">
@@ -1474,6 +1476,7 @@ function genCert(i,type){
 
 /* ============ PROMOTIONS ============ */
 function switchPromoTab(tab, btn){
+  console.log('[Promotions] switchPromoTab ->', tab);
   document.querySelectorAll('#view-promotions .doc-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('#view-promotions .cert-panel').forEach(p=>p.classList.remove('active'));
   if(btn) btn.classList.add('active');
@@ -1482,33 +1485,71 @@ function switchPromoTab(tab, btn){
   if(tab==='history'){ document.getElementById('promo-history').classList.add('active'); loadPromoHistory(); }
 }
 
+function promoErrorBox(msg){
+  return '<div class="empty-state" style="padding:30px 20px;background:rgba(244,63,94,0.06);border:1px solid rgba(244,63,94,0.2);border-radius:14px;">'+
+    '<div class="es-icon">⚠️</div>'+
+    '<p style="color:#f43f5e;font-weight:700;">'+msg+'</p>'+
+    '<p style="color:var(--muted);font-size:12px;margin-top:6px;">Open the browser console for details.</p></div>';
+}
+function promoEmptyBox(msg){
+  return '<div class="empty-state" style="padding:30px 20px;"><div class="es-icon">📭</div><p>'+msg+'</p></div>';
+}
+
 let promoStudents = [];
 async function loadPromoCandidatesStudents(){
   const c=document.getElementById('promoStudentsContainer');
-  if(!c) return;
+  if(!c){ console.warn('[Promotions] promoStudentsContainer missing'); return; }
   c.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  console.log('[Promotions] fetching /hr/students with token', hrToken);
   try{
-    // Use attendance/monitor for stats; then enrich with performance per student
-    const r=await fetch('/attendance/monitor',{headers:{Authorization:hrToken}});
+    const r=await fetch('/hr/students',{headers:{Authorization:hrToken}});
+    console.log('[Promotions] /hr/students status =', r.status);
+    if(!r.ok){
+      const txt = await r.text().catch(()=>String(r.status));
+      throw new Error('HTTP '+r.status+' — '+txt.slice(0,160));
+    }
     const d=await r.json();
-    const list=d.students||[];
-    promoStudents = list;
+    if(!d || (!d.success && !Array.isArray(d.students))){
+      throw new Error(d && d.message ? d.message : 'Unexpected response shape');
+    }
+    const raw = d.students||[];
+    console.log('[Promotions] students count =', raw.length);
+    // Normalise shape (HR /hr/students returns the raw Student docs)
+    promoStudents = raw.map(s => ({
+      _id: s._id,
+      employeeId: s.employeeId || '',
+      name: (s.name || ((s.firstName||'')+' '+(s.lastName||''))).trim() || s.employeeId || '—',
+      email: s.email || '',
+      domain: s.domain || '',
+      joiningDate: s.joiningDate || '',
+      stats: { combinedPct: 0 }
+    }));
+    if(!promoStudents.length){ c.innerHTML = promoEmptyBox('No students registered yet'); return; }
     renderPromoStudents();
-    // Lazy-load performance
-    Promise.all(list.map(async s => {
+    // Enrich each row with attendance % and performance asynchronously.
+    Promise.all(promoStudents.map(async s => {
+      try{
+        const ar = await fetch('/attendance/student/'+encodeURIComponent(s.employeeId));
+        const ad = await ar.json();
+        if(ad && ad.stats) s.stats = ad.stats;
+      }catch(_){}
       try{
         const pr = await fetch('/students/'+s._id+'/performance');
         const pd = await pr.json();
-        if(pd.success) s._perf = pd.performance;
+        if(pd && pd.success) s._perf = pd.performance;
       }catch(_){}
-    })).then(renderPromoStudents);
-  }catch(e){ c.innerHTML='<div class="empty-state"><div class="es-icon">⚠️</div><p>Failed to load</p></div>'; }
+    })).then(renderPromoStudents).catch(e => console.warn('[Promotions] enrichment error', e));
+  }catch(e){
+    console.error('[Promotions] loadPromoCandidatesStudents failed:', e);
+    c.innerHTML = promoErrorBox('Failed to load students: ' + (e.message || e));
+  }
 }
 function renderPromoStudents(){
   const c=document.getElementById('promoStudentsContainer');
+  if(!c) return;
   const q=(document.getElementById('promoStudentSearch')?.value||'').toLowerCase();
   const list=promoStudents.filter(s=>((s.name||'')+(s.employeeId||'')+(s.domain||'')).toLowerCase().includes(q));
-  if(!list.length){ c.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><p>No students</p></div>'; return; }
+  if(!list.length){ c.innerHTML = promoEmptyBox('No students match your search'); return; }
   c.innerHTML='<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
     '<thead><tr><th>#</th><th>Student</th><th>Employee ID</th><th>Domain</th><th>Joining</th><th>Attendance</th><th>Performance</th><th>Action</th></tr></thead><tbody>'+
     list.map((s,i)=>{
@@ -1542,90 +1583,144 @@ async function confirmPromoteStudent(studentId, name, employeeId, domain){
   });
   if(!r.isConfirmed) return;
   try{
+    console.log('[Promotions] promote student', { studentId, employeeId });
     const res = await fetch('/hr/promote/to-coordinator',{
       method:'POST',
       headers:{ 'Content-Type':'application/json', Authorization: hrToken },
       body: JSON.stringify({ studentId, employeeId, promotedByHRId: hrIdent })
     });
     const d = await res.json();
+    console.log('[Promotions] promote response', d);
     if(d.success){
       Swal.fire({title:'Promotion Sent ✅', text:d.message, icon:'success', background:'#0c1220', color:'#f0eee8', confirmButtonColor:'#f5c542'});
       loadPromoCandidatesStudents();
     } else {
       Swal.fire({title:'Failed', text:d.message||'Could not promote', icon:'error', background:'#0c1220', color:'#f0eee8'});
     }
-  }catch(e){ Swal.fire({title:'Error', text:'Network error', icon:'error', background:'#0c1220', color:'#f0eee8'}); }
+  }catch(e){
+    console.error('[Promotions] promote error', e);
+    Swal.fire({title:'Error', text:'Network error: '+(e.message||e), icon:'error', background:'#0c1220', color:'#f0eee8'});
+  }
 }
 
+let promoCoords = [];
 async function loadPromoCandidatesCoords(){
   const c=document.getElementById('promoCoordsContainer');
-  if(!c) return;
-  // Build a list of legacy coordinator usernames + DB-backed coordinators.
-  // Server has the legacy COORDINATORS map; we hard-code the same usernames here for the UI.
-  const legacy = [
-    {username:"devops_aws_admin", domain:"DevOps with AWS"},
-    {username:"python_admin",     domain:"Python Development"},
-    {username:"java_admin",       domain:"Java Development"},
-    {username:"web_admin",        domain:"Web Development"},
-    {username:"mern_admin",       domain:"MERN Stack Development"},
-    {username:"ai_admin",         domain:"Artificial Intelligence"},
-    {username:"datascience_admin",domain:"Data Science"},
-    {username:"cyber_admin",      domain:"Cyber Security"},
-    {username:"software_admin",   domain:"Software Engineering"},
-    {username:"flutter_admin",    domain:"Flutter Development"},
-    {username:"hrmgmt_admin",     domain:"HR Management"}
-  ];
-  c.innerHTML = '<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
-    '<thead><tr><th>#</th><th>Coordinator</th><th>Domain</th><th>Action</th></tr></thead><tbody>'+
-    legacy.map((co,i)=>`<tr>
-      <td style="color:var(--muted);font-size:12px">${i+1}</td>
-      <td style="font-weight:600">${co.username}</td>
-      <td><span class="tag tag-pending">${co.domain}</span></td>
-      <td><button class="cert-approve-btn" onclick="confirmPromoteCoord('${co.username}','${co.domain}')">⭐ Promote to HR</button></td>
-    </tr>`).join('')+
-    '</tbody></table></div></div>';
-}
-async function confirmPromoteCoord(coordinatorUsername, domain){
-  const r = await Swal.fire({
-    title: 'Promote to HR?',
-    html: `<div style="text-align:left;font-size:14px;">
-      Coordinator: <b>${coordinatorUsername}</b><br>
-      Domain: <b>${domain||'—'}</b>
-    </div>`,
-    input: 'email',
-    inputLabel: 'Their email address (to send the credentials)',
-    inputPlaceholder: 'name@domain.com',
-    inputValidator: (v) => !v || !/^\S+@\S+\.\S+$/.test(v) ? 'Please enter a valid email' : null,
-    showCancelButton: true,
-    confirmButtonText: 'Send Promotion Email',
-    confirmButtonColor: '#f5c542',
-    background: '#0c1220', color: '#f0eee8'
-  });
-  if(!r.isConfirmed) return;
+  if(!c){ console.warn('[Promotions] promoCoordsContainer missing'); return; }
+  c.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  console.log('[Promotions] fetching /hr/coordinators');
   try{
+    const r=await fetch('/hr/coordinators',{headers:{Authorization:hrToken}});
+    console.log('[Promotions] /hr/coordinators status =', r.status);
+    if(!r.ok){
+      const txt = await r.text().catch(()=>String(r.status));
+      throw new Error('HTTP '+r.status+' — '+txt.slice(0,160));
+    }
+    const d=await r.json();
+    promoCoords = (d && d.coordinators) || [];
+    console.log('[Promotions] coordinators count =', promoCoords.length);
+    if(!promoCoords.length){ c.innerHTML = promoEmptyBox('No coordinators found'); return; }
+    c.innerHTML = '<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
+      '<thead><tr><th>#</th><th>Coordinator</th><th>Domain</th><th>Email</th><th>Source</th><th>Action</th></tr></thead><tbody>'+
+      promoCoords.map((co,i)=>{
+        const safeName = (co.name||co.username||'').replace(/'/g,'\\\'');
+        const safeEmail = (co.email||'').replace(/'/g,'\\\'');
+        const safeDomain = (co.domain||'').replace(/'/g,'\\\'');
+        const sourceTag = co.source === 'db'
+          ? '<span class="elig-badge elig-yes">DB</span>'
+          : '<span class="elig-badge" style="background:rgba(99,140,210,0.12);color:#9aa4bf;border:1px solid rgba(99,140,210,0.25);">Legacy</span>';
+        const emailDisplay = co.email
+          ? '<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:#cdd9ec;">'+co.email+'</span>'
+          : '<span style="color:var(--muted);font-size:12px;">— (you\'ll be asked)</span>';
+        return `<tr>
+          <td style="color:var(--muted);font-size:12px">${i+1}</td>
+          <td style="font-weight:600">${co.name||co.username||'—'}</td>
+          <td><span class="tag tag-pending">${co.domain||'—'}</span></td>
+          <td>${emailDisplay}</td>
+          <td>${sourceTag}</td>
+          <td><button class="cert-approve-btn" onclick="confirmPromoteCoord('${co.username||''}','${safeDomain}','${safeName}','${safeEmail}','${co._id||''}')">⭐ Promote to HR</button></td>
+        </tr>`;
+      }).join('')+
+      '</tbody></table></div></div>';
+  }catch(e){
+    console.error('[Promotions] loadPromoCandidatesCoords failed:', e);
+    c.innerHTML = promoErrorBox('Failed to load coordinators: ' + (e.message || e));
+  }
+}
+
+async function confirmPromoteCoord(coordinatorUsername, domain, name, prefilledEmail, coordinatorDbId){
+  // If we already know the email (DB-backed coord, or legacy with assigned email), skip the email prompt.
+  let email = prefilledEmail || '';
+  if(!email){
+    const r0 = await Swal.fire({
+      title: 'Promote to HR?',
+      html: `<div style="text-align:left;font-size:14px;">
+        Coordinator: <b>${name||coordinatorUsername}</b><br>
+        Domain: <b>${domain||'—'}</b>
+      </div>`,
+      input: 'email',
+      inputLabel: 'Their email address (to send the credentials)',
+      inputPlaceholder: 'name@domain.com',
+      inputValidator: (v) => !v || !/^\S+@\S+\.\S+$/.test(v) ? 'Please enter a valid email' : null,
+      showCancelButton: true,
+      confirmButtonText: 'Send Promotion Email',
+      confirmButtonColor: '#f5c542',
+      background: '#0c1220', color: '#f0eee8'
+    });
+    if(!r0.isConfirmed) return;
+    email = r0.value;
+  } else {
+    const r0 = await Swal.fire({
+      title: 'Promote to HR?',
+      html: `<div style="text-align:left;font-size:14px;line-height:1.7;">
+        Coordinator: <b>${name||coordinatorUsername}</b><br>
+        Domain: <b>${domain||'—'}</b><br>
+        Email: <span style="font-family:'JetBrains Mono',monospace;color:#f5c542;">${email}</span>
+      </div><div style="margin-top:16px;font-size:13px;color:#9aa4bf;">A 12-character one-time password will be emailed.</div>`,
+      icon: 'question', showCancelButton: true,
+      confirmButtonText: 'Send Promotion Email',
+      confirmButtonColor: '#f5c542',
+      background: '#0c1220', color: '#f0eee8'
+    });
+    if(!r0.isConfirmed) return;
+  }
+
+  try{
+    console.log('[Promotions] promote coordinator', { coordinatorUsername, email, coordinatorDbId });
     const res = await fetch('/hr/promote/to-hr',{
       method:'POST',
       headers:{ 'Content-Type':'application/json', Authorization: hrToken },
-      body: JSON.stringify({ coordinatorUsername, email: r.value, domain, promotedByHRId: hrIdent })
+      body: JSON.stringify({ coordinatorUsername, email, domain, coordinatorDbId, promotedByHRId: hrIdent })
     });
     const d = await res.json();
+    console.log('[Promotions] promote-to-hr response', d);
     if(d.success){
       Swal.fire({title:'Promotion Sent ✅', text:d.message, icon:'success', background:'#0c1220', color:'#f0eee8', confirmButtonColor:'#f5c542'});
+      loadPromoCandidatesCoords();
     } else {
       Swal.fire({title:'Failed', text:d.message||'Could not promote', icon:'error', background:'#0c1220', color:'#f0eee8'});
     }
-  }catch(e){ Swal.fire({title:'Error', text:'Network error', icon:'error', background:'#0c1220', color:'#f0eee8'}); }
+  }catch(e){
+    console.error('[Promotions] promote-to-hr error', e);
+    Swal.fire({title:'Error', text:'Network error: '+(e.message||e), icon:'error', background:'#0c1220', color:'#f0eee8'});
+  }
 }
 
 async function loadPromoHistory(){
   const c=document.getElementById('promoHistoryContainer');
-  if(!c) return;
+  if(!c){ console.warn('[Promotions] promoHistoryContainer missing'); return; }
   c.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  console.log('[Promotions] fetching /hr/promotions');
   try{
     const r=await fetch('/hr/promotions',{headers:{Authorization:hrToken}});
+    if(!r.ok){
+      const txt = await r.text().catch(()=>String(r.status));
+      throw new Error('HTTP '+r.status+' — '+txt.slice(0,160));
+    }
     const d=await r.json();
-    const list=d.promotions||[];
-    if(!list.length){ c.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><p>No promotions yet</p></div>'; return; }
+    const list=(d && d.promotions)||[];
+    console.log('[Promotions] history count =', list.length);
+    if(!list.length){ c.innerHTML = promoEmptyBox('No promotions yet'); return; }
     c.innerHTML='<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
       '<thead><tr><th>#</th><th>Name</th><th>Email</th><th>From → To</th><th>Domain</th><th>Promoted</th><th>Status</th></tr></thead><tbody>'+
       list.map((p,i)=>{
@@ -1646,7 +1741,10 @@ async function loadPromoHistory(){
         </tr>`;
       }).join('')+
       '</tbody></table></div></div>';
-  }catch(e){ c.innerHTML='<div class="empty-state"><div class="es-icon">⚠️</div><p>Failed to load</p></div>'; }
+  }catch(e){
+    console.error('[Promotions] loadPromoHistory failed:', e);
+    c.innerHTML = promoErrorBox('Failed to load promotion history: ' + (e.message || e));
+  }
 }
 
 loadOverview();

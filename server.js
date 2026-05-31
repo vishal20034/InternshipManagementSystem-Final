@@ -745,6 +745,52 @@ try{
 }
 });
 
+// ================= HR - GET ALL COORDINATORS =================
+// Returns the union of:
+//   - the legacy hardcoded COORDINATORS map (one per domain)
+//   - any DB-backed Coordinator documents (created via the promotion flow)
+// Used by the HR Promotions section ("Promote to HR" tab).
+app.get("/hr/coordinators", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ success:false, message:"Unauthorized" });
+    }
+    const out = [];
+    // Legacy hardcoded coordinators
+    for(const [username, info] of Object.entries(COORDINATORS)){
+        out.push({
+            _id: "",
+            source: "legacy",
+            username,
+            name: username,
+            email: "",
+            domain: info.domain || ""
+        });
+    }
+    // DB-backed (promoted) coordinators
+    try {
+        const dbList = await Coordinator.find({}).sort({ createdAt:-1 });
+        for(const c of dbList){
+            out.push({
+                _id: String(c._id),
+                source: "db",
+                username: c.username || c.email || "",
+                name: c.name || c.username || c.email || "",
+                email: c.email || "",
+                domain: c.domain || "",
+                employeeId: c.employeeId || ""
+            });
+        }
+    } catch(_) { /* if Coordinator collection doesn't exist yet, just return legacy */ }
+
+    res.json({ success:true, coordinators: out });
+}catch(error){
+    console.log("Error fetching coordinators:", error);
+    res.status(500).json({ success:false, message:"Error fetching coordinators" });
+}
+});
+
 // ================= HR - GET ALL SUBMISSIONS =================
 
 app.get("/hr/submissions", async(req,res)=>{
@@ -1916,13 +1962,25 @@ try{
 app.post("/hr/promote/to-hr", async(req,res)=>{
 try{
     if(!isHRAuth(req)) return res.status(401).json({ success:false, message:"Unauthorized" });
-    const { coordinatorUsername, email, name, domain, employeeId, promotedByHRId } = req.body || {};
+    const { coordinatorUsername, coordinatorDbId, email, name, domain, employeeId, promotedByHRId } = req.body || {};
     // Resolve effective email (legacy hardcoded coordinators have no email; UI must provide one)
     let resolvedEmail = (email || "").trim().toLowerCase();
     let resolvedName = name || "";
     let resolvedDomain = domain || "";
     let resolvedEmpId = employeeId || "";
 
+    // 1) If a DB-backed coordinator id was provided (from the new /hr/coordinators
+    //    endpoint), prefer that — gives us the most reliable identity.
+    if(coordinatorDbId && mongoose.isValidObjectId(coordinatorDbId)){
+        const dbC = await Coordinator.findById(coordinatorDbId);
+        if(dbC){
+            resolvedEmail = resolvedEmail || (dbC.email || "");
+            resolvedName  = resolvedName || dbC.name;
+            resolvedDomain= resolvedDomain || dbC.domain;
+            resolvedEmpId = resolvedEmpId || (dbC.employeeId || "");
+        }
+    }
+    // 2) Fallback: legacy hardcoded username, or DB lookup by username/email
     if(coordinatorUsername){
         const legacy = COORDINATORS[coordinatorUsername];
         if(legacy){ resolvedDomain = resolvedDomain || legacy.domain; resolvedName = resolvedName || coordinatorUsername; }
