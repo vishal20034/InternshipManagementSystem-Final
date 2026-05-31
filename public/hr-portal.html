@@ -158,13 +158,35 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 .sp-avatar{width:50px;height:50px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#0a0600;flex-shrink:0;}
 .sp-emp-id{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);margin-top:2px;}
 .sp-name-big{font-size:16px;font-weight:700;color:white;}
+.sp-section-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;margin:16px 0 12px;display:flex;align-items:center;justify-content:space-between;}
+.sp-refresh-btn{background:rgba(245,197,66,0.1);border:1px solid rgba(245,197,66,0.2);color:var(--gold);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:600;font-family:'Outfit',sans-serif;margin-left:auto;}
+.sp-refresh-btn:hover{background:rgba(245,197,66,0.2);}
 .sp-field-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;margin-top:13px;display:block;}
 .sp-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(245,197,66,0.12);border-radius:9px;padding:10px 13px;color:var(--text);font-size:13px;outline:none;font-family:'Outfit',sans-serif;transition:border-color 0.2s;}
 .sp-input:focus{border-color:var(--gold);}.sp-input[readonly]{opacity:0.4;cursor:not-allowed;}
 .sp-two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sp-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;}
+.sp-stat-card{background:rgba(255,255,255,0.02);border:1px solid rgba(245,197,66,0.1);border-radius:12px;padding:14px;text-align:center;}
+.sp-stat-icon{font-size:20px;margin-bottom:6px;}
+.sp-stat-value{font-size:24px;font-weight:800;color:var(--gold);line-height:1;}
+.sp-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-top:4px;}
+.sp-submissions-list{max-height:200px;overflow-y:auto;}
+.sp-loading{text-align:center;padding:20px;color:var(--muted);font-size:12px;}
+.sp-submission-item{background:rgba(255,255,255,0.02);border:1px solid rgba(245,197,66,0.08);border-radius:10px;padding:12px;margin-bottom:8px;}
+.sp-sub-task{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sp-sub-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.sp-sub-status{padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;}
+.sp-sub-status.approved{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.25);}
+.sp-sub-status.rejected{background:rgba(244,63,94,0.15);color:var(--red);border:1px solid rgba(244,63,94,0.25);}
+.sp-sub-status.pending{background:rgba(245,158,11,0.15);color:var(--amber);border:1px solid rgba(245,158,11,0.25);}
+.sp-sub-date{font-size:10px;color:var(--muted);}
+.sp-no-submissions{text-align:center;padding:30px 20px;color:var(--muted);font-size:12px;}
+.sp-no-submissions-icon{font-size:32px;margin-bottom:8px;opacity:0.5;}
 .sp-actions{padding:18px 24px;border-top:1px solid rgba(245,197,66,0.1);display:flex;flex-direction:column;gap:9px;flex-shrink:0;}
 .sp-btn-primary{width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:11px;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.2s;}
 .sp-btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(245,197,66,0.25);}
+.sp-btn-blue{width:100%;padding:12px;background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:11px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
+.sp-btn-blue:hover{background:rgba(59,130,246,0.2);}
 .sp-btn-danger{width:100%;padding:12px;background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);border-radius:11px;color:var(--red);font-size:14px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
 .sp-btn-danger:hover{background:rgba(244,63,94,0.2);}
 .sp-divider{height:1px;background:rgba(255,255,255,0.05);margin:2px 0;}
@@ -461,11 +483,15 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     <button class="sp-close" onclick="closeSidePanel()">✕ Close</button>
   </div>
   <div class="sp-body">
+    <!-- Student Info Card -->
     <div class="sp-avatar-row">
       <div class="sp-avatar" id="sp-avatar-char">?</div>
       <div><div class="sp-name-big" id="sp-name-display">—</div><div class="sp-emp-id" id="sp-empid-display">—</div></div>
     </div>
     <input type="hidden" id="sp-id">
+    
+    <!-- Editable Fields Section -->
+    <div class="sp-section-title">📝 Personal Information</div>
     <div class="sp-two-col">
       <div><span class="sp-field-label">First Name</span><input class="sp-input" type="text" id="sp-firstName" placeholder="First name"></div>
       <div><span class="sp-field-label">Last Name</span><input class="sp-input" type="text" id="sp-lastName" placeholder="Last name"></div>
@@ -479,11 +505,47 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     </div>
     <span class="sp-field-label">College</span><input class="sp-input" type="text" id="sp-college" placeholder="College/Institution">
     <span class="sp-field-label">Joining Date</span><input class="sp-input" type="text" id="sp-joining" readonly>
+    
+    <!-- Quick Stats Section -->
+    <div class="sp-section-title" style="margin-top:20px;">📊 Quick Stats</div>
+    <div class="sp-stats-grid" id="sp-stats">
+      <div class="sp-stat-card">
+        <div class="sp-stat-icon">📋</div>
+        <div class="sp-stat-value" id="sp-stat-submissions">—</div>
+        <div class="sp-stat-label">Submissions</div>
+      </div>
+      <div class="sp-stat-card">
+        <div class="sp-stat-icon">✅</div>
+        <div class="sp-stat-value" id="sp-stat-approved">—</div>
+        <div class="sp-stat-label">Approved</div>
+      </div>
+      <div class="sp-stat-card">
+        <div class="sp-stat-icon">📅</div>
+        <div class="sp-stat-value" id="sp-stat-attendance">—</div>
+        <div class="sp-stat-label">Attendance</div>
+      </div>
+      <div class="sp-stat-card">
+        <div class="sp-stat-icon">⭐</div>
+        <div class="sp-stat-value" id="sp-stat-performance">—</div>
+        <div class="sp-stat-label">Performance</div>
+      </div>
+    </div>
+    
+    <!-- Recent Submissions -->
+    <div class="sp-section-title" style="margin-top:20px;">
+      📝 Recent Submissions
+      <button class="sp-refresh-btn" onclick="loadStudentSubmissionsInPanel()" title="Refresh">↻</button>
+    </div>
+    <div id="sp-submissions-list" class="sp-submissions-list">
+      <div class="sp-loading">Loading submissions...</div>
+    </div>
+    
   </div>
   <div class="sp-actions">
     <button class="sp-btn-primary" onclick="saveSidePanelStudent()">💾 Save Changes</button>
     <div class="sp-divider"></div>
     <button class="sp-btn-gold" onclick="generateDocsFromPanel()">📄 Generate Documents</button>
+    <button class="sp-btn-blue" onclick="sendNotificationToStudent()">📧 Send Notification</button>
     <div class="sp-divider"></div>
     <button class="sp-btn-danger" onclick="deleteSidePanelStudent()">🗑 Delete Student</button>
   </div>
@@ -671,10 +733,64 @@ function openSidePanel(id){
   document.getElementById('sp-avatar-char').textContent=(s.firstName||'?')[0].toUpperCase();
   document.getElementById('sidePanel').classList.add('open');
   document.getElementById('spOverlay').classList.add('open');
+  // Load student stats and submissions
+  loadStudentStatsInPanel(s.employeeId);
+  loadStudentSubmissionsInPanel();
 }
 function closeSidePanel(){
   document.getElementById('sidePanel').classList.remove('open');
   document.getElementById('spOverlay').classList.remove('open');
+}
+async function loadStudentStatsInPanel(employeeId){
+  try{
+    const r=await fetch('/student-submissions/'+encodeURIComponent(employeeId));
+    const d=await r.json();
+    const subs=d.submissions||[];
+    const approved=subs.filter(s=>s.status==='Approved').length;
+    const totalAtt=subs.reduce((sum,s)=>sum+(s.attendanceCount||0),0);
+    const avgPerf=subs.length>0?(subs.filter(s=>s.performance).map(s=>{
+      if(s.performance==='A+')return 95;if(s.performance==='A')return 85;
+      if(s.performance==='B')return 75;if(s.performance==='C')return 65;return 60;
+    }).reduce((a,b)=>a+b,0)/subs.length).toFixed(0):'—';
+    document.getElementById('sp-stat-submissions').textContent=subs.length;
+    document.getElementById('sp-stat-approved').textContent=approved;
+    document.getElementById('sp-stat-attendance').textContent=totalAtt;
+    document.getElementById('sp-stat-performance').textContent=avgPerf==='—'?'—':avgPerf+'%';
+  }catch(e){
+    document.getElementById('sp-stat-submissions').textContent='—';
+    document.getElementById('sp-stat-approved').textContent='—';
+    document.getElementById('sp-stat-attendance').textContent='—';
+    document.getElementById('sp-stat-performance').textContent='—';
+  }
+}
+async function loadStudentSubmissionsInPanel(){
+  const employeeId=document.getElementById('sp-employeeId').value;
+  if(!employeeId)return;
+  const listEl=document.getElementById('sp-submissions-list');
+  listEl.innerHTML='<div class="sp-loading">Loading...</div>';
+  try{
+    const r=await fetch('/student-submissions/'+encodeURIComponent(employeeId));
+    const d=await r.json();
+    const subs=(d.submissions||[]).slice(0,5); // Show last 5
+    if(!subs.length){
+      listEl.innerHTML='<div class="sp-no-submissions"><div class="sp-no-submissions-icon">📋</div><p>No submissions yet</p></div>';
+      return;
+    }
+    listEl.innerHTML=subs.map(s=>{
+      const sc=s.status==='Approved'?'approved':s.status==='Rejected'?'rejected':'pending';
+      const date=s.submittedAt?new Date(s.submittedAt).toLocaleDateString('en-IN',{month:'short',day:'numeric'}):'-';
+      return`<div class="sp-submission-item">
+        <div class="sp-sub-task">${s.task||'Task Submission'}</div>
+        <div class="sp-sub-meta">
+          <span class="sp-sub-status ${sc}">${s.status||'Pending'}</span>
+          <span class="sp-sub-date">📅 ${date}</span>
+          ${s.attendanceCount?`<span class="sp-sub-date">✓ ${s.attendanceCount}d</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    listEl.innerHTML='<div class="sp-no-submissions"><div class="sp-no-submissions-icon">⚠️</div><p>Failed to load</p></div>';
+  }
 }
 async function saveSidePanelStudent(){
   const id=document.getElementById('sp-id').value;
@@ -697,6 +813,19 @@ function generateDocsFromPanel(){
   if(!s)return;
   closeSidePanel();showView('documents');
   setTimeout(()=>{prefillDocForms(s);showHRToast('✅ Student data auto-filled!','success');},350);
+}
+function sendNotificationToStudent(){
+  const empId=document.getElementById('sp-employeeId').value;
+  const name=document.getElementById('sp-name-display').textContent;
+  if(!empId)return;
+  closeSidePanel();showView('send-notif');
+  setTimeout(()=>{
+    document.getElementById('targetType').value='student';
+    document.getElementById('targetEmployeeId').value=empId;
+    document.getElementById('notifTitle').value='Message for '+name;
+    onTargetChange();
+    showHRToast('✅ Notification form ready!','success');
+  },350);
 }
 
 /* TRACKER */
