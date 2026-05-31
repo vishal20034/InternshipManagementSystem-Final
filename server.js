@@ -984,44 +984,59 @@ function parseJoinDate(joiningDate){
     return d;
 }
 
-function countWeekdays(start, end){
+// Working days from joining date to today (inclusive), excluding Sundays only.
+// Saturday IS a working day. Used for ALL attendance percentage calculations.
+function countDaysExcludingSundays(start, end){
     let count = 0;
     const cur = new Date(start); cur.setHours(0,0,0,0);
     const e = new Date(end);     e.setHours(0,0,0,0);
     while(cur <= e){
-        const day = cur.getDay();
-        if(day !== 0 && day !== 6) count++;   // exclude Sat/Sun
+        if(cur.getDay() !== 0) count++;   // 0 = Sunday → skip
         cur.setDate(cur.getDate() + 1);
     }
     return count;
 }
 
-// Combined attendance % = present days (union of both sources) / working days since joining * 100
+// Attendance % = (present days) / (working days since joining) * 100.
+// Working days are calendar days from joiningDate to today (inclusive), excluding Sundays only.
+// We DO NOT use marked-day count as the denominator. If the joining date is unknown
+// or no working days exist yet (e.g. only-Sunday range), all percentages are 0.
 async function computeAttendanceStats(employeeId, joiningDate){
     const records = await Attendance.find({ employeeId });
-    const self  = records.filter(r => r.markedBy === "self");
-    const coord = records.filter(r => r.markedBy === "coordinator");
+    const self   = records.filter(r => r.markedBy === "self");
+    const coord  = records.filter(r => r.markedBy === "coordinator");
 
     const selfPresent  = self.filter(r => r.status === "Present").length;
     const coordPresent = coord.filter(r => r.status === "Present").length;
     const coordAbsent  = coord.filter(r => r.status === "Absent").length;
 
-    // Union of distinct days the student was Present in EITHER source
+    // Union of distinct calendar days the student was Present in EITHER source
     const presentDayKeys = new Set();
     records.forEach(r => { if(r.status === "Present") presentDayKeys.add(r.dateKey); });
     const combinedPresentDays = presentDayKeys.size;
 
-    // Working days = weekdays since joining date (fallbacks keep % meaningful)
+    // Denominator: working days from joining date → today (inclusive), excluding Sundays.
     let workingDays = 0;
     const jd = parseJoinDate(joiningDate);
-    const today = new Date();
-    if(jd && jd <= today){ workingDays = countWeekdays(jd, today); }
-    const distinctDays = new Set(records.map(r => r.dateKey)).size;
-    if(!workingDays || workingDays < combinedPresentDays){
-        workingDays = Math.max(workingDays, distinctDays, combinedPresentDays, 1);
+    if(jd){
+        const today = new Date();
+        const j = new Date(jd); j.setHours(0,0,0,0);
+        const t = new Date(today); t.setHours(0,0,0,0);
+        if(j <= t) workingDays = countDaysExcludingSundays(j, t);
     }
-    if(workingDays < 1) workingDays = 1;
 
+    // No valid joining date / no working days yet → percentages are not defined (0).
+    if(workingDays < 1){
+        return {
+            selfPresent, selfTotal: self.length,
+            coordPresent, coordAbsent, coordTotal: coord.length,
+            combinedPresentDays, workingDays: 0,
+            selfPct: 0, coordPct: 0, combinedPct: 0,
+            eligible: false
+        };
+    }
+
+    // Cap at 100 to guard against marks on excluded days (e.g. Sunday entries).
     const combinedPct = Math.min(100, Math.round((combinedPresentDays / workingDays) * 100));
     const selfPct     = Math.min(100, Math.round((selfPresent  / workingDays) * 100));
     const coordPct    = Math.min(100, Math.round((coordPresent / workingDays) * 100));
