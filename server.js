@@ -655,6 +655,23 @@ try{
 }catch(error){ res.status(500).json({ message:"Error fetching students" }); }
 });
 
+// ================= HR - GET STUDENTS BY DOMAIN =================
+
+app.get("/hr/students/domain/:domain", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const domain = decodeURIComponent(req.params.domain);
+    const students = await Student.find({ domain }).sort({ createdAt:-1 });
+    res.json({ success:true, students });
+}catch(error){ 
+    console.log(error);
+    res.status(500).json({ message:"Error fetching domain students" }); 
+}
+});
+
 // ================= HR - GET ALL SUBMISSIONS =================
 
 app.get("/hr/submissions", async(req,res)=>{
