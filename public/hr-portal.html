@@ -270,6 +270,9 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     <div class="nav-section-title">Certificates</div>
     <button class="nav-btn" onclick="showView('certificates')" data-view="certificates"><span class="icon">🎓</span> Certificate Approvals</button>
     <div class="nav-divider"></div>
+    <div class="nav-section-title">Promotions</div>
+    <button class="nav-btn" onclick="showView('promotions')" data-view="promotions"><span class="icon">🚀</span> Promotions</button>
+    <div class="nav-divider"></div>
     <div class="nav-section-title">Documents</div>
     <button class="nav-btn" onclick="showView('documents')" data-view="documents"><span class="icon">📄</span> Generate Documents</button>
     <div class="nav-divider"></div>
@@ -484,6 +487,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
             <option>DevOps with AWS</option><option>Python Development</option><option>Java Development</option>
             <option>Web Development</option><option>MERN Stack Development</option><option>Artificial Intelligence</option>
             <option>Data Science</option><option>Cyber Security</option><option>Software Engineering</option><option>Flutter Development</option>
+            <option>HR Management</option>
           </select>
         </div>
       </div>
@@ -546,6 +550,40 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       </div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">These students passed both coordinator and HR approval. Generate and download their certificates below.</p>
       <div id="certApprovedContainer"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  <!-- PROMOTIONS -->
+  <div class="view" id="view-promotions">
+    <div class="doc-tabs">
+      <button class="doc-tab active" onclick="switchPromoTab('coord',this)">⬆️ Promote to Coordinator</button>
+      <button class="doc-tab" onclick="switchPromoTab('hr',this)">⭐ Promote to HR</button>
+      <button class="doc-tab" onclick="switchPromoTab('history',this)">📜 History</button>
+    </div>
+
+    <div class="cert-panel active" id="promo-coord">
+      <div class="section-header" style="margin-bottom:16px;">
+        <div class="section-title">Promote a Student to Coordinator</div>
+        <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadPromoCandidatesStudents()">↻ Refresh</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Review attendance and performance, then promote a student. They will receive an email with a one-time password.</p>
+      <div class="table-top" style="margin-bottom:14px;"><input class="search-input" id="promoStudentSearch" placeholder="🔍  Search by name, ID, domain..." oninput="renderPromoStudents()"></div>
+      <div id="promoStudentsContainer"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+
+    <div class="cert-panel" id="promo-hr">
+      <div class="section-header" style="margin-bottom:16px;">
+        <div class="section-title">Promote a Coordinator to HR</div>
+        <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadPromoCandidatesCoords()">↻ Refresh</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">For legacy hardcoded coordinators (no email on file), you'll be prompted to enter their email. DB-backed coordinators are pre-filled.</p>
+      <div id="promoCoordsContainer"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+
+    <div class="cert-panel" id="promo-history">
+      <div class="section-header" style="margin-bottom:16px;">
+        <div class="section-title">Promotion History</div>
+        <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadPromoHistory()">↻ Refresh</button>
+      </div>
+      <div id="promoHistoryContainer"><div class="loading"><div class="spinner"></div></div></div>
     </div>
   </div>
 </main>
@@ -711,7 +749,9 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 <script>
 const hrUser=JSON.parse(sessionStorage.getItem('hrUser')||'null');
 if(!hrUser){window.location.href='/hr-login';}
-const hrToken=`Bearer hr_${hrUser?.username}`;
+// Stable HR identifier: prefer email (Requirement 4), fall back to username for legacy sessions.
+const hrIdent = (hrUser && (hrUser.email || hrUser.username)) || "";
+const hrToken = `Bearer hr_${hrIdent}`;
 document.getElementById('hrNameDisplay').textContent=hrUser?.name||'HR Admin';
 document.getElementById('hrAvatar').textContent=(hrUser?.name||'H')[0].toUpperCase();
 document.getElementById('dateBadge').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
@@ -723,7 +763,7 @@ function showView(v){
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
-  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals'};
+  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals',promotions:'<span>Promotions</span>'};
   document.getElementById('pageTitle').innerHTML=t[v]||v;
   if(v==='students') loadStudents();
   if(v==='tracker') loadTracker();
@@ -733,6 +773,7 @@ function showView(v){
   if(v==='documents'){loadStudentsForPicker();setDefaultDates();}
   if(v==='attendance-monitor') loadAttendanceMonitor();
   if(v==='certificates') loadCertPending();
+  if(v==='promotions') loadPromoCandidatesStudents();
 }
 
 async function loadOverview(){
@@ -1365,7 +1406,7 @@ async function hrApprove(i){
   const {value:remarks,isConfirmed}=await Swal.fire({title:'Final HR Approval',html:`Approve <b>${s.name}</b> for certificates?`,input:'textarea',inputPlaceholder:'Optional HR remarks...',showCancelButton:true,confirmButtonText:'Approve',confirmButtonColor:'#10b981',background:'#0c1220',color:'#f0eee8'});
   if(!isConfirmed) return;
   try{
-    const r=await fetch('/students/'+s._id+'/hr-approve',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({hrId:hrUser.username,remarks:remarks||''})});
+    const r=await fetch('/students/'+s._id+'/hr-approve',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({hrId:hrIdent,remarks:remarks||''})});
     const d=await r.json();
     if(d.success){ Swal.fire({title:'Approved 🎉',text:d.message,icon:'success',background:'#0c1220',color:'#f0eee8',confirmButtonColor:'#f5c542'}); loadCertPending(); }
     else Swal.fire({title:'Failed',text:d.message,icon:'error',background:'#0c1220',color:'#f0eee8'});
@@ -1431,6 +1472,183 @@ function genCert(i,type){
   else if(type==='star') generateStarCert();
 }
 
+/* ============ PROMOTIONS ============ */
+function switchPromoTab(tab, btn){
+  document.querySelectorAll('#view-promotions .doc-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#view-promotions .cert-panel').forEach(p=>p.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(tab==='coord'){ document.getElementById('promo-coord').classList.add('active'); loadPromoCandidatesStudents(); }
+  if(tab==='hr'){ document.getElementById('promo-hr').classList.add('active'); loadPromoCandidatesCoords(); }
+  if(tab==='history'){ document.getElementById('promo-history').classList.add('active'); loadPromoHistory(); }
+}
+
+let promoStudents = [];
+async function loadPromoCandidatesStudents(){
+  const c=document.getElementById('promoStudentsContainer');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    // Use attendance/monitor for stats; then enrich with performance per student
+    const r=await fetch('/attendance/monitor',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    const list=d.students||[];
+    promoStudents = list;
+    renderPromoStudents();
+    // Lazy-load performance
+    Promise.all(list.map(async s => {
+      try{
+        const pr = await fetch('/students/'+s._id+'/performance');
+        const pd = await pr.json();
+        if(pd.success) s._perf = pd.performance;
+      }catch(_){}
+    })).then(renderPromoStudents);
+  }catch(e){ c.innerHTML='<div class="empty-state"><div class="es-icon">⚠️</div><p>Failed to load</p></div>'; }
+}
+function renderPromoStudents(){
+  const c=document.getElementById('promoStudentsContainer');
+  const q=(document.getElementById('promoStudentSearch')?.value||'').toLowerCase();
+  const list=promoStudents.filter(s=>((s.name||'')+(s.employeeId||'')+(s.domain||'')).toLowerCase().includes(q));
+  if(!list.length){ c.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><p>No students</p></div>'; return; }
+  c.innerHTML='<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
+    '<thead><tr><th>#</th><th>Student</th><th>Employee ID</th><th>Domain</th><th>Joining</th><th>Attendance</th><th>Performance</th><th>Action</th></tr></thead><tbody>'+
+    list.map((s,i)=>{
+      const att=(s.stats&&s.stats.combinedPct)||0;
+      const perf=s._perf?(s._perf.score+' · '+s._perf.grade):'<span style="color:var(--muted);">computing…</span>';
+      const safeName=String(s.name||'').replace(/'/g,'\\\'');
+      return `<tr>
+        <td style="color:var(--muted);font-size:12px">${i+1}</td>
+        <td style="font-weight:600">${s.name||'—'}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td>
+        <td><span class="tag tag-pending">${s.domain||'—'}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${s.joiningDate||'—'}</td>
+        <td><span class="elig-badge ${att>=75?'elig-yes':'elig-no'}">${att}%</span></td>
+        <td>${perf}</td>
+        <td><button class="cert-approve-btn" onclick="confirmPromoteStudent('${s._id}','${safeName}','${s.employeeId||''}','${(s.domain||'').replace(/'/g,'')}')">⬆️ Promote</button></td>
+      </tr>`;
+    }).join('')+'</tbody></table></div></div>';
+}
+async function confirmPromoteStudent(studentId, name, employeeId, domain){
+  const r = await Swal.fire({
+    title: 'Promote to Coordinator?',
+    html: `<div style="text-align:left;font-size:14px;line-height:1.6;">
+      <b>${name}</b><br>
+      <span style="font-family:'JetBrains Mono',monospace;color:#f5c542;">${employeeId}</span><br>
+      Domain: <b>${domain||'—'}</b>
+    </div><div style="margin-top:16px;font-size:13px;color:#9aa4bf;">A 12-character one-time password will be emailed to the student to complete registration.</div>`,
+    icon: 'question', showCancelButton: true,
+    confirmButtonText: 'Yes, promote and send email',
+    confirmButtonColor: '#10b981',
+    background: '#0c1220', color: '#f0eee8'
+  });
+  if(!r.isConfirmed) return;
+  try{
+    const res = await fetch('/hr/promote/to-coordinator',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization: hrToken },
+      body: JSON.stringify({ studentId, employeeId, promotedByHRId: hrIdent })
+    });
+    const d = await res.json();
+    if(d.success){
+      Swal.fire({title:'Promotion Sent ✅', text:d.message, icon:'success', background:'#0c1220', color:'#f0eee8', confirmButtonColor:'#f5c542'});
+      loadPromoCandidatesStudents();
+    } else {
+      Swal.fire({title:'Failed', text:d.message||'Could not promote', icon:'error', background:'#0c1220', color:'#f0eee8'});
+    }
+  }catch(e){ Swal.fire({title:'Error', text:'Network error', icon:'error', background:'#0c1220', color:'#f0eee8'}); }
+}
+
+async function loadPromoCandidatesCoords(){
+  const c=document.getElementById('promoCoordsContainer');
+  if(!c) return;
+  // Build a list of legacy coordinator usernames + DB-backed coordinators.
+  // Server has the legacy COORDINATORS map; we hard-code the same usernames here for the UI.
+  const legacy = [
+    {username:"devops_aws_admin", domain:"DevOps with AWS"},
+    {username:"python_admin",     domain:"Python Development"},
+    {username:"java_admin",       domain:"Java Development"},
+    {username:"web_admin",        domain:"Web Development"},
+    {username:"mern_admin",       domain:"MERN Stack Development"},
+    {username:"ai_admin",         domain:"Artificial Intelligence"},
+    {username:"datascience_admin",domain:"Data Science"},
+    {username:"cyber_admin",      domain:"Cyber Security"},
+    {username:"software_admin",   domain:"Software Engineering"},
+    {username:"flutter_admin",    domain:"Flutter Development"},
+    {username:"hrmgmt_admin",     domain:"HR Management"}
+  ];
+  c.innerHTML = '<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
+    '<thead><tr><th>#</th><th>Coordinator</th><th>Domain</th><th>Action</th></tr></thead><tbody>'+
+    legacy.map((co,i)=>`<tr>
+      <td style="color:var(--muted);font-size:12px">${i+1}</td>
+      <td style="font-weight:600">${co.username}</td>
+      <td><span class="tag tag-pending">${co.domain}</span></td>
+      <td><button class="cert-approve-btn" onclick="confirmPromoteCoord('${co.username}','${co.domain}')">⭐ Promote to HR</button></td>
+    </tr>`).join('')+
+    '</tbody></table></div></div>';
+}
+async function confirmPromoteCoord(coordinatorUsername, domain){
+  const r = await Swal.fire({
+    title: 'Promote to HR?',
+    html: `<div style="text-align:left;font-size:14px;">
+      Coordinator: <b>${coordinatorUsername}</b><br>
+      Domain: <b>${domain||'—'}</b>
+    </div>`,
+    input: 'email',
+    inputLabel: 'Their email address (to send the credentials)',
+    inputPlaceholder: 'name@domain.com',
+    inputValidator: (v) => !v || !/^\S+@\S+\.\S+$/.test(v) ? 'Please enter a valid email' : null,
+    showCancelButton: true,
+    confirmButtonText: 'Send Promotion Email',
+    confirmButtonColor: '#f5c542',
+    background: '#0c1220', color: '#f0eee8'
+  });
+  if(!r.isConfirmed) return;
+  try{
+    const res = await fetch('/hr/promote/to-hr',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', Authorization: hrToken },
+      body: JSON.stringify({ coordinatorUsername, email: r.value, domain, promotedByHRId: hrIdent })
+    });
+    const d = await res.json();
+    if(d.success){
+      Swal.fire({title:'Promotion Sent ✅', text:d.message, icon:'success', background:'#0c1220', color:'#f0eee8', confirmButtonColor:'#f5c542'});
+    } else {
+      Swal.fire({title:'Failed', text:d.message||'Could not promote', icon:'error', background:'#0c1220', color:'#f0eee8'});
+    }
+  }catch(e){ Swal.fire({title:'Error', text:'Network error', icon:'error', background:'#0c1220', color:'#f0eee8'}); }
+}
+
+async function loadPromoHistory(){
+  const c=document.getElementById('promoHistoryContainer');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const r=await fetch('/hr/promotions',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    const list=d.promotions||[];
+    if(!list.length){ c.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><p>No promotions yet</p></div>'; return; }
+    c.innerHTML='<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
+      '<thead><tr><th>#</th><th>Name</th><th>Email</th><th>From → To</th><th>Domain</th><th>Promoted</th><th>Status</th></tr></thead><tbody>'+
+      list.map((p,i)=>{
+        const completed = p.registrationCompleted;
+        const expired = !completed && new Date(p.tempPasswordExpiresAt) < new Date();
+        const statusBadge = completed
+          ? '<span class="elig-badge elig-yes">✓ Completed</span>'
+          : (expired ? '<span class="elig-badge elig-no">Expired</span>'
+                     : '<span class="elig-badge" style="background:rgba(245,197,66,0.12);color:#f5c542;border:1px solid rgba(245,197,66,0.25);">Pending</span>');
+        return `<tr>
+          <td style="color:var(--muted);font-size:12px">${i+1}</td>
+          <td style="font-weight:600">${p.name||'—'}</td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${p.email||'—'}</td>
+          <td><b>${p.fromRole}</b> → <b>${p.toRole}</b></td>
+          <td>${p.domain||'—'}</td>
+          <td style="font-size:12px;color:var(--muted)">${new Date(p.promotedAt).toLocaleString('en-IN')}</td>
+          <td>${statusBadge}</td>
+        </tr>`;
+      }).join('')+
+      '</tbody></table></div></div>';
+  }catch(e){ c.innerHTML='<div class="empty-state"><div class="es-icon">⚠️</div><p>Failed to load</p></div>'; }
+}
+
 loadOverview();
 </script>
 
@@ -1442,8 +1660,8 @@ loadOverview();
   if(!window.TenChat || !hrUser) return;
   TenChat.init({
     role: "hr",
-    name: hrUser.name || hrUser.username,
-    username: hrUser.username
+    name: hrUser.name || hrIdent,
+    username: hrIdent
   });
 })();
 </script>

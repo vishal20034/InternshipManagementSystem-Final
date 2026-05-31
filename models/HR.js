@@ -1,11 +1,19 @@
 const mongoose = require("mongoose");
 
+// HR member account (DB-backed). Used after promotion-flow registration.
+// Legacy hardcoded HR logins (HR_ACCOUNTS in server.js) keep working alongside
+// this for backward compatibility — see /hr-login route.
+
 const HRSchema = new mongoose.Schema({
-    username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    name: { type: String, required: true },
-    email: { type: String, default: "" },
-    role: { type: String, default: "hr" },
+    // For DB-backed accounts the canonical login key is `email` (Requirement 4).
+    // `username` is kept for backward compatibility with legacy hardcoded HR.
+    username: { type: String, default: "", index: true },
+    email:    { type: String, default: "", lowercase: true, trim: true, unique: true, sparse: true },
+    password: { type: String, required: true },   // bcrypt-hashed
+    name:     { type: String, required: true },
+    role:     { type: String, default: "hr" },
+    employeeId: { type: String, default: "" },
+    promotedFrom: { type: String, default: "" },  // e.g. "coordinator"
     createdAt: { type: Date, default: Date.now }
 });
 

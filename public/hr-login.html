@@ -191,8 +191,8 @@ input::placeholder { color: #2a2018; }
     <p class="card-sub">Access the HR management and reporting dashboard</p>
 
     <div class="form-group">
-      <label>HR Username</label>
-      <input type="text" id="username" placeholder="Enter HR username" autocomplete="off">
+      <label>HR Email</label>
+      <input type="email" id="email" placeholder="Enter HR email" autocomplete="email">
     </div>
     <div class="form-group">
       <label>Password</label>
@@ -201,6 +201,12 @@ input::placeholder { color: #2a2018; }
 
     <button class="submit-btn" onclick="doLogin()">Sign In to HR Portal</button>
     <div class="error-msg" id="errMsg">Invalid credentials. Please try again.</div>
+
+    <div style="text-align:center; margin-top:18px; font-size:13px;">
+      <a href="/promoted-register.html" style="color: var(--ten-gold); text-decoration:none; font-weight:600;">
+        Promoted staff? Register here →
+      </a>
+    </div>
   </div>
 
   <div class="back-link">
@@ -211,9 +217,9 @@ input::placeholder { color: #2a2018; }
 
 <script>
 async function doLogin() {
-  const username = document.getElementById('username').value.trim();
+  const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value.trim();
-  if (!username || !password) return;
+  if (!email || !password) return;
 
   const btn = document.querySelector('.submit-btn');
   btn.textContent = 'Signing in...';
@@ -223,14 +229,17 @@ async function doLogin() {
     const r = await fetch('/hr-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      // Server accepts EITHER `email` (preferred) OR legacy `username`.
+      body: JSON.stringify({ email, username: email, password })
     });
     const d = await r.json();
     if (d.success) {
       sessionStorage.setItem('hrUser', JSON.stringify(d.hr));
       window.location.href = '/hr-portal';
     } else {
-      document.getElementById('errMsg').style.display = 'block';
+      const errEl = document.getElementById('errMsg');
+      errEl.textContent = d.message || 'Invalid credentials. Please try again.';
+      errEl.style.display = 'block';
       btn.textContent = 'Sign In to HR Portal';
       btn.disabled = false;
     }

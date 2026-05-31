@@ -1048,7 +1048,8 @@ const domainConfig = {
   "Data Science":            { icon:"📊",  color:"#6366f1", short:"Data Science"     },
   "Cyber Security":          { icon:"🛡️",  color:"#f43f5e", short:"Cyber Security"   },
   "Software Engineering":    { icon:"💻",  color:"#14b8a6", short:"Software Eng"     },
-  "Flutter Development":     { icon:"📱",  color:"#0ea5e9", short:"Flutter Dev"      }
+  "Flutter Development":     { icon:"📱",  color:"#0ea5e9", short:"Flutter Dev"      },
+  "HR Management":           { icon:"👔",  color:"#D4AF37", short:"HR Management"    }
 };
 const dCfg = domainConfig[domain] || { icon:"🎓", color:"#3b82f6", short:domain };
 
@@ -1108,7 +1109,8 @@ const tasksByDomain = {
   "Data Science":["Data visualization","Pandas analysis","Machine learning model","EDA project"],
   "Cyber Security":["Nmap scan","Security audit","Password strength tool","Basic firewall setup"],
   "Software Engineering":["Agile sprint plan","SDLC document","UML diagrams","Test case design"],
-  "Flutter Development":["Flutter UI demo","Firebase auth","Todo app in Flutter","State management demo"]
+  "Flutter Development":["Flutter UI demo","Firebase auth","Todo app in Flutter","State management demo"],
+  "HR Management":["Employee onboarding plan","Performance review template","Policy document","Recruitment funnel analysis"]
 };
 
 // Coordinator-uploaded tasks
@@ -1284,12 +1286,36 @@ async function loadStudentSubmissions(){
 }
 
 function updateStats(submissions){
-  // Tasks & performance still come from submissions.
-  // Attendance figures are driven by the NEW attendance system (loadAttendance()).
+  // Tasks come from submissions. Performance is fetched from the backend
+  // (uses the professional 4-factor formula). Attendance is driven by
+  // the new attendance system (loadAttendance()).
   const approved = submissions.filter(s=>s.status==="Approved").length;
   document.getElementById("tasksCompletedText").innerText = approved;
-  document.getElementById("performanceText").innerText =
-    approved>=5?"A+":approved>=3?"A":approved>=1?"B":"C";
+  // Best-effort: load real performance score asynchronously.
+  loadPerformance();
+}
+
+async function loadPerformance(){
+  try{
+    const r = await fetch("/students/" + encodeURIComponent(employeeId) + "/performance");
+    const d = await r.json();
+    if(!d.success || !d.performance) return;
+    const el = document.getElementById("performanceText");
+    if(el){
+      el.innerText = d.performance.score;
+      el.title = d.performance.grade + " (out of 100)";
+      // Add a small grade caption if there's a sibling slot
+      const wrap = el.parentElement;
+      let g = wrap && wrap.querySelector(".perf-grade");
+      if(!g && wrap){
+        g = document.createElement("div");
+        g.className = "perf-grade";
+        g.style.cssText = "font-size:11px;color:#8aa4c8;margin-top:4px;font-weight:600;letter-spacing:.5px;";
+        wrap.appendChild(g);
+      }
+      if(g) g.innerText = d.performance.grade;
+    }
+  }catch(_){}
 }
 
 function renderSubmissions(submissions){

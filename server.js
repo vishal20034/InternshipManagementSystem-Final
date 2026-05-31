@@ -15,14 +15,30 @@ const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
 const Attendance = require("./models/Attendance");
 const Message = require("./models/Message");
+const HR = require("./models/HR");
+const Coordinator = require("./models/Coordinator");
+const Promotion = require("./models/Promotion");
 
+const bcrypt = require("bcrypt");
 const http = require("http");
 const { Server: SocketIOServer } = require("socket.io");
 
-// Shared credential maps (used by both login routes and chat handshake auth)
+// All domains supported by the system (Requirement 5: HR Management included).
+// Anywhere the backend filters or iterates domains, it should reference this list.
+const ALL_DOMAINS = [
+    "DevOps with AWS","Python Development","Java Development","Web Development",
+    "MERN Stack Development","Artificial Intelligence","Data Science",
+    "Cyber Security","Software Engineering","Flutter Development",
+    "HR Management"
+];
+
+// Shared credential maps (legacy hardcoded accounts).
+// Used by /hr-login, /coordinator-login, and chat handshake auth.
+// New DB-backed accounts (created via the promotion flow) are stored in the
+// `HR` and `Coordinator` collections and looked up alongside these maps.
 const HR_ACCOUNTS = {
-    "hr_admin":   { password: "HR@TEN2026", name: "HR Administrator" },
-    "hr_manager": { password: "HRMgr@2026", name: "HR Manager" }
+    "hr_admin":   { password: "HR@TEN2026",  name: "HR Administrator", email: "hr.admin@ten.local" },
+    "hr_manager": { password: "HRMgr@2026",  name: "HR Manager",       email: "hr.manager@ten.local" }
 };
 const COORDINATORS = {
     "devops_aws_admin":   { password:"DevOpsAWS@2026",  domain:"DevOps with AWS" },
@@ -34,7 +50,9 @@ const COORDINATORS = {
     "datascience_admin":  { password:"DS@2026",         domain:"Data Science" },
     "cyber_admin":        { password:"Cyber@2026",      domain:"Cyber Security" },
     "software_admin":     { password:"Software@2026",   domain:"Software Engineering" },
-    "flutter_admin":      { password:"Flutter@2026",    domain:"Flutter Development" }
+    "flutter_admin":      { password:"Flutter@2026",    domain:"Flutter Development" },
+    // Requirement 5 — HR Management treated like any other domain
+    "hrmgmt_admin":       { password:"HRMgmt@2026",     domain:"HR Management" }
 };
 
 const app = express();
@@ -147,7 +165,8 @@ async function generateEmployeeId(domain){
         "Data Science":             "DS",
         "Cyber Security":           "CYBER",
         "Software Engineering":     "SDE",
-        "Flutter Development":      "FLUTTER"
+        "Flutter Development":      "FLUTTER",
+        "HR Management":            "HRMGMT"
     };
     const shortCode = domainShortCodes[domain] || domain.toUpperCase();
     const totalStudents = await Student.countDocuments();
@@ -582,15 +601,51 @@ try{
 });
 
 // ================= HR LOGIN =================
+// Requirement 4: HR logs in by email + password.
+// To not break existing hardcoded HR accounts, this route accepts EITHER an
+// email (looked up in the HR DB collection, bcrypt-compared) OR a legacy
+// username (looked up in HR_ACCOUNTS, plain compared).
 
 app.post("/hr-login", async(req,res)=>{
 try{
-    const { username, password } = req.body;
-    const hr = HR_ACCOUNTS[username];
+    const password = (req.body && req.body.password) || "";
+    // Accept "email" (preferred) or legacy "username" field from older clients
+    const identifier = ((req.body && (req.body.email || req.body.username)) || "").trim();
+    if(!identifier || !password){
+        return res.json({ success:false, message:"Email and password required" });
+    }
+
+    // 1) Email path: DB-backed HR (created via promotion flow)
+    if(identifier.indexOf("@") !== -1){
+        const dbHR = await HR.findOne({ email: identifier.toLowerCase() });
+        if(dbHR){
+            const ok = await bcrypt.compare(password, dbHR.password);
+            if(!ok) return res.json({ success:false, message:"Invalid HR credentials" });
+            return res.json({ success:true, hr:{
+                username: dbHR.username || dbHR.email,
+                email:    dbHR.email,
+                name:     dbHR.name,
+                role:     "hr"
+            }});
+        }
+        // Also allow legacy hardcoded entries that have an email assigned
+        const legacy = Object.entries(HR_ACCOUNTS).find(
+            ([_, v]) => (v.email || "").toLowerCase() === identifier.toLowerCase()
+        );
+        if(legacy){
+            const [u, v] = legacy;
+            if(v.password !== password) return res.json({ success:false, message:"Invalid HR credentials" });
+            return res.json({ success:true, hr:{ username:u, email:v.email, name:v.name, role:"hr" } });
+        }
+        return res.json({ success:false, message:"Invalid HR credentials" });
+    }
+
+    // 2) Legacy username path
+    const hr = HR_ACCOUNTS[identifier];
     if(!hr || hr.password !== password){
         return res.json({ success:false, message:"Invalid HR credentials" });
     }
-    res.json({ success:true, hr:{ username, name:hr.name, role:"hr" } });
+    res.json({ success:true, hr:{ username: identifier, email: hr.email || "", name:hr.name, role:"hr" } });
 }catch(error){
     console.log(error);
     res.json({ success:false, message:"Server Error" });
@@ -717,12 +772,8 @@ try{
     const rejected = await Submission.countDocuments({ status:"Rejected" });
     const pending = await Submission.countDocuments({ status:"Pending" });
     
-    // Domain breakdown
-    const domains = [
-        "DevOps with AWS","Python Development","Java Development","Web Development",
-        "MERN Stack Development","Artificial Intelligence","Data Science",
-        "Cyber Security","Software Engineering","Flutter Development"
-    ];
+    // Domain breakdown — uses canonical ALL_DOMAINS so HR Management is included
+    const domains = ALL_DOMAINS;
     const domainStats = [];
     for(const d of domains){
         const count = await Student.countDocuments({ domain:d });
@@ -818,12 +869,34 @@ try{
 
 app.post("/coordinator-login", async(req,res)=>{
 try{
-    const { username, password } = req.body;
-    const coordinator = COORDINATORS[username];
-    if(!coordinator || coordinator.password !== password){
+    const password = (req.body && req.body.password) || "";
+    const identifier = ((req.body && (req.body.username || req.body.email)) || "").trim();
+    if(!identifier || !password){
         return res.json({ success:false });
     }
-    res.json({ success:true, coordinator:{ username, domain:coordinator.domain } });
+
+    // 1) Hardcoded coordinator (legacy) — exact-username match
+    const legacy = COORDINATORS[identifier];
+    if(legacy && legacy.password === password){
+        return res.json({ success:true, coordinator:{ username:identifier, domain:legacy.domain } });
+    }
+
+    // 2) DB-backed coordinator (created via promotion flow). Accepts either
+    //    email or username.
+    const q = identifier.indexOf("@") !== -1
+        ? { email: identifier.toLowerCase() }
+        : { $or: [{ username: identifier }, { email: identifier.toLowerCase() }] };
+    const dbCoord = await Coordinator.findOne(q);
+    if(dbCoord){
+        const ok = await bcrypt.compare(password, dbCoord.password);
+        if(ok){
+            return res.json({ success:true, coordinator:{
+                username: dbCoord.username || dbCoord.email,
+                domain:   dbCoord.domain
+            }});
+        }
+    }
+    return res.json({ success:false });
 }catch(error){
     console.log(error);
     res.json({ success:false });
@@ -1211,14 +1284,17 @@ try{
     for(const s of students){
         const submissions = await Submission.find({ employeeId:s.employeeId }).sort({ submittedAt:-1 });
         const stats = await computeAttendanceStats(s.employeeId, s.joiningDate);
-        const approvedTasks = submissions.filter(x => x.status === "Approved").length;
-        const performance = approvedTasks >= 5 ? "A+" : approvedTasks >= 3 ? "A" : approvedTasks >= 1 ? "B" : "C";
+        // Replace the old letter-grade performance with the professional formula.
+        const perf = await calculatePerformance(s);
         result.push({
             _id:s._id, employeeId:s.employeeId,
             name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
             domain:s.domain, joiningDate:s.joiningDate, tenure:s.tenure,
             submissions: submissions.map(x => ({ task:x.task, status:x.status, feedback:x.feedback, submittedAt:x.submittedAt })),
-            stats, performance,
+            stats,
+            // Backward-compatible: keep `performance` as a label, plus a structured object.
+            performance: perf ? (perf.score + " · " + perf.grade) : "—",
+            performanceObj: perf || null,
             certificateApprovedByCoordinator: s.certificateApprovedByCoordinator,
             coordinatorRemarks: s.coordinatorRemarks,
             coordinatorApprovedAt: s.coordinatorApprovedAt,
@@ -1476,14 +1552,40 @@ async function verifyChatIdentity(claim){
         };
     }
     if(claim.role === "coordinator"){
-        const c = COORDINATORS[claim.username];
-        if(!c) return null;
-        return { role: "coordinator", id: claim.username, name: claim.username, domain: c.domain };
+        // The handshake field is named `username` for backward compatibility, but
+        // it can hold either a legacy username or an email (DB-backed coordinator).
+        const id = claim.username || claim.email;
+        if(!id) return null;
+        const legacy = COORDINATORS[id];
+        if(legacy) return { role: "coordinator", id, name: id, domain: legacy.domain };
+        // DB-backed: created via promotion flow
+        const q = id.indexOf("@") !== -1
+            ? { email: id.toLowerCase() }
+            : { $or: [{ username: id }, { email: id.toLowerCase() }] };
+        const dbC = await Coordinator.findOne(q);
+        if(dbC) return { role: "coordinator", id: dbC.email || dbC.username || id, name: dbC.name, domain: dbC.domain };
+        return null;
     }
     if(claim.role === "hr"){
-        const h = HR_ACCOUNTS[claim.username];
-        if(!h) return null;
-        return { role: "hr", id: claim.username, name: h.name, domain: "" };
+        const id = claim.username || claim.email;
+        if(!id) return null;
+        // Legacy hardcoded HR (by username key)
+        const legacy = HR_ACCOUNTS[id];
+        if(legacy) return { role: "hr", id, name: legacy.name, domain: "" };
+        // Legacy hardcoded HR (by their assigned email)
+        const legacyByEmail = Object.entries(HR_ACCOUNTS).find(
+            ([_, v]) => (v.email || "").toLowerCase() === String(id).toLowerCase()
+        );
+        if(legacyByEmail){
+            const [u, v] = legacyByEmail;
+            return { role: "hr", id: v.email || u, name: v.name, domain: "" };
+        }
+        // DB-backed HR (created via promotion flow)
+        if(id.indexOf("@") !== -1){
+            const dbH = await HR.findOne({ email: id.toLowerCase() });
+            if(dbH) return { role: "hr", id: dbH.email, name: dbH.name, domain: "" };
+        }
+        return null;
     }
     return null;
 }
@@ -1549,6 +1651,410 @@ try{
     if(io){ io.to(msg.chatRoom).emit("message_deleted", { messageId: String(msg._id), room: msg.chatRoom }); }
     res.json({ success:true });
 }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// ================= PERFORMANCE CALCULATION ========================
+// ==================================================================
+// Requirement 6: weighted out of 100. Reusable from anywhere.
+//   Factor 1 — Attendance (max 30): combinedAttendance% * 0.30
+//   Factor 2 — Task Completion (max 35): approved/totalSubmitted * 35
+//   Factor 3 — Task Quality (max 25): approved/max(totalSubmitted,1) * 25
+//   Factor 4 — Consistency (max 10): activeWeeks/totalWeeks * 10
+
+function gradeForScore(score){
+    if(score >= 90) return "Outstanding ⭐";
+    if(score >= 75) return "Excellent 🟢";
+    if(score >= 60) return "Good 🔵";
+    if(score >= 45) return "Average 🟡";
+    return "Needs Improvement 🔴";
+}
+
+async function calculatePerformance(studentRefOrId){
+    // Resolve a student doc whether passed an ObjectId, an employeeId or a doc.
+    let student = null;
+    if(!studentRefOrId) return null;
+    if(typeof studentRefOrId === "string"){
+        student = await Student.findOne({ employeeId: studentRefOrId })
+                || (mongoose.isValidObjectId(studentRefOrId) ? await Student.findById(studentRefOrId) : null);
+    } else if(studentRefOrId.employeeId){
+        student = studentRefOrId;
+    } else if(studentRefOrId._id){
+        student = await Student.findById(studentRefOrId._id);
+    }
+    if(!student) return null;
+
+    const stats = await computeAttendanceStats(student.employeeId, student.joiningDate);
+    const submissions = await Submission.find({ employeeId: student.employeeId });
+    const totalSubmitted = submissions.length;
+    const approved = submissions.filter(s => s.status === "Approved").length;
+
+    // Factor 1
+    const attendanceScore = (Math.min(100, stats.combinedPct || 0) / 100) * 30;
+
+    // Factor 2
+    const taskScore = totalSubmitted > 0 ? (approved / totalSubmitted) * 35 : 0;
+
+    // Factor 3 (per spec)
+    const qualityScore = (approved / Math.max(totalSubmitted, 1)) * 25;
+
+    // Factor 4 — consistency: weeks-since-joining vs weeks with at least one mark
+    let consistencyScore = 0;
+    const jd = parseJoinDate(student.joiningDate);
+    if(jd){
+        const today = new Date(); today.setHours(0,0,0,0);
+        const j = new Date(jd); j.setHours(0,0,0,0);
+        const ms = today - j;
+        const totalWeeks = Math.max(1, Math.ceil(ms / (7 * 24 * 3600 * 1000)) || 1);
+        const records = await Attendance.find({ employeeId: student.employeeId });
+        const activeWeeks = new Set();
+        records.forEach(r => {
+            const d = new Date(r.date);
+            const days = Math.floor((d - j) / (24 * 3600 * 1000));
+            if(days >= 0) activeWeeks.add(Math.floor(days / 7));
+        });
+        consistencyScore = (Math.min(activeWeeks.size, totalWeeks) / totalWeeks) * 10;
+    }
+
+    const total = attendanceScore + taskScore + qualityScore + consistencyScore;
+    const score = Math.round(total * 10) / 10;
+    return {
+        score,
+        grade: gradeForScore(score),
+        breakdown: {
+            attendance:  Math.round(attendanceScore  * 10) / 10,
+            task:        Math.round(taskScore        * 10) / 10,
+            quality:     Math.round(qualityScore     * 10) / 10,
+            consistency: Math.round(consistencyScore * 10) / 10,
+            // Inputs (useful for UI tooltips)
+            combinedAttendancePct: stats.combinedPct,
+            approved, totalSubmitted
+        }
+    };
+}
+
+// ---- GET performance for a student ----
+app.get("/students/:id/performance", async(req,res)=>{
+try{
+    const id = req.params.id;
+    let student = null;
+    if(mongoose.isValidObjectId(id)) student = await Student.findById(id);
+    if(!student) student = await Student.findOne({ employeeId: id });
+    if(!student) return res.status(404).json({ success:false, message:"Student not found" });
+    const perf = await calculatePerformance(student);
+    res.json({ success:true, performance: perf });
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// =================== PROMOTION FLOW ===============================
+// ==================================================================
+// Requirement 1+2+3: HR promotes a student/coordinator, the promoted user
+// receives an email with a 12-char temporary password, and completes
+// registration at /promoted-register.html within 48 hours.
+
+function generateSecureTempPassword(){
+    // 12 chars: uppercase, lowercase, digits, symbols. No ambiguous chars.
+    const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lower = "abcdefghijkmnpqrstuvwxyz";
+    const digit = "23456789";
+    const sym   = "!@#$%^&*-_=+";
+    const all   = upper + lower + digit + sym;
+    const buf   = crypto.randomBytes(12);
+    // Guarantee each class appears at least once
+    const must = [
+        upper[buf[0] % upper.length],
+        lower[buf[1] % lower.length],
+        digit[buf[2] % digit.length],
+        sym[buf[3] % sym.length]
+    ];
+    const rest = [];
+    for(let i = 4; i < 12; i++) rest.push(all[buf[i] % all.length]);
+    // Shuffle deterministically using the same buffer
+    const out = must.concat(rest);
+    for(let i = out.length - 1; i > 0; i--){
+        const j = buf[i] % (i + 1);
+        [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out.join("");
+}
+
+function promotionEmailHtml({ name, fromRoleLabel, toRoleLabel, employeeId, domain, email, tempPassword, loginUrl, dateStr }){
+    const safe = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    return `<!doctype html><html><body style="margin:0;background:#0c1220;font-family:Segoe UI,Arial,sans-serif;color:#f0eee8;">
+<table width="100%" cellspacing="0" cellpadding="0" style="background:#0c1220;padding:32px 0;"><tr><td align="center">
+  <table width="600" cellspacing="0" cellpadding="0" style="background:#0e1628;border:1px solid rgba(245,197,66,0.18);border-radius:18px;overflow:hidden;">
+    <tr><td style="background:linear-gradient(135deg,#1a1208,#3a2a08);padding:28px 32px;text-align:center;">
+      <div style="font-size:13px;letter-spacing:6px;color:#f5c542;font-weight:700;">THE ENTREPRENEURSHIP NETWORK</div>
+      <div style="font-size:24px;color:#fff7d6;font-weight:800;margin-top:8px;">🎉 Congratulations, ${safe(name)}!</div>
+    </td></tr>
+    <tr><td style="padding:28px 34px;">
+      <p style="font-size:15px;line-height:1.55;margin:0 0 16px;">Dear <b>${safe(name)}</b>,</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+        We are thrilled to inform you that you have been officially promoted from
+        <b>${safe(fromRoleLabel)}</b> to <b style="color:#f5c542;">${safe(toRoleLabel)}</b>
+        at The Entrepreneurship Network, effective <b>${safe(dateStr)}</b>.
+      </p>
+      <table width="100%" cellspacing="0" cellpadding="0" style="background:#0c1220;border:1px solid rgba(245,197,66,0.15);border-radius:12px;margin:18px 0;">
+        <tr><td style="padding:18px 22px;">
+          <div style="color:#f5c542;font-size:11px;letter-spacing:2px;font-weight:700;">YOUR DETAILS</div>
+          <div style="margin-top:10px;font-size:14px;line-height:1.85;">
+            <b>Name:</b> ${safe(name)}<br>
+            <b>Employee ID:</b> <span style="color:#f5c542;">${safe(employeeId)}</span><br>
+            <b>New Role:</b> ${safe(toRoleLabel)}<br>
+            <b>Domain:</b> ${safe(domain || "—")}<br>
+            <b>Promoted On:</b> ${safe(dateStr)}
+          </div>
+        </td></tr>
+      </table>
+      <table width="100%" cellspacing="0" cellpadding="0" style="background:rgba(245,197,66,0.06);border:1px dashed rgba(245,197,66,0.35);border-radius:12px;">
+        <tr><td style="padding:18px 22px;">
+          <div style="color:#f5c542;font-size:11px;letter-spacing:2px;font-weight:700;">YOUR NEW PORTAL ACCESS CREDENTIALS</div>
+          <div style="margin-top:10px;font-size:14px;line-height:1.85;">
+            <b>Email:</b> ${safe(email)}<br>
+            <b>Temporary Password:</b> <code style="background:#0c1220;padding:3px 8px;border-radius:6px;color:#f5c542;font-family:Consolas,monospace;letter-spacing:1px;">${safe(tempPassword)}</code><br>
+            <b>Login URL:</b> <a href="${safe(loginUrl)}" style="color:#f5c542;">${safe(loginUrl)}</a>
+          </div>
+          <p style="margin:14px 0 0;font-size:12px;color:#cdb24a;">
+            ⚠️ Please complete your registration using these credentials within <b>48 hours</b>.
+            This password expires after first use.
+          </p>
+        </td></tr>
+      </table>
+      <p style="font-size:14px;line-height:1.7;margin:20px 0 8px;">
+        <b>Steps to activate your account:</b>
+      </p>
+      <ol style="font-size:14px;line-height:1.7;color:#cdd9ec;margin:0 0 16px 22px;padding:0;">
+        <li>Visit the registration portal link above.</li>
+        <li>Enter your email and temporary password.</li>
+        <li>Set your new permanent password.</li>
+        <li>Access your new <b>${safe(toRoleLabel)}</b> dashboard.</li>
+      </ol>
+      <p style="font-size:14px;margin:24px 0 4px;">Warm regards,</p>
+      <p style="font-size:14px;margin:0;"><b>HR Team</b><br/>The Entrepreneurship Network<br/>
+        <a href="mailto:ten.hr.contact@gmail.com" style="color:#f5c542;">ten.hr.contact@gmail.com</a>
+      </p>
+    </td></tr>
+    <tr><td style="background:#080d1a;padding:14px 22px;text-align:center;font-size:11px;color:#6a6255;letter-spacing:1px;">
+      © The Entrepreneurship Network · Limitless Technologies LLP
+    </td></tr>
+  </table>
+</td></tr></table></body></html>`;
+}
+
+async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employeeId, domain, tempPassword, host }){
+    const dateStr = new Date().toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" });
+    const loginUrl = (host ? host.replace(/\/$/, "") : "") + "/promoted-register.html";
+    const html = promotionEmailHtml({ name, fromRoleLabel, toRoleLabel, employeeId, domain, email: to, tempPassword, loginUrl, dateStr });
+    const subject = "🎉 Congratulations! You've been promoted at The Entrepreneurship Network";
+    try {
+        await transporter.sendMail({
+            from: "TEN HR <ten.internshipportal@gmail.com>",
+            to, subject, html,
+            text: `Hello ${name}, you have been promoted to ${toRoleLabel}. Temporary password: ${tempPassword}. Complete registration at ${loginUrl} within 48 hours.`
+        });
+        return { ok: true };
+    } catch(e){
+        console.log("Promotion email failed:", e.message);
+        return { ok: false, error: e.message };
+    }
+}
+
+function isHRAuth(req){
+    const auth = req.headers.authorization;
+    return auth && auth.indexOf("Bearer hr_") === 0;
+}
+
+// ---- HR: promote student -> coordinator ----
+app.post("/hr/promote/to-coordinator", async(req,res)=>{
+try{
+    if(!isHRAuth(req)) return res.status(401).json({ success:false, message:"Unauthorized" });
+    const { studentId, employeeId, promotedByHRId } = req.body || {};
+    let student = null;
+    if(studentId && mongoose.isValidObjectId(studentId)) student = await Student.findById(studentId);
+    if(!student && employeeId) student = await Student.findOne({ employeeId });
+    if(!student) return res.json({ success:false, message:"Student not found" });
+    if(!student.email) return res.json({ success:false, message:"Student has no email on file — cannot promote" });
+
+    // Block if a non-completed promotion already exists for this email
+    const open = await Promotion.findOne({ email: student.email.toLowerCase(), registrationCompleted: false });
+    if(open && open.tempPasswordExpiresAt > new Date()){
+        return res.json({ success:false, message:"An active promotion is already pending for this user. Please wait for them to complete it or for it to expire." });
+    }
+
+    const tempPassword = generateSecureTempPassword();
+    const hashed = await bcrypt.hash(tempPassword, 10);
+    const expiresAt = new Date(Date.now() + 48 * 3600 * 1000);
+    const fullName = (student.name || `${student.firstName||""} ${student.lastName||""}`).trim();
+
+    const record = await Promotion.create({
+        userId: student._id,
+        employeeId: student.employeeId,
+        name: fullName,
+        email: student.email.toLowerCase(),
+        fromRole: "student",
+        toRole: "coordinator",
+        hashedTempPassword: hashed,
+        promotedAt: new Date(),
+        promotedByHRId: promotedByHRId || "",
+        registrationCompleted: false,
+        domain: student.domain || "",
+        tempPasswordExpiresAt: expiresAt
+    });
+
+    const host = (req.headers["x-forwarded-proto"] || req.protocol) + "://" + req.get("host");
+    const mail = await sendPromotionEmail({
+        to: student.email, name: fullName, fromRoleLabel: "Intern", toRoleLabel: "Coordinator",
+        employeeId: student.employeeId, domain: student.domain, tempPassword, host
+    });
+
+    res.json({ success:true, message:`Promotion email sent to ${student.email}`, emailSent: !!mail.ok, promotion:{ _id: record._id } });
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
+});
+
+// ---- HR: promote coordinator -> HR ----
+app.post("/hr/promote/to-hr", async(req,res)=>{
+try{
+    if(!isHRAuth(req)) return res.status(401).json({ success:false, message:"Unauthorized" });
+    const { coordinatorUsername, email, name, domain, employeeId, promotedByHRId } = req.body || {};
+    // Resolve effective email (legacy hardcoded coordinators have no email; UI must provide one)
+    let resolvedEmail = (email || "").trim().toLowerCase();
+    let resolvedName = name || "";
+    let resolvedDomain = domain || "";
+    let resolvedEmpId = employeeId || "";
+
+    if(coordinatorUsername){
+        const legacy = COORDINATORS[coordinatorUsername];
+        if(legacy){ resolvedDomain = resolvedDomain || legacy.domain; resolvedName = resolvedName || coordinatorUsername; }
+        const dbC = await Coordinator.findOne({ $or:[{ username: coordinatorUsername }, { email: coordinatorUsername.toLowerCase() }] });
+        if(dbC){
+            resolvedEmail = resolvedEmail || (dbC.email || "");
+            resolvedName  = resolvedName || dbC.name;
+            resolvedDomain= resolvedDomain || dbC.domain;
+            resolvedEmpId = resolvedEmpId || (dbC.employeeId || "");
+        }
+    }
+    if(!resolvedEmail) return res.json({ success:false, message:"Coordinator email is required to send the promotion notification" });
+    if(!resolvedName)  resolvedName = coordinatorUsername || resolvedEmail;
+
+    const open = await Promotion.findOne({ email: resolvedEmail, registrationCompleted: false });
+    if(open && open.tempPasswordExpiresAt > new Date()){
+        return res.json({ success:false, message:"An active promotion is already pending for this user." });
+    }
+
+    const tempPassword = generateSecureTempPassword();
+    const hashed = await bcrypt.hash(tempPassword, 10);
+    const expiresAt = new Date(Date.now() + 48 * 3600 * 1000);
+
+    const record = await Promotion.create({
+        employeeId: resolvedEmpId || coordinatorUsername || resolvedEmail,
+        name: resolvedName,
+        email: resolvedEmail,
+        fromRole: "coordinator",
+        toRole: "hr",
+        hashedTempPassword: hashed,
+        promotedAt: new Date(),
+        promotedByHRId: promotedByHRId || "",
+        registrationCompleted: false,
+        domain: resolvedDomain,
+        tempPasswordExpiresAt: expiresAt
+    });
+
+    const host = (req.headers["x-forwarded-proto"] || req.protocol) + "://" + req.get("host");
+    const mail = await sendPromotionEmail({
+        to: resolvedEmail, name: resolvedName, fromRoleLabel: "Coordinator", toRoleLabel: "HR Member",
+        employeeId: resolvedEmpId || coordinatorUsername || "—", domain: resolvedDomain, tempPassword, host
+    });
+
+    res.json({ success:true, message:`Promotion email sent to ${resolvedEmail}`, emailSent: !!mail.ok, promotion:{ _id: record._id } });
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
+});
+
+// ---- HR: list promotions ----
+app.get("/hr/promotions", async(req,res)=>{
+try{
+    if(!isHRAuth(req)) return res.status(401).json({ success:false, message:"Unauthorized" });
+    const list = await Promotion.find().sort({ promotedAt:-1 }).limit(200);
+    // Hide hashed passwords
+    res.json({ success:true, promotions: list.map(p => ({
+        _id:p._id, employeeId:p.employeeId, name:p.name, email:p.email,
+        fromRole:p.fromRole, toRole:p.toRole, promotedAt:p.promotedAt,
+        registrationCompleted:p.registrationCompleted, completedAt:p.completedAt,
+        domain:p.domain, tempPasswordExpiresAt:p.tempPasswordExpiresAt,
+        promotedByHRId:p.promotedByHRId
+    })) });
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ---- Promoted user: verify temp credentials ----
+app.post("/promoted/verify", async(req,res)=>{
+try{
+    const { email, tempPassword } = req.body || {};
+    if(!email || !tempPassword) return res.json({ valid:false, message:"Email and temporary password required" });
+    const rec = await Promotion.findOne({ email: email.toLowerCase(), registrationCompleted: false });
+    if(!rec) return res.json({ valid:false, message:"No active promotion found for this email" });
+    if(!rec.hashedTempPassword) return res.json({ valid:false, message:"This promotion link has been used already" });
+    if(rec.tempPasswordExpiresAt < new Date()) return res.json({ valid:false, message:"This temporary password has expired" });
+    const ok = await bcrypt.compare(tempPassword, rec.hashedTempPassword);
+    if(!ok) return res.json({ valid:false, message:"Invalid temporary password" });
+    res.json({ valid:true, name:rec.name, employeeId:rec.employeeId, newRole:rec.toRole, domain:rec.domain });
+}catch(e){ console.log(e); res.status(500).json({ valid:false, message:"Server error" }); }
+});
+
+// ---- Promoted user: complete registration ----
+app.post("/promoted/register", async(req,res)=>{
+try{
+    const { email, tempPassword, newPassword } = req.body || {};
+    if(!email || !tempPassword || !newPassword) return res.json({ success:false, message:"All fields required" });
+    if(String(newPassword).length < 8) return res.json({ success:false, message:"New password must be at least 8 characters" });
+
+    const rec = await Promotion.findOne({ email: email.toLowerCase(), registrationCompleted: false });
+    if(!rec) return res.json({ success:false, message:"No active promotion found" });
+    if(!rec.hashedTempPassword) return res.json({ success:false, message:"This promotion link has been used already" });
+    if(rec.tempPasswordExpiresAt < new Date()) return res.json({ success:false, message:"This temporary password has expired" });
+    const ok = await bcrypt.compare(tempPassword, rec.hashedTempPassword);
+    if(!ok) return res.json({ success:false, message:"Invalid temporary password" });
+
+    const hashedNew = await bcrypt.hash(newPassword, 10);
+    let redirect = "/index.html";
+
+    if(rec.toRole === "coordinator"){
+        // Upsert coordinator account
+        const existing = await Coordinator.findOne({ email: rec.email });
+        if(existing){
+            existing.password = hashedNew; existing.name = rec.name; existing.domain = rec.domain || existing.domain;
+            existing.employeeId = rec.employeeId; existing.promotedFrom = rec.fromRole;
+            await existing.save();
+        } else {
+            await Coordinator.create({
+                username: rec.email, email: rec.email, password: hashedNew,
+                name: rec.name, domain: rec.domain || "", employeeId: rec.employeeId,
+                promotedFrom: rec.fromRole
+            });
+        }
+        redirect = "/coordinator-login.html";
+    } else if(rec.toRole === "hr"){
+        const existing = await HR.findOne({ email: rec.email });
+        if(existing){
+            existing.password = hashedNew; existing.name = rec.name;
+            existing.employeeId = rec.employeeId; existing.promotedFrom = rec.fromRole;
+            await existing.save();
+        } else {
+            await HR.create({
+                username: rec.email, email: rec.email, password: hashedNew,
+                name: rec.name, employeeId: rec.employeeId, promotedFrom: rec.fromRole
+            });
+        }
+        redirect = "/hr-login";
+    }
+
+    rec.registrationCompleted = true;
+    rec.completedAt = new Date();
+    rec.hashedTempPassword = null;   // invalidate
+    await rec.save();
+
+    res.json({ success:true, message:"Registration complete! Welcome to your new role.", redirect, role:rec.toRole });
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 // ================= SERVER =================
