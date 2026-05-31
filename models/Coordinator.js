@@ -14,6 +14,9 @@ const CoordinatorSchema = new mongoose.Schema({
     domain:     { type: String, required: true },
     employeeId: { type: String, default: "" },
     promotedFrom: { type: String, default: "" },    // e.g. "student"
+    // Forgot password (Feature 9)
+    passwordResetToken:  { type: String, default: null, index: true },
+    passwordResetExpiry: { type: Date,   default: null },
     createdAt:  { type: Date, default: Date.now }
 });
 

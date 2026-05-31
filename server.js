@@ -19,10 +19,12 @@ const HR = require("./models/HR");
 const Coordinator = require("./models/Coordinator");
 const Promotion = require("./models/Promotion");
 const BadgeAward = require("./models/BadgeAward");
+const BlockList = require("./models/BlockList");
 
 const bcrypt = require("bcrypt");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const QRCode = require("qrcode");
 const http = require("http");
 const { Server: SocketIOServer } = require("socket.io");
 
@@ -231,41 +233,147 @@ async function generateEmployeeId(domain){
     return `TEN/${shortCode}/${sequenceNumber}`;
 }
 
-// ================= REGISTER =================
+// ================= REGISTER (Feature 1: welcome email + multi-domain) =================
+// A student can register for UP TO 2 domains using the same email + phone.
+// The two domains MUST be different. Same domain twice -> blocked.
+// On the FIRST domain registration we send a welcome email; on the second
+// domain we link the two Student docs via linkedDomains and skip the email.
+
+function welcomeEmailHtml({ name, employeeId, domain, email, password, joinedOn, host }){
+    const safe = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    const loginUrl = (host ? host.replace(/\/$/, "") : "") + "/login.html";
+    return `<!doctype html><html><body style="margin:0;background:#0c1220;font-family:Segoe UI,Arial,sans-serif;color:#f0eee8;">
+<table width="100%" cellspacing="0" cellpadding="0" style="background:#0c1220;padding:32px 0;"><tr><td align="center">
+  <table width="600" cellspacing="0" cellpadding="0" style="background:#0e1628;border:1px solid rgba(245,197,66,0.18);border-radius:18px;overflow:hidden;">
+    <tr><td style="background:linear-gradient(135deg,#1a1208,#3a2a08);padding:28px 32px;text-align:center;">
+      <div style="font-size:13px;letter-spacing:6px;color:#f5c542;font-weight:700;">THE ENTREPRENEURSHIP NETWORK</div>
+      <div style="font-size:24px;color:#fff7d6;font-weight:800;margin-top:8px;">🎉 Welcome, ${safe(name)}!</div>
+    </td></tr>
+    <tr><td style="padding:28px 34px;">
+      <p style="font-size:15px;line-height:1.55;margin:0 0 16px;">Dear <b>${safe(name)}</b>,</p>
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">
+        We are thrilled to welcome you to <b style="color:#f5c542;">The Entrepreneurship Network</b> as an intern.
+        Your journey to build real-world skills starts today!
+      </p>
+      <table width="100%" cellspacing="0" cellpadding="0" style="background:#0c1220;border:1px solid rgba(245,197,66,0.15);border-radius:12px;margin:18px 0;">
+        <tr><td style="padding:18px 22px;">
+          <div style="color:#f5c542;font-size:11px;letter-spacing:2px;font-weight:700;">YOUR DETAILS</div>
+          <div style="margin-top:10px;font-size:14px;line-height:1.85;">
+            <b>Name:</b> ${safe(name)}<br>
+            <b>Employee ID:</b> <span style="color:#f5c542;">${safe(employeeId)}</span><br>
+            <b>Domain:</b> ${safe(domain)}<br>
+            <b>Role:</b> Intern<br>
+            <b>Joined On:</b> ${safe(joinedOn)}
+          </div>
+        </td></tr>
+      </table>
+      <table width="100%" cellspacing="0" cellpadding="0" style="background:rgba(245,197,66,0.06);border:1px dashed rgba(245,197,66,0.35);border-radius:12px;">
+        <tr><td style="padding:18px 22px;">
+          <div style="color:#f5c542;font-size:11px;letter-spacing:2px;font-weight:700;">YOUR LOGIN CREDENTIALS</div>
+          <div style="margin-top:10px;font-size:14px;line-height:1.85;">
+            <b>Email:</b> ${safe(email)}<br>
+            <b>Employee ID:</b> <code style="background:#0c1220;padding:3px 8px;border-radius:6px;color:#f5c542;font-family:Consolas,monospace;">${safe(employeeId)}</code><br>
+            <b>Password:</b> <code style="background:#0c1220;padding:3px 8px;border-radius:6px;color:#f5c542;font-family:Consolas,monospace;letter-spacing:1px;">${safe(password)}</code><br>
+            <b>Login URL:</b> <a href="${safe(loginUrl)}" style="color:#f5c542;">${safe(loginUrl)}</a>
+          </div>
+          <p style="margin:14px 0 0;font-size:12px;color:#cdb24a;">
+            🔒 Keep these credentials safe. Do not share with anyone.
+          </p>
+        </td></tr>
+      </table>
+      <p style="font-size:14px;line-height:1.7;margin:20px 0 8px;">
+        <b>What to do next:</b>
+      </p>
+      <ol style="font-size:14px;line-height:1.7;color:#cdd9ec;margin:0 0 16px 22px;padding:0;">
+        <li>Login at the portal using the credentials above.</li>
+        <li>Mark your attendance every day.</li>
+        <li>Submit your daily tasks to your coordinator.</li>
+        <li>Reach <b>75%</b> attendance to qualify for certificates.</li>
+        <li>Get certified and share on LinkedIn!</li>
+      </ol>
+      <p style="font-size:14px;margin:24px 0 4px;">Warm regards,</p>
+      <p style="font-size:14px;margin:0;"><b>HR Team</b><br/>The Entrepreneurship Network<br/>
+        <a href="mailto:ten.hr.contact@gmail.com" style="color:#f5c542;">ten.hr.contact@gmail.com</a>
+      </p>
+    </td></tr>
+    <tr><td style="background:#080d1a;padding:14px 22px;text-align:center;font-size:11px;color:#6a6255;letter-spacing:1px;">
+      © The Entrepreneurship Network · Limitless Technologies LLP
+    </td></tr>
+  </table>
+</td></tr></table></body></html>`;
+}
 
 app.post("/register", registerLimiter, async(req,res)=>{
 try{
-const { firstName, lastName, domain, whatsapp, email, tenure, joiningDate } = req.body;
+    const { firstName, lastName, domain, whatsapp, email, tenure, joiningDate } = req.body;
+    if(!email || !domain){
+        return res.json({ success:false, message:"Email and domain are required" });
+    }
+    const emailLc = String(email).trim().toLowerCase();
 
-const existingStudent = await Student.findOne({ email });
+    // Find every existing Student doc with this email (across any domain).
+    const existingByEmail = await Student.find({ email: emailLc });
 
-if(existingStudent){
-    return res.json({ success:false, already:true, employeeId:existingStudent.employeeId });
-}
+    // Same domain twice → blocked.
+    const sameDomainHit = existingByEmail.find(s => (s.domain||"") === domain);
+    if(sameDomainHit){
+        return res.json({ success:false, alreadyInDomain:true,
+            message:"You are already registered in this domain",
+            employeeId: sameDomainHit.employeeId });
+    }
 
-const employeeId = await generateEmployeeId(domain);
-const password = crypto.randomBytes(4).toString("hex");
+    // 2 domains is the maximum.
+    if(existingByEmail.length >= 2){
+        return res.json({ success:false,
+            message:"This email is already registered in 2 domains (the maximum allowed)." });
+    }
 
-const newStudent = new Student({
-    firstName, lastName,
-    name: firstName + " " + lastName,
-    domain, whatsapp, email,
-    tenure, joiningDate,
-    employeeId, password
-});
+    const isFirstRegistration = existingByEmail.length === 0;
 
-await newStudent.save();
+    const employeeId = await generateEmployeeId(domain);
+    // Auto-generated password (we kept the original behavior — register form
+    // has no password field). For multi-domain registrations we re-use the
+    // existing student's password so the user has one password across both.
+    const password = isFirstRegistration
+        ? crypto.randomBytes(4).toString("hex")
+        : (existingByEmail[0].password || crypto.randomBytes(4).toString("hex"));
 
-try{
-    await transporter.sendMail({
-        from:"TEN Internship Portal <ten.internshipportal@gmail.com>",
-        to:email,
-        subject:"Internship Registration Successful",
-        text:`Hello ${firstName},\n\nYour Internship Registration is Successful 🚀\n\nEmployee ID: ${employeeId}\nPassword: ${password}\n\nLogin:\nhttp://13.235.150.76:5000/login.html\n\nThank You`
+    const newStudent = new Student({
+        firstName, lastName,
+        name: (firstName||"") + " " + (lastName||""),
+        domain, whatsapp, email: emailLc,
+        tenure, joiningDate,
+        employeeId, password
     });
-}catch(mailError){ console.log("MAIL ERROR:", mailError); }
+    await newStudent.save();
 
-res.json({ success:true, employeeId });
+    // Maintain linkedDomains on every (now ≤ 2) student doc with this email.
+    const allForEmail = [...existingByEmail, newStudent];
+    const linked = allForEmail.map(s => ({
+        domain: s.domain, studentId: s._id, employeeId: s.employeeId
+    }));
+    await Promise.all(allForEmail.map(s => Student.findByIdAndUpdate(s._id, { linkedDomains: linked })));
+
+    // Email — only on the FIRST domain registration.
+    if(isFirstRegistration){
+        try{
+            const host = (req.headers["x-forwarded-proto"] || req.protocol) + "://" + req.get("host");
+            const joinedOn = new Date().toLocaleDateString("en-IN", { day:"numeric", month:"long", year:"numeric" });
+            const html = welcomeEmailHtml({
+                name: newStudent.name.trim(), employeeId, domain, email: emailLc, password,
+                joinedOn, host
+            });
+            await transporter.sendMail({
+                from:"TEN Internship Portal <ten.internshipportal@gmail.com>",
+                to: emailLc,
+                subject:`🎉 Welcome to The Entrepreneurship Network, ${newStudent.name.trim()}!`,
+                html,
+                text: `Hello ${firstName||""}, your Internship Registration is Successful.\n\nEmployee ID: ${employeeId}\nPassword: ${password}\nDomain: ${domain}\n\nLogin: ${host || ""}/login.html`
+            });
+        }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
+    }
+
+    res.json({ success:true, employeeId, secondDomain: !isFirstRegistration });
 
 }catch(error){ console.log(error); res.status(500).json({ success:false, message:"Server Error" }); }
 });
@@ -970,8 +1078,13 @@ try{
         success:true,
         student:{
             name: student.firstName + " " + student.lastName,
+            firstName: student.firstName, lastName: student.lastName,
+            email: student.email || "",
             employeeId: student.employeeId,
-            domain: student.domain
+            domain: student.domain,
+            tenure: student.tenure,
+            joiningDate: student.joiningDate,
+            linkedDomains: student.linkedDomains || []
         }
     });
 }catch(error){
@@ -2481,6 +2594,428 @@ app.get("/students/:employeeId/timeline", async(req,res)=>{
     }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
+// ==================================================================
+// =========== FORGOT PASSWORD (Feature 9) — all 3 roles ============
+// ==================================================================
+function passwordResetEmailHtml({ name, role, host, token }){
+    const safe = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    const base = (host ? host.replace(/\/$/, "") : "");
+    const link = base + "/reset-password.html?token=" + encodeURIComponent(token) + "&role=" + encodeURIComponent(role);
+    return `<!doctype html><html><body style="margin:0;background:#0c1220;font-family:Segoe UI,Arial,sans-serif;color:#f0eee8;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0c1220;padding:32px 0;"><tr><td align="center">
+  <table width="600" cellpadding="0" cellspacing="0" style="background:#0e1628;border:1px solid rgba(245,197,66,0.18);border-radius:18px;overflow:hidden;">
+    <tr><td style="background:linear-gradient(135deg,#1a1208,#3a2a08);padding:26px 30px;text-align:center;">
+      <div style="font-size:13px;letter-spacing:6px;color:#f5c542;font-weight:700;">THE ENTREPRENEURSHIP NETWORK</div>
+      <div style="font-size:22px;color:#fff7d6;font-weight:800;margin-top:6px;">🔐 Password Reset Request</div>
+    </td></tr>
+    <tr><td style="padding:28px 32px;">
+      <p style="font-size:15px;line-height:1.6;margin:0 0 16px;">Dear <b>${safe(name || "user")}</b>,</p>
+      <p style="font-size:14px;line-height:1.65;margin:0 0 18px;">We received a request to reset your <b>${safe(role)}</b> account password. Click the button below to set a new one:</p>
+      <p style="text-align:center;margin:24px 0;">
+        <a href="${safe(link)}" style="display:inline-block;background:linear-gradient(135deg,#f5c542,#c9a227);color:#0c1220;padding:14px 32px;border-radius:10px;font-weight:800;text-decoration:none;letter-spacing:.5px;">Reset My Password</a>
+      </p>
+      <p style="font-size:12px;color:#9aa4bf;line-height:1.5;margin:0 0 4px;">⏱ This link expires in 1 hour.</p>
+      <p style="font-size:12px;color:#9aa4bf;line-height:1.5;margin:0 0 16px;">If you did not request this, you can safely ignore this email.</p>
+      <p style="font-size:12px;color:#5a7299;word-break:break-all;">Direct URL: ${safe(link)}</p>
+      <p style="font-size:14px;margin:22px 0 4px;">— HR Team, The Entrepreneurship Network</p>
+    </td></tr>
+    <tr><td style="background:#080d1a;padding:14px 22px;text-align:center;font-size:11px;color:#6a6255;letter-spacing:1px;">
+      © The Entrepreneurship Network · Limitless Technologies LLP
+    </td></tr>
+  </table>
+</td></tr></table></body></html>`;
+}
+
+async function _findUserByRoleEmail(role, email){
+    const e = String(email || "").trim().toLowerCase();
+    if(!e) return null;
+    if(role === "student"){
+        // Use the most-recently-created Student doc with this email.
+        const list = await Student.find({ email: e }).sort({ createdAt:-1 });
+        return list[0] || null;
+    }
+    if(role === "coordinator"){
+        return await Coordinator.findOne({ email: e });
+    }
+    if(role === "hr"){
+        return await HR.findOne({ email: e });
+    }
+    return null;
+}
+
+app.post("/auth/forgot-password", async(req,res)=>{
+    try{
+        const { email, role } = req.body || {};
+        const validRoles = ["student","coordinator","hr"];
+        if(!validRoles.includes(role)) return res.json({ success:false, message:"Invalid role" });
+
+        const user = await _findUserByRoleEmail(role, email);
+        // To avoid user enumeration, we always respond success — but only
+        // actually generate + send the email if we found a matching account.
+        if(user){
+            const token = crypto.randomBytes(32).toString("hex");
+            const expiry = new Date(Date.now() + 60*60*1000);
+            user.passwordResetToken = token;
+            user.passwordResetExpiry = expiry;
+            await user.save();
+            try{
+                const host = (req.headers["x-forwarded-proto"] || req.protocol) + "://" + req.get("host");
+                const html = passwordResetEmailHtml({
+                    name: user.name || user.firstName || user.email || "user",
+                    role, host, token
+                });
+                await transporter.sendMail({
+                    from:"TEN HR <ten.internshipportal@gmail.com>",
+                    to: user.email,
+                    subject:"🔐 Password Reset Request — TEN",
+                    html,
+                    text: `A password reset was requested. Open this link to reset (expires in 1 hour):\n\n${host}/reset-password.html?token=${token}&role=${role}`
+                });
+            }catch(e){ console.log("forgot-password mail error:", e && e.message); }
+        }
+        res.json({ success:true, message:"If that account exists, a reset link has been sent to its email." });
+    }catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+});
+
+app.post("/auth/reset-password", async(req,res)=>{
+    try{
+        const { token, role, newPassword } = req.body || {};
+        if(!token || !role || !newPassword) return res.json({ success:false, message:"Token, role and new password are required" });
+        if(String(newPassword).length < 8) return res.json({ success:false, message:"Password must be at least 8 characters" });
+        const validRoles = ["student","coordinator","hr"];
+        if(!validRoles.includes(role)) return res.json({ success:false, message:"Invalid role" });
+
+        const Models = { student: Student, coordinator: Coordinator, hr: HR };
+        const Model = Models[role];
+        const user = await Model.findOne({ passwordResetToken: token });
+        if(!user) return res.json({ success:false, message:"Invalid or already-used reset link" });
+        if(!user.passwordResetExpiry || user.passwordResetExpiry < new Date()){
+            return res.json({ success:false, message:"This reset link has expired. Please request a new one." });
+        }
+
+        // For students the password is currently stored in plaintext (existing
+        // behaviour). For coord/HR the DB-backed accounts use bcrypt.
+        if(role === "student"){
+            user.password = newPassword;
+        } else {
+            user.password = await bcrypt.hash(newPassword, 10);
+        }
+        user.passwordResetToken = null;
+        user.passwordResetExpiry = null;
+        await user.save();
+        res.json({ success:true, message:"Password updated! Please log in with your new password." });
+    }catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+});
+
+// ==================================================================
+// ============== STUDENT: coordinator details (Feature 7) ==========
+// ==================================================================
+// Returns the coordinator assigned to a domain, looking first at any
+// promoted (DB-backed) coordinator, then falling back to the legacy
+// hardcoded COORDINATORS map.
+app.get("/student/coordinator-details", async(req,res)=>{
+try{
+    const domain = (req.query && req.query.domain) || "";
+    if(!domain) return res.json({ success:false, message:"Domain required" });
+
+    const dbC = await Coordinator.findOne({ domain });
+    if(dbC){
+        return res.json({ success:true, assigned:true, coordinator:{
+            name: dbC.name || dbC.username || dbC.email || "Coordinator",
+            email: dbC.email || "",
+            whatsapp: dbC.phone || "",
+            domain: dbC.domain,
+            source: "db"
+        }});
+    }
+    // Legacy hardcoded
+    const entry = Object.entries(COORDINATORS).find(([_, v]) => (v.domain || "") === domain);
+    if(entry){
+        const [username, info] = entry;
+        return res.json({ success:true, assigned:true, coordinator:{
+            name: username, email: "", whatsapp: "", domain: info.domain, source: "legacy"
+        }});
+    }
+    res.json({ success:true, assigned:false });
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// ============ Multi-domain (Feature 1): switch domain =============
+// ==================================================================
+// Returns the linked Student doc for `targetDomain` for the current student
+// (verified by the `email` body param to make sure they own it). The frontend
+// updates sessionStorage and reloads — no new password required.
+app.post("/student/switch-domain", async(req,res)=>{
+try{
+    const { email, targetDomain } = req.body || {};
+    if(!email || !targetDomain) return res.json({ success:false, message:"email + targetDomain required" });
+    const target = await Student.findOne({ email: String(email).toLowerCase(), domain: targetDomain });
+    if(!target) return res.json({ success:false, message:"You are not registered in that domain" });
+    res.json({ success:true, student:{
+        name: (target.firstName||"") + " " + (target.lastName||""),
+        firstName: target.firstName, lastName: target.lastName,
+        employeeId: target.employeeId, email: target.email,
+        domain: target.domain, tenure: target.tenure, joiningDate: target.joiningDate
+    }});
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// ============= COORDINATOR: bulk attendance (Feature 2) ===========
+// ==================================================================
+app.post("/attendance/coordinator/bulk", async(req,res)=>{
+try{
+    const { domain, employeeIds, date, status, coordinatorId, source } = req.body || {};
+    if(!domain || !Array.isArray(employeeIds) || employeeIds.length === 0 || !date)
+        return res.json({ success:false, message:"domain, employeeIds[] and date are required" });
+    const st = (status === "Absent") ? "Absent" : "Present";
+    const d = new Date(date);
+    if(isNaN(d.getTime())) return res.json({ success:false, message:"Invalid date" });
+    const dateKey = toDateKey(d);
+
+    const students = await Student.find({ domain, employeeId: { $in: employeeIds } });
+    let updated = 0, created = 0, failed = 0;
+    for(const s of students){
+        try{
+            let att = await Attendance.findOne({ employeeId: s.employeeId, dateKey, markedBy:"coordinator" });
+            if(att){
+                att.status = st;
+                att.coordinatorId = coordinatorId || att.coordinatorId;
+                att.date = d;
+                if(source) att.source = source;
+                await att.save();
+                updated++;
+            } else {
+                att = new Attendance({
+                    studentId: s._id, employeeId: s.employeeId, domain: s.domain,
+                    date: d, dateKey, status: st, markedBy:"coordinator",
+                    coordinatorId: coordinatorId || "",
+                    source: source || "bulk"
+                });
+                await att.save();
+                created++;
+            }
+            // Notify the student (re-uses the existing pattern)
+            try{
+                const notif = new Notification({
+                    title: "Class attendance marked",
+                    message: `Coordinator marked your class attendance for ${dateKey}: ${st}.`,
+                    type: st === "Present" ? "success" : "warning",
+                    from: "Coordinator",
+                    targetType: "student", targetEmployeeId: s.employeeId, targetDomain: s.domain
+                });
+                await notif.save();
+                broadcastNotification(s.domain, s.employeeId, notif);
+            }catch(_){}
+        }catch(e){ failed++; }
+    }
+    res.json({ success:true, created, updated, failed, total: students.length });
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// =========== STUDENT: bulk delete reviewed submissions ============
+// ==================================================================
+app.post("/submissions/bulk-delete", async(req,res)=>{
+try{
+    const { ids, employeeId } = req.body || {};
+    if(!Array.isArray(ids) || !ids.length || !employeeId)
+        return res.json({ success:false, message:"ids[] and employeeId required" });
+
+    const subs = await Submission.find({ _id: { $in: ids }, employeeId });
+    let deleted = 0, skipped = 0;
+    for(const s of subs){
+        if(s.status !== "Approved" && s.status !== "Rejected"){ skipped++; continue; }
+        // Best-effort file cleanup (matches the single-delete route)
+        [s.image, s.pdf].forEach(p => {
+            if(!p) return;
+            try{
+                const local = String(p).replace(/^\//, "");
+                if(local && fs.existsSync(local)) fs.unlinkSync(local);
+            }catch(_){}
+        });
+        await Submission.findByIdAndDelete(s._id);
+        deleted++;
+    }
+    res.json({ success:true, deleted, skipped });
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// =========== COORDINATOR: bulk approve / reject submissions =======
+// ==================================================================
+app.post("/submissions/bulk-status", async(req,res)=>{
+try{
+    const { ids, status, feedback } = req.body || {};
+    if(!Array.isArray(ids) || !ids.length || !status)
+        return res.json({ success:false, message:"ids[] and status required" });
+    if(status !== "Approved" && status !== "Rejected")
+        return res.json({ success:false, message:"status must be Approved or Rejected" });
+
+    const subs = await Submission.find({ _id: { $in: ids } });
+    let updated = 0, skipped = 0;
+    for(const sub of subs){
+        if(sub.reviewedOnce){ skipped++; continue; }      // honor single-review lock
+        const performance = status === "Approved" ? "A+" : "B";
+        await Submission.findByIdAndUpdate(sub._id, {
+            status, feedback: feedback || (status === "Approved" ? "Approved" : "Rejected"),
+            reviewedOnce: true,
+            attendanceAllowed: status === "Approved",
+            performance,
+            tasksCompleted: status === "Approved" ? 1 : 0
+        });
+        try{
+            const notif = new Notification({
+                title: `Task ${status}`,
+                message: `Your task submission has been ${status.toLowerCase()}.`,
+                type: status === "Approved" ? "success" : "warning",
+                from: "Coordinator",
+                targetType: "student", targetEmployeeId: sub.employeeId, targetDomain: sub.domain
+            });
+            await notif.save();
+            broadcastNotification(sub.domain, sub.employeeId, notif);
+        }catch(_){}
+        if(status === "Approved") await setMilestone(sub.employeeId, "firstTaskApproved");
+        await checkCertificateEligibility(sub.employeeId);
+        await recomputeBadgesFor(sub.employeeId);
+        updated++;
+    }
+    res.json({ success:true, updated, skipped });
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// =================== QR CODE ATTENDANCE (Feature 3) ===============
+// ==================================================================
+// One QR per (domain, coordinatorId). The QR encodes a URL pointing at
+// /qr-attendance.html, which collects a student's credentials and POSTs
+// them to /qr-attendance/mark below.
+app.get("/coordinator/qr/:coordinatorId", async(req,res)=>{
+try{
+    const coordinatorId = decodeURIComponent(req.params.coordinatorId);
+    const domain = (req.query && req.query.domain) || "";
+    if(!domain) return res.status(400).json({ success:false, message:"domain required" });
+    const host = (req.headers["x-forwarded-proto"] || req.protocol) + "://" + req.get("host");
+    const url  = host + "/qr-attendance.html?domain=" + encodeURIComponent(domain) + "&coordinatorId=" + encodeURIComponent(coordinatorId);
+    const dataUrl = await QRCode.toDataURL(url, { errorCorrectionLevel: "M", margin: 2, width: 360, color: { dark:"#0c1220", light:"#ffffff" } });
+    res.json({ success:true, url, dataUrl });
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to generate QR" }); }
+});
+
+// Verify-and-mark from the QR scan landing page.
+app.post("/qr-attendance/mark", async(req,res)=>{
+try{
+    const { employeeId, password, domain, coordinatorId } = req.body || {};
+    if(!employeeId || !password || !domain)
+        return res.json({ success:false, message:"Employee ID, password and domain are required" });
+
+    const student = await Student.findOne({ employeeId, password });
+    if(!student) return res.json({ success:false, message:"Invalid Employee ID or Password" });
+    if((student.domain || "") !== domain)
+        return res.json({ success:false, message:"This QR is for a different domain" });
+
+    const today = new Date();
+    const dateKey = toDateKey(today);
+    const existing = await Attendance.findOne({ employeeId, dateKey, markedBy:"coordinator" });
+    if(existing){
+        return res.json({ success:false, alreadyMarked:true,
+            message:"Attendance already marked for today ✅" });
+    }
+
+    const att = new Attendance({
+        studentId: student._id, employeeId, domain: student.domain,
+        date: today, dateKey, status:"Present", markedBy:"coordinator",
+        coordinatorId: coordinatorId || "qr",
+        source: "qr"
+    });
+    await att.save();
+
+    // Notify the student
+    try{
+        const notif = new Notification({
+            title: "Class attendance marked via QR",
+            message: `Your class attendance for ${dateKey} has been marked via QR scan.`,
+            type: "success", from: "Coordinator",
+            targetType: "student", targetEmployeeId: student.employeeId, targetDomain: student.domain
+        });
+        await notif.save();
+        broadcastNotification(student.domain, student.employeeId, notif);
+    }catch(_){}
+
+    res.json({ success:true, message:`Attendance marked successfully for ${dateKey}. Have a great day!` });
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+});
+
+// ==================================================================
+// ===================== CHAT BLOCK (Feature 8) =====================
+// ==================================================================
+// Coordinator: can block students in their own domain chat.
+// HR: can block students in the general chat, and coordinators in
+// general / hr_coordinators chats.
+function _blockerCanActIn(actor, targetRole, room){
+    if(actor.role === "coordinator"){
+        if(targetRole !== "student") return false;
+        return room === ("domain_" + (actor.domain || ""));
+    }
+    if(actor.role === "hr"){
+        if(targetRole === "hr") return false;     // HR can't block another HR
+        if(targetRole === "student")     return room === "general";
+        if(targetRole === "coordinator") return room === "general" || room === "hr_coordinators";
+        return false;
+    }
+    return false;
+}
+async function _identityFromAuth(body){
+    return await verifyChatIdentity({
+        role: body && body.role,
+        employeeId: body && body.employeeId,
+        username: body && body.username
+    });
+}
+
+app.post("/chat/block", async(req,res)=>{
+    try{
+        const actor = await _identityFromAuth(req.body);
+        if(!actor) return res.status(401).json({ success:false, message:"Unauthorized" });
+        const { chatRoom, blockedUser, blockedUserRole } = req.body || {};
+        if(!chatRoom || !blockedUser || !blockedUserRole)
+            return res.json({ success:false, message:"chatRoom, blockedUser and blockedUserRole are required" });
+        if(!_blockerCanActIn(actor, blockedUserRole, chatRoom))
+            return res.status(403).json({ success:false, message:"You can't block this user in this room" });
+        await BlockList.findOneAndUpdate(
+            { chatRoom, blockedUser },
+            { chatRoom, blockedUser, blockedUserRole, blockedBy: actor.id, blockedByRole: actor.role, blockedAt: new Date() },
+            { upsert: true, new: true }
+        );
+        res.json({ success:true, message:"User blocked in this chat" });
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+app.post("/chat/unblock", async(req,res)=>{
+    try{
+        const actor = await _identityFromAuth(req.body);
+        if(!actor) return res.status(401).json({ success:false, message:"Unauthorized" });
+        const { chatRoom, blockedUser } = req.body || {};
+        const existing = await BlockList.findOne({ chatRoom, blockedUser });
+        if(!existing) return res.json({ success:true, message:"User was not blocked" });
+        if(existing.blockedBy !== actor.id && actor.role !== "hr")
+            return res.status(403).json({ success:false, message:"Only the blocker (or HR) can unblock" });
+        await BlockList.findOneAndDelete({ chatRoom, blockedUser });
+        res.json({ success:true, message:"User unblocked" });
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+app.get("/chat/blocked-list", async(req,res)=>{
+    try{
+        const actor = await _identityFromAuth(req.query);
+        if(!actor) return res.status(401).json({ success:false, message:"Unauthorized" });
+        const filter = actor.role === "hr" ? {} : { blockedBy: actor.id };
+        const list = await BlockList.find(filter).sort({ blockedAt: -1 });
+        res.json({ success:true, blocked: list });
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
 // ================= SERVER =================
 
 const PORT = process.env.PORT || 5000;
@@ -2516,6 +3051,15 @@ io.on("connection", (socket) => {
             const text = (payload && payload.text || "").toString().trim().slice(0, 4000);
             if(!room || !text) { if(ack) ack({ success:false, message:"empty" }); return; }
             if(!canAccessRoom(identity, room)) { if(ack) ack({ success:false, message:"forbidden" }); return; }
+
+            // Feature 8: block check — sender silenced in this room?
+            try{
+                const blocked = await BlockList.findOne({ chatRoom: room, blockedUser: identity.id });
+                if(blocked){
+                    if(ack) ack({ success:false, blocked:true, message:"You have been restricted from sending messages in this chat" });
+                    return;
+                }
+            }catch(_){}
 
             const doc = await Message.create({
                 chatRoom:     room,

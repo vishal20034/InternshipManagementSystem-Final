@@ -29,6 +29,21 @@ const studentsSchema = new mongoose.Schema({
     hrRejected:                       { type: Boolean, default: false },
     hrRejectionReason:                { type: String, default: "" },
 
+    // ===== Multi-domain registration (Feature 1) =====
+    // Each Student doc represents one (email, domain) pair.
+    // linkedDomains lists every (email, domain) the same person is registered
+    // in. Updated on second-domain registration; both records carry the same
+    // list so the UI can render a "My Domains" switcher.
+    linkedDomains: [{
+        domain:     { type: String, required: true },
+        studentId:  { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+        employeeId: { type: String, required: true }
+    }],
+
+    // ===== Forgot password (Feature 9) =====
+    passwordResetToken:   { type: String, default: null, index: true },
+    passwordResetExpiry:  { type: Date,   default: null },
+
     // ===== Streak counter (Feature 7) =====
     currentStreak:        { type: Number, default: 0 },
     bestStreak:           { type: Number, default: 0 },

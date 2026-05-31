@@ -215,6 +215,9 @@ input::placeholder { color: #2a2018; }
 
 </div>
 
+<script src="/forgot-password.js"></script>
+<script>if(window.TenForgotPassword) TenForgotPassword.init({ role: "hr" });</script>
+
 <script>
 async function doLogin() {
   const email = document.getElementById('email').value.trim();

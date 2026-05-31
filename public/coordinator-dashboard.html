@@ -452,6 +452,22 @@ body::before {
   <!-- TAB: Attendance (class attendance marking) -->
   <div class="tab-section" id="tab-attendance">
     <div class="submission-wrapper">
+      <!-- QR Code card (Feature 3) -->
+      <div id="qrCard" style="background:rgba(245,197,66,0.06);border:1px solid rgba(245,197,66,0.25);border-radius:14px;padding:18px 22px;margin-bottom:16px;display:flex;gap:18px;align-items:center;flex-wrap:wrap;">
+        <div id="qrImg" style="width:120px;height:120px;background:#0c1220;border:1px solid rgba(245,197,66,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">
+          loading…
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <div style="color:var(--accent);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;">Meeting QR</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Have students scan this QR to mark today's class attendance</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Permanent QR for your domain. Each scan asks the student to enter their portal credentials before marking.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button id="qrDownload" class="refresh-btn" style="background:linear-gradient(135deg,#f5c542,#c9a227);color:#0c1220;border:none;font-weight:700;">⬇️ Download QR (PNG)</button>
+            <a id="qrOpenUrl" target="_blank" rel="noopener" class="refresh-btn" style="text-decoration:none;">🔗 Open scan page</a>
+          </div>
+        </div>
+      </div>
+
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
         <div>
           <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Attendance Date</label>
@@ -460,12 +476,16 @@ body::before {
         </div>
         <input type="text" id="attSearch" placeholder="🔍 Search student..." oninput="renderAttendanceTab()"
           style="flex:1;min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);border-radius:10px;padding:10px 14px;color:white;font-size:14px;outline:none;">
+        <label style="font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;">
+          <input type="checkbox" id="attSelectAll" onclick="onAttSelectAll()"> Select All
+        </label>
         <button class="refresh-btn" onclick="attRoster=[];loadAttendanceTab()"><span>↻</span> Refresh</button>
       </div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
-        Mark <b>Present / Absent</b> for each student for the selected date. This is independent of task approval. You can edit any entry later.
+        Mark <b>Present / Absent</b> for each student. Tick checkboxes and use the bulk bar below to mark many at once.
       </p>
       <div id="attendanceContainer"></div>
+      <div id="attCounts" style="margin-top:14px;font-size:12px;color:var(--muted);"></div>
     </div>
   </div>
 
@@ -694,7 +714,7 @@ function switchTab(name){
   }
   if(name==="test"){ loadExistingQuestions(); }
   if(name==="tasks"){ loadCoordTasks(); }
-  if(name==="attendance"){ loadAttendanceTab(); }
+  if(name==="attendance"){ loadAttendanceTab(); loadCoordQR(); }
   if(name==="overview"){ loadOverview(); }
 }
 
@@ -766,20 +786,27 @@ function renderAttendanceTab(){
     .filter(s => (s.name+" "+s.employeeId).toLowerCase().includes(q));
   if(!list.length){
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No students found</div></div>`;
+    document.getElementById("attCounts").textContent = "";
     return;
   }
+  let pCount = 0, aCount = 0, nCount = 0, qrCount = 0;
   container.innerHTML = list.map(s=>{
     const rec = attRecordsMap[s.employeeId] || {};
     const coordStatus = rec.coordinator || "";
     const selfStatus = rec.self || "";
+    if(coordStatus === "Present") pCount++;
+    else if(coordStatus === "Absent") aCount++;
+    else nCount++;
+    if(rec.source === "qr" || rec.coordSource === "qr") qrCount++;
+
     const selfBadge = selfStatus
       ? `<span class="status-pill ${selfStatus==="Present"?"approved":"rejected"}">Self: ${selfStatus}</span>`
       : `<span class="status-pill pending">Self: not marked</span>`;
+    const qrTag = (rec.source === "qr" || rec.coordSource === "qr")
+      ? `<span class="status-pill" style="background:rgba(245,197,66,0.12);color:#f5c542;border:1px solid rgba(245,197,66,0.28);">📱 QR</span>` : "";
     const current = coordStatus
       ? `<span class="status-pill ${coordStatus==="Present"?"approved":"rejected"}">Class: ${coordStatus}</span>`
       : `<span class="status-pill pending">Class: not marked</span>`;
-    // BUG FIX 2: when coordinator already marked today, show ONE "Edit" button
-    // (which opens a small swap dialog) instead of the Present/Absent pair.
     let actions;
     if(coordStatus){
       actions = `<button class="btn" style="background:rgba(245,197,66,0.12);border:1px solid rgba(245,197,66,0.3);color:#f5c542;" onclick="editCoordAttendance('${s.employeeId}','${coordStatus}')">✏️ Edit</button>`;
@@ -791,11 +818,12 @@ function renderAttendanceTab(){
     return `
       <div class="submission-card">
         <div class="card-top">
-          <div class="card-employee">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <input type="checkbox" class="att-cb" data-emp="${s.employeeId}" onchange="onAttCb()">
             <div class="employee-avatar">${getInitial(s.employeeId)}</div>
             <div>
               <div class="employee-id">${s.name} · ${s.employeeId}</div>
-              <div class="employee-domain">${current} &nbsp; ${selfBadge}</div>
+              <div class="employee-domain">${current} &nbsp; ${selfBadge} &nbsp; ${qrTag}</div>
             </div>
           </div>
         </div>
@@ -804,6 +832,101 @@ function renderAttendanceTab(){
         </div>
       </div>`;
   }).join("");
+  document.getElementById("attCounts").textContent =
+    `${pCount} present · ${aCount} absent · ${nCount} not marked${qrCount?" · "+qrCount+" via QR":""}`;
+  onAttCb();
+}
+
+// Bulk-attendance helpers (Feature 2)
+function _selectedAttIds(){
+  return Array.from(document.querySelectorAll(".att-cb:checked")).map(c => c.dataset.emp);
+}
+function onAttCb(){
+  const sel = _selectedAttIds().length;
+  let bar = document.getElementById("attBulkBar");
+  if(!bar){
+    bar = document.createElement("div");
+    bar.id = "attBulkBar";
+    bar.style.cssText = "position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0c1220;border:1px solid rgba(245,197,66,0.32);border-radius:14px;padding:10px 16px;display:none;align-items:center;gap:10px;z-index:9997;box-shadow:0 14px 40px rgba(0,0,0,0.5);";
+    bar.innerHTML =
+      '<span id="attBulkCount" style="font-size:13px;color:#cdd9ec;font-weight:700;">0 selected</span>'
+      + '<button class="btn btn-approve" onclick="bulkAtt(\'Present\')">✅ Mark All Present</button>'
+      + '<button class="btn btn-reject"  onclick="bulkAtt(\'Absent\')">❌ Mark All Absent</button>'
+      + '<button class="btn" onclick="clearAttSelection()" style="background:rgba(255,255,255,0.06);">Clear</button>';
+    document.body.appendChild(bar);
+  }
+  bar.style.display = sel > 0 ? "flex" : "none";
+  document.getElementById("attBulkCount").textContent = sel + " selected";
+  // Sync the master "Select All" checkbox
+  const all = document.querySelectorAll(".att-cb").length;
+  const master = document.getElementById("attSelectAll");
+  if(master) master.checked = all > 0 && sel === all;
+}
+function onAttSelectAll(){
+  const master = document.getElementById("attSelectAll");
+  document.querySelectorAll(".att-cb").forEach(c => c.checked = master.checked);
+  onAttCb();
+}
+function clearAttSelection(){
+  document.querySelectorAll(".att-cb:checked").forEach(c => c.checked = false);
+  const master = document.getElementById("attSelectAll");
+  if(master) master.checked = false;
+  onAttCb();
+}
+async function bulkAtt(status){
+  const ids = _selectedAttIds();
+  if(!ids.length) return;
+  const dateKey = document.getElementById("attDate").value || attTodayKey();
+  if(!confirm(`Mark ${ids.length} students as ${status} for ${dateKey}?`)) return;
+  try{
+    const r = await fetch("/attendance/coordinator/bulk", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain: domainStr, employeeIds: ids, date: dateKey, status, coordinatorId: coordUsername })
+    });
+    const d = await r.json();
+    if(d.success){
+      Swal.fire({toast:true,position:"top-end",icon:"success",title:`${(d.created||0)+(d.updated||0)} marked ${status}`,showConfirmButton:false,timer:1800,background:"#090e1a",color:"#e2eaf7"});
+      clearAttSelection();
+      // Re-fetch the day's attendance for instant feedback
+      const ar = await fetch("/coordinator/attendance/" + encodeURIComponent(domainStr) + "?date=" + dateKey);
+      const ad = await ar.json();
+      attRecordsMap = {};
+      (ad.records||[]).forEach(rec=>{
+        if(!attRecordsMap[rec.employeeId]) attRecordsMap[rec.employeeId] = {};
+        attRecordsMap[rec.employeeId][rec.markedBy] = rec.status;
+        if(rec.markedBy === "coordinator"){ attRecordsMap[rec.employeeId].coordId = rec._id; if(rec.source) attRecordsMap[rec.employeeId].coordSource = rec.source; }
+      });
+      renderAttendanceTab();
+    } else {
+      Swal.fire({icon:"error",title:"Failed",text:d.message||"Bulk mark failed.",background:"#090e1a",color:"#e2eaf7"});
+    }
+  }catch(e){ Swal.fire({icon:"error",title:"Network error",background:"#090e1a",color:"#e2eaf7"}); }
+}
+
+// QR card loader (Feature 3)
+async function loadCoordQR(){
+  try{
+    const r = await fetch("/coordinator/qr/" + encodeURIComponent(coordUsername) + "?domain=" + encodeURIComponent(domainStr));
+    const d = await r.json();
+    const img = document.getElementById("qrImg");
+    if(d.success){
+      img.innerHTML = '<img src="' + d.dataUrl + '" alt="QR" style="width:100%;height:100%;border-radius:8px;">';
+      const dl = document.getElementById("qrDownload");
+      if(dl) dl.onclick = () => {
+        const a = document.createElement("a");
+        a.href = d.dataUrl;
+        a.download = "TEN-attendance-" + (domainStr || "qr").replace(/\s+/g,"_") + ".png";
+        a.click();
+      };
+      const opener = document.getElementById("qrOpenUrl");
+      if(opener) opener.href = d.url;
+    } else {
+      img.textContent = "QR unavailable";
+    }
+  }catch(e){
+    const img = document.getElementById("qrImg");
+    if(img) img.textContent = "QR error";
+  }
 }
 
 async function editCoordAttendance(employeeId, currentStatus){

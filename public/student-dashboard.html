@@ -992,6 +992,9 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
+  <!-- ── My Coordinator + My Domains (Phase 2) ── -->
+  <div id="ten-extras2-mount" style="margin-top:20px;"></div>
+
   <!-- ── Streak / Timeline / Badges / Leaderboard / LinkedIn / GCal (Phase 1) ── -->
   <div id="ten-extras-mount" style="margin-top:20px;"></div>
 
@@ -1282,6 +1285,10 @@ async function loadStudentSubmissions(){
     const submissions = data.submissions || [];
     latestSubmissions = submissions;
     renderSubmissions(submissions);
+    // Phase-2 bulk toolbar decoration (no-op if TenExtras2 isn't loaded yet)
+    if(window.TenExtras2 && student && student.employeeId){
+      TenExtras2.bulkSubmissionsToolbar({ employeeId: student.employeeId });
+    }
     updateStats(submissions);
   }catch(error){
     console.log(error);
@@ -1334,7 +1341,7 @@ function renderSubmissions(submissions){
       ? `<button class="primary-btn" style="background:linear-gradient(90deg,#b91c1c,#ef4444);margin-top:10px;font-size:13px;padding:8px 14px;" onclick="deleteSubmission('${sub._id}')">🗑 Delete this submission</button>`
       : "";
     return `
-    <div class="submission-card">
+    <div class="submission-card" data-sub-id="${sub._id}" data-sub-status="${sub.status||''}">
       <h3>${sub.task || "Submitted Task"}</h3>
       <p><b>Domain :</b> ${sub.domain}</p>
       <p><b>Note :</b> ${sub.note || "No note"}</p>
@@ -1703,9 +1710,13 @@ startStudentSSE();
 
 <!-- ===== Phase 1 extras: streak, badges, timeline, leaderboard, LinkedIn, GCal ===== -->
 <script src="/ten-extras.js"></script>
+<script src="/ten-extras2.js"></script>
 <script src="/session-timeout.js"></script>
 <script>
 (function(){
+  if(window.TenExtras2 && student){
+    TenExtras2.injectStudent({ student, mountId: "ten-extras2-mount" });
+  }
   if(!window.TenExtras || !student) return;
   // Compute internship end date for the GCal button
   var end = null;
@@ -1727,6 +1738,9 @@ startStudentSSE();
   });
   // Session timeout (Feature 15)
   if(window.TenSessionTimeout) TenSessionTimeout.start({ logoutUrl: "/login.html" });
+  // Bulk toolbar decoration after submissions are first painted (1.5s should
+  // be enough for loadStudentSubmissions to finish; this is a safety net).
+  setTimeout(() => { if(window.TenExtras2 && student) TenExtras2.bulkSubmissionsToolbar({ employeeId: student.employeeId }); }, 1500);
 })();
 </script>
 </body>
