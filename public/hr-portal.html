@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR Portal — TEN Internship</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#f5c542;--gold2:#c9a227;--dark:#04070f;--surface:#080d1a;--card:#0c1220;--card2:#0e1628;--border:rgba(245,197,66,0.1);--border-glow:rgba(245,197,66,0.25);--text:#f0eee8;--muted:#6a6255;--green:#10b981;--red:#f43f5e;--blue:#3b82f6;--cyan:#06b6d4;--amber:#f59e0b;--purple:#8b5cf6;--orange:#f97316;}
+*{scrollbar-width:thin;scrollbar-color:var(--gold2) var(--surface);}
+*::-webkit-scrollbar{width:5px}*::-webkit-scrollbar-track{background:var(--surface)}*::-webkit-scrollbar-thumb{background:var(--gold2);border-radius:99px}
+body{background:var(--dark);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh;}
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(245,197,66,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,197,66,0.025) 1px,transparent 1px);background-size:56px 56px;pointer-events:none;z-index:0;}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;background:var(--surface);border-right:1px solid var(--border);z-index:100;display:flex;flex-direction:column;padding:28px 0;}
+.sidebar-logo{padding:0 24px 28px;border-bottom:1px solid var(--border);}
+.logo-badge-sm{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 20px rgba(245,197,66,0.3);}
+.logo-txt{font-size:18px;font-weight:800;letter-spacing:-0.5px;}
+.logo-txt span{background:linear-gradient(90deg,var(--gold),#fff176);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.logo-role{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+.sidebar-nav{padding:20px 12px;flex:1;overflow-y:auto;}
+.nav-section-title{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:8px 12px;margin-bottom:4px;}
+.nav-btn{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border-radius:10px;border:none;background:transparent;color:#8a8070;cursor:pointer;font-family:'Outfit',sans-serif;font-size:14px;font-weight:500;text-align:left;transition:all 0.2s;margin-bottom:2px;}
+.nav-btn:hover{background:rgba(245,197,66,0.06);color:var(--text);}
+.nav-btn.active{background:rgba(245,197,66,0.1);color:var(--gold);border:1px solid rgba(245,197,66,0.15);}
+.nav-btn .icon{font-size:18px;width:22px;text-align:center;}
+.nav-divider{height:1px;background:var(--border);margin:12px 0;}
+.sidebar-bottom{padding:16px 12px;border-top:1px solid var(--border);}
+.hr-user-info{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(245,197,66,0.06);border-radius:10px;margin-bottom:10px;}
+.hr-avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#0a0600;flex-shrink:0;}
+.hr-name{font-size:13px;font-weight:600;color:var(--text);}.hr-sub{font-size:11px;color:var(--muted);}
+.logout-btn-sidebar{width:100%;padding:11px;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:10px;color:var(--red);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+.logout-btn-sidebar:hover{background:rgba(244,63,94,0.16);}
+.main{margin-left:260px;padding:32px 36px;position:relative;z-index:1;min-height:100vh;}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px;}
+.page-title{font-size:28px;font-weight:800;letter-spacing:-0.5px;}
+.page-title span{background:linear-gradient(90deg,var(--gold),#fff176);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
+.date-badge{padding:8px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
+.view{display:none;animation:fadeIn 0.3s ease;}.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:28px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;position:relative;overflow:hidden;transition:all 0.25s;cursor:pointer;}
+.stat-card:hover{border-color:var(--border-glow);transform:translateY(-2px);}
+.stat-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--sc),transparent);}
+.stat-card[data-c="gold"]{--sc:var(--gold);}.stat-card[data-c="green"]{--sc:var(--green);}.stat-card[data-c="red"]{--sc:var(--red);}.stat-card[data-c="blue"]{--sc:var(--blue);}.stat-card[data-c="cyan"]{--sc:var(--cyan);}.stat-card[data-c="amber"]{--sc:var(--amber);}.stat-card[data-c="orange"]{--sc:var(--orange);}
+.stat-icon{font-size:24px;margin-bottom:14px;}.stat-label{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}.stat-value{font-size:48px;font-weight:800;letter-spacing:-2px;color:var(--sc,var(--gold));line-height:1;}.stat-sub{font-size:12px;color:var(--muted);margin-top:6px;}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
+.section-title{font-size:20px;font-weight:700;}
+.section-badge{padding:4px 12px;background:rgba(245,197,66,0.1);border:1px solid var(--border-glow);border-radius:99px;font-size:11px;font-weight:600;color:var(--gold);}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;}
+.table-top{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.search-input{padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;width:280px;transition:all 0.2s;}
+.search-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,197,66,0.06);}.search-input::placeholder{color:var(--muted);}
+table{width:100%;border-collapse:collapse;}
+th{padding:12px 20px;text-align:left;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+td{padding:14px 20px;font-size:14px;border-bottom:1px solid rgba(245,197,66,0.04);}
+tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02);}
+.tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
+.tag-approved{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.2);}
+.tag-pending{background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.2);}
+.tag-rejected{background:rgba(244,63,94,0.12);color:var(--red);border:1px solid rgba(244,63,94,0.2);}
+.tag-completed{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.2);}
+.tag-expiring{background:rgba(249,115,22,0.12);color:var(--orange);border:1px solid rgba(249,115,22,0.2);}
+.tag-active{background:rgba(59,130,246,0.12);color:var(--blue);border:1px solid rgba(59,130,246,0.2);}
+.domain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:28px;}
+.domain-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 22px;transition:all 0.2s;cursor:pointer;}
+.domain-card:hover{border-color:var(--border-glow);}
+.domain-name{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text);}
+.domain-bar-wrap{height:6px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;}
+.domain-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px;transition:width 0.8s ease;}
+.domain-count{font-size:12px;color:var(--muted);margin-top:6px;}
+.notif-composer{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;}
+.notif-composer::before{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:-28px -28px 28px;border-radius:20px 20px 0 0;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.form-group-hr{margin-bottom:16px;}
+.form-label{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:block;}
+.form-input,.form-select,.form-textarea{width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:all 0.2s;}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,197,66,0.06);}
+.form-input::placeholder,.form-textarea::placeholder{color:var(--muted);}.form-select option{background:var(--card);}
+.form-textarea{resize:vertical;min-height:100px;}
+.type-pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.type-pill{padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+.type-pill.sel-info{background:rgba(59,130,246,0.12);color:var(--blue);border-color:rgba(59,130,246,0.25);}
+.type-pill.sel-success{background:rgba(16,185,129,0.12);color:var(--green);border-color:rgba(16,185,129,0.25);}
+.type-pill.sel-warning{background:rgba(245,158,11,0.12);color:var(--amber);border-color:rgba(245,158,11,0.25);}
+.type-pill.sel-urgent{background:rgba(244,63,94,0.12);color:var(--red);border-color:rgba(244,63,94,0.25);}
+.send-btn{padding:13px 32px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:12px;color:#0a0600;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all 0.2s;margin-top:8px;}
+.send-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,197,66,0.3);}
+.conditional-field{display:none;}.conditional-field.show{display:block;}
+.notif-list{display:flex;flex-direction:column;gap:10px;}
+.notif-item{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 20px;display:flex;align-items:flex-start;gap:14px;position:relative;}
+.notif-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.nd-info{background:var(--blue);}.nd-success{background:var(--green);}.nd-warning{background:var(--amber);}
+.nd-urgent{background:var(--red);animation:blink 1s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+.notif-content{flex:1;}.notif-title-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.notif-ntitle{font-size:14px;font-weight:700;}
+.notif-target-tag{padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;background:rgba(245,197,66,0.1);color:var(--gold);border:1px solid rgba(245,197,66,0.2);}
+.notif-msg{font-size:13px;color:var(--muted);line-height:1.5;}.notif-time{font-size:11px;color:var(--muted);margin-top:4px;}
+.notif-delete{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;transition:color 0.2s;}.notif-delete:hover{color:var(--red);}
+.loading{text-align:center;padding:60px;color:var(--muted);}
+.spinner{display:inline-block;width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.7s linear infinite;margin-bottom:12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state{text-align:center;padding:60px;color:var(--muted);}.empty-state .es-icon{font-size:48px;margin-bottom:12px;}
+.action-btns{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.btn-edit-hr{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#10b981;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap;font-family:'Outfit',sans-serif;}
+.btn-edit-hr:hover{background:rgba(16,185,129,0.22);}
+.btn-del-hr{background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--red);border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap;font-family:'Outfit',sans-serif;}
+.btn-del-hr:hover{background:rgba(244,63,94,0.2);}
+.btn-view-hr{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);color:var(--blue);border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap;font-family:'Outfit',sans-serif;}
+.btn-view-hr:hover{background:rgba(59,130,246,0.2);}
+.btn-doc-hr{background:rgba(245,197,66,0.1);border:1px solid rgba(245,197,66,0.25);color:var(--gold);border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.2s;white-space:nowrap;font-family:'Outfit',sans-serif;}
+.btn-doc-hr:hover{background:rgba(245,197,66,0.2);}
+.modal-overlay-hr{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(5px);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay-hr.open{display:flex;}
+.modal-box-hr{background:#0d1526;border:1px solid rgba(245,197,66,0.15);border-radius:22px;padding:36px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;animation:slideUpHR 0.25s ease;}
+@keyframes slideUpHR{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title-hr{font-size:19px;font-weight:800;color:white;margin-bottom:22px;}
+.modal-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:5px;margin-top:14px;}
+.modal-label:first-of-type{margin-top:0;}
+.modal-input-hr{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(245,197,66,0.15);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s;font-family:'Outfit',sans-serif;}
+.modal-input-hr:focus{border-color:var(--gold);}.modal-input-hr[readonly]{opacity:0.45;cursor:not-allowed;}
+.two-col-hr{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.modal-actions-hr{display:flex;gap:10px;margin-top:26px;}
+.btn-save-hr{flex:1;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:12px;color:#000;padding:13px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
+.btn-cancel-hr{flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;color:var(--muted);padding:13px;font-size:15px;cursor:pointer;font-family:'Outfit',sans-serif;}
+.confirm-box-hr{background:#0d1526;border:1px solid rgba(244,63,94,0.3);border-radius:20px;padding:32px;width:100%;max-width:360px;text-align:center;animation:slideUpHR 0.2s ease;}
+.confirm-icon-hr{font-size:46px;margin-bottom:14px;}.confirm-title-hr{font-size:19px;font-weight:800;color:white;margin-bottom:8px;}
+.confirm-msg-hr{color:var(--muted);font-size:13px;margin-bottom:22px;line-height:1.5;}
+.confirm-actions-hr{display:flex;gap:10px;}
+.btn-yes-del{flex:1;background:linear-gradient(135deg,#f43f5e,#b91c1c);border:none;border-radius:12px;color:white;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;}
+.btn-no-del{flex:1;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:12px;color:var(--muted);padding:12px;font-size:14px;cursor:pointer;font-family:'Outfit',sans-serif;}
+.hr-toast{position:fixed;bottom:24px;right:24px;background:#0d1526;border:1px solid rgba(245,197,66,0.2);border-radius:14px;padding:13px 20px;font-size:14px;font-weight:600;color:white;z-index:999;display:none;}
+.hr-toast.success{border-color:rgba(16,185,129,0.4);color:#10b981;}.hr-toast.error{border-color:rgba(244,63,94,0.4);color:var(--red);}
+.big-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(6px);z-index:300;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
+.big-modal-overlay.open{display:flex;}
+.big-modal-box{background:#0c1220;border:1px solid rgba(245,197,66,0.15);border-radius:24px;padding:32px;width:100%;max-width:900px;animation:slideUpHR 0.25s ease;margin:auto;}
+.big-modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.big-modal-title{font-size:20px;font-weight:800;color:white;}
+.big-modal-close{background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--red);border-radius:10px;padding:8px 16px;cursor:pointer;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;}
+.domain-filter-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.domain-filter-select{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 14px;color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;outline:none;}
+.domain-filter-select:focus{border-color:var(--gold);}
+.sub-count-badge{padding:5px 14px;background:rgba(245,197,66,0.1);border:1px solid rgba(245,197,66,0.2);border-radius:99px;font-size:12px;font-weight:600;color:var(--gold);}
+/* SLIDE PANEL */
+.slide-panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:150;display:none;}
+.slide-panel-overlay.open{display:block;}
+.slide-panel{position:fixed;top:0;right:-440px;width:420px;height:100vh;background:#0b1120;border-left:1px solid rgba(245,197,66,0.15);z-index:151;display:flex;flex-direction:column;transition:right 0.32s cubic-bezier(0.4,0,0.2,1);}
+.slide-panel.open{right:0;}
+.sp-header{padding:22px 24px 18px;border-bottom:1px solid rgba(245,197,66,0.1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.sp-title{font-size:16px;font-weight:700;color:white;}
+.sp-close{background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--red);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600;font-family:'Outfit',sans-serif;}
+.sp-body{padding:18px 24px;flex:1;overflow-y:auto;}
+.sp-avatar-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding:14px;background:rgba(245,197,66,0.05);border-radius:14px;border:1px solid rgba(245,197,66,0.1);}
+.sp-avatar{width:50px;height:50px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#0a0600;flex-shrink:0;}
+.sp-emp-id{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);margin-top:2px;}
+.sp-name-big{font-size:16px;font-weight:700;color:white;}
+.sp-field-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;margin-top:13px;display:block;}
+.sp-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(245,197,66,0.12);border-radius:9px;padding:10px 13px;color:var(--text);font-size:13px;outline:none;font-family:'Outfit',sans-serif;transition:border-color 0.2s;}
+.sp-input:focus{border-color:var(--gold);}.sp-input[readonly]{opacity:0.4;cursor:not-allowed;}
+.sp-two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sp-actions{padding:18px 24px;border-top:1px solid rgba(245,197,66,0.1);display:flex;flex-direction:column;gap:9px;flex-shrink:0;}
+.sp-btn-primary{width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:11px;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.2s;}
+.sp-btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(245,197,66,0.25);}
+.sp-btn-danger{width:100%;padding:12px;background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);border-radius:11px;color:var(--red);font-size:14px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
+.sp-btn-danger:hover{background:rgba(244,63,94,0.2);}
+.sp-divider{height:1px;background:rgba(255,255,255,0.05);margin:2px 0;}
+.sp-btn-gold{width:100%;padding:12px;background:rgba(245,197,66,0.08);border:1px solid rgba(245,197,66,0.2);border-radius:11px;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;}
+.sp-btn-gold:hover{background:rgba(245,197,66,0.15);}
+/* TRACKER */
+.tracker-filters{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.tracker-filter-btn{padding:8px 18px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+.tracker-filter-btn.active-f{background:rgba(245,197,66,0.12);color:var(--gold);border-color:rgba(245,197,66,0.3);}
+.tracker-filter-btn.f-completed.active-f{background:rgba(16,185,129,0.12);color:var(--green);border-color:rgba(16,185,129,0.3);}
+.tracker-filter-btn.f-expiring.active-f{background:rgba(249,115,22,0.12);color:var(--orange);border-color:rgba(249,115,22,0.3);}
+.tracker-filter-btn.f-active.active-f{background:rgba(59,130,246,0.12);color:var(--blue);border-color:rgba(59,130,246,0.3);}
+.days-pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;}
+.days-pill.completed{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.2);}
+.days-pill.expiring{background:rgba(249,115,22,0.12);color:var(--orange);border:1px solid rgba(249,115,22,0.2);}
+.days-pill.active{background:rgba(59,130,246,0.12);color:var(--blue);border:1px solid rgba(59,130,246,0.2);}
+.days-pill.unknown{background:rgba(106,98,85,0.2);color:var(--muted);border:1px solid rgba(106,98,85,0.3);}
+.tracker-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px;}
+.tr-stat{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;}
+.tr-stat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--ts),transparent);}
+.tr-stat[data-ts="green"]{--ts:var(--green);}.tr-stat[data-ts="orange"]{--ts:var(--orange);}.tr-stat[data-ts="blue"]{--ts:var(--blue);}.tr-stat[data-ts="gold"]{--ts:var(--gold);}
+.tr-stat-val{font-size:36px;font-weight:800;color:var(--ts,var(--gold));}.tr-stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+/* DOCUMENTS */
+.doc-tabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;}
+.doc-tab{padding:10px 20px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
+.doc-tab.active{background:rgba(245,197,66,0.12);color:var(--gold);border-color:rgba(245,197,66,0.3);}
+.doc-panel{display:none;}.doc-panel.active{display:block;}
+.doc-form-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;}
+.doc-form-card::before{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:-28px -28px 28px;border-radius:20px 20px 0 0;}
+.doc-btn{padding:13px 28px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:12px;color:#0a0600;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all 0.2s;margin-top:12px;margin-right:10px;}
+.doc-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,197,66,0.3);}
+.doc-btn.secondary{background:var(--surface);color:var(--gold);border:1px solid rgba(245,197,66,0.3);}
+.doc-btn.secondary:hover{background:rgba(245,197,66,0.08);}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-badge-sm">
+      <div class="logo-icon">👔</div>
+      <div><div class="logo-txt"><span>TEN</span> Portal</div><div class="logo-role">HR Management</div></div>
+    </div>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section-title">Overview</div>
+    <button class="nav-btn active" onclick="showView('overview')" data-view="overview"><span class="icon">📊</span> Dashboard</button>
+    <div class="nav-divider"></div>
+    <div class="nav-section-title">People</div>
+    <button class="nav-btn" onclick="showView('students')" data-view="students"><span class="icon">🎓</span> All Students</button>
+    <button class="nav-btn" onclick="showView('tracker')" data-view="tracker"><span class="icon">⏱️</span> Internship Tracker</button>
+    <button class="nav-btn" onclick="showView('submissions')" data-view="submissions"><span class="icon">📋</span> Submissions</button>
+    <button class="nav-btn" onclick="showView('domains')" data-view="domains"><span class="icon">🏢</span> Domain Analytics</button>
+    <div class="nav-divider"></div>
+    <div class="nav-section-title">Documents</div>
+    <button class="nav-btn" onclick="showView('documents')" data-view="documents"><span class="icon">📄</span> Generate Documents</button>
+    <div class="nav-divider"></div>
+    <div class="nav-section-title">Communications</div>
+    <button class="nav-btn" onclick="showView('send-notif')" data-view="send-notif"><span class="icon">📣</span> Send Notification</button>
+    <button class="nav-btn" onclick="showView('notif-history')" data-view="notif-history"><span class="icon">🔔</span> Notification History</button>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="hr-user-info">
+      <div class="hr-avatar" id="hrAvatar">H</div>
+      <div><div class="hr-name" id="hrNameDisplay">HR Admin</div><div class="hr-sub">HR Department</div></div>
+    </div>
+    <button class="logout-btn-sidebar" onclick="doLogout()">🚪 Sign Out</button>
+  </div>
+</nav>
+
+<main class="main">
+  <div class="topbar">
+    <div class="page-title" id="pageTitle"><span>Dashboard</span> Overview</div>
+    <div class="topbar-right"><div class="date-badge" id="dateBadge"></div></div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="view active" id="view-overview">
+    <div class="stats-grid" id="statsGrid"><div class="loading"><div class="spinner"></div><br>Loading stats...</div></div>
+    <div class="section-header"><div class="section-title">Recent Notifications Sent</div></div>
+    <div class="notif-list" id="recentNotifs"></div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div class="view" id="view-students">
+    <div class="table-wrap">
+      <div class="table-top">
+        <span style="font-size:15px;font-weight:700;">All Registered Students</span>
+        <input class="search-input" id="studentSearch" placeholder="🔍  Search by name, ID, domain..." oninput="filterStudents()">
+      </div>
+      <div style="overflow-x:auto;"><table>
+        <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>Email</th><th>WhatsApp</th><th>Tenure</th><th>Joined</th><th>Actions</th></tr></thead>
+        <tbody id="studentsTable"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- TRACKER -->
+  <div class="view" id="view-tracker">
+    <div class="tracker-stats" id="trackerStats"><div class="loading"><div class="spinner"></div></div></div>
+    <div class="section-header">
+      <div class="section-title">Internship Status Tracker</div>
+      <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadTracker(true)">↻ Refresh</button>
+    </div>
+    <div class="tracker-filters">
+      <button class="tracker-filter-btn active-f" onclick="filterTracker('all',this)">📋 All</button>
+      <button class="tracker-filter-btn f-completed" onclick="filterTracker('completed',this)">✅ Completed</button>
+      <button class="tracker-filter-btn f-expiring" onclick="filterTracker('expiring',this)">⚠️ Expiring (&lt;7 days)</button>
+      <button class="tracker-filter-btn f-active" onclick="filterTracker('active',this)">🔵 Active</button>
+    </div>
+    <div class="table-wrap"><div style="overflow-x:auto;"><table>
+      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>Tenure</th><th>End Date</th><th>Status</th><th>Days Left/Since</th><th>Actions</th></tr></thead>
+      <tbody id="trackerTable"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+    </table></div></div>
+  </div>
+
+  <!-- SUBMISSIONS -->
+  <div class="view" id="view-submissions">
+    <div class="table-wrap">
+      <div class="table-top">
+        <span style="font-size:15px;font-weight:700;">All Task Submissions</span>
+        <input class="search-input" id="subSearch" placeholder="🔍  Search submissions..." oninput="filterSubmissions()">
+      </div>
+      <div style="overflow-x:auto;"><table>
+        <thead><tr><th>#</th><th>Employee ID</th><th>Domain</th><th>Task</th><th>Status</th><th>Performance</th><th>Attendance</th><th>Submitted</th></tr></thead>
+        <tbody id="submissionsTable"><tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- DOMAINS -->
+  <div class="view" id="view-domains">
+    <div class="section-header"><div class="section-title">Students per Domain</div></div>
+    <div class="domain-grid" id="domainGrid"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+
+  <!-- DOCUMENTS -->
+  <div class="view" id="view-documents">
+    <div class="doc-tabs">
+      <button class="doc-tab active" onclick="switchDocTab('offer',this)">📄 Offer Letter</button>
+      <button class="doc-tab" onclick="switchDocTab('loc',this)">🎓 LOC (Completion)</button>
+      <button class="doc-tab" onclick="switchDocTab('lor',this)">📝 LOR (Recommendation)</button>
+      <button class="doc-tab" onclick="switchDocTab('star',this)">⭐ Star Performer</button>
+    </div>
+    <!-- OFFER -->
+    <div class="doc-panel active" id="doc-offer">
+      <div class="doc-form-card">
+        <div class="section-header" style="margin-bottom:24px;"><div class="section-title">📄 Offer Letter</div><span class="section-badge">Director Signature Included</span></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">The letter includes the official signature of <strong style="color:var(--text)">Kamlesh Gupta, Director — TEN</strong>. Download as PDF and send to student email manually.</p>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Student Full Name</label><input class="form-input" id="ol-name" placeholder="e.g. Bishal Nag"></div>
+          <div class="form-group-hr"><label class="form-label">College / Institution</label><input class="form-input" id="ol-college" placeholder="e.g. Sri Indu College Of Engineering & Technology"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Employee ID</label><input class="form-input" id="ol-empid" placeholder="e.g. TEN/AM/10976"></div>
+          <div class="form-group-hr"><label class="form-label">Document Number</label><input class="form-input" id="ol-docno" placeholder="e.g. TEN/OL/59654"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Role / Domain</label><input class="form-input" id="ol-role" placeholder="e.g. DevOps-Tech Lead"></div>
+          <div class="form-group-hr"><label class="form-label">Joining Date</label><input class="form-input" id="ol-joining" type="date"></div>
+        </div>
+        <div class="form-group-hr"><label class="form-label">Date of Letter</label><input class="form-input" id="ol-date" type="date"></div>
+        <button class="doc-btn" onclick="generateOfferLetter()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
+      </div>
+    </div>
+    <!-- LOC -->
+    <div class="doc-panel" id="doc-loc">
+      <div class="doc-form-card">
+        <div class="section-header" style="margin-bottom:24px;"><div class="section-title">🎓 Certificate of Completion (LOC)</div><span class="section-badge">Default — All Interns</span></div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Student Full Name</label><input class="form-input" id="loc-name" placeholder="e.g. Bishal Nag"></div>
+          <div class="form-group-hr"><label class="form-label">College / Institution</label><input class="form-input" id="loc-college" placeholder="e.g. Sri Indu College Of Engineering & Technology"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Employee ID</label><input class="form-input" id="loc-empid" placeholder="e.g. TEN/AM/10976"></div>
+          <div class="form-group-hr"><label class="form-label">Document Number</label><input class="form-input" id="loc-docno" placeholder="e.g. TEN/CT/11296"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Role / Domain</label><input class="form-input" id="loc-role" placeholder="e.g. DevOps-Tech Lead"></div>
+          <div class="form-group-hr"><label class="form-label">Course Completed</label><input class="form-input" id="loc-course" value="CSE"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Start Date</label><input class="form-input" id="loc-start" type="date"></div>
+          <div class="form-group-hr"><label class="form-label">End Date</label><input class="form-input" id="loc-end" type="date"></div>
+        </div>
+        <div class="form-group-hr"><label class="form-label">Date of Issue</label><input class="form-input" id="loc-issue" type="date"></div>
+        <button class="doc-btn" onclick="generateLOC()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
+      </div>
+    </div>
+    <!-- LOR -->
+    <div class="doc-panel" id="doc-lor">
+      <div class="doc-form-card">
+        <div class="section-header" style="margin-bottom:24px;"><div class="section-title">📝 Letter of Recommendation (LOR)</div><span class="section-badge">Default — All Interns</span></div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Student Full Name</label><input class="form-input" id="lor-name" placeholder="e.g. Bishal Nag"></div>
+          <div class="form-group-hr"><label class="form-label">Gender Pronoun</label>
+            <select class="form-select" id="lor-gender"><option value="him">Male (he/him)</option><option value="her">Female (she/her)</option><option value="them">Non-binary (they/them)</option></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Employee ID</label><input class="form-input" id="lor-empid" placeholder="e.g. TEN/AM/10976"></div>
+          <div class="form-group-hr"><label class="form-label">Document Number</label><input class="form-input" id="lor-docno" placeholder="e.g. TEN/CT/11207"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Role / Domain</label><input class="form-input" id="lor-role" placeholder="e.g. DevOps-Tech Lead"></div>
+          <div class="form-group-hr"><label class="form-label">Date of Letter</label><input class="form-input" id="lor-date" type="date"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Start Date</label><input class="form-input" id="lor-start" type="date"></div>
+          <div class="form-group-hr"><label class="form-label">End Date</label><input class="form-input" id="lor-end" type="date"></div>
+        </div>
+        <button class="doc-btn" onclick="generateLOR()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
+      </div>
+    </div>
+    <!-- STAR -->
+    <div class="doc-panel" id="doc-star">
+      <div class="doc-form-card">
+        <div class="section-header" style="margin-bottom:24px;"><div class="section-title">⭐ Star Performer Certificate</div><span class="section-badge">Performance-Based — Additional</span></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Awarded to interns with excellent performance. Review <strong style="color:var(--text)">Submissions</strong> to verify attendance and performance before issuing this certificate.</p>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Student Full Name</label><input class="form-input" id="star-name" placeholder="e.g. Bishal Nag"></div>
+          <div class="form-group-hr"><label class="form-label">Employee ID</label><input class="form-input" id="star-empid" placeholder="e.g. TEN/AM/10976"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group-hr"><label class="form-label">Certificate ID</label><input class="form-input" id="star-certid" placeholder="e.g. TEN/DOC/60426"></div>
+          <div class="form-group-hr"><label class="form-label">Tenure (display on cert)</label><input class="form-input" id="star-tenure" placeholder="e.g. 3/11/2026 - 6/11/2026"></div>
+        </div>
+        <button class="doc-btn" onclick="generateStarCert()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEND NOTIFICATION -->
+  <div class="view" id="view-send-notif">
+    <div class="notif-composer">
+      <div class="section-header" style="margin-bottom:24px;"><div class="section-title">📣 Send Notification</div><span class="section-badge">Broadcast to Interns &amp; Coordinators</span></div>
+      <div class="form-row">
+        <div class="form-group-hr"><label class="form-label">Notification Title</label><input class="form-input" id="notifTitle" placeholder="e.g. Meeting Tomorrow at 10 AM"></div>
+        <div class="form-group-hr"><label class="form-label">Priority Type</label>
+          <div class="type-pills">
+            <button class="type-pill sel-info" onclick="selectType('info',this)">ℹ️ Info</button>
+            <button class="type-pill" onclick="selectType('success',this)">✅ Success</button>
+            <button class="type-pill" onclick="selectType('warning',this)">⚠️ Warning</button>
+            <button class="type-pill" onclick="selectType('urgent',this)">🔴 Urgent</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group-hr"><label class="form-label">Message</label><textarea class="form-textarea" id="notifMessage" placeholder="Write your notification message here..."></textarea></div>
+      <div class="form-row">
+        <div class="form-group-hr"><label class="form-label">Send To</label>
+          <select class="form-select" id="targetType" onchange="onTargetChange()">
+            <option value="all">📢 Everyone</option>
+            <option value="domain">🏢 Domain Students</option>
+            <option value="coordinator">👥 All Coordinators</option>
+            <option value="coordinator-domain">🎯 Domain Coordinator</option>
+            <option value="student">👤 Specific Student</option>
+          </select>
+        </div>
+        <div class="form-group-hr conditional-field" id="domainField"><label class="form-label">Select Domain</label>
+          <select class="form-select" id="targetDomain">
+            <option value="">-- Select Domain --</option>
+            <option>DevOps with AWS</option><option>Python Development</option><option>Java Development</option>
+            <option>Web Development</option><option>MERN Stack Development</option><option>Artificial Intelligence</option>
+            <option>Data Science</option><option>Cyber Security</option><option>Software Engineering</option><option>Flutter Development</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group-hr conditional-field" id="studentField"><label class="form-label">Student Employee ID</label><input class="form-input" id="targetEmployeeId" placeholder="e.g. TEN/WEB/1001"></div>
+      <button class="send-btn" onclick="sendNotification()">📣 Send Notification</button>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION HISTORY -->
+  <div class="view" id="view-notif-history">
+    <div class="section-header">
+      <div class="section-title">Notification History</div>
+      <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadNotifHistory()">↻ Refresh</button>
+    </div>
+    <div class="notif-list" id="notifHistory"><div class="loading"><div class="spinner"></div></div></div>
+  </div>
+</main>
+
+<!-- SLIDE PANEL -->
+<div class="slide-panel-overlay" id="spOverlay" onclick="closeSidePanel()"></div>
+<div class="slide-panel" id="sidePanel">
+  <div class="sp-header">
+    <div class="sp-title">👤 Student Details</div>
+    <button class="sp-close" onclick="closeSidePanel()">✕ Close</button>
+  </div>
+  <div class="sp-body">
+    <div class="sp-avatar-row">
+      <div class="sp-avatar" id="sp-avatar-char">?</div>
+      <div><div class="sp-name-big" id="sp-name-display">—</div><div class="sp-emp-id" id="sp-empid-display">—</div></div>
+    </div>
+    <input type="hidden" id="sp-id">
+    <div class="sp-two-col">
+      <div><span class="sp-field-label">First Name</span><input class="sp-input" type="text" id="sp-firstName" placeholder="First name"></div>
+      <div><span class="sp-field-label">Last Name</span><input class="sp-input" type="text" id="sp-lastName" placeholder="Last name"></div>
+    </div>
+    <span class="sp-field-label">Email</span><input class="sp-input" type="email" id="sp-email" placeholder="Email">
+    <span class="sp-field-label">WhatsApp</span><input class="sp-input" type="text" id="sp-whatsapp" placeholder="WhatsApp">
+    <span class="sp-field-label">Domain</span><input class="sp-input" type="text" id="sp-domain" placeholder="Domain">
+    <div class="sp-two-col">
+      <div><span class="sp-field-label">Employee ID</span><input class="sp-input" type="text" id="sp-employeeId" readonly></div>
+      <div><span class="sp-field-label">Tenure</span><input class="sp-input" type="text" id="sp-tenure" placeholder="e.g. 3 Months"></div>
+    </div>
+    <span class="sp-field-label">College</span><input class="sp-input" type="text" id="sp-college" placeholder="College/Institution">
+    <span class="sp-field-label">Joining Date</span><input class="sp-input" type="text" id="sp-joining" readonly>
+  </div>
+  <div class="sp-actions">
+    <button class="sp-btn-primary" onclick="saveSidePanelStudent()">💾 Save Changes</button>
+    <div class="sp-divider"></div>
+    <button class="sp-btn-gold" onclick="generateDocsFromPanel()">📄 Generate Documents</button>
+    <div class="sp-divider"></div>
+    <button class="sp-btn-danger" onclick="deleteSidePanelStudent()">🗑 Delete Student</button>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay-hr" id="editStudentModal">
+  <div class="modal-box-hr">
+    <div class="modal-title-hr">✏️ Edit Student</div>
+    <input type="hidden" id="es-id">
+    <div class="two-col-hr">
+      <div><div class="modal-label">First Name</div><input class="modal-input-hr" type="text" id="es-firstName"></div>
+      <div><div class="modal-label">Last Name</div><input class="modal-input-hr" type="text" id="es-lastName"></div>
+    </div>
+    <div class="modal-label">Email</div><input class="modal-input-hr" type="email" id="es-email">
+    <div class="modal-label">WhatsApp</div><input class="modal-input-hr" type="text" id="es-whatsapp">
+    <div class="modal-label">Domain</div><input class="modal-input-hr" type="text" id="es-domain">
+    <div class="two-col-hr">
+      <div><div class="modal-label">Employee ID (read-only)</div><input class="modal-input-hr" type="text" id="es-employeeId" readonly></div>
+      <div><div class="modal-label">Tenure</div><input class="modal-input-hr" type="text" id="es-tenure"></div>
+    </div>
+    <div class="modal-actions-hr">
+      <button class="btn-save-hr" onclick="saveStudentEdit()">💾 Save</button>
+      <button class="btn-cancel-hr" onclick="closeEditStudent()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="modal-overlay-hr" id="confirmDelModal">
+  <div class="confirm-box-hr">
+    <div class="confirm-icon-hr">🗑️</div>
+    <div class="confirm-title-hr">Delete Student?</div>
+    <div class="confirm-msg-hr" id="confirmDelMsg">This cannot be undone.</div>
+    <div class="confirm-actions-hr">
+      <button class="btn-yes-del" id="confirmDelBtn">Yes, Delete</button>
+      <button class="btn-no-del" onclick="closeConfirmDel()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT PICKER -->
+<div class="modal-overlay-hr" id="studentPickerModal">
+  <div class="modal-box-hr" style="max-width:600px;">
+    <div class="modal-title-hr">🔍 Select Student to Auto-fill</div>
+    <input class="modal-input-hr" type="text" id="pickerSearch" placeholder="Search name or ID..." oninput="filterPicker()" style="margin-bottom:16px;">
+    <div style="max-height:350px;overflow-y:auto;" id="pickerList"></div>
+    <div class="modal-actions-hr" style="margin-top:16px;"><button class="btn-cancel-hr" onclick="closeStudentPicker()">Cancel</button></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="hr-toast" id="hrToast"></div>
+
+<!-- SUBMISSION MODAL -->
+<div class="big-modal-overlay" id="submissionDetailModal">
+  <div class="big-modal-box">
+    <div class="big-modal-header">
+      <div class="big-modal-title" id="subModalTitle">📋 Submissions</div>
+      <button class="big-modal-close" onclick="closeSubmissionModal()">✕ Close</button>
+    </div>
+    <div class="domain-filter-row">
+      <select class="domain-filter-select" id="subDomainFilter" onchange="filterSubModal()"><option value="">All Domains</option></select>
+      <span class="sub-count-badge" id="subCountBadge">0 records</span>
+    </div>
+    <div style="overflow-x:auto;"><table>
+      <thead><tr><th>#</th><th>Employee ID</th><th>Domain</th><th>Task</th><th>Status</th><th>Performance</th><th>Submitted</th></tr></thead>
+      <tbody id="subModalTable"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- DOMAIN STUDENTS MODAL -->
+<div class="big-modal-overlay" id="domainStudentsModal">
+  <div class="big-modal-box">
+    <div class="big-modal-header">
+      <div class="big-modal-title" id="domainModalTitle">🏢 Domain Students</div>
+      <button class="big-modal-close" onclick="closeDomainModal()">✕ Close</button>
+    </div>
+    <span class="sub-count-badge" id="domainStudentCount" style="display:inline-block;margin-bottom:16px;">0 students</span>
+    <div style="overflow-x:auto;"><table>
+      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Email</th><th>WhatsApp</th><th>Tenure</th><th>Actions</th></tr></thead>
+      <tbody id="domainStudentsTable"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<script>
+const hrUser=JSON.parse(sessionStorage.getItem('hrUser')||'null');
+if(!hrUser){window.location.href='/hr-login';}
+const hrToken=`Bearer hr_${hrUser?.username}`;
+document.getElementById('hrNameDisplay').textContent=hrUser?.name||'HR Admin';
+document.getElementById('hrAvatar').textContent=(hrUser?.name||'H')[0].toUpperCase();
+document.getElementById('dateBadge').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+let allStudents=[],allSubmissions=[],allTrackerStudents=[],selectedType='info',trackerFilter='all';
+
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
+  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History'};
+  document.getElementById('pageTitle').innerHTML=t[v]||v;
+  if(v==='students') loadStudents();
+  if(v==='tracker') loadTracker();
+  if(v==='submissions') loadSubmissions();
+  if(v==='domains') loadDomains();
+  if(v==='notif-history') loadNotifHistory();
+  if(v==='documents'){loadStudentsForPicker();setDefaultDates();}
+}
+
+async function loadOverview(){
+  try{
+    const r=await fetch('/hr/stats',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    if(!d.success)return;
+    const{stats,domainStats,notifications}=d;
+    document.getElementById('statsGrid').innerHTML=`
+      <div class="stat-card" data-c="gold" onclick="showView('students')"><div class="stat-icon">🎓</div><div class="stat-label">Total Students</div><div class="stat-value">${stats.totalStudents}</div><div class="stat-sub">Registered interns</div></div>
+      <div class="stat-card" data-c="green" onclick="openSubmissionModal('Approved')"><div class="stat-icon">✅</div><div class="stat-label">Approved Tasks</div><div class="stat-value">${stats.approved}</div><div class="stat-sub">Click to view</div></div>
+      <div class="stat-card" data-c="red" onclick="openSubmissionModal('Rejected')"><div class="stat-icon">❌</div><div class="stat-label">Rejected Tasks</div><div class="stat-value">${stats.rejected}</div><div class="stat-sub">Click to view</div></div>
+      <div class="stat-card" data-c="amber" onclick="openSubmissionModal('Pending')"><div class="stat-icon">⏳</div><div class="stat-label">Pending Review</div><div class="stat-value">${stats.pending}</div><div class="stat-sub">Click to view</div></div>
+      <div class="stat-card" data-c="cyan" onclick="openSubmissionModal('All')"><div class="stat-icon">📋</div><div class="stat-label">Total Submissions</div><div class="stat-value">${stats.totalSubmissions}</div><div class="stat-sub">Click to view</div></div>`;
+    const rn=document.getElementById('recentNotifs');
+    if(!notifications.length){rn.innerHTML='<div class="empty-state"><div class="es-icon">🔔</div><p>No notifications yet</p></div>';return;}
+    rn.innerHTML=notifications.map(n=>notifItemHTML(n)).join('');
+  }catch(e){console.log(e);}
+}
+
+async function loadStudents(){
+  if(allStudents.length>0){renderStudents(allStudents);return;}
+  try{
+    const r=await fetch('/hr/students',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    allStudents=d.students||[];
+    renderStudents(allStudents);
+  }catch(e){}
+}
+function renderStudents(list){
+  const tb=document.getElementById('studentsTable');
+  if(!list.length){tb.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="es-icon">🎓</div><p>No students found</p></div></td></tr>';return;}
+  tb.innerHTML=list.map((s,i)=>{
+    const name=`${s.firstName||''} ${s.lastName||''}`.trim();
+    const safeN=name.replace(/'/g,"\\'");
+    return`<tr id="srow-${s._id}">
+      <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px">${i+1}</td>
+      <td style="font-weight:600;cursor:pointer" onclick="openSidePanel('${s._id}')">${name}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td>
+      <td><span class="tag tag-pending">${s.domain||''}</span></td>
+      <td style="color:var(--muted);font-size:13px">${s.email||''}</td>
+      <td style="color:var(--muted);font-size:13px">${s.whatsapp||''}</td>
+      <td style="font-size:13px">${s.tenure||'—'}</td>
+      <td style="color:var(--muted);font-size:12px">${s.joiningDate||'—'}</td>
+      <td><div class="action-btns">
+        <button class="btn-view-hr" onclick="openSidePanel('${s._id}')">👁 Details</button>
+        <button class="btn-edit-hr" onclick="openEditStudent('${s._id}')">✏️ Edit</button>
+        <button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑 Delete</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+function filterStudents(){
+  const q=document.getElementById('studentSearch').value.toLowerCase();
+  renderStudents(allStudents.filter(s=>(s.firstName+s.lastName+s.employeeId+s.domain+s.email).toLowerCase().includes(q)));
+}
+
+/* SLIDE PANEL */
+function openSidePanel(id){
+  const s=allStudents.find(x=>x._id===id)||allTrackerStudents.find(x=>x._id===id);
+  if(!s)return;
+  document.getElementById('sp-id').value=s._id;
+  document.getElementById('sp-firstName').value=s.firstName||'';
+  document.getElementById('sp-lastName').value=s.lastName||'';
+  document.getElementById('sp-email').value=s.email||'';
+  document.getElementById('sp-whatsapp').value=s.whatsapp||'';
+  document.getElementById('sp-domain').value=s.domain||'';
+  document.getElementById('sp-employeeId').value=s.employeeId||'';
+  document.getElementById('sp-tenure').value=s.tenure||'';
+  document.getElementById('sp-college').value=s.college||'';
+  document.getElementById('sp-joining').value=s.joiningDate||'';
+  const fn=((s.firstName||'')+' '+(s.lastName||'')).trim();
+  document.getElementById('sp-name-display').textContent=fn||'—';
+  document.getElementById('sp-empid-display').textContent=s.employeeId||'—';
+  document.getElementById('sp-avatar-char').textContent=(s.firstName||'?')[0].toUpperCase();
+  document.getElementById('sidePanel').classList.add('open');
+  document.getElementById('spOverlay').classList.add('open');
+}
+function closeSidePanel(){
+  document.getElementById('sidePanel').classList.remove('open');
+  document.getElementById('spOverlay').classList.remove('open');
+}
+async function saveSidePanelStudent(){
+  const id=document.getElementById('sp-id').value;
+  const body={firstName:document.getElementById('sp-firstName').value.trim(),lastName:document.getElementById('sp-lastName').value.trim(),email:document.getElementById('sp-email').value.trim(),whatsapp:document.getElementById('sp-whatsapp').value.trim(),domain:document.getElementById('sp-domain').value.trim(),tenure:document.getElementById('sp-tenure').value.trim(),college:document.getElementById('sp-college').value.trim()};
+  try{
+    const res=await fetch('/students/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error();
+    closeSidePanel();showHRToast('✅ Student updated!','success');
+    allStudents=[];allTrackerStudents=[];loadStudents();
+  }catch(e){showHRToast('❌ Update failed.','error');}
+}
+function deleteSidePanelStudent(){
+  const id=document.getElementById('sp-id').value;
+  const name=document.getElementById('sp-name-display').textContent;
+  closeSidePanel();confirmDelStudent(id,name);
+}
+function generateDocsFromPanel(){
+  const id=document.getElementById('sp-id').value;
+  const s=allStudents.find(x=>x._id===id)||allTrackerStudents.find(x=>x._id===id);
+  if(!s)return;
+  closeSidePanel();showView('documents');
+  setTimeout(()=>{prefillDocForms(s);showHRToast('✅ Student data auto-filled!','success');},350);
+}
+
+/* TRACKER */
+function parseTenureEndDate(tenure,joiningDate){
+  if(!tenure)return null;
+  const rm=tenure.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s*[-–to]+\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/i);
+  if(rm){const[,d1,m1,y1,d2,m2,y2]=rm;return new Date(parseInt(y2),parseInt(m2)-1,parseInt(d2));}
+  const mm=tenure.match(/(\d+)\s*month/i);
+  if(mm&&joiningDate){const j=new Date(joiningDate);if(!isNaN(j)){const e=new Date(j);e.setMonth(e.getMonth()+parseInt(mm[1]));return e;}}
+  const wm=tenure.match(/(\d+)\s*week/i);
+  if(wm&&joiningDate){const j=new Date(joiningDate);if(!isNaN(j)){const e=new Date(j);e.setDate(e.getDate()+parseInt(wm[1])*7);return e;}}
+  return null;
+}
+function getStudentStatus(endDate){
+  if(!endDate)return{status:'unknown',daysLeft:null};
+  const now=new Date();now.setHours(0,0,0,0);
+  const end=new Date(endDate);end.setHours(0,0,0,0);
+  const diff=Math.ceil((end-now)/(864e5));
+  if(diff<0)return{status:'completed',daysLeft:Math.abs(diff)};
+  if(diff<=7)return{status:'expiring',daysLeft:diff};
+  return{status:'active',daysLeft:diff};
+}
+async function loadTracker(force=false){
+  if(allTrackerStudents.length&&!force){updateTrackerStats(allTrackerStudents);renderTracker(allTrackerStudents);return;}
+  try{
+    const r=await fetch('/hr/students',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    allTrackerStudents=(d.students||[]).map(s=>{
+      const endDate=parseTenureEndDate(s.tenure,s.joiningDate);
+      const{status,daysLeft}=getStudentStatus(endDate);
+      return{...s,endDate,status,daysLeft};
+    });
+    if(!allStudents.length)allStudents=allTrackerStudents.map(s=>({...s}));
+    updateTrackerStats(allTrackerStudents);renderTracker(allTrackerStudents);
+  }catch(e){}
+}
+function updateTrackerStats(students){
+  const c=students.filter(s=>s.status==='completed').length;
+  const e=students.filter(s=>s.status==='expiring').length;
+  const a=students.filter(s=>s.status==='active').length;
+  document.getElementById('trackerStats').innerHTML=`
+    <div class="tr-stat" data-ts="green"><div class="tr-stat-val">${c}</div><div class="tr-stat-label">✅ Completed</div></div>
+    <div class="tr-stat" data-ts="orange"><div class="tr-stat-val">${e}</div><div class="tr-stat-label">⚠️ Expiring Soon</div></div>
+    <div class="tr-stat" data-ts="blue"><div class="tr-stat-val">${a}</div><div class="tr-stat-label">🔵 Active</div></div>
+    <div class="tr-stat" data-ts="gold"><div class="tr-stat-val">${students.length}</div><div class="tr-stat-label">📋 Total Interns</div></div>`;
+}
+function filterTracker(filter,btn){
+  trackerFilter=filter;
+  document.querySelectorAll('.tracker-filter-btn').forEach(b=>b.classList.remove('active-f'));
+  if(btn)btn.classList.add('active-f');
+  renderTracker(allTrackerStudents);
+}
+function renderTracker(students){
+  const filtered=trackerFilter==='all'?students:students.filter(s=>s.status===trackerFilter);
+  const tb=document.getElementById('trackerTable');
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="es-icon">⏱️</div><p>No students match this filter</p></div></td></tr>';return;}
+  tb.innerHTML=filtered.map((s,i)=>{
+    const sc=s.status==='completed'?'tag-completed':s.status==='expiring'?'tag-expiring':s.status==='active'?'tag-active':'';
+    const sl=s.status==='completed'?'✅ Completed':s.status==='expiring'?'⚠️ Expiring Soon':s.status==='active'?'🔵 Active':'❓ Unknown';
+    const dp=s.status==='completed'?`<span class="days-pill completed">${s.daysLeft}d ago</span>`:s.status==='expiring'?`<span class="days-pill expiring">${s.daysLeft}d left</span>`:s.status==='active'?`<span class="days-pill active">${s.daysLeft}d left</span>`:`<span class="days-pill unknown">—</span>`;
+    const es=s.endDate?s.endDate.toLocaleDateString('en-IN'):'—';
+    const safeN=`${s.firstName||''} ${s.lastName||''}`.trim().replace(/'/g,"\\'");
+    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;color:var(--muted)">${s.tenure||'—'}</td><td style="font-size:13px">${es}</td><td><span class="tag ${sc}">${sl}</span></td><td>${dp}</td><td><div class="action-btns"><button class="btn-doc-hr" onclick="quickGenCerts('${s._id}')">📄 Certs</button><button class="btn-view-hr" onclick="openSidePanel('${s._id}')">👁 View</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑</button></div></td></tr>`;
+  }).join('');
+}
+function quickGenCerts(id){
+  const s=allTrackerStudents.find(x=>x._id===id);
+  if(!s)return;
+  if(!allStudents.length)allStudents=[...allTrackerStudents];
+  showView('documents');
+  setTimeout(()=>{prefillDocForms(s);showHRToast('✅ Student data loaded. Pick certificate type.','success');},350);
+}
+
+async function loadSubmissions(){
+  if(allSubmissions.length>0){renderSubmissions(allSubmissions);return;}
+  try{
+    const r=await fetch('/hr/submissions',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    allSubmissions=d.submissions||[];
+    renderSubmissions(allSubmissions);
+  }catch(e){}
+}
+function renderSubmissions(list){
+  const tb=document.getElementById('submissionsTable');
+  if(!list.length){tb.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="es-icon">📋</div><p>No submissions yet</p></div></td></tr>';return;}
+  tb.innerHTML=list.map((s,i)=>{
+    const sc=s.status==='Approved'?'tag-approved':s.status==='Rejected'?'tag-rejected':'tag-pending';
+    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td style="font-size:12px;color:var(--muted)">${s.domain||''}</td><td style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.task||'—'}</td><td><span class="tag ${sc}">${s.status}</span></td><td style="font-weight:700;color:var(--gold)">${s.performance||'—'}</td><td style="font-size:13px">${s.attendanceCount||0} days</td><td style="color:var(--muted);font-size:12px">${new Date(s.submittedAt).toLocaleDateString('en-IN')}</td></tr>`;
+  }).join('');
+}
+function filterSubmissions(){
+  const q=document.getElementById('subSearch').value.toLowerCase();
+  renderSubmissions(allSubmissions.filter(s=>(s.employeeId+s.domain+s.task+s.status).toLowerCase().includes(q)));
+}
+
+async function loadDomains(){
+  try{
+    const r=await fetch('/hr/stats',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    const max=Math.max(...(d.domainStats||[]).map(x=>x.count),1);
+    document.getElementById('domainGrid').innerHTML=(d.domainStats||[]).map(ds=>`<div class="domain-card" onclick="openDomainStudents('${ds.domain}')"><div class="domain-name">${ds.domain}</div><div class="domain-bar-wrap"><div class="domain-bar" style="width:${(ds.count/max)*100}%"></div></div><div class="domain-count">${ds.count} student${ds.count!==1?'s':''} &nbsp;👁 Click to view</div></div>`).join('')||'<div class="empty-state"><div class="es-icon">🏢</div><p>No data yet</p></div>';
+  }catch(e){}
+}
+
+function selectType(type,el){selectedType=type;document.querySelectorAll('.type-pill').forEach(p=>{p.className='type-pill';});el.classList.add(`sel-${type}`);}
+function onTargetChange(){
+  const v=document.getElementById('targetType').value;
+  document.getElementById('domainField').classList.remove('show');
+  document.getElementById('studentField').classList.remove('show');
+  if(v==='domain'||v==='coordinator-domain')document.getElementById('domainField').classList.add('show');
+  if(v==='student')document.getElementById('studentField').classList.add('show');
+}
+async function sendNotification(){
+  const title=document.getElementById('notifTitle').value.trim();
+  const message=document.getElementById('notifMessage').value.trim();
+  if(!title||!message){Swal.fire({title:'Missing Fields',text:'Please fill in title and message.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const btn=document.querySelector('#view-send-notif .send-btn');btn.textContent='Sending...';btn.disabled=true;
+  try{
+    const r=await fetch('/hr/send-notification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,message,type:selectedType,targetType:document.getElementById('targetType').value,targetDomain:document.getElementById('targetDomain').value,targetEmployeeId:document.getElementById('targetEmployeeId').value.trim()})});
+    const d=await r.json();
+    if(d.success){Swal.fire({title:'Sent! 🎉',text:'Notification delivered.',icon:'success',background:'#0c1220',color:'#f0eee8',confirmButtonColor:'#f5c542'});document.getElementById('notifTitle').value='';document.getElementById('notifMessage').value='';}
+    else Swal.fire({title:'Failed',text:d.message||'Could not send.',icon:'error',background:'#0c1220',color:'#f0eee8'});
+  }catch(e){Swal.fire({title:'Error',text:'Network error.',icon:'error',background:'#0c1220',color:'#f0eee8'});}
+  btn.textContent='📣 Send Notification';btn.disabled=false;
+}
+async function loadNotifHistory(){
+  document.getElementById('notifHistory').innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const r=await fetch('/hr/notifications',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    const list=d.notifications||[];
+    document.getElementById('notifHistory').innerHTML=list.length?list.map(n=>notifItemHTML(n,true)).join(''):'<div class="empty-state"><div class="es-icon">🔔</div><p>No notifications yet</p></div>';
+  }catch(e){}
+}
+function notifItemHTML(n,showDelete=false){
+  const tl={all:'Everyone',domain:`Domain: ${n.targetDomain}`,coordinator:'All Coordinators','coordinator-domain':`Coord: ${n.targetDomain}`,student:`Student: ${n.targetEmployeeId}`};
+  return`<div class="notif-item" id="ni-${n._id}"><div class="notif-dot nd-${n.type||'info'}"></div><div class="notif-content"><div class="notif-title-row"><span class="notif-ntitle">${n.title}</span><span class="notif-target-tag">${tl[n.targetType]||n.targetType}</span></div><div class="notif-msg">${n.message}</div><div class="notif-time">${new Date(n.createdAt).toLocaleString('en-IN')}</div></div>${showDelete?`<button class="notif-delete" onclick="deleteNotif('${n._id}')">🗑</button>`:''}</div>`;
+}
+async function deleteNotif(id){const r=await fetch(`/hr/notifications/${id}`,{method:'DELETE',headers:{Authorization:hrToken}});const d=await r.json();if(d.success)document.getElementById('ni-'+id)?.remove();}
+function doLogout(){Swal.fire({title:'Sign out?',icon:'question',showCancelButton:true,confirmButtonText:'Yes, sign out',background:'#0c1220',color:'#f0eee8',confirmButtonColor:'#f5c542'}).then(r=>{if(r.isConfirmed){sessionStorage.removeItem('hrUser');window.location.href='/hr-login';}});}
+
+let pendingDelId=null;
+async function openEditStudent(id){
+  try{
+    let s=allStudents.find(x=>x._id===id)||allTrackerStudents.find(x=>x._id===id);
+    if(!s){const res=await fetch('/hr/students',{headers:{Authorization:hrToken}});const d=await res.json();s=(d.students||[]).find(x=>x._id===id);}
+    if(!s)throw new Error();
+    document.getElementById('es-id').value=s._id;
+    document.getElementById('es-firstName').value=s.firstName||'';document.getElementById('es-lastName').value=s.lastName||'';
+    document.getElementById('es-email').value=s.email||'';document.getElementById('es-whatsapp').value=s.whatsapp||'';
+    document.getElementById('es-domain').value=s.domain||'';document.getElementById('es-employeeId').value=s.employeeId||'';document.getElementById('es-tenure').value=s.tenure||'';
+    document.getElementById('editStudentModal').classList.add('open');
+  }catch(e){showHRToast('Failed to load student.','error');}
+}
+function closeEditStudent(){document.getElementById('editStudentModal').classList.remove('open');}
+async function saveStudentEdit(){
+  const id=document.getElementById('es-id').value;
+  const body={firstName:document.getElementById('es-firstName').value.trim(),lastName:document.getElementById('es-lastName').value.trim(),email:document.getElementById('es-email').value.trim(),whatsapp:document.getElementById('es-whatsapp').value.trim(),domain:document.getElementById('es-domain').value.trim(),tenure:document.getElementById('es-tenure').value.trim()};
+  try{
+    const res=await fetch('/students/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!res.ok)throw new Error();
+    closeEditStudent();showHRToast('✅ Student updated!','success');allStudents=[];allTrackerStudents=[];loadStudents();
+  }catch(e){showHRToast('❌ Update failed.','error');}
+}
+function confirmDelStudent(id,name){
+  pendingDelId=id;
+  document.getElementById('confirmDelMsg').textContent='Delete "'+name.trim()+'"? This cannot be undone.';
+  document.getElementById('confirmDelBtn').onclick=executeDelStudent;
+  document.getElementById('confirmDelModal').classList.add('open');
+}
+async function executeDelStudent(){
+  closeConfirmDel();
+  try{
+    const res=await fetch('/students/'+pendingDelId,{method:'DELETE'});
+    if(!res.ok)throw new Error();
+    document.getElementById('srow-'+pendingDelId)?.remove();
+    allStudents=allStudents.filter(s=>s._id!==pendingDelId);allTrackerStudents=allTrackerStudents.filter(s=>s._id!==pendingDelId);
+    showHRToast('🗑 Student deleted.','success');
+  }catch(e){showHRToast('❌ Delete failed.','error');}
+}
+function closeConfirmDel(){document.getElementById('confirmDelModal').classList.remove('open');}
+document.getElementById('editStudentModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeEditStudent();});
+document.getElementById('confirmDelModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeConfirmDel();});
+function showHRToast(msg,type='success'){const t=document.getElementById('hrToast');t.textContent=msg;t.className='hr-toast '+type;t.style.display='block';setTimeout(()=>{t.style.display='none';},3500);}
+
+let allSubModalData=[];
+async function openSubmissionModal(status){
+  document.getElementById('subModalTitle').textContent=status==='All'?'📋 All Submissions':status==='Approved'?'✅ Approved':status==='Rejected'?'❌ Rejected':'⏳ Pending';
+  document.getElementById('submissionDetailModal').classList.add('open');
+  document.getElementById('subModalTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">Loading...</td></tr>';
+  try{
+    const url=status==='All'?'/hr/submissions':'/hr/submissions/filter?status='+encodeURIComponent(status);
+    const r=await fetch(url,{headers:{Authorization:hrToken}});const d=await r.json();
+    allSubModalData=d.submissions||[];
+    const doms=[...new Set(allSubModalData.map(s=>s.domain).filter(Boolean))].sort();
+    const sel=document.getElementById('subDomainFilter');
+    sel.innerHTML='<option value="">All Domains</option>';
+    doms.forEach(dm=>{const o=document.createElement('option');o.value=dm;o.textContent=dm;sel.appendChild(o);});
+    renderSubModal(allSubModalData);
+  }catch(e){document.getElementById('subModalTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--red)">Failed to load.</td></tr>';}
+}
+function filterSubModal(){const f=document.getElementById('subDomainFilter').value;renderSubModal(f?allSubModalData.filter(s=>s.domain===f):allSubModalData);}
+function renderSubModal(list){
+  document.getElementById('subCountBadge').textContent=list.length+' records';
+  document.getElementById('subModalTable').innerHTML=list.length?list.map((s,i)=>`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.task||'—'}</td><td><span class="tag ${s.status==='Approved'?'tag-approved':s.status==='Rejected'?'tag-rejected':'tag-pending'}">${s.status||'Pending'}</span></td><td style="font-size:13px">${s.performance||'—'}</td><td style="font-size:12px;color:var(--muted)">${s.submittedAt?new Date(s.submittedAt).toLocaleDateString():'-'}</td></tr>`).join(''):'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">No records.</td></tr>';
+}
+function closeSubmissionModal(){document.getElementById('submissionDetailModal').classList.remove('open');}
+async function openDomainStudents(domain){
+  document.getElementById('domainModalTitle').textContent='🏢 '+domain;
+  document.getElementById('domainStudentsModal').classList.add('open');
+  document.getElementById('domainStudentsTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">Loading...</td></tr>';
+  try{
+    const r=await fetch('/hr/students/domain/'+encodeURIComponent(domain),{headers:{Authorization:hrToken}});
+    const d=await r.json();const students=d.students||[];
+    document.getElementById('domainStudentCount').textContent=students.length+' students';
+    document.getElementById('domainStudentsTable').innerHTML=students.length?students.map((s,i)=>{
+      const safeN=`${s.firstName||''} ${s.lastName||''}`.trim().replace(/'/g,"\\'");
+      return`<tr id="ds-${s._id}"><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td><td style="color:var(--muted);font-size:13px">${s.email||'—'}</td><td style="font-size:13px">${s.whatsapp||'—'}</td><td style="font-size:13px">${s.tenure||'—'}</td><td><div class="action-btns"><button class="btn-edit-hr" onclick="openEditStudent('${s._id}')">✏️ Edit</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑 Delete</button></div></td></tr>`;
+    }).join(''):'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">No students in this domain.</td></tr>';
+  }catch(e){document.getElementById('domainStudentsTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--red)">Failed.</td></tr>';}
+}
+function closeDomainModal(){document.getElementById('domainStudentsModal').classList.remove('open');}
+document.getElementById('submissionDetailModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSubmissionModal();});
+document.getElementById('domainStudentsModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeDomainModal();});
+
+/* DOCUMENTS */
+function switchDocTab(tab,btn){
+  document.querySelectorAll('.doc-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.doc-panel').forEach(p=>p.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('doc-'+tab).classList.add('active');
+}
+function setDefaultDates(){
+  const today=new Date().toISOString().split('T')[0];
+  ['ol-date','ol-joining','loc-issue','loc-start','loc-end','lor-date','lor-start','lor-end'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=today;});
+}
+async function loadStudentsForPicker(){if(allStudents.length)return;try{const r=await fetch('/hr/students',{headers:{Authorization:hrToken}});const d=await r.json();allStudents=d.students||[];}catch(e){}}
+function fmtDate(ds){if(!ds)return'';const d=new Date(ds);if(isNaN(d))return ds;return`${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;}
+function prefillDocForms(s){
+  const name=((s.firstName||'')+' '+(s.lastName||'')).trim();
+  const emp=s.employeeId||'',role=s.domain||'',college=s.college||'',tenure=s.tenure||'';
+  let sd='',ed='';
+  const rm=(tenure).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s*[-–]+\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if(rm){const[,d1,m1,y1,d2,m2,y2]=rm;sd=`${y1}-${m1.padStart(2,'0')}-${d1.padStart(2,'0')}`;ed=`${y2}-${m2.padStart(2,'0')}-${d2.padStart(2,'0')}`;}
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('ol-name').value=name;document.getElementById('ol-college').value=college;document.getElementById('ol-empid').value=emp;document.getElementById('ol-role').value=role;
+  if(s.joiningDate)document.getElementById('ol-joining').value=(s.joiningDate+'').split('T')[0];
+  if(!document.getElementById('ol-date').value)document.getElementById('ol-date').value=today;
+  document.getElementById('loc-name').value=name;document.getElementById('loc-college').value=college;document.getElementById('loc-empid').value=emp;document.getElementById('loc-role').value=role;
+  if(sd)document.getElementById('loc-start').value=sd;if(ed)document.getElementById('loc-end').value=ed;
+  if(!document.getElementById('loc-issue').value)document.getElementById('loc-issue').value=today;
+  document.getElementById('lor-name').value=name;document.getElementById('lor-empid').value=emp;document.getElementById('lor-role').value=role;
+  if(sd)document.getElementById('lor-start').value=sd;if(ed)document.getElementById('lor-end').value=ed;
+  if(!document.getElementById('lor-date').value)document.getElementById('lor-date').value=today;
+  document.getElementById('star-name').value=name;document.getElementById('star-empid').value=emp;document.getElementById('star-tenure').value=tenure;
+}
+function autofillFromStudent(){
+  document.getElementById('pickerSearch').value='';renderPickerList(allStudents);
+  document.getElementById('studentPickerModal').classList.add('open');
+}
+function closeStudentPicker(){document.getElementById('studentPickerModal').classList.remove('open');}
+function filterPicker(){const q=document.getElementById('pickerSearch').value.toLowerCase();renderPickerList(allStudents.filter(s=>(s.firstName+s.lastName+s.employeeId+s.domain).toLowerCase().includes(q)));}
+function renderPickerList(list){
+  document.getElementById('pickerList').innerHTML=list.length?list.map(s=>`<div style="padding:12px 14px;border:1px solid rgba(245,197,66,0.1);border-radius:10px;cursor:pointer;margin-bottom:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;transition:border-color 0.2s" onmouseover="this.style.borderColor='rgba(245,197,66,0.35)'" onmouseout="this.style.borderColor='rgba(245,197,66,0.1)'" onclick="selectStudentForDoc('${s._id}')"><div><div style="font-weight:600;font-size:14px;color:var(--text)">${s.firstName||''} ${s.lastName||''}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${s.domain||''}</div></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${s.employeeId||''}</div></div>`).join(''):'<p style="text-align:center;color:var(--muted);padding:20px">No students found</p>';
+}
+function selectStudentForDoc(id){const s=allStudents.find(x=>x._id===id);if(!s)return;closeStudentPicker();prefillDocForms(s);showHRToast('✅ Student data filled!','success');}
+document.getElementById('studentPickerModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeStudentPicker();});
+
+/* OFFER LETTER */
+function generateOfferLetter(){
+  const name=document.getElementById('ol-name').value.trim(),college=document.getElementById('ol-college').value.trim(),empId=document.getElementById('ol-empid').value.trim(),docNo=document.getElementById('ol-docno').value.trim()||'TEN/OL/—',role=document.getElementById('ol-role').value.trim(),jf=fmtDate(document.getElementById('ol-joining').value),lf=fmtDate(document.getElementById('ol-date').value);
+  if(!name||!role){Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Offer Letter - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Times New Roman',serif;background:#fff;color:#000;font-size:14px;line-height:1.6}.page{width:210mm;min-height:297mm;margin:0 auto;padding:18mm 22mm;background:#fff;border:8px solid #000}.logo-area{text-align:center;margin-bottom:20px;border-bottom:2px solid #000;padding-bottom:14px}.ls{font-size:42px;display:block}.on{font-size:12px;font-weight:900;letter-spacing:3px;text-transform:uppercase}.dt{text-align:center;font-size:16px;font-weight:900;text-decoration:underline;margin:16px 0 20px}.meta p{font-size:13px;margin-bottom:2px}.sb{margin:14px 0}.sb strong{font-size:15px;display:block}.bt{text-align:justify;font-size:14px;line-height:1.85;margin-bottom:14px}.sa{margin-top:40px}.sn{font-family:'Dancing Script',cursive;font-size:40px;display:block;margin-bottom:2px}.sl{border-bottom:1px solid #000;width:210px;margin-bottom:6px}.sd{font-size:13px;font-weight:600}.np{background:#1a1a2e;padding:16px;text-align:center}@media print{.np{display:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Save as PDF → send to student email manually</span></div>
+<div class="page"><div class="logo-area"><span class="ls">∞</span><div class="on">The Entrepreneurship Network</div></div>
+<div class="dt">Internship Offer Letter with The Entrepreneurship Network</div>
+<div class="meta"><p><strong>Date:</strong> ${lf||'—'}</p><p><strong>Employee ID:</strong> ${empId||'—'}</p><p><strong>Document No.:</strong> ${docNo}</p></div>
+<div class="sb"><strong>${name}</strong><span>${college}</span></div>
+<p class="bt">Dear <strong>${name}</strong>,</p>
+<p class="bt">We are delighted &amp; excited to welcome you to "<strong>The Entrepreneurship Network</strong>" as a <strong>${role}</strong>, we believe that our team is our biggest strength and we take pride in hiring only the best and the brightest. We are confident that you would play a significant role in the overall success of the venture and wish you the most enjoyable, learning packed and truly meaningful internship experience with "<strong>The Entrepreneurship Network</strong>".</p>
+<p class="bt">The candidate is duly informed that he/she will not be eligible for any fixed stipend over the course of his/her internship. Your joining date is <strong>${jf||'—'}</strong>.</p>
+<p class="bt">We look forward to you joining with us. The Company Policies manual is attached below, please go through it thoroughly. Please do not hesitate to call us for any information you may need. Also, <strong>please sign the duplicate of this offer as your acceptance and forward the same to us on hr@entrepreneurshipnetwork.net.</strong></p>
+<p class="bt" style="margin-top:12px"><strong>Congratulations!</strong></p>
+<div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div></div></body></html>`);
+  w.document.close();
+}
+
+/* LOC */
+function generateLOC(){
+  const name=document.getElementById('loc-name').value.trim(),college=document.getElementById('loc-college').value.trim(),empId=document.getElementById('loc-empid').value.trim(),docNo=document.getElementById('loc-docno').value.trim()||'TEN/CT/—',role=document.getElementById('loc-role').value.trim(),course=document.getElementById('loc-course').value.trim()||'CSE',sd=fmtDate(document.getElementById('loc-start').value),ed=fmtDate(document.getElementById('loc-end').value),id_=fmtDate(document.getElementById('loc-issue').value);
+  if(!name||!role){Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOC - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;font-family:'Times New Roman',serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:210mm;min-height:280mm;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 100%);margin:0 auto;padding:28px 34px;position:relative;border:3px solid #c9a227;display:flex;flex-direction:column;align-items:center}.cert::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,162,39,0.3)}.la{text-align:center;margin-bottom:8px}.ls{font-size:46px;color:#c9a227}.on{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c9a227;font-weight:700;margin-top:4px}.ctb{font-family:'Cinzel',serif;font-size:56px;font-weight:700;color:#fff;letter-spacing:3px;text-align:center;margin:8px 0}.cst{font-family:'Cinzel',serif;font-size:18px;color:#c9a227;letter-spacing:6px;text-align:center;margin-bottom:18px}.mb{text-align:left;width:100%;margin-bottom:14px}.mb p{font-size:12px;color:#c9a227;font-weight:700}.bt{font-size:13px;color:#e0e0e0;line-height:1.9;text-align:justify;width:100%;margin-bottom:12px}.bt strong{color:#f5c542}.br{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding-top:14px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sa{text-align:right}.sn{font-family:'Dancing Script',cursive;font-size:34px;color:#f5c542;display:block}.sl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sd{font-size:12px;color:#e0e0e0;font-weight:600}@media print{body{background:#fff}.np{display:none}.cert{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Browser Print → Save as PDF</span></div>
+<div class="cert"><div class="la"><div class="ls">∞</div><div class="on">The Entrepreneurship Network</div></div>
+<div class="ctb">CERTIFICATE</div><div class="cst">OF COMPLETION</div>
+<div class="mb"><p><strong>Employee ID:</strong> ${empId||'—'} &nbsp;&nbsp; <strong>Document No.:</strong> ${docNo} &nbsp;&nbsp; <strong>Date Of Issue:</strong> ${id_||'—'}</p></div>
+<p class="bt">This is to certify that <strong>${name}</strong> Completed <strong>${course}</strong> from <strong>${college||'—'}</strong> has Successfully Completed his internship tenure with <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong> from <strong>${sd||'—'}</strong> To <strong>${ed||'—'}</strong>. During the period, he worked as a <strong>${role}</strong>. During the course of his tenure, <strong>${name}</strong> showed considerable interest in fulfilling his roles and responsibilities and his conduct was professional throughout.</p>
+<p class="bt">We wish him all the best for his future endeavours.</p>
+<p class="bt">Best Regards,</p>
+<div class="br"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div><div class="sd">Limitless Technologies LLP</div></div></div></div></body></html>`);
+  w.document.close();
+}
+
+/* LOR */
+function generateLOR(){
+  const name=document.getElementById('lor-name').value.trim(),empId=document.getElementById('lor-empid').value.trim(),docNo=document.getElementById('lor-docno').value.trim()||'TEN/CT/—',role=document.getElementById('lor-role').value.trim(),dl=fmtDate(document.getElementById('lor-date').value),sd=fmtDate(document.getElementById('lor-start').value),ed=fmtDate(document.getElementById('lor-end').value),gv=document.getElementById('lor-gender').value;
+  if(!name||!role){Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const pr=gv==='him'?{sub:'he',obj:'him',adj:'Male'}:gv==='her'?{sub:'she',obj:'her',adj:'Female'}:{sub:'they',obj:'them',adj:'Individual'};
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOR - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Times New Roman',serif;background:#fff;color:#000;font-size:14px}.page{width:210mm;min-height:297mm;margin:0 auto;padding:16mm 22mm;background:#fff;border:6px solid #f5c542}.la{text-align:center;margin-bottom:16px;border-bottom:2px solid #f5c542;padding-bottom:12px}.ls{font-size:38px;color:#c9a227}.on{font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:900}.dt{text-align:center;font-size:17px;font-weight:900;letter-spacing:2px;color:#8B0000;text-transform:uppercase;border:2px solid #f5c542;padding:10px;margin:14px 0 20px;background:rgba(245,197,66,0.06)}.meta p{font-size:13px;margin-bottom:2px}.subj{text-align:center;font-size:15px;font-weight:900;text-decoration:underline;margin:14px 0 16px}.bt{text-align:justify;font-size:14px;line-height:1.9;margin-bottom:14px}.sa{margin-top:28px}.sn{font-family:'Dancing Script',cursive;font-size:36px;display:block;margin-bottom:2px}.sl{border-bottom:1px solid #000;width:190px;margin-bottom:6px}.sd{font-size:13px;font-weight:600}.ft{margin-top:24px;padding-top:10px;border-top:1px solid #f5c542;font-size:12px}.np{background:#1a1a2e;padding:16px;text-align:center}@media print{.np{display:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Browser Print → Save as PDF</span></div>
+<div class="page"><div class="la"><div class="ls">∞</div><div class="on">The Entrepreneurship Network</div></div>
+<div class="dt">Letter of Recommendation</div>
+<div class="meta"><p><strong>Date:</strong> ${dl||'—'}</p><p><strong>Employee ID:</strong> ${empId||'—'}</p><p><strong>Document No:</strong> ${docNo}</p></div>
+<div class="subj">To whom it may concern</div>
+<p class="bt"><strong>${name}</strong> worked in <strong>The Entrepreneurship Network</strong> as a <strong>${role}</strong> from <strong>${sd||'—'}</strong> to <strong>${ed||'—'}</strong>. During that time, I developed a very high regard for ${pr.obj} based on the outstanding contributions that ${pr.sub} made to our company throughout the internship.</p>
+<p class="bt"><strong>${name}</strong> in <strong>${role}</strong>, ${pr.sub} has excellent communication skills. In addition, ${pr.sub} is extremely organized, reliable and computer literate, ${pr.sub} can work independently and is able to follow through to ensure that the job gets done, ${pr.sub} is flexible and willing to work on any project that is assigned to ${pr.obj}.</p>
+<p class="bt">As you can tell by now, I am quite impressed with this outstanding young ${pr.adj} and give ${pr.obj} my strongest recommendation for roles that require intelligence, organization, communication skills, service and a positive attitude. <strong>${name}</strong> would be a tremendous asset to your Company and has my highest recommendation. Please feel free to contact us if you need additional information or perspective on <strong>ten.hr.contact@gmail.com</strong>.</p>
+<p class="bt">Sincerely,</p>
+<div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div>
+<div class="ft">📧 EMAIL ID: ten.hr.contact@gmail.com</div></div></body></html>`);
+  w.document.close();
+}
+
+/* STAR PERFORMER */
+function generateStarCert(){
+  const name=document.getElementById('star-name').value.trim(),empId=document.getElementById('star-empid').value.trim(),certId=document.getElementById('star-certid').value.trim()||'TEN/DOC/—',tenure=document.getElementById('star-tenure').value.trim();
+  if(!name){Swal.fire({title:'Missing Info',text:'Enter student name.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Star Performer - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111;font-family:'Times New Roman',serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:297mm;height:200mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column}.bl{position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.br2{position:absolute;right:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.bl::before,.br2::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#c9a227,#f5c542,#c9a227)}.bl::before{left:7px}.br2::before{right:7px}.tr{position:absolute;top:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.btr{position:absolute;bottom:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.content{padding:16px 70px;text-align:center;width:100%}.cs{font-family:'Dancing Script',cursive;font-size:50px;color:#1a1a1a;display:block}.cst{font-size:12px;font-weight:900;letter-spacing:6px;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px}.at{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#999;margin-bottom:3px}.stn{font-family:'Cinzel Decorative','Cinzel',serif;font-size:34px;font-weight:900;color:#1a1a1a;display:block;margin:4px 0 6px}.nu{border-bottom:2px solid #c9a227;width:60%;margin:0 auto 10px}.awtxt{font-size:13px;color:#444;line-height:1.6;max-width:480px;margin:0 auto 10px}.mr{font-size:12px;font-weight:700;color:#333;margin-bottom:14px}.br3{display:flex;justify-content:space-between;align-items:flex-end;width:100%;padding:0 16px}.sc{width:78px;height:78px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#c9a227;text-align:center}.sga{text-align:center}.sgn{font-family:'Dancing Script',cursive;font-size:30px;color:#000;display:block}.sgl{border-bottom:1px solid #000;width:150px;margin:2px auto 4px}.sgd{font-size:11px;font-weight:700;color:#333}.cid{position:absolute;bottom:10px;right:56px;font-size:10px;font-weight:700;color:#999;letter-spacing:1px}.star-badge{position:absolute;top:12px;right:60px;width:58px;height:58px;background:linear-gradient(135deg,#c9a227,#f5c542);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 18px rgba(201,162,39,0.5)}@media print{body{background:#fff}.np{display:none}.cert{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Browser Print → Save as PDF</span></div>
+<div class="cert"><div class="bl"></div><div class="br2"></div><div class="tr"></div><div class="btr"></div>
+<div class="star-badge">⭐</div>
+<div class="content"><span class="cs">Certificate</span><div class="cst">of Star Performer</div>
+<div class="at">This is awarded to:</div>
+<span class="stn">${name}</span><div class="nu"></div>
+<p class="awtxt">to commend your excellent performance.<br>Thank you for your untiring efforts in delivering quality work.</p>
+<div class="mr">Tenure:- ${tenure||'—'} &nbsp;&nbsp;&nbsp; Employee Id:- ${empId||'—'}</div>
+<div class="br3"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sga"><span class="sgn">Kamlesh Gupta</span><div class="sgl"></div><div class="sgd">Kamlesh Gupta</div><div class="sgd">Director</div><div class="sgd">The Entrepreneurship Network</div></div></div></div>
+<div class="cid">Certificate ID: ${certId}</div></div></body></html>`);
+  w.document.close();
+}
+
+loadOverview();
+</script>
+</body>
+</html>

@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEN — Coordinator Dashboard</title>
+<link rel="stylesheet" href="ten-theme.css">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+
+:root {
+  --bg: #05070e;
+  --surface: #090d1a;
+  --surface2: #0e1428;
+  --border: rgba(212,175,55,0.08);
+  --border-glow: rgba(212,175,55,0.22);
+  --accent: #4f9fff;
+  --accent2: #7c3aed;
+  --gold: #D4AF37;
+  --cyan: #22d3ee;
+  --green: #10b981;
+  --red: #f43f5e;
+  --amber: #f59e0b;
+  --text: #e2eaf7;
+  --muted: #5a6a84;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content:"";
+  position:fixed;
+  inset:0;
+  background-image: linear-gradient(rgba(212,175,55,0.025) 1px,transparent 1px), linear-gradient(90deg,rgba(212,175,55,0.025) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;
+  z-index:0;
+}
+
+.page-wrap {
+  position:relative;
+  z-index:1;
+  padding:28px 32px;
+  max-width:1400px;
+  margin:0 auto;
+}
+
+.topbar {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:36px;
+  flex-wrap:wrap;
+  gap:12px;
+}
+
+.logo-mark { display:flex; align-items:center; gap:12px; }
+.logo-icon { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 0 24px rgba(212,175,55,0.2); }
+.logo-text { font-family:var(--font-display); font-size:20px; font-weight:800; letter-spacing:-0.5px; color:white; }
+.logo-text span { color:var(--accent); }
+
+.topbar-btns { display:flex; gap:10px; flex-wrap:wrap; }
+
+.refresh-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 22px;
+  background:var(--surface);
+  color:var(--accent);
+  border:1px solid var(--border-glow);
+  border-radius:10px;
+  cursor:pointer;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:14px;
+  transition:all 0.2s ease;
+}
+.refresh-btn:hover { background:rgba(79,159,255,0.08); border-color:var(--accent); }
+
+.logout-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 22px;
+  background:rgba(244,63,94,0.1);
+  color:var(--red);
+  border:1px solid rgba(244,63,94,0.25);
+  border-radius:10px;
+  cursor:pointer;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:14px;
+  transition:all 0.2s ease;
+}
+.logout-btn:hover { background:rgba(244,63,94,0.18); }
+
+/* Banner */
+.banner {
+  position:relative;
+  padding:44px 48px;
+  border-radius:24px;
+  margin-bottom:28px;
+  overflow:hidden;
+  background:linear-gradient(135deg,#08100e 0%,#0b1520 50%,#080f1a 100%);
+  border:1px solid var(--border-glow);
+  animation:fadeUp 0.5s ease both;
+}
+.banner::before { content:""; position:absolute; inset:0; background:linear-gradient(120deg,rgba(79,159,255,0.12) 0%,transparent 60%); }
+.banner-glow { position:absolute; width:400px; height:400px; border-radius:50%; background:radial-gradient(circle,rgba(124,58,237,0.18) 0%,transparent 65%); top:-150px; right:-100px; pointer-events:none; }
+.banner-accent-line { position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,#D4AF37,var(--accent),transparent); }
+.banner-content { position:relative; z-index:2; }
+.banner-eyebrow { font-size:12px; font-weight:500; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.banner-eyebrow::before { content:""; display:inline-block; width:24px; height:1px; background:var(--accent); }
+.banner h1 { font-family:var(--font-display); font-size:clamp(36px,5vw,62px); font-weight:800; letter-spacing:-2px; line-height:1; color:white; margin-bottom:14px; }
+.banner h1 span { background:linear-gradient(90deg,var(--accent),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.banner p { font-size:17px; color:rgba(226,234,247,0.65); font-weight:300; }
+
+/* Stats Grid */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:28px; animation:fadeUp 0.5s 0.1s ease both; }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:26px 28px; position:relative; overflow:hidden; transition:all 0.25s ease; }
+.stat-card:hover { border-color:var(--border-glow); transform:translateY(-2px); }
+.stat-card::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--stat-color,var(--accent)),transparent); }
+.stat-card:nth-child(1) { --stat-color:#D4AF37; }
+.stat-card:nth-child(2) { --stat-color:var(--green); }
+.stat-card:nth-child(3) { --stat-color:var(--red); }
+.stat-card:nth-child(4) { --stat-color:var(--cyan); }
+.stat-icon { font-size:22px; margin-bottom:14px; display:inline-block; }
+.stat-label { font-size:12px; font-weight:500; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+.stat-value { font-family:var(--font-display); font-size:46px; font-weight:800; color:var(--stat-color,var(--accent)); letter-spacing:-2px; }
+
+/* Tab nav */
+.tab-nav { display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap; }
+.tab-btn {
+  padding:10px 22px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--muted);
+  cursor:pointer;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:13px;
+  transition:all 0.2s;
+}
+.tab-btn.active {
+  background:rgba(79,159,255,0.12);
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.tab-section { display:none; }
+.tab-section.active { display:block; }
+
+/* Notice Card */
+.notice-card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:32px 36px; margin-bottom:28px; animation:fadeUp 0.5s 0.18s ease both; }
+.section-header { display:flex; align-items:center; gap:14px; margin-bottom:28px; }
+.section-icon { width:44px; height:44px; background:rgba(79,159,255,0.1); border:1px solid rgba(79,159,255,0.2); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+.section-title { font-family:var(--font-display); font-size:20px; font-weight:700; color:white; }
+
+.form-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; margin-bottom:24px; }
+.form-group { display:flex; flex-direction:column; gap:8px; }
+.form-group.full { grid-column:1/-1; }
+.form-label { font-size:12px; font-weight:500; color:var(--muted); letter-spacing:1.2px; text-transform:uppercase; }
+.form-group input, .form-group textarea, .form-group select {
+  background:rgba(13,21,37,0.8);
+  border:1px solid var(--border-glow);
+  border-radius:12px;
+  padding:14px 16px;
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:14px;
+  outline:none;
+  transition:all 0.2s ease;
+}
+.form-group textarea { resize:vertical; min-height:100px; }
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color:var(--accent); background:rgba(79,159,255,0.04); }
+
+/* Buttons */
+.btn {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:14px 28px;
+  border-radius:12px;
+  border:none;
+  cursor:pointer;
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:14px;
+  transition:all 0.2s ease;
+}
+.btn-primary { background:linear-gradient(135deg,var(--accent),#3b82f6); color:white; box-shadow:0 4px 20px rgba(79,159,255,0.3); }
+.btn-primary:hover { box-shadow:0 6px 28px rgba(79,159,255,0.45); transform:translateY(-1px); }
+.btn-approve { background:rgba(16,185,129,0.12); color:var(--green); border:1px solid rgba(16,185,129,0.3); }
+.btn-approve:hover { background:rgba(16,185,129,0.22); }
+.btn-reject { background:rgba(244,63,94,0.1); color:var(--red); border:1px solid rgba(244,63,94,0.25); }
+.btn-reject:hover { background:rgba(244,63,94,0.2); }
+.btn-locked { background:rgba(90,106,132,0.12); color:var(--muted); border:1px solid rgba(90,106,132,0.2); cursor:not-allowed; opacity:0.7; }
+.btn-amber { background:rgba(245,158,11,0.1); color:var(--amber); border:1px solid rgba(245,158,11,0.25); }
+.btn-amber:hover { background:rgba(245,158,11,0.2); }
+
+/* Submissions */
+.submission-wrapper { animation:fadeUp 0.5s 0.26s ease both; }
+.submission-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.submission-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:28px; margin-bottom:16px; transition:all 0.25s ease; }
+.submission-card:hover { border-color:rgba(212,175,55,0.2); }
+.submission-card:hover { border-color:var(--border-glow); }
+.submission-card.reviewed-card { border-left:3px solid var(--green); }
+.submission-card.reviewed-rejected { border-left:3px solid var(--red); }
+.card-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.card-employee { display:flex; align-items:center; gap:14px; }
+.employee-avatar { width:44px; height:44px; background:linear-gradient(135deg,var(--accent),var(--accent2)); border-radius:14px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:800; font-size:18px; color:white; }
+.employee-id { font-family:var(--font-display); font-weight:700; font-size:16px; color:white; }
+.employee-domain { font-size:12px; color:var(--muted); margin-top:2px; }
+.status-pill { padding:6px 16px; border-radius:20px; font-size:12px; font-weight:700; font-family:var(--font-display); letter-spacing:0.5px; text-transform:uppercase; }
+.approved { background:rgba(16,185,129,0.15); color:var(--green); border:1px solid rgba(16,185,129,0.3); }
+.rejected { background:rgba(244,63,94,0.12); color:var(--red); border:1px solid rgba(244,63,94,0.25); }
+.pending { background:rgba(245,158,11,0.12); color:var(--amber); border:1px solid rgba(245,158,11,0.25); }
+.info-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-bottom:16px; }
+.info-chip { background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px 16px; }
+.info-chip-label { font-size:10px; font-weight:600; color:var(--muted); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+.info-chip-value { font-family:var(--font-display); font-size:15px; font-weight:700; color:var(--text); }
+.links-row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.link-chip { padding:8px 16px; background:rgba(79,159,255,0.08); border:1px solid var(--border-glow); border-radius:8px; color:var(--accent); font-size:13px; text-decoration:none; transition:all 0.2s; }
+.link-chip:hover { background:rgba(79,159,255,0.16); }
+.feedback-area { background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:18px; }
+.feedback-label { font-size:11px; font-weight:600; color:var(--muted); letter-spacing:1.2px; text-transform:uppercase; margin-bottom:10px; }
+.feedback-area textarea { width:100%; background:rgba(4,7,15,0.6); border:1px solid var(--border); border-radius:10px; padding:12px 14px; color:var(--text); font-family:var(--font-body); font-size:13px; resize:vertical; min-height:80px; outline:none; }
+.feedback-area textarea:focus { border-color:var(--accent); }
+.feedback-actions { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+.locked-notice { font-size:12px; color:var(--amber); display:flex; align-items:center; gap:6px; margin-top:10px; padding:8px 14px; background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:8px; }
+
+/* Empty state */
+.empty-state { text-align:center; padding:60px 20px; }
+.empty-icon { font-size:48px; margin-bottom:16px; opacity:0.4; }
+.empty-text { font-family:var(--font-display); font-size:20px; font-weight:700; color:var(--muted); margin-bottom:8px; }
+.empty-sub { font-size:14px; color:rgba(90,106,132,0.7); }
+
+/* Test Section */
+.test-section { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:32px 36px; margin-bottom:24px; }
+.question-block { background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:20px; margin-bottom:16px; position:relative; }
+.q-number { font-family:var(--font-display); font-weight:800; color:var(--accent); font-size:13px; letter-spacing:1px; text-transform:uppercase; margin-bottom:12px; }
+.q-input { width:100%; background:rgba(4,7,15,0.6); border:1px solid var(--border-glow); border-radius:10px; padding:12px 14px; color:var(--text); font-family:var(--font-body); font-size:14px; outline:none; margin-bottom:12px; }
+.q-input:focus { border-color:var(--accent); }
+.options-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.option-wrap { display:flex; gap:8px; align-items:center; }
+.option-label { font-size:12px; color:var(--muted); font-weight:600; white-space:nowrap; min-width:30px; }
+.correct-select { background:rgba(13,21,37,0.8); border:1px solid var(--border-glow); border-radius:10px; padding:8px 12px; color:var(--text); font-size:13px; outline:none; }
+.remove-q-btn { position:absolute; top:16px; right:16px; background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.25); color:var(--red); border-radius:8px; padding:6px 12px; cursor:pointer; font-size:12px; }
+
+/* Leaderboard */
+.leaderboard-table { width:100%; border-collapse:collapse; margin-top:16px; }
+.leaderboard-table th { text-align:left; padding:12px 16px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:1.2px; text-transform:uppercase; border-bottom:1px solid var(--border); }
+.leaderboard-table td { padding:14px 16px; border-bottom:1px solid var(--border); font-size:14px; }
+.rank-badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; font-family:var(--font-display); font-weight:800; font-size:13px; }
+.rank-1 { background:linear-gradient(135deg,#f59e0b,#d97706); color:white; }
+.rank-2 { background:linear-gradient(135deg,#94a3b8,#64748b); color:white; }
+.rank-3 { background:linear-gradient(135deg,#cd7c2f,#b45309); color:white; }
+.rank-other { background:var(--surface2); color:var(--muted); }
+.score-bar-wrap { display:flex; align-items:center; gap:10px; }
+.score-bar-bg { flex:1; height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+.score-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--cyan)); border-radius:3px; }
+
+/* SSE indicator */
+.sse-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green); margin-right:6px; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.4; } }
+
+/* Animations */
+@keyframes fadeUp { from{ opacity:0; transform:translateY(18px); } to{ opacity:1; transform:translateY(0); } }
+
+@media (max-width:768px) {
+  .page-wrap { padding:16px; }
+  .topbar { flex-direction:column; align-items:flex-start; }
+  .form-grid { grid-template-columns:1fr; }
+  .feedback-actions { flex-direction:column; }
+  .btn { width:100%; justify-content:center; }
+  .options-grid { grid-template-columns:1fr; }
+}
+
+/* ── Notification Bell + Panel ── */
+.notif-bell-btn {
+  position: relative;
+  display:flex; align-items:center; gap:8px;
+  padding:10px 18px;
+  background:var(--surface);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:10px;
+  cursor:pointer;
+  font-family:var(--font-display);
+  font-weight:700; font-size:14px;
+  transition:all 0.2s;
+}
+.notif-bell-btn:hover { background:rgba(79,159,255,0.08); border-color:var(--accent); }
+.notif-badge {
+  background:#f43f5e; color:white;
+  width:18px; height:18px; border-radius:50%;
+  font-size:10px; font-weight:800;
+  display:none; align-items:center; justify-content:center;
+}
+.notif-panel {
+  position:fixed; top:0; right:-420px; bottom:0;
+  width:400px; background:var(--surface2);
+  border-left:1px solid var(--border-glow);
+  z-index:1000; transition:right 0.35s cubic-bezier(.4,0,.2,1);
+  display:flex; flex-direction:column;
+  box-shadow:-8px 0 40px rgba(0,0,0,0.5);
+}
+.notif-panel.open { right:0; }
+.notif-panel-header {
+  padding:24px 20px 18px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.notif-panel-title { font-family:var(--font-display); font-size:18px; font-weight:800; }
+.notif-close-btn {
+  width:32px; height:32px; background:var(--surface);
+  border:1px solid var(--border); border-radius:8px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--muted); font-size:16px; transition:all 0.2s;
+}
+.notif-close-btn:hover { color:var(--text); }
+.notif-scroll { flex:1; overflow-y:auto; padding:12px 16px; }
+.notif-card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:12px; padding:14px 16px; margin-bottom:10px;
+  cursor:pointer; transition:all 0.2s;
+}
+.notif-card.unread { border-left:3px solid var(--accent); }
+.notif-card.type-success { border-left-color:var(--green); }
+.notif-card.type-warning { border-left-color:var(--amber); }
+.notif-card.type-urgent { border-left-color:var(--red); }
+.nc-from { font-size:11px; color:var(--accent); font-weight:700; margin-bottom:4px; }
+.nc-title { font-size:14px; font-weight:700; margin-bottom:4px; }
+.nc-msg { font-size:12px; color:var(--muted); line-height:1.5; }
+.nc-time { font-size:11px; color:var(--muted); margin-top:6px; }
+.notif-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; }
+.notif-overlay.show { display:block; }
+.notif-empty { text-align:center; padding:60px 20px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="logo-mark">
+      <div class="logo-icon" style="background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);">
+        <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
+          <path d="M2 7C2 5.34 3.34 4 5 4C6.66 4 8 5.34 8 7C8 8.66 6.66 10 5 10C3.34 10 2 8.66 2 7Z" stroke="#D4AF37" stroke-width="1.6" fill="none"/>
+          <path d="M8 7C8 5.34 9.34 4 11 4C12.66 4 14 5.34 14 7C14 8.66 12.66 10 11 10C9.34 10 8 8.66 8 7Z" stroke="#D4AF37" stroke-width="1.6" fill="none"/>
+          <path d="M3 17C3 14 5 12 6 12L7 15L6 17Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M19 17C19 14 17 12 16 12L15 15L16 17Z" fill="#D4AF37" opacity="0.75"/>
+        </svg>
+      </div>
+      <div class="logo-text" style="font-family:var(--font-display);">TEN <span style="color:#D4AF37;">Coordinator</span></div>
+    </div>
+    <!-- Notification Panel -->
+    <div class="notif-overlay" id="notifOverlay" onclick="closeCoordNotif()"></div>
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-panel-header">
+        <div class="notif-panel-title">🔔 Notifications</div>
+        <button class="notif-close-btn" onclick="closeCoordNotif()">✕</button>
+      </div>
+      <div class="notif-scroll" id="notifScroll">
+        <div class="notif-empty">No notifications yet</div>
+      </div>
+    </div>
+
+    <div class="topbar-btns">
+      <button class="notif-bell-btn" onclick="toggleCoordNotif()">
+        🔔 Notifications <span class="notif-badge" id="notifBadge"></span>
+      </button>
+      <button class="refresh-btn" onclick="loadSubmissions()">
+        <span>↻</span> Refresh Data
+      </button>
+      <button class="logout-btn" onclick="doLogout()">🚪 Logout</button>
+    </div>
+  </div>
+
+  <!-- Banner -->
+  <div class="banner">
+    <div class="banner-accent-line"></div>
+    <div class="banner-glow"></div>
+    <div class="banner-content">
+      <div class="banner-eyebrow">Command Center</div>
+      <h1>Coordinator <span>Dashboard</span></h1>
+      <p id="domainTitle">Managing submissions dynamically</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">📋</div>
+      <div class="stat-label">Total Submissions</div>
+      <div class="stat-value" id="totalStudents">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-label">Approved Tasks</div>
+      <div class="stat-value" id="approvedTasks">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">❌</div>
+      <div class="stat-label">Rejected Tasks</div>
+      <div class="stat-value" id="rejectedTasks">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🎯</div>
+      <div class="stat-label">Attendance Given</div>
+      <div class="stat-value" id="attendanceCount">0</div>
+    </div>
+  </div>
+
+  <!-- Tab Nav -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('submissions')">📂 Submissions</button>
+    <button class="tab-btn" onclick="switchTab('notice')">📢 Notice Board</button>
+    <button class="tab-btn" onclick="switchTab('test')">📝 Test Manager</button>
+    <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Leaderboard</button>
+    <button class="tab-btn" onclick="switchTab('tasks')">📋 Task Manager</button>
+  </div>
+
+  <!-- TAB: Submissions -->
+  <div class="tab-section active" id="tab-submissions">
+    <div class="submission-wrapper">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="text" id="submissionSearch" placeholder="🔍 Search by Employee ID, task, status..." oninput="filterSubmissions()"
+          style="flex:1;min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);border-radius:10px;padding:10px 14px;color:white;font-size:14px;outline:none;">
+        <select id="submissionStatusFilter" onchange="filterSubmissions()"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);border-radius:10px;padding:10px 14px;color:white;font-size:14px;outline:none;">
+          <option value="">All Status</option>
+          <option value="Pending">⏳ Pending Review</option>
+          <option value="Approved">✅ Approved</option>
+          <option value="Rejected">❌ Rejected</option>
+        </select>
+      </div>
+      <div id="submissionContainer"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Notice Board -->
+  <div class="tab-section" id="tab-notice">
+    <div class="notice-card">
+      <div class="section-header">
+        <div class="section-icon">📢</div>
+        <div class="section-title">
+          <span class="sse-dot" id="sseDot" title="Live sync active"></span>
+          Edit Meeting Notice
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Morning Meeting Time</div>
+          <input type="text" id="morningMeeting" placeholder="e.g. 9:00 AM" />
+        </div>
+        <div class="form-group">
+          <div class="form-label">Evening Meeting Time</div>
+          <input type="text" id="eveningMeeting" placeholder="e.g. 6:00 PM" />
+        </div>
+        <div class="form-group full">
+          <div class="form-label">Google Meet Link</div>
+          <input type="text" id="meetingLink" placeholder="https://meet.google.com/..." />
+        </div>
+        <div class="form-group full">
+          <div class="form-label">Important Notice</div>
+          <textarea id="importantNotice" placeholder="Write important notice here..."></textarea>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="updateNotice()">🚀 Update Notice</button>
+      <p style="margin-top:12px;font-size:12px;color:var(--muted);">
+        ℹ️ After clicking Update Notice, this page will auto-refresh with the latest data. All students in your domain will also receive the update instantly.
+      </p>
+    </div>
+  </div>
+
+  <!-- TAB: Test Manager -->
+  <div class="tab-section" id="tab-test">
+    <div class="test-section">
+      <div class="section-header">
+        <div class="section-icon">📝</div>
+        <div class="section-title">Create / Update Test Questions</div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">
+        Create MCQ questions for your domain. Students must have their camera ON to give the test. Once you save, all students in your domain will see the updated test.
+      </p>
+      <div id="questionsContainer"></div>
+      <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
+        <button class="btn btn-amber" onclick="addQuestion()">➕ Add Question</button>
+        <button class="btn btn-primary" onclick="saveTestQuestions()">💾 Save Test</button>
+        <button class="btn" style="background:rgba(34,211,238,0.1);color:var(--cyan);border:1px solid rgba(34,211,238,0.25);" onclick="loadExistingQuestions()">🔄 Load Existing</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: Leaderboard -->
+  <div class="tab-section" id="tab-leaderboard">
+    <div class="test-section">
+      <div class="section-header">
+        <div class="section-icon">🏆</div>
+        <div class="section-title">Test Leaderboard — <span id="lbDomainLabel" style="color:var(--accent)"></span></div>
+      </div>
+      <div id="leaderboardContainer"><p style="color:var(--muted)">Loading leaderboard...</p></div>
+    </div>
+  </div>
+
+  <!-- ── TASK MANAGER TAB ── -->
+  <div class="tab-section" id="tab-tasks">
+    <div class="test-section">
+      <div class="section-header">
+        <div class="section-icon">📋</div>
+        <div class="section-title">Task Manager — Tasks for Your Domain Students</div>
+      </div>
+      <p style="color:var(--muted);margin-bottom:20px;font-size:14px;">Add tasks and/or upload a file. Students in your domain will see them on their dashboard.</p>
+
+      <!-- Task text inputs -->
+      <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">📝 Task List</div>
+      <div id="taskInputList" style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;"></div>
+      <button onclick="addTaskInput()" style="background:rgba(79,159,255,0.08);border:1px dashed rgba(79,159,255,0.4);color:var(--accent);padding:10px 20px;border-radius:10px;cursor:pointer;font-size:14px;width:100%;margin-bottom:20px;">+ Add Another Task</button>
+      <button onclick="saveCoordinatorTasks()" style="background:linear-gradient(135deg,var(--accent),#1d4ed8);color:white;border:none;padding:12px 32px;border-radius:12px;cursor:pointer;font-size:15px;font-weight:600;width:100%;margin-bottom:8px;">💾 Save Tasks for Students</button>
+      <div id="taskSaveStatus" style="margin-bottom:24px;font-size:13px;"></div>
+
+      <!-- File upload section -->
+      <div style="border-top:1px solid rgba(79,159,255,0.15);padding-top:24px;">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">📁 File Upload (PDF, DOCX, etc.)</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">Upload a task file. Students will see a download button on their dashboard.</p>
+
+        <!-- Current file display -->
+        <div id="currentFileDisplay" style="display:none;background:rgba(0,200,83,0.08);border:1px solid rgba(0,200,83,0.25);border-radius:12px;padding:14px;margin-bottom:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:22px;">📄</span>
+            <div>
+              <div id="currentFileName" style="font-weight:600;font-size:14px;color:white;"></div>
+              <div style="font-size:12px;color:var(--muted);">Currently uploaded</div>
+            </div>
+          </div>
+          <button onclick="removeCoordFile()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;">🗑 Remove File</button>
+        </div>
+
+        <label for="coordFileInput" style="display:block;background:rgba(255,255,255,0.04);border:2px dashed rgba(79,159,255,0.3);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:border-color 0.2s;"
+          onmouseover="this.style.borderColor='rgba(79,159,255,0.6)'" onmouseout="this.style.borderColor='rgba(79,159,255,0.3)'">
+          <div style="font-size:36px;margin-bottom:8px;">📂</div>
+          <div style="font-weight:600;color:white;margin-bottom:4px;">Click to choose file</div>
+          <div style="font-size:12px;color:var(--muted);">PDF, DOCX, XLSX, ZIP, etc.</div>
+          <input type="file" id="coordFileInput" style="display:none;" onchange="previewCoordFile(this)">
+        </label>
+        <div id="filePreviewName" style="margin-top:10px;font-size:13px;color:var(--accent);display:none;"></div>
+        <button onclick="uploadCoordFile()" id="uploadFileBtn" style="display:none;background:linear-gradient(135deg,#00c853,#009624);color:white;border:none;padding:12px 32px;border-radius:12px;cursor:pointer;font-size:15px;font-weight:600;width:100%;margin-top:12px;">📤 Upload File for Students</button>
+        <div id="fileUploadStatus" style="margin-top:10px;font-size:13px;"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<div style="text-align:center;padding:20px 0 10px;font-size:12px;color:var(--muted);letter-spacing:1px;">
+  <span style="color:#D4AF37;font-weight:800;font-family:'Syne',sans-serif;letter-spacing:2px;">TEN</span> — The Entrepreneurship Network &nbsp;·&nbsp; Coordinator Portal
+</div>
+
+<script>
+
+const coordinatorDomain = JSON.parse(sessionStorage.getItem("coordinatorDomain"));
+const isLoggedIn = sessionStorage.getItem("coordinatorLoggedIn");
+
+if(isLoggedIn !== "true"){ window.location.href = "coordinator-login.html"; }
+
+const domainStr = Array.isArray(coordinatorDomain)
+  ? coordinatorDomain[0]
+  : (coordinatorDomain || "");
+
+// ── Domain visual config ──
+const domainConfig = {
+  "DevOps with AWS":         { icon:"☁️",  color:"#f59e0b" },
+  "Python Development":      { icon:"🐍",  color:"#3b82f6" },
+  "Java Development":        { icon:"☕",  color:"#ef4444" },
+  "Web Development":         { icon:"🌐",  color:"#8b5cf6" },
+  "MERN Stack Development":  { icon:"⚛️",  color:"#06b6d4" },
+  "Artificial Intelligence": { icon:"🤖",  color:"#10b981" },
+  "Data Science":            { icon:"📊",  color:"#6366f1" },
+  "Cyber Security":          { icon:"🛡️",  color:"#f43f5e" },
+  "Software Engineering":    { icon:"💻",  color:"#14b8a6" },
+  "Flutter Development":     { icon:"📱",  color:"#0ea5e9" }
+};
+const dCfg = domainConfig[domainStr] || { icon:"🎓", color:"#4f9fff" };
+// Apply domain accent color
+document.documentElement.style.setProperty("--accent", dCfg.color);
+
+document.getElementById("domainTitle").innerText = dCfg.icon + "  Managing " + domainStr + " submissions";
+document.getElementById("lbDomainLabel").innerText = domainStr;
+
+// ── SSE: coordinator page auto-refreshes when it pushes a notice update ──
+// We still subscribe so if another coordinator tab pushes, this one refreshes
+let sseSource = null;
+function startSSE(){
+  if(!domainStr) return;
+  try{
+    sseSource = new EventSource("/notice-events/" + encodeURIComponent(domainStr));
+    sseSource.onmessage = function(e){
+      if(e.data && e.data !== "connected"){
+        try{
+          const payload = JSON.parse(e.data);
+          if(payload.event === "notice-updated"){
+            // Reload notice values from server
+            loadNoticeValues();
+          }
+        }catch(_){}
+      }
+    };
+    sseSource.onerror = function(){
+      document.getElementById("sseDot").style.background = "var(--red)";
+    };
+    sseSource.onopen = function(){
+      document.getElementById("sseDot").style.background = "var(--green)";
+    };
+  }catch(e){ console.log("SSE not available"); }
+}
+startSSE();
+
+async function loadNoticeValues(){
+  try{
+    const r = await fetch("/get-notice/" + encodeURIComponent(domainStr));
+    const d = await r.json();
+    if(d.morningMeeting) document.getElementById("morningMeeting").value = d.morningMeeting;
+    if(d.eveningMeeting) document.getElementById("eveningMeeting").value = d.eveningMeeting;
+    if(d.meetingLink)    document.getElementById("meetingLink").value    = d.meetingLink;
+    if(d.importantNotice) document.getElementById("importantNotice").value = d.importantNotice;
+  }catch(e){}
+}
+loadNoticeValues();
+
+// ── Tab switching ──
+function switchTab(name){
+  document.querySelectorAll(".tab-section").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.add("active");
+  event.target.classList.add("active");
+  if(name==="leaderboard"){ loadLeaderboard(); }
+  if(name==="test"){ loadExistingQuestions(); }
+  if(name==="tasks"){ loadCoordTasks(); }
+}
+
+// ── Logout ──
+function doLogout(){
+  sessionStorage.removeItem("coordinatorLoggedIn");
+  sessionStorage.removeItem("coordinatorDomain");
+  window.location.href = "coordinator-login.html";
+}
+
+// ── Helpers ──
+function getStatusClass(status){
+  if(status==="Approved") return "approved";
+  if(status==="Rejected") return "rejected";
+  return "pending";
+}
+function getInitial(id){ return id ? String(id).charAt(0).toUpperCase() : "?"; }
+
+// ── Update Notice ──
+async function updateNotice(){
+  try{
+    const response = await fetch("/update-notice",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        domain: domainStr,
+        morningMeeting: document.getElementById("morningMeeting").value,
+        eveningMeeting: document.getElementById("eveningMeeting").value,
+        meetingLink: document.getElementById("meetingLink").value,
+        importantNotice: document.getElementById("importantNotice").value
+      })
+    });
+    const data = await response.json();
+    if(data.success){
+      Swal.fire({
+        icon:"success", title:"Notice Updated",
+        text:"All students in your domain will see this update instantly! 🚀",
+        background:"#090e1a", color:"#e2eaf7", confirmButtonColor:"#4f9fff",
+        timer:2500, showConfirmButton:false
+      }).then(()=>{
+        // Auto-refresh coordinator page after notice update
+        loadSubmissions();
+        loadNoticeValues();
+      });
+    } else {
+      Swal.fire({icon:"error",title:"Update Failed",background:"#090e1a",color:"#e2eaf7"});
+    }
+  }catch(error){
+    Swal.fire({icon:"error",title:"Server Error",background:"#090e1a",color:"#e2eaf7"});
+  }
+}
+
+// ── Load Submissions ──
+async function loadSubmissions(){
+  try{
+    const response = await fetch("/all-submissions/" + encodeURIComponent(domainStr));
+    const submissions = await response.json();
+    const container = document.getElementById("submissionContainer");
+
+    if(!submissions || submissions.length === 0){
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">No submissions yet</div>
+          <div class="empty-sub">No submissions found for ${domainStr}</div>
+        </div>`;
+      return;
+    }
+
+    document.getElementById("totalStudents").innerText = submissions.length;
+    document.getElementById("approvedTasks").innerText = submissions.filter(s=>s.status==="Approved").length;
+    document.getElementById("rejectedTasks").innerText = submissions.filter(s=>s.status==="Rejected").length;
+    document.getElementById("attendanceCount").innerText = submissions.filter(s=>s.attendanceGiven).length;
+
+    container.innerHTML = submissions.map(sub => {
+      const isReviewed = sub.reviewedOnce === true;
+      const cardClass = isReviewed
+        ? (sub.status==="Approved" ? "submission-card reviewed-card" : "submission-card reviewed-rejected")
+        : "submission-card";
+
+      // Duration-aware attendance display
+      const dur = sub.internshipDuration || "1 Month";
+      let totalDays=20, reqDays=15;
+      if(dur==="3 Months"){ totalDays=60; reqDays=45; }
+      if(dur==="6 Months"){ totalDays=120; reqDays=90; }
+      const attCount = sub.attendanceCount || 0;
+      const attPct = Math.round((attCount/totalDays)*100);
+      const attStatus = attCount >= reqDays ? "✅ 75%+ Met" : `${attPct}% (${attCount}/${totalDays})`;
+
+      return `
+      <div class="${cardClass}">
+        <div class="card-top">
+          <div class="card-employee">
+            <div class="employee-avatar">${getInitial(sub.employeeId)}</div>
+            <div>
+              <div class="employee-id">${sub.employeeId}</div>
+              <div class="employee-domain">${sub.domain} · ${dur}</div>
+            </div>
+          </div>
+          <div class="status-pill ${getStatusClass(sub.status)}">${sub.status}</div>
+        </div>
+        <div class="info-grid">
+          <div class="info-chip">
+            <div class="info-chip-label">Task</div>
+            <div class="info-chip-value">${sub.task || "Submitted Task"}</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Attendance</div>
+            <div class="info-chip-value">${attStatus}</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Duration</div>
+            <div class="info-chip-value">${dur}</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Meetings Joined</div>
+            <div class="info-chip-value">${sub.meetingsJoined||0}</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Performance</div>
+            <div class="info-chip-value">${sub.performance||"B"}</div>
+          </div>
+          <div class="info-chip">
+            <div class="info-chip-label">Review Status</div>
+            <div class="info-chip-value">${isReviewed ? "🔒 Reviewed" : "⏳ Pending Review"}</div>
+          </div>
+        </div>
+        <div class="links-row">
+          <a class="link-chip" href="${sub.githubLink||'#'}" target="_blank">🔗 GitHub</a>
+          <a class="link-chip" href="${sub.image||'#'}" target="_blank">🖼 Screenshot</a>
+          <a class="link-chip" href="${sub.pdf||'#'}" target="_blank">📄 PDF</a>
+        </div>
+        <div class="feedback-area">
+          <div class="feedback-label">Coordinator Feedback</div>
+          ${isReviewed
+            ? `<div style="padding:10px;color:var(--muted);font-size:13px;">📝 ${sub.feedback||"No feedback provided"}</div>
+               <div class="locked-notice">🔒 You have already reviewed this submission (${sub.status}). Reviews are final and cannot be changed.</div>`
+            : `<textarea id="feedback-${sub._id}" placeholder="Write feedback for this submission...">${sub.feedback||""}</textarea>
+               <div class="feedback-actions">
+                 <button class="btn btn-approve" onclick="updateStatus('${sub._id}','Approved')">✅ Approve</button>
+                 <button class="btn btn-reject" onclick="updateStatus('${sub._id}','Rejected')">❌ Reject</button>
+               </div>
+               <p style="font-size:11px;color:var(--muted);margin-top:8px;">⚠️ Once you approve or reject, this decision is permanent and cannot be changed.</p>`
+          }
+        </div>
+      </div>`;
+    }).join('');
+
+  }catch(error){
+    console.log(error);
+  }
+}
+
+// ── Update Status (one-time review) ──
+async function updateStatus(id, status){
+  try{
+    const feedbackEl = document.getElementById("feedback-"+id);
+    const feedback = feedbackEl ? feedbackEl.value : "";
+
+    const confirmed = await Swal.fire({
+      icon:"warning",
+      title: status==="Approved" ? "Approve this submission?" : "Reject this submission?",
+      text:"⚠️ This action is PERMANENT. Once reviewed, you cannot change the decision.",
+      background:"#090e1a", color:"#e2eaf7",
+      showCancelButton:true,
+      confirmButtonText: status==="Approved" ? "Yes, Approve" : "Yes, Reject",
+      cancelButtonText:"Cancel",
+      confirmButtonColor: status==="Approved" ? "#10b981" : "#f43f5e",
+      cancelButtonColor:"#5a6a84"
+    });
+
+    if(!confirmed.isConfirmed) return;
+
+    const response = await fetch("/update-status",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ id, status, feedback, domain:domainStr })
+    });
+    const data = await response.json();
+
+    if(data.success){
+      Swal.fire({icon:"success",title:"Task "+status,text:"Decision recorded. This review is now locked. 🔒",background:"#090e1a",color:"#e2eaf7",confirmButtonColor:"#4f9fff"});
+      loadSubmissions();
+    } else if(data.alreadyReviewed){
+      Swal.fire({icon:"warning",title:"Already Reviewed",text:"This submission has already been reviewed. Reviews are final.",background:"#090e1a",color:"#e2eaf7",confirmButtonColor:"#f59e0b"});
+    } else {
+      Swal.fire({icon:"error",title:"Update Failed",background:"#090e1a",color:"#e2eaf7"});
+    }
+  }catch(error){
+    Swal.fire({icon:"warning",title:"Server Error",background:"#090e1a",color:"#e2eaf7"});
+  }
+}
+
+// ── Test Manager ──
+let questionCount = 0;
+
+function addQuestion(q){
+  questionCount++;
+  const idx = questionCount;
+  const container = document.getElementById("questionsContainer");
+  const div = document.createElement("div");
+  div.className = "question-block";
+  div.id = "q-block-"+idx;
+  div.innerHTML = `
+    <div class="q-number">Question ${idx}</div>
+    <button class="remove-q-btn" onclick="removeQuestion(${idx})">🗑 Remove</button>
+    <input class="q-input" id="q-text-${idx}" placeholder="Enter question text..." value="${q?.question||""}">
+    <div class="options-grid">
+      <div class="option-wrap"><span class="option-label">A)</span><input class="q-input" id="q-opt-${idx}-0" placeholder="Option A" value="${q?.options?.[0]||""}"></div>
+      <div class="option-wrap"><span class="option-label">B)</span><input class="q-input" id="q-opt-${idx}-1" placeholder="Option B" value="${q?.options?.[1]||""}"></div>
+      <div class="option-wrap"><span class="option-label">C)</span><input class="q-input" id="q-opt-${idx}-2" placeholder="Option C" value="${q?.options?.[2]||""}"></div>
+      <div class="option-wrap"><span class="option-label">D)</span><input class="q-input" id="q-opt-${idx}-3" placeholder="Option D" value="${q?.options?.[3]||""}"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="form-label" style="white-space:nowrap;">Correct Answer:</span>
+      <select class="correct-select" id="q-ans-${idx}">
+        <option value="0" ${q?.correctAnswer===0?"selected":""}>A</option>
+        <option value="1" ${q?.correctAnswer===1?"selected":""}>B</option>
+        <option value="2" ${q?.correctAnswer===2?"selected":""}>C</option>
+        <option value="3" ${q?.correctAnswer===3?"selected":""}>D</option>
+      </select>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function removeQuestion(idx){
+  const el = document.getElementById("q-block-"+idx);
+  if(el) el.remove();
+}
+
+async function loadExistingQuestions(){
+  try{
+    const r = await fetch("/get-test-questions/"+encodeURIComponent(domainStr));
+    const d = await r.json();
+    if(d.success && d.questions.length > 0){
+      document.getElementById("questionsContainer").innerHTML = "";
+      questionCount = 0;
+      // Note: questions come without correctAnswer for student endpoint, so coordinator uses a special approach
+      // We load from server with correct answers (need a coordinator-specific endpoint)
+      // For now load structure — correct answer not revealed, coordinator can re-set
+      d.questions.forEach(q => addQuestion(q));
+    }
+  }catch(e){ console.log(e); }
+}
+
+async function saveTestQuestions(){
+  const blocks = document.querySelectorAll(".question-block");
+  if(blocks.length === 0){
+    Swal.fire({icon:"warning",title:"No Questions",text:"Add at least one question before saving.",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+
+  const questions = [];
+  let valid = true;
+
+  blocks.forEach((block, i) => {
+    const idx = block.id.replace("q-block-","");
+    const question = document.getElementById("q-text-"+idx)?.value?.trim();
+    const options = [0,1,2,3].map(j => document.getElementById("q-opt-"+idx+"-"+j)?.value?.trim()||"");
+    const correctAnswer = parseInt(document.getElementById("q-ans-"+idx)?.value||"0");
+
+    if(!question || options.some(o=>!o)){
+      valid = false;
+      Swal.fire({icon:"error",title:"Incomplete Question",text:`Question ${i+1} is missing text or options.`,background:"#090e1a",color:"#e2eaf7"});
+      return;
+    }
+    questions.push({ question, options, correctAnswer });
+  });
+
+  if(!valid) return;
+
+  try{
+    const r = await fetch("/save-test-questions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ domain:domainStr, questions })
+    });
+    const d = await r.json();
+    if(d.success){
+      Swal.fire({icon:"success",title:"Test Saved!",text:"Students can now take this test from their portal. 🎉",background:"#090e1a",color:"#e2eaf7",confirmButtonColor:"#4f9fff"});
+    } else {
+      Swal.fire({icon:"error",title:"Save Failed",background:"#090e1a",color:"#e2eaf7"});
+    }
+  }catch(e){
+    Swal.fire({icon:"error",title:"Server Error",background:"#090e1a",color:"#e2eaf7"});
+  }
+}
+
+// ── Leaderboard ──
+async function loadLeaderboard(){
+  try{
+    const r = await fetch("/test-leaderboard/"+encodeURIComponent(domainStr));
+    const d = await r.json();
+    const container = document.getElementById("leaderboardContainer");
+    if(!d.success || d.leaderboard.length===0){
+      container.innerHTML = `<div class="empty-state"><div class="empty-icon">🏆</div><div class="empty-text">No test results yet</div><div class="empty-sub">Students haven't taken the test yet.</div></div>`;
+      return;
+    }
+    container.innerHTML = `
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Student Name</th>
+            <th>Employee ID</th>
+            <th>Score</th>
+            <th>Percentage</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${d.leaderboard.map((r,i)=>`
+            <tr>
+              <td><span class="rank-badge ${i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other'}">${i+1}</span></td>
+              <td style="font-weight:600;">${r.studentName}</td>
+              <td style="color:var(--muted);font-size:13px;">${r.employeeId}</td>
+              <td>${r.score}/${r.totalQuestions}</td>
+              <td>
+                <div class="score-bar-wrap">
+                  <div class="score-bar-bg"><div class="score-bar-fill" style="width:${r.percentage}%"></div></div>
+                  <span style="font-weight:700;color:var(--accent);font-size:13px;">${r.percentage}%</span>
+                </div>
+              </td>
+              <td style="color:var(--muted);font-size:12px;">${new Date(r.submittedAt).toLocaleDateString()}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }catch(e){ console.log(e); }
+}
+
+loadSubmissions();
+
+
+
+// ── Coordinator Notification System ──
+let coordNotifOpen = false;
+let coordNotifData = [];
+const coordDomain = domainStr;
+
+function toggleCoordNotif(){
+  coordNotifOpen ? closeCoordNotif() : openCoordNotif();
+}
+function openCoordNotif(){
+  coordNotifOpen = true;
+  document.getElementById('notifPanel').classList.add('open');
+  document.getElementById('notifOverlay').classList.add('show');
+  loadCoordNotifications();
+}
+function closeCoordNotif(){
+  coordNotifOpen = false;
+  document.getElementById('notifPanel').classList.remove('open');
+  document.getElementById('notifOverlay').classList.remove('show');
+}
+
+async function loadCoordNotifications(){
+  try{
+    const r = await fetch('/notifications/coordinator/' + encodeURIComponent(coordDomain));
+    const d = await r.json();
+    coordNotifData = d.notifications || [];
+    updateCoordBadge(d.unread || 0);
+    renderCoordNotifications();
+  }catch(e){}
+}
+
+function updateCoordBadge(count){
+  const badge = document.getElementById('notifBadge');
+  if(count > 0){ badge.style.display = 'flex'; badge.textContent = count > 99 ? '99+' : count; }
+  else { badge.style.display = 'none'; }
+}
+
+function renderCoordNotifications(){
+  const scroll = document.getElementById('notifScroll');
+  if(!coordNotifData.length){
+    scroll.innerHTML = '<div class="notif-empty">No notifications from HR yet</div>';
+    return;
+  }
+  const readerId = 'coord:' + coordDomain;
+  scroll.innerHTML = coordNotifData.map(n=>{
+    const isUnread = !n.readBy.includes(readerId);
+    return `<div class="notif-card ${isUnread?'unread':''} type-${n.type||'info'}" onclick="markCoordRead('${n._id}',this,'${readerId}')">
+      <div class="nc-from">From: ${n.from||'HR'}</div>
+      <div class="nc-title">${n.title}</div>
+      <div class="nc-msg">${n.message}</div>
+      <div class="nc-time">${new Date(n.createdAt).toLocaleString('en-IN')}</div>
+    </div>`;
+  }).join('');
+}
+
+async function markCoordRead(id, el, readerId){
+  if(!el.classList.contains('unread')) return;
+  try{
+    await fetch('/notifications/mark-read',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({notifId:id,readerId})
+    });
+    el.classList.remove('unread');
+    const badge = document.getElementById('notifBadge');
+    const cur = parseInt(badge.textContent)||0;
+    updateCoordBadge(Math.max(0,cur-1));
+  }catch(e){}
+}
+
+// Extended SSE for coordinator
+function startCoordSSE(){
+  try{
+    const src = new EventSource('/coord-events/' + encodeURIComponent(coordDomain));
+    src.onmessage = function(e){
+      if(!e.data || e.data==='connected') return;
+      try{
+        const payload = JSON.parse(e.data);
+        if(payload.event === 'notification'){
+          const n = payload.notification;
+          Swal.fire({
+            toast:true,position:'top-end',showConfirmButton:false,timer:4000,
+            icon: n.type==='success'?'success':n.type==='warning'||n.type==='urgent'?'warning':'info',
+            title:n.title, text:n.message,
+            background:'#090e1a',color:'#e2eaf7'
+          });
+          loadCoordNotifications();
+        }
+        if(payload.event==='notice-updated'){ /* notice updated for students */ }
+      }catch(_){}
+    };
+  }catch(e){}
+}
+
+loadCoordNotifications();
+startCoordSSE();
+
+
+// ══════════════════════════════════════════════
+// TASK MANAGER
+// ══════════════════════════════════════════════
+async function loadCoordTasks(){
+  try{
+    const res = await fetch("/coordinator/tasks/" + encodeURIComponent(domainStr));
+    const data = await res.json();
+    const tasks = data.tasks || [];
+    // Load text tasks
+    const list = document.getElementById("taskInputList");
+    list.innerHTML = "";
+    if(tasks.length === 0){ addTaskInput(); }
+    else { tasks.forEach(t => addTaskInput(t)); }
+    // Show current file if any
+    const fileDisplay = document.getElementById("currentFileDisplay");
+    if(data.fileUrl && data.fileName){
+      document.getElementById("currentFileName").textContent = data.fileName;
+      fileDisplay.style.display = "flex";
+    } else {
+      fileDisplay.style.display = "none";
+    }
+  }catch(e){ addTaskInput(); }
+}
+
+function addTaskInput(value=""){
+  const list = document.getElementById("taskInputList");
+  const idx = list.children.length + 1;
+  const div = document.createElement("div");
+  div.style.cssText = "display:flex;gap:8px;align-items:center;";
+  div.innerHTML = `
+    <span style="color:var(--muted);font-size:13px;min-width:60px;">Task ${idx}</span>
+    <input type="text" value="${value}" placeholder="Enter task description..."
+      style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);
+      color:white;padding:10px 14px;border-radius:10px;font-size:14px;outline:none;">
+    <button onclick="removeTaskAndSave(this)"
+      style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);
+      color:#ef4444;padding:8px 12px;border-radius:8px;cursor:pointer;">✕</button>
+  `;
+  list.appendChild(div);
+}
+
+// Removes task row from UI AND immediately saves updated list to server
+// so students instantly see the change on their portal
+async function removeTaskAndSave(btn){
+  const row = btn.parentElement;
+  row.remove();
+  // Re-number remaining task labels
+  const list = document.getElementById("taskInputList");
+  Array.from(list.children).forEach((child, i) => {
+    const label = child.querySelector("span");
+    if(label) label.textContent = "Task " + (i + 1);
+  });
+  // Auto-save: collect remaining tasks (empty array is valid — clears student view)
+  const statusEl = document.getElementById("taskSaveStatus");
+  try{
+    const inputs = document.querySelectorAll("#taskInputList input");
+    const tasks = Array.from(inputs).map(i => i.value.trim()).filter(t => t.length > 0);
+    statusEl.innerHTML = '<span style="color:#8aa4c8;">Saving changes...</span>';
+    const res = await fetch("/coordinator/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain: domainStr, tasks })
+    });
+    const data = await res.json();
+    if(data.success){
+      statusEl.innerHTML = tasks.length === 0
+        ? '<span style="color:#f59e0b;">⚠️ All tasks removed. Students see no tasks now.</span>'
+        : '<span style="color:#00c853;">✅ Task removed and saved for students.</span>';
+    } else {
+      statusEl.innerHTML = '<span style="color:#ef4444;">Removed locally but failed to save. Click Save button to retry.</span>';
+    }
+  }catch(e){
+    statusEl.innerHTML = '<span style="color:#ef4444;">Removed locally but server unreachable. Click Save button to retry.</span>';
+  }
+}
+
+async function saveCoordinatorTasks(){
+  const statusEl = document.getElementById("taskSaveStatus");
+  try{
+    const inputs = document.querySelectorAll("#taskInputList input");
+    const tasks = Array.from(inputs).map(i => i.value.trim()).filter(t => t.length > 0);
+    statusEl.innerHTML = '<span style="color:#8aa4c8;">Saving...</span>';
+    const res = await fetch("/coordinator/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domain: domainStr, tasks })
+    });
+    const data = await res.json();
+    if(data.success){
+      statusEl.innerHTML = tasks.length === 0
+        ? '<span style="color:#f59e0b;">⚠️ Saved with no tasks. Students see no tasks now.</span>'
+        : '<span style="color:#00c853;">✅ Tasks saved! Students can now see them.</span>';
+    } else {
+      statusEl.innerHTML = '<span style="color:#ef4444;">Failed to save. Try again.</span>';
+    }
+  }catch(e){
+    statusEl.innerHTML = '<span style="color:#ef4444;">Server error. Check server is running.</span>';
+  }
+}
+
+function previewCoordFile(input){
+  const file = input.files[0];
+  if(!file) return;
+  document.getElementById("filePreviewName").textContent = "📄 " + file.name;
+  document.getElementById("filePreviewName").style.display = "block";
+  document.getElementById("uploadFileBtn").style.display = "block";
+}
+
+async function uploadCoordFile(){
+  const fileInput = document.getElementById("coordFileInput");
+  const statusEl = document.getElementById("fileUploadStatus");
+  const file = fileInput.files[0];
+  if(!file){ statusEl.innerHTML = '<span style="color:#ef4444;">Please select a file first.</span>'; return; }
+  if(!domainStr){ statusEl.innerHTML = '<span style="color:#ef4444;">Domain not found. Please re-login.</span>'; return; }
+  statusEl.innerHTML = '<span style="color:#8aa4c8;">Uploading... please wait.</span>';
+  try{
+    const formData = new FormData();
+    formData.append("taskFile", file);
+    formData.append("domain", domainStr);
+    const res = await fetch("/coordinator/tasks/upload-file", { method:"POST", body:formData });
+    // Safely parse response - handle non-JSON (HTML error pages, etc.)
+    let data;
+    const rawText = await res.text();
+    try{ data = JSON.parse(rawText); }
+    catch(parseErr){
+      console.error("Server returned non-JSON response:", rawText.substring(0, 500));
+      statusEl.innerHTML = '<span style="color:#ef4444;">Server error: ' + res.status + ' - Check browser console for details.</span>';
+      return;
+    }
+    if(data.success){
+      statusEl.innerHTML = '<span style="color:#00c853;">✅ File uploaded! Students can now download it.</span>';
+      document.getElementById("currentFileName").textContent = data.fileName;
+      document.getElementById("currentFileDisplay").style.display = "flex";
+      document.getElementById("filePreviewName").style.display = "none";
+      document.getElementById("uploadFileBtn").style.display = "none";
+      fileInput.value = "";
+    } else {
+      statusEl.innerHTML = '<span style="color:#ef4444;">Upload failed: ' + (data.message || "Unknown error") + '</span>';
+    }
+  }catch(e){
+    console.error("Upload fetch error:", e);
+    statusEl.innerHTML = '<span style="color:#ef4444;">Connection error: ' + e.message + '</span>';
+  }
+}
+
+async function removeCoordFile(){
+  try{
+    const res = await fetch("/coordinator/tasks/remove-file", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ domain: domainStr })
+    });
+    const data = await res.json();
+    if(data.success){
+      document.getElementById("currentFileDisplay").style.display = "none";
+      document.getElementById("fileUploadStatus").innerHTML = '<span style="color:#f59e0b;">File removed.</span>';
+    }
+  }catch(e){}
+}
+
+// ══════════════════════════════════════════════
+// SEARCH & FILTER SUBMISSIONS
+// ══════════════════════════════════════════════
+let allSubmissionsData = [];
+
+// Patch loadSubmissions to store data for filtering
+const _origLoadSubmissions = loadSubmissions;
+async function loadSubmissions(){
+  try{
+    const response = await fetch("/all-submissions/" + encodeURIComponent(domainStr));
+    const submissions = await response.json();
+    allSubmissionsData = submissions || [];
+    const container = document.getElementById("submissionContainer");
+
+    if(!submissions || submissions.length === 0){
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-text">No submissions yet</div>
+          <div class="empty-sub">No submissions found for ${domainStr}</div>
+        </div>`;
+      return;
+    }
+
+    document.getElementById("totalStudents").innerText = submissions.length;
+    document.getElementById("approvedTasks").innerText = submissions.filter(s=>s.status==="Approved").length;
+    document.getElementById("rejectedTasks").innerText = submissions.filter(s=>s.status==="Rejected").length;
+    document.getElementById("attendanceCount").innerText = submissions.filter(s=>s.attendanceGiven).length;
+
+    renderSubmissions(submissions);
+  }catch(e){
+    console.log(e);
+    document.getElementById("submissionContainer").innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Failed to load submissions</div></div>';
+  }
+}
+
+function filterSubmissions(){
+  const q = (document.getElementById("submissionSearch")?.value || "").toLowerCase();
+  const status = document.getElementById("submissionStatusFilter")?.value || "";
+  let filtered = allSubmissionsData;
+  if(q) filtered = filtered.filter(s =>
+    (s.employeeId||"").toLowerCase().includes(q) ||
+    (s.task||"").toLowerCase().includes(q) ||
+    (s.status||"").toLowerCase().includes(q) ||
+    (s.domain||"").toLowerCase().includes(q)
+  );
+  if(status) filtered = filtered.filter(s => s.status === status);
+  renderSubmissions(filtered);
+}
+
+function renderSubmissions(submissions){
+  const container = document.getElementById("submissionContainer");
+  if(!submissions.length){
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">No matching submissions</div></div>';
+    return;
+  }
+  container.innerHTML = submissions.map(sub => {
+    const isReviewed = sub.reviewedOnce === true;
+    const cardClass = isReviewed
+      ? (sub.status==="Approved" ? "submission-card reviewed-card" : "submission-card reviewed-rejected")
+      : "submission-card";
+    const dur = sub.internshipDuration || "1 Month";
+    let totalDays=20, reqDays=15;
+    if(dur==="3 Months"){ totalDays=60; reqDays=45; }
+    if(dur==="6 Months"){ totalDays=120; reqDays=90; }
+    const attCount = sub.attendanceCount || 0;
+    const attPct = Math.round((attCount/totalDays)*100);
+    const attStatus = attCount >= reqDays ? "✅ 75%+ Met" : `${attPct}% (${attCount}/${totalDays})`;
+    return `
+    <div class="${cardClass}">
+      <div class="card-top">
+        <div class="card-employee">
+          <div class="employee-avatar">${getInitial(sub.employeeId)}</div>
+          <div>
+            <div class="employee-id">${sub.employeeId||"—"}</div>
+            <div class="employee-domain">${sub.domain||""} · ${dur}</div>
+          </div>
+        </div>
+        <div class="status-pill ${getStatusClass(sub.status)}">${sub.status||"Pending"}</div>
+      </div>
+      <div class="info-grid">
+        <div class="info-chip"><div class="info-chip-label">Task</div><div class="info-chip-value">${sub.task||"Submitted Task"}</div></div>
+        <div class="info-chip"><div class="info-chip-label">Attendance</div><div class="info-chip-value">${attStatus}</div></div>
+        <div class="info-chip"><div class="info-chip-label">Duration</div><div class="info-chip-value">${dur}</div></div>
+        <div class="info-chip"><div class="info-chip-label">Meetings</div><div class="info-chip-value">${sub.meetingsJoined||0}</div></div>
+        <div class="info-chip"><div class="info-chip-label">Performance</div><div class="info-chip-value">${sub.performance||"B"}</div></div>
+        <div class="info-chip"><div class="info-chip-label">Review</div><div class="info-chip-value">${isReviewed?"🔒 Done":"⏳ Pending"}</div></div>
+      </div>
+      <div class="links-row">
+        <a class="link-chip" href="${sub.githubLink||'#'}" target="_blank">🔗 GitHub</a>
+        <a class="link-chip" href="${sub.image||'#'}" target="_blank">🖼 Screenshot</a>
+        <a class="link-chip" href="${sub.pdf||'#'}" target="_blank">📄 PDF</a>
+      </div>
+      <div class="feedback-area">
+        <div class="feedback-label">Coordinator Feedback</div>
+        ${isReviewed
+          ? `<div style="padding:10px;color:var(--muted);font-size:13px;">📝 ${sub.feedback||"No feedback provided"}</div>
+             <div class="locked-notice">🔒 Already reviewed (${sub.status}). Decision is permanent.</div>`
+          : `<textarea id="feedback-${sub._id}" placeholder="Write feedback for this submission...">${sub.feedback||""}</textarea>
+             <div class="feedback-actions">
+               <button class="btn btn-approve" onclick="updateStatus('${sub._id}','Approved')">✅ Approve</button>
+               <button class="btn btn-reject" onclick="updateStatus('${sub._id}','Rejected')">❌ Reject</button>
+             </div>
+             <p style="font-size:11px;color:var(--muted);margin-top:8px;">⚠️ Once reviewed, decision is permanent.</p>`
+        }
+      </div>
+    </div>`;
+  }).join("");
+}
+
+</script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEN — Student Login</title>
+<link rel="stylesheet" href="ten-theme.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+
+html, body {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.login-wrap {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  animation: ten-fadeUp 0.6s ease both;
+}
+
+/* ── Brand header ── */
+.brand-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.brand-logo-ring {
+  width: 68px; height: 68px;
+  background: var(--ten-gold-bg);
+  border: 1px solid var(--ten-border-strong);
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  animation: ten-pulse-gold 3s ease infinite;
+}
+.brand-name {
+  font-family: var(--ten-font-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--ten-gold);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.brand-full {
+  font-size: 11px;
+  color: var(--ten-text-muted);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* ── Card ── */
+.login-card {
+  background: var(--ten-card);
+  border: 1px solid var(--ten-border);
+  border-radius: var(--ten-r-xl);
+  padding: 36px 38px;
+  box-shadow: var(--ten-shadow-lg), var(--ten-glow-gold);
+  position: relative;
+  overflow: hidden;
+}
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ten-gold), transparent);
+}
+
+.card-title {
+  font-family: var(--ten-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+.card-sub {
+  font-size: 14px;
+  color: var(--ten-text-sub);
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+.field-group {
+  margin-bottom: 20px;
+}
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ten-text-sub);
+  margin-bottom: 9px;
+}
+.field-input {
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--ten-border);
+  border-radius: var(--ten-r-sm);
+  color: var(--ten-text);
+  font-family: var(--ten-font-body);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.field-input:focus {
+  border-color: var(--ten-gold);
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.10);
+}
+.field-input::placeholder { color: #2e2820; }
+
+.login-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--ten-gold), var(--ten-gold-dim));
+  border: none;
+  border-radius: var(--ten-r-sm);
+  color: #0a0700;
+  font-family: var(--ten-font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 6px;
+}
+.login-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(212,175,55,0.4);
+}
+.login-btn:active { transform: translateY(0); }
+
+.loading-text {
+  display: none;
+  text-align: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--ten-gold);
+  font-family: var(--ten-font-mono);
+  letter-spacing: 1px;
+}
+
+/* ── Footer nav ── */
+.card-nav {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.card-nav a {
+  font-size: 12px;
+  color: var(--ten-text-muted);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  transition: color 0.2s;
+  padding: 4px 0;
+}
+.card-nav a:hover { color: var(--ten-gold); }
+.card-nav .sep { color: var(--ten-text-muted); opacity: 0.3; }
+
+.page-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--ten-text-muted);
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 500px) {
+  html, body { overflow: auto; height: auto; padding: 20px 0; }
+  .login-card { padding: 28px 22px; }
+}
+</style>
+</head>
+<body>
+
+<div class="ten-grid-bg"></div>
+<div class="ten-orb ten-orb-1"></div>
+<div class="ten-orb ten-orb-2"></div>
+
+<div class="login-wrap">
+
+  <div class="brand-header">
+    <div class="brand-logo-ring">
+      <svg width="36" height="30" viewBox="0 0 36 30" fill="none">
+        <path d="M4 12C4 8.69 6.69 6 10 6C13.31 6 16 8.69 16 12C16 15.31 13.31 18 10 18C6.69 18 4 15.31 4 12Z" stroke="#D4AF37" stroke-width="2.2" fill="none"/>
+        <path d="M16 12C16 8.69 18.69 6 22 6C25.31 6 28 8.69 28 12C28 15.31 25.31 18 22 18C18.69 18 16 15.31 16 12Z" stroke="#D4AF37" stroke-width="2.2" fill="none"/>
+        <path d="M7 29C7 23 10 20 13 20L14 24L11 29Z" fill="#D4AF37" opacity="0.75"/>
+        <path d="M29 29C29 23 26 20 23 20L22 24L25 29Z" fill="#D4AF37" opacity="0.75"/>
+      </svg>
+    </div>
+    <div class="brand-name">TEN</div>
+    <div class="brand-full">The Entrepreneurship Network</div>
+  </div>
+
+  <div class="login-card">
+    <div class="card-title">Student Login</div>
+    <p class="card-sub">Cloud · DevOps · AI · Cyber Security · Web Dev & more</p>
+
+    <form id="loginForm">
+      <div class="field-group">
+        <label class="field-label">Employee ID</label>
+        <input class="field-input" type="text" id="employeeId" placeholder="Enter your Employee ID" required>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Password</label>
+        <input class="field-input" type="password" id="password" placeholder="Enter your password" required>
+      </div>
+      <button class="login-btn" type="submit">Login to Dashboard</button>
+      <div class="loading-text" id="loadingText">⟳ Verifying credentials...</div>
+    </form>
+  </div>
+
+  <div class="card-nav">
+    <a href="register.html">Register</a>
+    <span class="sep">·</span>
+    <a href="coordinator-login.html">Coordinator Login</a>
+    <span class="sep">·</span>
+    <a href="index.html">Home</a>
+  </div>
+
+  <div class="page-footer">© 2026 TEN Internship Management System</div>
+
+</div>
+
+<script>
+const form = document.getElementById("loginForm");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  document.getElementById("loadingText").style.display = "block";
+
+  const employeeId = document.getElementById("employeeId").value;
+  const password = document.getElementById("password").value;
+
+  try {
+    const response = await fetch("/student-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employeeId, password })
+    });
+
+    const data = await response.json();
+    console.log(data.student);
+    document.getElementById("loadingText").style.display = "none";
+
+    if (data.success) {
+      localStorage.setItem("student", JSON.stringify({
+        name: data.student.name || data.student.fullName || data.student.username || data.student.employeeId,
+        employeeId: data.student.employeeId,
+        domain: data.student.domain
+      }));
+
+      Swal.fire({
+        icon: "success",
+        title: "Login Successful",
+        text: "Welcome to TEN Internship Portal 🚀",
+        background: "#0e1428",
+        color: "#F0EEE8",
+        confirmButtonColor: "#D4AF37"
+      });
+
+      window.location.href = "student-dashboard.html";
+    } else {
+      Swal.fire({
+        icon: "error",
+        title: "Login Failed",
+        text: data.message || "Invalid credentials",
+        background: "#0e1428",
+        color: "#F0EEE8",
+        confirmButtonColor: "#ef4444"
+      });
+    }
+  } catch (error) {
+    document.getElementById("loadingText").style.display = "none";
+    console.log(error);
+    Swal.fire({
+      icon: "error",
+      title: "Server Error",
+      text: "Something went wrong. Please try again.",
+      background: "#0e1428",
+      color: "#F0EEE8",
+      confirmButtonColor: "#ef4444"
+    });
+  }
+});
+</script>
+
+</body>
+</html>
