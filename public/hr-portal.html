@@ -214,6 +214,29 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 .doc-tab{padding:10px 20px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
 .doc-tab.active{background:rgba(245,197,66,0.12);color:var(--gold);border-color:rgba(245,197,66,0.3);}
 .doc-panel{display:none;}.doc-panel.active{display:block;}
+/* CERTIFICATE APPROVALS */
+.cert-panel{display:none;}.cert-panel.active{display:block;}
+.cert-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 24px;margin-bottom:16px;}
+.cert-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;}
+.cert-name{font-size:16px;font-weight:700;color:var(--text);}
+.cert-id{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold);margin-top:2px;}
+.cert-meta{font-size:12px;color:var(--muted);margin-top:4px;}
+.cert-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px;}
+.cert-chip{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px;}
+.cert-chip-l{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.cert-chip-v{font-size:15px;font-weight:700;color:var(--text);}
+.cert-tasks{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;}
+.cert-task-row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px;color:var(--text);}
+.cert-remark{background:rgba(245,197,66,0.06);border:1px solid rgba(245,197,66,0.2);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--text);margin-bottom:14px;}
+.cert-actions{display:flex;gap:10px;flex-wrap:wrap;}
+.elig-badge{display:inline-block;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;}
+.elig-yes{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.25);}
+.elig-no{background:rgba(244,63,94,0.12);color:var(--red);border:1px solid rgba(244,63,94,0.25);}
+.cert-lock{display:flex;align-items:center;gap:8px;background:rgba(244,63,94,0.06);border:1px solid rgba(244,63,94,0.18);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--amber);}
+.cert-gen-btn{padding:9px 16px;background:rgba(245,197,66,0.1);border:1px solid rgba(245,197,66,0.3);color:var(--gold);border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+.cert-gen-btn:hover{background:rgba(245,197,66,0.2);}
+.cert-approve-btn{padding:10px 18px;background:linear-gradient(135deg,var(--green),#059669);border:none;color:#fff;border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;}
+.cert-reject-btn{padding:10px 18px;background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:var(--red);border-radius:10px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
 .doc-form-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px;}
 .doc-form-card::before{content:"";display:block;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:-28px -28px 28px;border-radius:20px 20px 0 0;}
 .doc-btn{padding:13px 28px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:12px;color:#0a0600;font-family:'Outfit',sans-serif;font-size:14px;font-weight:800;cursor:pointer;transition:all 0.2s;margin-top:12px;margin-right:10px;}
@@ -242,6 +265,10 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     <button class="nav-btn" onclick="showView('tracker')" data-view="tracker"><span class="icon">⏱️</span> Internship Tracker</button>
     <button class="nav-btn" onclick="showView('submissions')" data-view="submissions"><span class="icon">📋</span> Submissions</button>
     <button class="nav-btn" onclick="showView('domains')" data-view="domains"><span class="icon">🏢</span> Domain Analytics</button>
+    <button class="nav-btn" onclick="showView('attendance-monitor')" data-view="attendance-monitor"><span class="icon">🪪</span> Attendance Monitor</button>
+    <div class="nav-divider"></div>
+    <div class="nav-section-title">Certificates</div>
+    <button class="nav-btn" onclick="showView('certificates')" data-view="certificates"><span class="icon">🎓</span> Certificate Approvals</button>
     <div class="nav-divider"></div>
     <div class="nav-section-title">Documents</div>
     <button class="nav-btn" onclick="showView('documents')" data-view="documents"><span class="icon">📄</span> Generate Documents</button>
@@ -473,6 +500,54 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     </div>
     <div class="notif-list" id="notifHistory"><div class="loading"><div class="spinner"></div></div></div>
   </div>
+
+  <!-- ATTENDANCE MONITOR -->
+  <div class="view" id="view-attendance-monitor">
+    <div class="section-header">
+      <div class="section-title">Attendance Monitor</div>
+      <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadAttendanceMonitor()">↻ Refresh</button>
+    </div>
+    <div class="table-top" style="margin-bottom:14px;">
+      <input class="search-input" id="amSearch" placeholder="🔍  Search by name, ID, domain..." oninput="renderAttendanceMonitor()">
+    </div>
+    <div class="table-wrap">
+      <div style="overflow-x:auto;"><table>
+        <thead><tr>
+          <th>#</th><th>Student</th><th>Employee ID</th><th>Domain</th>
+          <th>Self (Present)</th><th>Class (Present)</th><th>Combined %</th><th>Eligibility</th>
+        </tr></thead>
+        <tbody id="amTable"><tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- CERTIFICATE APPROVALS -->
+  <div class="view" id="view-certificates">
+    <div class="doc-tabs">
+      <button class="doc-tab active" onclick="switchCertTab('pending',this)">🕓 Coordinator-Approved (Pending HR)</button>
+      <button class="doc-tab" onclick="switchCertTab('approved',this)">✅ HR-Approved (Generate)</button>
+    </div>
+
+    <!-- Pending HR review -->
+    <div class="cert-panel active" id="cert-pending">
+      <div class="section-header" style="margin-bottom:16px;">
+        <div class="section-title">Students Awaiting HR Review</div>
+        <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadCertPending()">↻ Refresh</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">Only students approved by their coordinator appear here. Review their details, then give final HR approval or reject with a reason.</p>
+      <div id="certPendingContainer"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- HR approved -->
+    <div class="cert-panel" id="cert-approved">
+      <div class="section-header" style="margin-bottom:16px;">
+        <div class="section-title">Fully Approved — Generate Certificates</div>
+        <button class="send-btn" style="padding:10px 20px;font-size:13px;" onclick="loadCertApproved()">↻ Refresh</button>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">These students passed both coordinator and HR approval. Generate and download their certificates below.</p>
+      <div id="certApprovedContainer"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+  </div>
 </main>
 
 <!-- SLIDE PANEL -->
@@ -648,7 +723,7 @@ function showView(v){
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
-  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History'};
+  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals'};
   document.getElementById('pageTitle').innerHTML=t[v]||v;
   if(v==='students') loadStudents();
   if(v==='tracker') loadTracker();
@@ -656,6 +731,8 @@ function showView(v){
   if(v==='domains') loadDomains();
   if(v==='notif-history') loadNotifHistory();
   if(v==='documents'){loadStudentsForPicker();setDefaultDates();}
+  if(v==='attendance-monitor') loadAttendanceMonitor();
+  if(v==='certificates') loadCertPending();
 }
 
 async function loadOverview(){
@@ -1094,6 +1171,62 @@ function renderPickerList(list){
 function selectStudentForDoc(id){const s=allStudents.find(x=>x._id===id);if(!s)return;closeStudentPicker();prefillDocForms(s);showHRToast('✅ Student data filled!','success');}
 document.getElementById('studentPickerModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeStudentPicker();});
 
+/* ============ ATTENDANCE MONITOR ============ */
+let amStudents=[];
+async function loadAttendanceMonitor(){
+  const tb=document.getElementById('amTable');
+  tb.innerHTML='<tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  try{
+    const r=await fetch('/attendance/monitor',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    amStudents=d.students||[];
+    renderAttendanceMonitor();
+  }catch(e){ tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--red)">Failed to load</td></tr>'; }
+}
+function renderAttendanceMonitor(){
+  const q=(document.getElementById('amSearch').value||'').toLowerCase();
+  const list=amStudents.filter(s=>((s.name||'')+(s.employeeId||'')+(s.domain||'')).toLowerCase().includes(q));
+  const tb=document.getElementById('amTable');
+  if(!list.length){ tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">No students</td></tr>'; return; }
+  tb.innerHTML=list.map((s,i)=>{
+    const st=s.stats||{};
+    const elig=st.eligible;
+    const safeName=(s.name||'').replace(/'/g,'');
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px">${i+1}</td>
+      <td style="font-weight:600;cursor:pointer;color:var(--gold)" onclick="openAttHistory('${encodeURIComponent(s.employeeId)}','${safeName}')">${s.name||'—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td>
+      <td><span class="tag tag-pending">${s.domain||'—'}</span></td>
+      <td>${st.selfPresent||0}</td>
+      <td>${st.coordPresent||0}/${st.coordTotal||0}</td>
+      <td style="font-weight:700">${st.combinedPct||0}%</td>
+      <td><span class="elig-badge ${elig?'elig-yes':'elig-no'}">${elig?'Eligible ✅':'Not Eligible ❌'}</span></td>
+    </tr>`;
+  }).join('');
+}
+async function openAttHistory(encId, name){
+  const employeeId=decodeURIComponent(encId);
+  try{
+    const r=await fetch('/attendance/student/'+encodeURIComponent(employeeId));
+    const d=await r.json();
+    const recs=d.attendance||[]; const st=d.stats||{};
+    const byDate={};
+    recs.forEach(x=>{ if(!byDate[x.dateKey]) byDate[x.dateKey]={}; byDate[x.dateKey][x.markedBy]=x.status; });
+    const keys=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+    const pill=(x)=>!x?'<span style="color:#6a6255">—</span>':`<span class="elig-badge ${x==='Present'?'elig-yes':'elig-no'}">${x}</span>`;
+    let rows=keys.map(k=>{
+      const fmt=new Date(k).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+      return `<tr><td style="padding:6px">${fmt}</td><td style="padding:6px">${pill(byDate[k].self)}</td><td style="padding:6px">${pill(byDate[k].coordinator)}</td></tr>`;
+    }).join('');
+    if(!keys.length) rows='<tr><td colspan="3" style="text-align:center;color:#6a6255;padding:20px">No records</td></tr>';
+    Swal.fire({
+      title:name+' — Attendance',
+      html:`<div style="text-align:left;font-size:13px;margin-bottom:10px">Self: <b>${st.selfPct||0}%</b> · Class: <b>${st.coordPct||0}%</b> · Combined: <b style="color:${st.eligible?'#10b981':'#f43f5e'}">${st.combinedPct||0}%</b></div><div style="max-height:340px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#9a9080"><th style="text-align:left;padding:6px">Date</th><th style="text-align:left;padding:6px">Self</th><th style="text-align:left;padding:6px">Class</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+      width:560, background:'#0c1220', color:'#f0eee8', confirmButtonColor:'#f5c542'
+    });
+  }catch(e){ Swal.fire({title:'Error',text:'Failed to load history',icon:'error',background:'#0c1220',color:'#f0eee8'}); }
+}
+
 /* OFFER LETTER */
 function generateOfferLetter(){
   const name=document.getElementById('ol-name').value.trim(),college=document.getElementById('ol-college').value.trim(),empId=document.getElementById('ol-empid').value.trim(),docNo=document.getElementById('ol-docno').value.trim()||'TEN/OL/—',role=document.getElementById('ol-role').value.trim(),jf=fmtDate(document.getElementById('ol-joining').value),lf=fmtDate(document.getElementById('ol-date').value);
@@ -1169,6 +1302,133 @@ function generateStarCert(){
 <div class="br3"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sga"><span class="sgn">Kamlesh Gupta</span><div class="sgl"></div><div class="sgd">Kamlesh Gupta</div><div class="sgd">Director</div><div class="sgd">The Entrepreneurship Network</div></div></div></div>
 <div class="cid">Certificate ID: ${certId}</div></div></body></html>`);
   w.document.close();
+}
+
+/* ============ CERTIFICATE APPROVALS ============ */
+function switchCertTab(tab,btn){
+  document.querySelectorAll('#view-certificates .doc-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.cert-panel').forEach(p=>p.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  document.getElementById('cert-'+tab).classList.add('active');
+  if(tab==='pending') loadCertPending();
+  if(tab==='approved') loadCertApproved();
+}
+
+let certPendingStudents=[];
+async function loadCertPending(){
+  const c=document.getElementById('certPendingContainer');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const r=await fetch('/students/coordinator-approved',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    certPendingStudents=d.students||[];
+    renderCertPending();
+  }catch(e){ c.innerHTML='<div class="empty-state"><div class="es-icon">⚠️</div><p>Failed to load</p></div>'; }
+}
+function renderCertPending(){
+  const c=document.getElementById('certPendingContainer');
+  if(!certPendingStudents.length){ c.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><p>No students awaiting HR review</p></div>'; return; }
+  c.innerHTML=certPendingStudents.map((s,i)=>{
+    const st=s.stats||{}; const elig=(st.combinedPct||0)>=75;
+    const tasks=(s.submissions&&s.submissions.length)
+      ? s.submissions.map(t=>`<div class="cert-task-row"><span>${t.task||'Task'}</span><span class="elig-badge ${t.status==='Approved'?'elig-yes':t.status==='Rejected'?'elig-no':''}" style="${t.status==='Pending'?'background:rgba(245,158,11,0.12);color:var(--amber)':''}">${t.status}</span></div>`).join('')
+      : '<div style="color:var(--muted);font-size:13px">No tasks submitted</div>';
+    const appDate=s.coordinatorApprovedAt?new Date(s.coordinatorApprovedAt).toLocaleDateString('en-IN'):'—';
+    return `<div class="cert-card">
+      <div class="cert-card-head">
+        <div><div class="cert-name">${s.name}</div><div class="cert-id">${s.employeeId}</div><div class="cert-meta">${s.domain} · Joined ${s.joiningDate||'—'} · ${s.tenure||''}</div></div>
+        <span class="elig-badge ${elig?'elig-yes':'elig-no'}">${st.combinedPct||0}% ${elig?'Attendance OK':'Below 75%'}</span>
+      </div>
+      <div class="cert-grid">
+        <div class="cert-chip"><div class="cert-chip-l">Self Att.</div><div class="cert-chip-v">${st.selfPct||0}%</div></div>
+        <div class="cert-chip"><div class="cert-chip-l">Class Att.</div><div class="cert-chip-v">${st.coordPct||0}%</div></div>
+        <div class="cert-chip"><div class="cert-chip-l">Combined</div><div class="cert-chip-v">${st.combinedPct||0}%</div></div>
+        <div class="cert-chip"><div class="cert-chip-l">Approved On</div><div class="cert-chip-v" style="font-size:13px">${appDate}</div></div>
+      </div>
+      <div class="cert-tasks"><div class="cert-chip-l" style="margin-bottom:6px">Submitted Tasks</div>${tasks}</div>
+      <div class="cert-remark"><b>Coordinator (${s.approvedByCoordinatorId||'—'}):</b> ${s.coordinatorRemarks||'No remarks'}</div>
+      <div class="cert-actions">
+        <button class="cert-approve-btn" onclick="hrApprove(${i})">✅ Approve for Certificates</button>
+        <button class="cert-reject-btn" onclick="hrReject(${i})">❌ Reject (send back)</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function hrApprove(i){
+  const s=certPendingStudents[i]; if(!s) return;
+  const st=s.stats||{};
+  if((st.combinedPct||0)<75){
+    const c=await Swal.fire({title:'Attendance below 75%',html:`<b>${s.name}</b> has only ${st.combinedPct||0}% combined attendance. Approve anyway?`,icon:'warning',showCancelButton:true,confirmButtonText:'Approve anyway',confirmButtonColor:'#f5c542',background:'#0c1220',color:'#f0eee8'});
+    if(!c.isConfirmed) return;
+  }
+  const {value:remarks,isConfirmed}=await Swal.fire({title:'Final HR Approval',html:`Approve <b>${s.name}</b> for certificates?`,input:'textarea',inputPlaceholder:'Optional HR remarks...',showCancelButton:true,confirmButtonText:'Approve',confirmButtonColor:'#10b981',background:'#0c1220',color:'#f0eee8'});
+  if(!isConfirmed) return;
+  try{
+    const r=await fetch('/students/'+s._id+'/hr-approve',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({hrId:hrUser.username,remarks:remarks||''})});
+    const d=await r.json();
+    if(d.success){ Swal.fire({title:'Approved 🎉',text:d.message,icon:'success',background:'#0c1220',color:'#f0eee8',confirmButtonColor:'#f5c542'}); loadCertPending(); }
+    else Swal.fire({title:'Failed',text:d.message,icon:'error',background:'#0c1220',color:'#f0eee8'});
+  }catch(e){ Swal.fire({title:'Error',icon:'error',background:'#0c1220',color:'#f0eee8'}); }
+}
+async function hrReject(i){
+  const s=certPendingStudents[i]; if(!s) return;
+  const {value:reason,isConfirmed}=await Swal.fire({title:'Reject & Return',html:`Reject <b>${s.name}</b> and send back to coordinator?`,input:'textarea',inputPlaceholder:'Reason for rejection (required)...',inputValidator:(v)=>!v&&'Please provide a reason',showCancelButton:true,confirmButtonText:'Reject',confirmButtonColor:'#f43f5e',background:'#0c1220',color:'#f0eee8'});
+  if(!isConfirmed) return;
+  try{
+    const r=await fetch('/students/'+s._id+'/hr-reject',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({reason})});
+    const d=await r.json();
+    if(d.success){ Swal.fire({title:'Rejected',text:d.message,icon:'success',background:'#0c1220',color:'#f0eee8',confirmButtonColor:'#f5c542'}); loadCertPending(); }
+    else Swal.fire({title:'Failed',text:d.message,icon:'error',background:'#0c1220',color:'#f0eee8'});
+  }catch(e){ Swal.fire({title:'Error',icon:'error',background:'#0c1220',color:'#f0eee8'}); }
+}
+
+let hrApprovedStudents=[];
+async function loadCertApproved(){
+  const c=document.getElementById('certApprovedContainer');
+  if(!c) return;
+  c.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  try{
+    const r=await fetch('/students/hr-approved',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    hrApprovedStudents=d.students||[];
+    renderCertApproved();
+  }catch(e){ c.innerHTML='<div class="empty-state"><div class="es-icon">⚠️</div><p>Failed to load</p></div>'; }
+}
+function renderCertApproved(){
+  const c=document.getElementById('certApprovedContainer');
+  if(!hrApprovedStudents.length){ c.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><p>No fully-approved students yet</p></div>'; return; }
+  c.innerHTML=hrApprovedStudents.map((s,i)=>{
+    const st=s.stats||{}; const elig=(st.combinedPct||0)>=75;
+    const gen = !elig
+      ? `<div class="cert-lock">🔒 Attendance below 75% (${st.combinedPct||0}%). Certificates locked.</div>`
+      : `<div class="cert-actions">
+          <button class="cert-gen-btn" onclick="genCert(${i},'loc')">🎓 Generate LOC</button>
+          <button class="cert-gen-btn" onclick="genCert(${i},'lor')">📝 Generate LOR</button>
+          <button class="cert-gen-btn" onclick="genCert(${i},'star')">⭐ Star Performer</button>
+        </div>`;
+    return `<div class="cert-card">
+      <div class="cert-card-head">
+        <div><div class="cert-name">${s.name}</div><div class="cert-id">${s.employeeId}</div><div class="cert-meta">${s.domain} · Joined ${s.joiningDate||'—'} · ${s.tenure||''}</div></div>
+        <span class="elig-badge elig-yes">✅ HR Approved</span>
+      </div>
+      <div class="cert-grid">
+        <div class="cert-chip"><div class="cert-chip-l">Combined Att.</div><div class="cert-chip-v">${st.combinedPct||0}%</div></div>
+        <div class="cert-chip"><div class="cert-chip-l">Coordinator</div><div class="cert-chip-v" style="font-size:13px">${s.coordinatorRemarks?'✔ remarks':'—'}</div></div>
+        <div class="cert-chip"><div class="cert-chip-l">HR Remarks</div><div class="cert-chip-v" style="font-size:13px">${s.hrRemarks||'—'}</div></div>
+      </div>
+      ${gen}
+    </div>`;
+  }).join('');
+}
+function genCert(i,type){
+  const s=hrApprovedStudents[i]; if(!s) return;
+  // prefillDocForms expects firstName/lastName — pass full name in firstName.
+  const obj={firstName:s.name||'',lastName:'',employeeId:s.employeeId||'',domain:s.domain||'',college:s.college||'',tenure:s.tenure||'',joiningDate:s.joiningDate||''};
+  prefillDocForms(obj);
+  if(type==='loc') generateLOC();
+  else if(type==='lor') generateLOR();
+  else if(type==='star') generateStarCert();
 }
 
 loadOverview();

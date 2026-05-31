@@ -13,7 +13,21 @@ const studentsSchema = new mongoose.Schema({
     password: {
         type: String,
         default: "intern123"
-    }
+    },
+
+    // ===== Certificate approval workflow (two-step: Coordinator -> HR) =====
+    certificateApprovedByCoordinator: { type: Boolean, default: false },
+    coordinatorApprovedAt:            { type: Date },
+    approvedByCoordinatorId:          { type: String, default: "" },
+    coordinatorRemarks:               { type: String, default: "" },
+
+    certificateApprovedByHR:          { type: Boolean, default: false },
+    hrApprovedAt:                     { type: Date },
+    approvedByHRId:                   { type: String, default: "" },
+    hrRemarks:                        { type: String, default: "" },
+
+    hrRejected:                       { type: Boolean, default: false },
+    hrRejectionReason:                { type: String, default: "" }
 }, {
     timestamps: true
 });

@@ -940,20 +940,43 @@ button:active { transform: translateY(0); }
     <div id="submissionContainer"></div>
   </div>
 
-  <!-- ── ATTENDANCE BOX ── -->
+  <!-- ── ATTENDANCE BOX (NEW: daily self-attendance) ── -->
   <div class="attendance-box">
     <div class="section-title">
       <div>
-        <h2>🪪 Attendance</h2>
-        <p id="attendanceStatus">Status not updated yet</p>
+        <h2>🪪 Daily Attendance</h2>
+        <p id="attendanceStatus">Mark your attendance once every day.</p>
         <p id="attendanceThreshold" style="font-size:12px;color:#f59e0b;margin-top:4px;"></p>
       </div>
-      <button id="attendanceBtn" class="attendance-btn" onclick="giveAttendance()">
-        Give Attendance
+      <button id="attendanceBtn" class="attendance-btn" onclick="markSelfAttendance()">
+        ✅ Mark Today's Attendance
       </button>
     </div>
-    <!-- Monthly attendance breakdown -->
-    <div id="attendanceBreakdown" style="margin-top:16px;display:none;"></div>
+
+    <!-- Attendance percentage cards -->
+    <div id="attendanceStatsRow" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;">
+      <div style="flex:1;min-width:140px;background:rgba(13,22,41,0.8);border:1px solid rgba(99,140,210,0.2);border-radius:12px;padding:14px 16px;text-align:center;">
+        <div style="font-size:11px;color:#8aa4c8;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">My Attendance</div>
+        <div id="selfAttPct" style="font-size:28px;font-weight:800;color:#3b82f6;">0%</div>
+        <div id="selfAttCount" style="font-size:11px;color:#5a7299;margin-top:2px;">0 days marked</div>
+      </div>
+      <div style="flex:1;min-width:140px;background:rgba(13,22,41,0.8);border:1px solid rgba(99,140,210,0.2);border-radius:12px;padding:14px 16px;text-align:center;">
+        <div style="font-size:11px;color:#8aa4c8;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Class (Coordinator)</div>
+        <div id="classAttPct" style="font-size:28px;font-weight:800;color:#8b5cf6;">0%</div>
+        <div id="classAttCount" style="font-size:11px;color:#5a7299;margin-top:2px;">0 present</div>
+      </div>
+      <div style="flex:1;min-width:140px;background:rgba(13,22,41,0.8);border:1px solid rgba(99,140,210,0.2);border-radius:12px;padding:14px 16px;text-align:center;">
+        <div style="font-size:11px;color:#8aa4c8;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Combined</div>
+        <div id="combinedAttPct" style="font-size:28px;font-weight:800;color:#10b981;">0%</div>
+        <div id="combinedAttBadge" style="font-size:11px;font-weight:700;margin-top:2px;"></div>
+      </div>
+    </div>
+
+    <!-- Attendance history -->
+    <div style="margin-top:18px;">
+      <p style="font-size:12px;color:#8aa4c8;margin-bottom:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">My Attendance History</p>
+      <div id="attendanceHistory"></div>
+    </div>
   </div>
 
   <!-- ── TEST BOX ── -->
@@ -1254,7 +1277,6 @@ async function loadStudentSubmissions(){
     const submissions = data.submissions || [];
     latestSubmissions = submissions;
     renderSubmissions(submissions);
-    updateAttendanceButton(submissions);
     updateStats(submissions);
   }catch(error){
     console.log(error);
@@ -1262,60 +1284,12 @@ async function loadStudentSubmissions(){
 }
 
 function updateStats(submissions){
+  // Tasks & performance still come from submissions.
+  // Attendance figures are driven by the NEW attendance system (loadAttendance()).
   const approved = submissions.filter(s=>s.status==="Approved").length;
-  const attendanceDone = submissions.filter(s=>s.attendanceGiven===true).length;
-
-  const sub0 = submissions[0];
-  const duration = sub0?.internshipDuration || "1 Month";
-
-  let totalDays = 20, requiredDays = 15;
-  if(duration==="3 Months"){ totalDays=60; requiredDays=45; }
-  if(duration==="6 Months"){ totalDays=120; requiredDays=90; }
-
-  const totalAttendance = sub0?.attendanceCount || 0;
-  const attendancePercentage = Math.round((totalAttendance/totalDays)*100);
-
-  document.getElementById("attendanceText").innerText = attendancePercentage + "%";
   document.getElementById("tasksCompletedText").innerText = approved;
-  document.getElementById("meetingsJoinedText").innerText = totalAttendance;
   document.getElementById("performanceText").innerText =
     approved>=5?"A+":approved>=3?"A":approved>=1?"B":"C";
-
-  // Threshold status
-  const threshEl = document.getElementById("attendanceThreshold");
-  if(threshEl){
-    if(totalAttendance >= requiredDays){
-      threshEl.innerText = "✅ 75% attendance met! (" + totalAttendance + "/" + totalDays + " days)";
-      threshEl.style.color = "#10b981";
-    } else {
-      threshEl.innerText = "⚠️ Need " + (requiredDays-totalAttendance) + " more days for 75% (" + totalAttendance + "/" + totalDays + ")";
-      threshEl.style.color = "#f59e0b";
-    }
-  }
-
-  // Monthly attendance breakdown
-  const ma = sub0?.monthlyAttendance || {};
-  const breakdownEl = document.getElementById("attendanceBreakdown");
-  if(breakdownEl && sub0){
-    let months = [];
-    if(duration==="1 Month"){ months=[{label:"Month 1",val:ma.month1||0,max:20}]; }
-    else if(duration==="3 Months"){ months=[{label:"Month 1",val:ma.month1||0,max:20},{label:"Month 2",val:ma.month2||0,max:20},{label:"Month 3",val:ma.month3||0,max:20}]; }
-    else if(duration==="6 Months"){ months=[{label:"Month 1",val:ma.month1||0,max:20},{label:"Month 2",val:ma.month2||0,max:20},{label:"Month 3",val:ma.month3||0,max:20},{label:"Month 4",val:ma.month4||0,max:20},{label:"Month 5",val:ma.month5||0,max:20},{label:"Month 6",val:ma.month6||0,max:20}]; }
-
-    breakdownEl.style.display = months.length > 0 ? "block" : "none";
-    breakdownEl.innerHTML = `
-      <p style="font-size:12px;color:#8aa4c8;margin-bottom:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Monthly Breakdown (${duration})</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        ${months.map(m=>`
-          <div style="background:rgba(13,22,41,0.8);border:1px solid rgba(99,140,210,0.2);border-radius:10px;padding:10px 14px;min-width:90px;text-align:center;">
-            <div style="font-size:10px;color:#8aa4c8;font-weight:600;margin-bottom:4px;">${m.label}</div>
-            <div style="font-size:20px;font-weight:800;color:${m.val>=Math.round(m.max*0.75)?"#10b981":"#3b82f6"};">${m.val}</div>
-            <div style="font-size:10px;color:#5a7299;">/ ${m.max}</div>
-          </div>
-        `).join("")}
-      </div>
-    `;
-  }
 }
 
 function renderSubmissions(submissions){
@@ -1387,38 +1361,107 @@ async function refreshDashboard(){
     loadNotice(),
     loadStudentSubmissions(),
     loadCoordinatorTasks(),
-    loadNotifications()
+    loadNotifications(),
+    loadAttendance()
   ]);
 }
 
-async function giveAttendance(){
+// ── NEW dual-attendance system ──
+async function markSelfAttendance(){
+  const btn = document.getElementById("attendanceBtn");
   try{
-    const latest = latestSubmissions[0];
-    if(!latest){
-      Swal.fire({icon:"warning",title:"Task Required",text:"Please submit task first",background:"#101820",color:"#ffffff"});
-      return;
-    }
-    const response = await fetch("/give-attendance",{
+    btn.disabled = true; btn.innerText = "Marking...";
+    const r = await fetch("/attendance/self",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({employeeId})
+      body:JSON.stringify({ employeeId })
     });
-    const data = await response.json();
-    if(data.success){
-      Swal.fire({
-        icon:"success",
-        title:"Attendance Marked",
-        text: (data.thresholdMsg || "Attendance submitted successfully") + "\n\nTotal: " + (data.attendanceCount||0) + " day(s)",
-        background:"#101820",
-        color:"#ffffff"
-      });
-      loadStudentSubmissions();
-    }else{
-      Swal.fire({icon:"error",title:"Failed",text:data.message,background:"#101820",color:"#ffffff"});
+    const d = await r.json();
+    if(d.success){
+      Swal.fire({icon:"success",title:"Attendance Marked",text:"Your attendance for today is recorded ✅",background:"#101820",color:"#ffffff",confirmButtonColor:"#10b981"});
+    } else if(d.alreadyMarked){
+      Swal.fire({icon:"info",title:"Already Marked",text:"You have already marked attendance for today.",background:"#101820",color:"#ffffff",confirmButtonColor:"#3b82f6"});
+    } else {
+      Swal.fire({icon:"error",title:"Failed",text:d.message||"Could not mark attendance.",background:"#101820",color:"#ffffff"});
     }
   }catch(error){
     console.log(error);
+    Swal.fire({icon:"error",title:"Error",text:"Network error. Please try again.",background:"#101820",color:"#ffffff"});
   }
+  loadAttendance();
+}
+
+async function loadAttendance(){
+  try{
+    const r = await fetch(`/attendance/student/${encodeURIComponent(employeeId)}`);
+    const d = await r.json();
+    if(!d.success) return;
+    const s = d.stats || {};
+
+    document.getElementById("selfAttPct").innerText   = (s.selfPct||0) + "%";
+    document.getElementById("selfAttCount").innerText = (s.selfTotal||0) + " days marked";
+    document.getElementById("classAttPct").innerText  = (s.coordPct||0) + "%";
+    document.getElementById("classAttCount").innerText= (s.coordPresent||0) + " present / " + (s.coordTotal||0);
+    document.getElementById("combinedAttPct").innerText = (s.combinedPct||0) + "%";
+
+    const badge = document.getElementById("combinedAttBadge");
+    if(s.eligible){ badge.innerText = "Eligible ✅"; badge.style.color = "#10b981"; }
+    else { badge.innerText = "Below 75% ❌"; badge.style.color = "#f43f5e"; }
+
+    // Headline stats
+    document.getElementById("attendanceText").innerText = (s.combinedPct||0) + "%";
+    document.getElementById("meetingsJoinedText").innerText = (s.combinedPresentDays||0);
+
+    const threshEl = document.getElementById("attendanceThreshold");
+    if(threshEl){
+      if((s.combinedPct||0) >= 75){ threshEl.innerText = "✅ 75% attendance requirement met"; threshEl.style.color = "#10b981"; }
+      else { threshEl.innerText = "⚠️ " + (s.combinedPct||0) + "% / 75% required — keep marking attendance"; threshEl.style.color = "#f59e0b"; }
+    }
+
+    const btn = document.getElementById("attendanceBtn");
+    const statusEl = document.getElementById("attendanceStatus");
+    if(d.markedToday){
+      btn.innerText = "Already marked for today ✅";
+      btn.disabled = true; btn.classList.add("attendance-disabled");
+      if(statusEl) statusEl.innerText = "You marked your attendance today. Come back tomorrow.";
+    } else {
+      btn.innerText = "✅ Mark Today's Attendance";
+      btn.disabled = false; btn.classList.remove("attendance-disabled");
+      if(statusEl) statusEl.innerText = "Mark your attendance once every day.";
+    }
+
+    renderAttendanceHistory(d.attendance||[]);
+  }catch(e){ console.log(e); }
+}
+
+function attPill(status){
+  if(!status) return '<span style="color:#5a7299;">—</span>';
+  const color = status==="Present" ? "#10b981" : "#f43f5e";
+  const bg    = status==="Present" ? "rgba(16,185,129,0.12)" : "rgba(244,63,94,0.12)";
+  return `<span style="display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700;color:${color};background:${bg};">${status}</span>`;
+}
+
+function renderAttendanceHistory(records){
+  const c = document.getElementById("attendanceHistory");
+  if(!records.length){
+    c.innerHTML = '<div class="empty-state">No attendance records yet. Mark your first attendance!</div>';
+    return;
+  }
+  const byDate = {};
+  records.forEach(r=>{ if(!byDate[r.dateKey]) byDate[r.dateKey]={}; byDate[r.dateKey][r.markedBy]=r.status; });
+  const keys = Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,30);
+  let html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+  html += '<thead><tr style="text-align:left;color:#8aa4c8;font-size:11px;text-transform:uppercase;letter-spacing:1px;">'+
+          '<th style="padding:8px 10px;">Date</th><th style="padding:8px 10px;">Self</th><th style="padding:8px 10px;">Class</th></tr></thead><tbody>';
+  keys.forEach(k=>{
+    const fmt = new Date(k).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    html += `<tr style="border-top:1px solid rgba(99,140,210,0.12);">
+      <td style="padding:8px 10px;color:#cdd9ec;font-weight:600;">${fmt}</td>
+      <td style="padding:8px 10px;">${attPill(byDate[k].self)}</td>
+      <td style="padding:8px 10px;">${attPill(byDate[k].coordinator)}</td></tr>`;
+  });
+  html += '</tbody></table></div>';
+  c.innerHTML = html;
 }
 
 // (SSE handled by startStudentSSE above)
@@ -1428,6 +1471,7 @@ document.addEventListener("visibilitychange", function(){
   if(!document.hidden){
     loadNotice();
     loadStudentSubmissions();
+    loadAttendance();
   }
 });
 
@@ -1435,6 +1479,7 @@ loadNotice();
 renderTasks();          // Show domain tasks immediately without waiting for fetch
 loadCoordinatorTasks(); // Then load coordinator tasks (updates coordTaskContainer)
 loadStudentSubmissions();
+loadAttendance();       // NEW dual-attendance system
 
 
 // ── Notification System ──

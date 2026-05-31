@@ -13,6 +13,7 @@ const fs = require("fs");
 const Student = require("./models/Student");
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
+const Attendance = require("./models/Attendance");
 
 const app = express();
 
@@ -957,6 +958,401 @@ try{
     await CoordinatorTask.findOneAndUpdate({ domain }, { fileUrl:"", fileName:"" });
     res.json({ success:true });
 }catch(e){ res.json({ success:false }); }
+});
+
+// ==================================================================
+// ============ DUAL ATTENDANCE & CERTIFICATE WORKFLOW ==============
+// ==================================================================
+// New primary attendance system (models/Attendance.js).
+// SELF attendance: student marks once per calendar day (independent of tasks).
+// CLASS attendance: coordinator marks/edit any date (Present/Absent).
+// Two-step certificate approval: Coordinator -> HR -> Generate certificates.
+
+// ---- Helpers ----
+function toDateKey(d){
+    const dt = new Date(d);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const day = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+function parseJoinDate(joiningDate){
+    if(!joiningDate) return null;
+    const d = new Date(joiningDate);
+    if(isNaN(d.getTime())) return null;
+    return d;
+}
+
+function countWeekdays(start, end){
+    let count = 0;
+    const cur = new Date(start); cur.setHours(0,0,0,0);
+    const e = new Date(end);     e.setHours(0,0,0,0);
+    while(cur <= e){
+        const day = cur.getDay();
+        if(day !== 0 && day !== 6) count++;   // exclude Sat/Sun
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
+
+// Combined attendance % = present days (union of both sources) / working days since joining * 100
+async function computeAttendanceStats(employeeId, joiningDate){
+    const records = await Attendance.find({ employeeId });
+    const self  = records.filter(r => r.markedBy === "self");
+    const coord = records.filter(r => r.markedBy === "coordinator");
+
+    const selfPresent  = self.filter(r => r.status === "Present").length;
+    const coordPresent = coord.filter(r => r.status === "Present").length;
+    const coordAbsent  = coord.filter(r => r.status === "Absent").length;
+
+    // Union of distinct days the student was Present in EITHER source
+    const presentDayKeys = new Set();
+    records.forEach(r => { if(r.status === "Present") presentDayKeys.add(r.dateKey); });
+    const combinedPresentDays = presentDayKeys.size;
+
+    // Working days = weekdays since joining date (fallbacks keep % meaningful)
+    let workingDays = 0;
+    const jd = parseJoinDate(joiningDate);
+    const today = new Date();
+    if(jd && jd <= today){ workingDays = countWeekdays(jd, today); }
+    const distinctDays = new Set(records.map(r => r.dateKey)).size;
+    if(!workingDays || workingDays < combinedPresentDays){
+        workingDays = Math.max(workingDays, distinctDays, combinedPresentDays, 1);
+    }
+    if(workingDays < 1) workingDays = 1;
+
+    const combinedPct = Math.min(100, Math.round((combinedPresentDays / workingDays) * 100));
+    const selfPct     = Math.min(100, Math.round((selfPresent  / workingDays) * 100));
+    const coordPct    = Math.min(100, Math.round((coordPresent / workingDays) * 100));
+
+    return {
+        selfPresent, selfTotal: self.length,
+        coordPresent, coordAbsent, coordTotal: coord.length,
+        combinedPresentDays, workingDays,
+        selfPct, coordPct, combinedPct,
+        eligible: combinedPct >= 75
+    };
+}
+
+// ---- STUDENT: mark own attendance (once per day) ----
+app.post("/attendance/self", async(req,res)=>{
+try{
+    const { employeeId } = req.body;
+    if(!employeeId) return res.json({ success:false, message:"Employee ID required" });
+
+    const student = await Student.findOne({ employeeId });
+    if(!student) return res.json({ success:false, message:"Student not found" });
+
+    const now = new Date();
+    const dateKey = toDateKey(now);
+
+    const existing = await Attendance.findOne({ employeeId, dateKey, markedBy:"self" });
+    if(existing) return res.json({ success:false, alreadyMarked:true, message:"Already marked for today" });
+
+    const att = new Attendance({
+        studentId: student._id, employeeId, domain: student.domain,
+        date: now, dateKey, status:"Present", markedBy:"self"
+    });
+    await att.save();
+    res.json({ success:true, message:"Attendance marked for today", attendance:att });
+}catch(e){
+    if(e.code === 11000) return res.json({ success:false, alreadyMarked:true, message:"Already marked for today" });
+    console.log(e); res.json({ success:false, message:"Failed to mark attendance" });
+}
+});
+
+// ---- COORDINATOR: mark/update class attendance for any date ----
+app.post("/attendance/coordinator", async(req,res)=>{
+try{
+    const { employeeId, date, status, coordinatorId } = req.body;
+    if(!employeeId || !date) return res.json({ success:false, message:"Employee ID and date required" });
+
+    const student = await Student.findOne({ employeeId });
+    if(!student) return res.json({ success:false, message:"Student not found" });
+
+    const st = (status === "Absent") ? "Absent" : "Present";
+    const d = new Date(date);
+    if(isNaN(d.getTime())) return res.json({ success:false, message:"Invalid date" });
+    const dateKey = toDateKey(d);
+
+    // Idempotent: if already marked for that day, update it instead of erroring
+    let att = await Attendance.findOne({ employeeId, dateKey, markedBy:"coordinator" });
+    if(att){
+        att.status = st;
+        att.coordinatorId = coordinatorId || att.coordinatorId;
+        att.date = d;
+        await att.save();
+        return res.json({ success:true, updated:true, message:"Attendance updated", attendance:att });
+    }
+
+    att = new Attendance({
+        studentId: student._id, employeeId, domain: student.domain,
+        date: d, dateKey, status: st, markedBy:"coordinator", coordinatorId: coordinatorId || ""
+    });
+    await att.save();
+    res.json({ success:true, message:"Attendance marked", attendance:att });
+}catch(e){
+    if(e.code === 11000) return res.json({ success:false, message:"Already marked for this date" });
+    console.log(e); res.json({ success:false, message:"Failed to mark attendance" });
+}
+});
+
+// ---- COORDINATOR: edit an existing attendance record ----
+app.put("/attendance/:id", async(req,res)=>{
+try{
+    const { status, coordinatorId } = req.body;
+    const att = await Attendance.findById(req.params.id);
+    if(!att) return res.json({ success:false, message:"Record not found" });
+    if(att.markedBy !== "coordinator")
+        return res.json({ success:false, message:"Only coordinator-marked attendance can be edited" });
+
+    if(status) att.status = (status === "Absent") ? "Absent" : "Present";
+    if(coordinatorId) att.coordinatorId = coordinatorId;
+    await att.save();
+    res.json({ success:true, message:"Attendance updated", attendance:att });
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to update" }); }
+});
+
+// ---- GET attendance history + stats for one student ----
+app.get("/attendance/student/:employeeId", async(req,res)=>{
+try{
+    const employeeId = decodeURIComponent(req.params.employeeId);
+    const student = await Student.findOne({ employeeId });
+    const records = await Attendance.find({ employeeId }).sort({ date:-1 });
+    const stats = await computeAttendanceStats(employeeId, student ? student.joiningDate : null);
+    const today = toDateKey(new Date());
+    const markedToday = records.some(r => r.markedBy === "self" && r.dateKey === today);
+    res.json({ success:true, attendance:records, stats, markedToday });
+}catch(e){ console.log(e); res.json({ success:false, attendance:[], stats:null }); }
+});
+
+// ---- HR: attendance monitor (all students summary) ----
+app.get("/attendance/monitor", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")) return res.status(401).json({ success:false, message:"Unauthorized" });
+
+    const students = await Student.find().sort({ createdAt:-1 });
+    const result = [];
+    for(const s of students){
+        const stats = await computeAttendanceStats(s.employeeId, s.joiningDate);
+        result.push({
+            _id:s._id, employeeId:s.employeeId,
+            name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
+            domain:s.domain, joiningDate:s.joiningDate, stats
+        });
+    }
+    res.json({ success:true, students:result });
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
+});
+
+// ---- COORDINATOR: student overview for their domain ----
+// Returns each student's tasks, attendance stats, performance & approval state.
+app.get("/coordinator/student-overview/:domain", async(req,res)=>{
+try{
+    const domain = decodeURIComponent(req.params.domain);
+    const students = await Student.find({ domain }).sort({ createdAt:-1 });
+    const result = [];
+    for(const s of students){
+        const submissions = await Submission.find({ employeeId:s.employeeId }).sort({ submittedAt:-1 });
+        const stats = await computeAttendanceStats(s.employeeId, s.joiningDate);
+        const approvedTasks = submissions.filter(x => x.status === "Approved").length;
+        const performance = approvedTasks >= 5 ? "A+" : approvedTasks >= 3 ? "A" : approvedTasks >= 1 ? "B" : "C";
+        result.push({
+            _id:s._id, employeeId:s.employeeId,
+            name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
+            domain:s.domain, joiningDate:s.joiningDate, tenure:s.tenure,
+            submissions: submissions.map(x => ({ task:x.task, status:x.status, feedback:x.feedback, submittedAt:x.submittedAt })),
+            stats, performance,
+            certificateApprovedByCoordinator: s.certificateApprovedByCoordinator,
+            coordinatorRemarks: s.coordinatorRemarks,
+            coordinatorApprovedAt: s.coordinatorApprovedAt,
+            certificateApprovedByHR: s.certificateApprovedByHR,
+            hrRejected: s.hrRejected,
+            hrRejectionReason: s.hrRejectionReason
+        });
+    }
+    res.json({ success:true, students:result });
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
+});
+
+// ---- COORDINATOR: all attendance records for a domain (optionally one date) ----
+app.get("/coordinator/attendance/:domain", async(req,res)=>{
+try{
+    const domain = decodeURIComponent(req.params.domain);
+    const query = { domain };
+    if(req.query.date) query.dateKey = req.query.date;
+    const records = await Attendance.find(query).sort({ date:-1 });
+    res.json({ success:true, records });
+}catch(e){ console.log(e); res.json({ success:false, records:[] }); }
+});
+
+// ---- COORDINATOR: approve student for certificate consideration ----
+app.post("/students/:id/coordinator-approve", async(req,res)=>{
+try{
+    const { coordinatorId, remarks } = req.body;
+    const student = await Student.findById(req.params.id);
+    if(!student) return res.json({ success:false, message:"Student not found" });
+
+    student.certificateApprovedByCoordinator = true;
+    student.approvedByCoordinatorId = coordinatorId || "coordinator";
+    student.coordinatorApprovedAt = new Date();
+    student.coordinatorRemarks = remarks || "";
+    // Clear any prior HR rejection so the student re-enters HR's pending queue
+    student.hrRejected = false;
+    student.hrRejectionReason = "";
+    await student.save();
+
+    // Notify the student
+    const notif = new Notification({
+        title:"Coordinator Approved You ✅",
+        message:"Your coordinator has approved you for certificate consideration. Awaiting HR final review.",
+        type:"success", from:"Coordinator",
+        targetType:"student", targetEmployeeId:student.employeeId, targetDomain:student.domain
+    });
+    await notif.save();
+    broadcastNotification(student.domain, student.employeeId, notif);
+
+    res.json({ success:true, message:"Student approved and sent to HR for review" });
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to approve" }); }
+});
+
+// ---- COORDINATOR: revoke a previously given approval ----
+app.post("/students/:id/coordinator-revoke", async(req,res)=>{
+try{
+    const student = await Student.findById(req.params.id);
+    if(!student) return res.json({ success:false, message:"Student not found" });
+
+    student.certificateApprovedByCoordinator = false;
+    student.coordinatorApprovedAt = null;
+    student.coordinatorRemarks = "";
+    // Revoking coordinator approval also removes any HR approval (chain broken)
+    student.certificateApprovedByHR = false;
+    student.hrApprovedAt = null;
+    student.hrRemarks = "";
+    await student.save();
+
+    res.json({ success:true, message:"Approval revoked" });
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to revoke" }); }
+});
+
+// ---- HR: list students approved by coordinator & awaiting HR review ----
+app.get("/students/coordinator-approved", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")) return res.status(401).json({ success:false, message:"Unauthorized" });
+
+    const students = await Student.find({
+        certificateApprovedByCoordinator: true,
+        certificateApprovedByHR: false
+    }).sort({ coordinatorApprovedAt:-1 });
+
+    const result = [];
+    for(const s of students){
+        const submissions = await Submission.find({ employeeId:s.employeeId }).sort({ submittedAt:-1 });
+        const stats = await computeAttendanceStats(s.employeeId, s.joiningDate);
+        result.push({
+            _id:s._id, employeeId:s.employeeId,
+            name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
+            domain:s.domain, joiningDate:s.joiningDate, tenure:s.tenure,
+            submissions: submissions.map(x => ({ task:x.task, status:x.status, submittedAt:x.submittedAt })),
+            stats,
+            approvedByCoordinatorId: s.approvedByCoordinatorId,
+            coordinatorRemarks: s.coordinatorRemarks,
+            coordinatorApprovedAt: s.coordinatorApprovedAt,
+            hrRejected: s.hrRejected, hrRejectionReason: s.hrRejectionReason
+        });
+    }
+    res.json({ success:true, students:result });
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
+});
+
+// ---- HR: final approval ----
+app.post("/students/:id/hr-approve", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")) return res.status(401).json({ success:false, message:"Unauthorized" });
+
+    const { hrId, remarks } = req.body;
+    const student = await Student.findById(req.params.id);
+    if(!student) return res.json({ success:false, message:"Student not found" });
+    if(!student.certificateApprovedByCoordinator)
+        return res.json({ success:false, message:"Coordinator has not approved this student yet" });
+
+    student.certificateApprovedByHR = true;
+    student.approvedByHRId = hrId || "hr";
+    student.hrApprovedAt = new Date();
+    student.hrRemarks = remarks || "";
+    student.hrRejected = false;
+    student.hrRejectionReason = "";
+    await student.save();
+
+    const notif = new Notification({
+        title:"Certificate Approved 🎉",
+        message:"HR has given final approval. Your certificates are now available.",
+        type:"success", from:"HR",
+        targetType:"student", targetEmployeeId:student.employeeId, targetDomain:student.domain
+    });
+    await notif.save();
+    broadcastNotification(student.domain, student.employeeId, notif);
+
+    res.json({ success:true, message:"Student fully approved for certificates" });
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to approve" }); }
+});
+
+// ---- HR: reject (sends student back to coordinator with a reason) ----
+app.post("/students/:id/hr-reject", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")) return res.status(401).json({ success:false, message:"Unauthorized" });
+
+    const { reason } = req.body;
+    const student = await Student.findById(req.params.id);
+    if(!student) return res.json({ success:false, message:"Student not found" });
+
+    student.certificateApprovedByHR = false;
+    student.hrApprovedAt = null;
+    student.hrRejected = true;
+    student.hrRejectionReason = reason || "No reason provided";
+    // Send back to coordinator: clear coordinator approval so they must re-review
+    student.certificateApprovedByCoordinator = false;
+    await student.save();
+
+    const notif = new Notification({
+        title:"Certificate Review: Action Needed",
+        message:`HR returned your certificate review to the coordinator. Reason: ${student.hrRejectionReason}`,
+        type:"warning", from:"HR",
+        targetType:"coordinator-domain", targetDomain:student.domain
+    });
+    await notif.save();
+
+    res.json({ success:true, message:"Student rejected and returned to coordinator" });
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to reject" }); }
+});
+
+// ---- HR: list fully approved (certificate-eligible) students ----
+app.get("/students/hr-approved", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")) return res.status(401).json({ success:false, message:"Unauthorized" });
+
+    const students = await Student.find({ certificateApprovedByHR: true }).sort({ hrApprovedAt:-1 });
+    const result = [];
+    for(const s of students){
+        const stats = await computeAttendanceStats(s.employeeId, s.joiningDate);
+        result.push({
+            _id:s._id, employeeId:s.employeeId,
+            name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
+            domain:s.domain, joiningDate:s.joiningDate, tenure:s.tenure,
+            college:s.college || "",
+            stats,
+            coordinatorRemarks:s.coordinatorRemarks, hrRemarks:s.hrRemarks,
+            hrApprovedAt:s.hrApprovedAt
+        });
+    }
+    res.json({ success:true, students:result });
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
 });
 
 // ================= SERVER =================

@@ -422,6 +422,8 @@ body::before {
   <!-- Tab Nav -->
   <div class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('submissions')">📂 Submissions</button>
+    <button class="tab-btn" onclick="switchTab('attendance')">🪪 Attendance</button>
+    <button class="tab-btn" onclick="switchTab('overview')">👥 Student Overview</button>
     <button class="tab-btn" onclick="switchTab('notice')">📢 Notice Board</button>
     <button class="tab-btn" onclick="switchTab('test')">📝 Test Manager</button>
     <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Leaderboard</button>
@@ -443,6 +445,42 @@ body::before {
         </select>
       </div>
       <div id="submissionContainer"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Attendance (class attendance marking) -->
+  <div class="tab-section" id="tab-attendance">
+    <div class="submission-wrapper">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+        <div>
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;">Attendance Date</label>
+          <input type="date" id="attDate" onchange="loadAttendanceTab()"
+            style="background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);border-radius:10px;padding:10px 14px;color:white;font-size:14px;outline:none;">
+        </div>
+        <input type="text" id="attSearch" placeholder="🔍 Search student..." oninput="renderAttendanceTab()"
+          style="flex:1;min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);border-radius:10px;padding:10px 14px;color:white;font-size:14px;outline:none;">
+        <button class="refresh-btn" onclick="loadAttendanceTab()"><span>↻</span> Refresh</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+        Mark <b>Present / Absent</b> for each student for the selected date. This is independent of task approval. You can edit any entry later.
+      </p>
+      <div id="attendanceContainer"></div>
+    </div>
+  </div>
+
+  <!-- TAB: Student Overview (review + certificate approval) -->
+  <div class="tab-section" id="tab-overview">
+    <div class="submission-wrapper">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+        <input type="text" id="overviewSearch" placeholder="🔍 Search by name or Employee ID..." oninput="renderOverview()"
+          style="flex:1;min-width:200px;background:rgba(255,255,255,0.05);border:1px solid rgba(79,159,255,0.2);border-radius:10px;padding:10px 14px;color:white;font-size:14px;outline:none;">
+        <button class="refresh-btn" onclick="loadOverview()"><span>↻</span> Refresh</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+        Review each student's tasks, attendance and performance, then <b>approve them for certificate consideration</b>.
+        Approved students move to <b>HR review</b> — you cannot generate certificates yourself.
+      </p>
+      <div id="overviewContainer"></div>
     </div>
   </div>
 
@@ -644,6 +682,8 @@ function switchTab(name){
   if(name==="leaderboard"){ loadLeaderboard(); }
   if(name==="test"){ loadExistingQuestions(); }
   if(name==="tasks"){ loadCoordTasks(); }
+  if(name==="attendance"){ loadAttendanceTab(); }
+  if(name==="overview"){ loadOverview(); }
 }
 
 // ── Logout ──
@@ -660,6 +700,218 @@ function getStatusClass(status){
   return "pending";
 }
 function getInitial(id){ return id ? String(id).charAt(0).toUpperCase() : "?"; }
+
+// ════════════════════════════════════════════════
+//  ATTENDANCE TAB (coordinator marks class attendance)
+// ════════════════════════════════════════════════
+const coordUsername = sessionStorage.getItem("coordinatorUsername") || "coordinator";
+let attRoster = [];          // students in domain
+let attRecordsMap = {};      // employeeId -> { self:status, coordinator:status, coordId:_id }
+
+function attTodayKey(){ return new Date().toISOString().split("T")[0]; }
+
+async function loadAttendanceTab(){
+  const dateInput = document.getElementById("attDate");
+  if(!dateInput.value) dateInput.value = attTodayKey();
+  const dateKey = dateInput.value;
+  const container = document.getElementById("attendanceContainer");
+  container.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Loading students...</div></div>`;
+  try{
+    // roster (cache once)
+    if(!attRoster.length){
+      const ro = await fetch("/coordinator/student-overview/" + encodeURIComponent(domainStr));
+      const rd = await ro.json();
+      attRoster = rd.students || [];
+    }
+    // attendance for the selected date
+    const ar = await fetch("/coordinator/attendance/" + encodeURIComponent(domainStr) + "?date=" + dateKey);
+    const ad = await ar.json();
+    attRecordsMap = {};
+    (ad.records||[]).forEach(r=>{
+      if(!attRecordsMap[r.employeeId]) attRecordsMap[r.employeeId] = {};
+      attRecordsMap[r.employeeId][r.markedBy] = r.status;
+      if(r.markedBy === "coordinator") attRecordsMap[r.employeeId].coordId = r._id;
+    });
+    renderAttendanceTab();
+  }catch(e){
+    console.log(e);
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Failed to load</div></div>`;
+  }
+}
+
+function renderAttendanceTab(){
+  const container = document.getElementById("attendanceContainer");
+  const q = (document.getElementById("attSearch").value||"").toLowerCase();
+  const list = attRoster.filter(s => (s.name+" "+s.employeeId).toLowerCase().includes(q));
+  if(!list.length){
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No students found</div></div>`;
+    return;
+  }
+  container.innerHTML = list.map(s=>{
+    const rec = attRecordsMap[s.employeeId] || {};
+    const coordStatus = rec.coordinator || "";
+    const selfStatus = rec.self || "";
+    const selfBadge = selfStatus
+      ? `<span class="status-pill ${selfStatus==="Present"?"approved":"rejected"}">Self: ${selfStatus}</span>`
+      : `<span class="status-pill pending">Self: not marked</span>`;
+    const pBtn = `<button class="btn ${coordStatus==="Present"?"btn-approve":""}" style="${coordStatus==="Present"?"":"background:rgba(255,255,255,0.06);"}" onclick="markCoordAttendance('${s.employeeId}','Present')">✅ Present</button>`;
+    const aBtn = `<button class="btn ${coordStatus==="Absent"?"btn-reject":""}" style="${coordStatus==="Absent"?"":"background:rgba(255,255,255,0.06);"}" onclick="markCoordAttendance('${s.employeeId}','Absent')">❌ Absent</button>`;
+    const current = coordStatus
+      ? `<span class="status-pill ${coordStatus==="Present"?"approved":"rejected"}">Class: ${coordStatus}</span>`
+      : `<span class="status-pill pending">Class: not marked</span>`;
+    return `
+      <div class="submission-card">
+        <div class="card-top">
+          <div class="card-employee">
+            <div class="employee-avatar">${getInitial(s.employeeId)}</div>
+            <div>
+              <div class="employee-id">${s.name} · ${s.employeeId}</div>
+              <div class="employee-domain">${current} &nbsp; ${selfBadge}</div>
+            </div>
+          </div>
+        </div>
+        <div class="feedback-actions" style="margin-top:8px;">
+          ${pBtn} ${aBtn}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function markCoordAttendance(employeeId, status){
+  try{
+    const dateKey = document.getElementById("attDate").value || attTodayKey();
+    const r = await fetch("/attendance/coordinator",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ employeeId, date: dateKey, status, coordinatorId: coordUsername })
+    });
+    const d = await r.json();
+    if(d.success){
+      if(!attRecordsMap[employeeId]) attRecordsMap[employeeId] = {};
+      attRecordsMap[employeeId].coordinator = status;
+      if(d.attendance && d.attendance._id) attRecordsMap[employeeId].coordId = d.attendance._id;
+      renderAttendanceTab();
+      Swal.fire({toast:true,position:"top-end",icon:"success",title:(d.updated?"Updated":"Marked")+": "+status,showConfirmButton:false,timer:1500,background:"#090e1a",color:"#e2eaf7"});
+    } else {
+      Swal.fire({icon:"error",title:"Failed",text:d.message||"Could not mark",background:"#090e1a",color:"#e2eaf7"});
+    }
+  }catch(e){ console.log(e); Swal.fire({icon:"error",title:"Server Error",background:"#090e1a",color:"#e2eaf7"}); }
+}
+
+// ════════════════════════════════════════════════
+//  STUDENT OVERVIEW TAB (review + certificate approval)
+// ════════════════════════════════════════════════
+let overviewStudents = [];
+
+async function loadOverview(){
+  const container = document.getElementById("overviewContainer");
+  container.innerHTML = `<div class="empty-state"><div class="empty-icon">⏳</div><div class="empty-text">Loading students...</div></div>`;
+  try{
+    const r = await fetch("/coordinator/student-overview/" + encodeURIComponent(domainStr));
+    const d = await r.json();
+    overviewStudents = d.students || [];
+    renderOverview();
+  }catch(e){
+    console.log(e);
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><div class="empty-text">Failed to load</div></div>`;
+  }
+}
+
+function renderOverview(){
+  const container = document.getElementById("overviewContainer");
+  const q = (document.getElementById("overviewSearch").value||"").toLowerCase();
+  const list = overviewStudents.filter(s => (s.name+" "+s.employeeId).toLowerCase().includes(q));
+  if(!list.length){
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No students found</div></div>`;
+    return;
+  }
+  container.innerHTML = list.map(s=>{
+    const st = s.stats || {};
+    const elig = st.combinedPct>=75;
+    const tasksHtml = (s.submissions&&s.submissions.length)
+      ? s.submissions.map(t=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px;">
+            <span style="color:#cdd9ec;">${t.task||"Task"}</span>
+            <span class="status-pill ${getStatusClass(t.status)}" style="font-size:11px;">${t.status}</span></div>`).join("")
+      : `<div style="font-size:13px;color:var(--muted);">No tasks submitted</div>`;
+
+    let approvalBlock = "";
+    if(s.certificateApprovedByHR){
+      approvalBlock = `<div class="locked-notice">🎓 Fully approved by HR. Certificate eligible.</div>`;
+    } else if(s.certificateApprovedByCoordinator){
+      approvalBlock = `<div class="locked-notice">✅ You approved this student — awaiting HR final review.</div>
+        <div class="feedback-actions"><button class="btn btn-reject" onclick="revokeStudent('${s._id}')">↩ Revoke Approval</button></div>`;
+    } else {
+      const rej = s.hrRejected
+        ? `<div class="locked-notice" style="color:#f59e0b;">⚠️ HR returned this student. Reason: ${s.hrRejectionReason||"—"}</div>` : "";
+      approvalBlock = `${rej}<div class="feedback-actions"><button class="btn btn-approve" onclick="approveStudent('${s._id}','${(s.name||'').replace(/'/g,"")}')">🎖 Approve for Certificate</button></div>`;
+    }
+
+    return `
+      <div class="submission-card">
+        <div class="card-top">
+          <div class="card-employee">
+            <div class="employee-avatar">${getInitial(s.employeeId)}</div>
+            <div>
+              <div class="employee-id">${s.name} · ${s.employeeId}</div>
+              <div class="employee-domain">Joined: ${s.joiningDate||"—"} · ${s.tenure||""}</div>
+            </div>
+          </div>
+          <div class="status-pill ${elig?"approved":"rejected"}">${st.combinedPct||0}% ${elig?"Eligible":"Below 75%"}</div>
+        </div>
+        <div class="info-grid">
+          <div class="info-chip"><div class="info-chip-label">Self Attendance</div><div class="info-chip-value">${st.selfPct||0}% (${st.selfTotal||0})</div></div>
+          <div class="info-chip"><div class="info-chip-label">Class Attendance</div><div class="info-chip-value">${st.coordPct||0}% (${st.coordPresent||0}/${st.coordTotal||0})</div></div>
+          <div class="info-chip"><div class="info-chip-label">Combined</div><div class="info-chip-value">${st.combinedPct||0}%</div></div>
+          <div class="info-chip"><div class="info-chip-label">Performance</div><div class="info-chip-value">${s.performance||"B"}</div></div>
+        </div>
+        <div class="feedback-area">
+          <div class="feedback-label">Submitted Tasks</div>
+          ${tasksHtml}
+        </div>
+        ${approvalBlock}
+      </div>`;
+  }).join("");
+}
+
+async function approveStudent(id, name){
+  const { value: remarks, isConfirmed } = await Swal.fire({
+    title: "Approve for Certificate?",
+    html: `Approve <b>${name||"this student"}</b> for certificate consideration?<br><small>They will be sent to HR for final review.</small>`,
+    input: "textarea",
+    inputPlaceholder: "Optional remarks for HR...",
+    showCancelButton: true,
+    confirmButtonText: "Yes, Approve",
+    confirmButtonColor: "#10b981",
+    background: "#090e1a", color: "#e2eaf7"
+  });
+  if(!isConfirmed) return;
+  try{
+    const r = await fetch("/students/"+id+"/coordinator-approve",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ coordinatorId: coordUsername, remarks: remarks||"" })
+    });
+    const d = await r.json();
+    if(d.success){
+      Swal.fire({icon:"success",title:"Approved",text:d.message,background:"#090e1a",color:"#e2eaf7",confirmButtonColor:"#10b981"});
+      loadOverview();
+    } else { Swal.fire({icon:"error",title:"Failed",text:d.message,background:"#090e1a",color:"#e2eaf7"}); }
+  }catch(e){ console.log(e); Swal.fire({icon:"error",title:"Server Error",background:"#090e1a",color:"#e2eaf7"}); }
+}
+
+async function revokeStudent(id){
+  const c = await Swal.fire({
+    title:"Revoke Approval?",
+    text:"This removes your approval (and any HR approval). The student will no longer be in HR's review list.",
+    icon:"warning", showCancelButton:true, confirmButtonText:"Yes, Revoke",
+    confirmButtonColor:"#f43f5e", background:"#090e1a", color:"#e2eaf7"
+  });
+  if(!c.isConfirmed) return;
+  try{
+    const r = await fetch("/students/"+id+"/coordinator-revoke",{ method:"POST", headers:{"Content-Type":"application/json"}, body:"{}" });
+    const d = await r.json();
+    if(d.success){ Swal.fire({icon:"success",title:"Revoked",background:"#090e1a",color:"#e2eaf7",confirmButtonColor:"#10b981"}); loadOverview(); }
+    else { Swal.fire({icon:"error",title:"Failed",text:d.message,background:"#090e1a",color:"#e2eaf7"}); }
+  }catch(e){ console.log(e); Swal.fire({icon:"error",title:"Server Error",background:"#090e1a",color:"#e2eaf7"}); }
+}
 
 // ── Update Notice ──
 async function updateNotice(){
