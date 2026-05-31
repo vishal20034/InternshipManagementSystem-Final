@@ -427,6 +427,7 @@ body::before {
     <button class="tab-btn" onclick="switchTab('notice')">📢 Notice Board</button>
     <button class="tab-btn" onclick="switchTab('test')">📝 Test Manager</button>
     <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Leaderboard</button>
+    <button class="tab-btn" onclick="switchTab('lbperf')">⭐ Performance Ranking</button>
     <button class="tab-btn" onclick="switchTab('tasks')">📋 Task Manager</button>
   </div>
 
@@ -547,6 +548,11 @@ body::before {
       </div>
       <div id="leaderboardContainer"><p style="color:var(--muted)">Loading leaderboard...</p></div>
     </div>
+  </div>
+
+  <!-- ── PERFORMANCE RANKING TAB (Phase 1) ── -->
+  <div class="tab-section" id="tab-lbperf">
+    <div id="ten-extras-coord-mount"></div>
   </div>
 
   <!-- ── TASK MANAGER TAB ── -->
@@ -681,6 +687,11 @@ function switchTab(name){
   document.getElementById("tab-"+name).classList.add("active");
   event.target.classList.add("active");
   if(name==="leaderboard"){ loadLeaderboard(); }
+  if(name==="lbperf"){
+    if(window.TenExtras){
+      TenExtras.injectCoordinator({ domain: domainStr, mountId: "ten-extras-coord-mount" });
+    }
+  }
   if(name==="test"){ loadExistingQuestions(); }
   if(name==="tasks"){ loadCoordTasks(); }
   if(name==="attendance"){ loadAttendanceTab(); }
@@ -1650,6 +1661,15 @@ function renderSubmissions(submissions){
     username: username,
     domain: domain
   });
+})();
+</script>
+
+<!-- ===== Phase 1 extras: leaderboard + session timeout ===== -->
+<script src="/ten-extras.js"></script>
+<script src="/session-timeout.js"></script>
+<script>
+(function(){
+  if(window.TenSessionTimeout) TenSessionTimeout.start({ logoutUrl: "/coordinator-login.html" });
 })();
 </script>
 

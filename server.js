@@ -18,8 +18,11 @@ const Message = require("./models/Message");
 const HR = require("./models/HR");
 const Coordinator = require("./models/Coordinator");
 const Promotion = require("./models/Promotion");
+const BadgeAward = require("./models/BadgeAward");
 
 const bcrypt = require("bcrypt");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const http = require("http");
 const { Server: SocketIOServer } = require("socket.io");
 
@@ -61,6 +64,60 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 app.use('/uploads', express.static('uploads'));
+
+// ===== Feature 14: security hardening =====
+// helmet sets secure HTTP headers; we keep CSP off so the existing inline
+// scripts and external CDNs (sweetalert2, socket.io.js) keep working.
+// We also strip Mongo operator keys ($, .) from req.body to block NoSQL
+// injection. We do not touch req.query because Express 5 makes it a
+// read-only getter; this is fine because all routes that use ?params read
+// strings, not objects.
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: false
+}));
+function _sanitizeKeys(obj){
+    if(!obj || typeof obj !== "object") return;
+    for(const k of Object.keys(obj)){
+        if(k.startsWith("$") || k.indexOf(".") !== -1){
+            delete obj[k];
+        } else if(obj[k] && typeof obj[k] === "object"){
+            _sanitizeKeys(obj[k]);
+        }
+    }
+}
+app.use((req, _res, next) => { _sanitizeKeys(req.body); _sanitizeKeys(req.params); next(); });
+
+// Per-IP login rate limit (strictest). Applied directly to the login routes
+// further down via the `loginLimiter` reference.
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,            // 15 min
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success:false, message:"Too many login attempts. Please wait 15 minutes." }
+});
+
+// Registration rate limit
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,            // 1 hour
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success:false, message:"Too many registration attempts. Please try again later." }
+});
+
+// General API rate limit — applied broadly to /api but the project has very
+// few endpoints under /api today, so we also expose it for any future use.
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success:false, message:"Too many requests. Please slow down." }
+});
+app.use('/api', apiLimiter);
 
 const upload = multer({ dest: "uploads/" });
 
@@ -176,7 +233,7 @@ async function generateEmployeeId(domain){
 
 // ================= REGISTER =================
 
-app.post("/register", async(req,res)=>{
+app.post("/register", registerLimiter, async(req,res)=>{
 try{
 const { firstName, lastName, domain, whatsapp, email, tenure, joiningDate } = req.body;
 
@@ -215,7 +272,7 @@ res.json({ success:true, employeeId });
 
 // ================= LOGIN =================
 
-app.post("/login", async(req,res)=>{
+app.post("/login", loginLimiter, async(req,res)=>{
 try{
     const { employeeId, password } = req.body;
     const student = await Student.findOne({ employeeId, password });
@@ -262,6 +319,9 @@ try{
     });
 
     await submission.save();
+    // Milestones + badges (first-task)
+    await setMilestone(employeeId, "firstTaskSubmitted");
+    await recomputeBadgesFor(employeeId);
     res.json({ success:true, message:"Task Submitted Successfully" });
 }catch(error){
     console.log(error);
@@ -336,6 +396,15 @@ try{
         await notif.save();
         // SSE broadcast to student
         broadcastNotification(submission.domain, submission.employeeId, notif);
+    }
+
+    // Milestones + badges (first-task-approved + eligibility) — non-blocking
+    if(status === "Approved" && submission){
+        await setMilestone(submission.employeeId, "firstTaskApproved");
+    }
+    if(submission){
+        await checkCertificateEligibility(submission.employeeId);
+        await recomputeBadgesFor(submission.employeeId);
     }
 
     res.json({ success:true, message:"Status Updated Successfully" });
@@ -606,7 +675,7 @@ try{
 // email (looked up in the HR DB collection, bcrypt-compared) OR a legacy
 // username (looked up in HR_ACCOUNTS, plain compared).
 
-app.post("/hr-login", async(req,res)=>{
+app.post("/hr-login", loginLimiter, async(req,res)=>{
 try{
     const password = (req.body && req.body.password) || "";
     // Accept "email" (preferred) or legacy "username" field from older clients
@@ -892,7 +961,7 @@ try{
 
 // ================= STUDENT LOGIN =================
 
-app.post("/student-login", async(req,res)=>{
+app.post("/student-login", loginLimiter, async(req,res)=>{
 try{
     const { employeeId, password } = req.body;
     const student = await Student.findOne({ employeeId, password });
@@ -913,7 +982,7 @@ try{
 
 // ================= COORDINATOR LOGIN =================
 
-app.post("/coordinator-login", async(req,res)=>{
+app.post("/coordinator-login", loginLimiter, async(req,res)=>{
 try{
     const password = (req.body && req.body.password) || "";
     const identifier = ((req.body && (req.body.username || req.body.email)) || "").trim();
@@ -1194,6 +1263,10 @@ try{
         date: now, dateKey, status:"Present", markedBy:"self"
     });
     await att.save();
+    // Streak + milestones + badges (Features 6, 7, 11)
+    await bumpStreakAndMilestones(student);
+    await checkCertificateEligibility(employeeId);
+    await recomputeBadgesFor(employeeId);
     res.json({ success:true, message:"Attendance marked for today", attendance:att });
 }catch(e){
     if(e.code === 11000) return res.json({ success:false, alreadyMarked:true, message:"Already marked for today" });
@@ -1378,6 +1451,8 @@ try{
     // Clear any prior HR rejection so the student re-enters HR's pending queue
     student.hrRejected = false;
     student.hrRejectionReason = "";
+    student.milestones = student.milestones || {};
+    if(!student.milestones.coordinatorApproved) student.milestones.coordinatorApproved = new Date();
     await student.save();
 
     // Notify the student
@@ -1462,6 +1537,8 @@ try{
     student.hrRemarks = remarks || "";
     student.hrRejected = false;
     student.hrRejectionReason = "";
+    student.milestones = student.milestones || {};
+    if(!student.milestones.hrApproved) student.milestones.hrApproved = new Date();
     await student.save();
 
     const notif = new Notification({
@@ -2113,6 +2190,295 @@ try{
 
     res.json({ success:true, message:"Registration complete! Welcome to your new role.", redirect, role:rec.toRole });
 }catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+});
+
+// ==================================================================
+// =========== STREAK + MILESTONES + BADGES + LEADERBOARD ===========
+// ==================================================================
+
+// Catalog of badges. Each entry is { id, name, icon, description, requirement }
+// where `requirement` is rendered in the UI under the locked badge tile.
+const BADGE_CATALOG = [
+    { id:"first_step",         name:"First Step",            icon:"👣", description:"Mark your first ever attendance",        requirement:"Mark attendance once" },
+    { id:"week_warrior",       name:"Week Warrior",          icon:"⚡", description:"7 consecutive days of attendance",        requirement:"7-day streak" },
+    { id:"consistent",         name:"Consistent",            icon:"🎯", description:"30 days total attendance marked",         requirement:"30 days marked" },
+    { id:"attendance_champion",name:"Attendance Champion",   icon:"🏆", description:"Above 90% combined attendance",           requirement:"≥ 90% attendance" },
+    { id:"first_task",         name:"First Task",            icon:"✅", description:"Submit your first task",                  requirement:"1 submission" },
+    { id:"quick_learner",      name:"Quick Learner",         icon:"📚", description:"5 tasks approved",                        requirement:"5 approvals" },
+    { id:"task_master",        name:"Task Master",           icon:"💪", description:"10 tasks approved",                       requirement:"10 approvals" },
+    { id:"perfectionist",      name:"Perfectionist",         icon:"⭐", description:"5 approved with no rejections",           requirement:"5 approved, 0 rejected" },
+    { id:"rising_star",        name:"Rising Star",           icon:"🌟", description:"Performance score above 75",              requirement:"Score ≥ 75" },
+    { id:"outstanding",        name:"Outstanding",           icon:"🏅", description:"Performance score above 90",              requirement:"Score ≥ 90" },
+    { id:"top_performer",      name:"Top Performer",         icon:"👑", description:"Rank 1 in your domain leaderboard",       requirement:"Domain rank #1" },
+    { id:"day_one",            name:"Day 1",                 icon:"🎉", description:"Complete your first day",                 requirement:"Mark attendance & submit task on day 1" },
+    { id:"halfway_there",      name:"Halfway There",         icon:"🎯", description:"Complete 50% of your internship",         requirement:"50% of tenure elapsed" },
+    { id:"graduate",           name:"Graduate",              icon:"🎓", description:"Complete your full internship tenure",    requirement:"100% of tenure elapsed" }
+];
+const BADGE_CATALOG_BY_ID = Object.fromEntries(BADGE_CATALOG.map(b => [b.id, b]));
+// Major badges trigger a notification (and could be email-extended later).
+const MAJOR_BADGE_IDS = new Set(["outstanding","top_performer","graduate","attendance_champion"]);
+
+async function awardBadgeIfNew(student, badgeId){
+    const def = BADGE_CATALOG_BY_ID[badgeId];
+    if(!def || !student) return null;
+    try{
+        const award = await BadgeAward.create({
+            studentId: student._id,
+            employeeId: student.employeeId,
+            badgeId: def.id,
+            badgeName: def.name,
+            badgeIcon: def.icon,
+            awardedAt: new Date()
+        });
+        // In-app notification — uses the existing Notification system the student
+        // dashboard already polls, so the popup surfaces without extra wiring.
+        try{
+            const notif = new Notification({
+                title: `🎉 New Badge Earned: ${def.name} ${def.icon}`,
+                message: def.description,
+                type: MAJOR_BADGE_IDS.has(def.id) ? "success" : "info",
+                from: "System",
+                targetType: "student",
+                targetEmployeeId: student.employeeId,
+                targetDomain: student.domain || ""
+            });
+            await notif.save();
+            broadcastNotification(student.domain, student.employeeId, notif);
+        }catch(_){}
+        return award;
+    }catch(e){
+        if(e.code === 11000) return null;        // already awarded — ignore
+        console.log("awardBadgeIfNew error:", e.message);
+        return null;
+    }
+}
+
+// Recompute everything that could grant a badge for this student. Called from
+// /attendance/self, /submit-task, and /update-status. Idempotent — already-
+// owned badges are skipped by the unique index.
+async function recomputeBadgesFor(employeeId){
+    try{
+        const student = await Student.findOne({ employeeId });
+        if(!student) return;
+        const submissions = await Submission.find({ employeeId });
+        const totalSubmitted = submissions.length;
+        const approved = submissions.filter(s => s.status === "Approved").length;
+        const rejected = submissions.filter(s => s.status === "Rejected").length;
+        const attendance = await Attendance.find({ employeeId });
+        const totalMarked = new Set(attendance.map(a => a.dateKey)).size;
+        const stats = await computeAttendanceStats(employeeId, student.joiningDate);
+        const perf = await calculatePerformance(student);
+
+        // Attendance
+        if(totalMarked >= 1)                                          await awardBadgeIfNew(student, "first_step");
+        if((student.bestStreak || 0) >= 7)                            await awardBadgeIfNew(student, "week_warrior");
+        if(totalMarked >= 30)                                         await awardBadgeIfNew(student, "consistent");
+        if((stats.combinedPct || 0) >= 90)                            await awardBadgeIfNew(student, "attendance_champion");
+
+        // Tasks
+        if(totalSubmitted >= 1)                                       await awardBadgeIfNew(student, "first_task");
+        if(approved >= 5)                                             await awardBadgeIfNew(student, "quick_learner");
+        if(approved >= 10)                                            await awardBadgeIfNew(student, "task_master");
+        if(approved >= 5 && rejected === 0)                           await awardBadgeIfNew(student, "perfectionist");
+
+        // Performance
+        if(perf && perf.score >= 75)                                  await awardBadgeIfNew(student, "rising_star");
+        if(perf && perf.score >= 90)                                  await awardBadgeIfNew(student, "outstanding");
+
+        // Day 1: marked attendance AND submitted a task on the joining date
+        if(student.joiningDate){
+            const jKey = toDateKey(new Date(student.joiningDate));
+            const attendedDay1 = attendance.some(a => a.dateKey === jKey);
+            const submittedDay1 = submissions.some(s => toDateKey(new Date(s.submittedAt)) === jKey);
+            if(attendedDay1 && submittedDay1)                         await awardBadgeIfNew(student, "day_one");
+        }
+
+        // Tenure-based milestones
+        const tenureDays = (student.tenure || "").includes("6") ? 180
+                         : (student.tenure || "").includes("3") ? 90
+                         : 30;
+        if(student.joiningDate){
+            const j = new Date(student.joiningDate);
+            const elapsed = (new Date() - j) / (1000*60*60*24);
+            if(elapsed >= tenureDays * 0.5)                           await awardBadgeIfNew(student, "halfway_there");
+            if(elapsed >= tenureDays)                                 await awardBadgeIfNew(student, "graduate");
+        }
+
+        // Top performer — only if the student is rank 1 in their domain
+        if(student.domain){
+            const lb = await buildDomainLeaderboard(student.domain, 1);
+            if(lb.length && lb[0].employeeId === employeeId)          await awardBadgeIfNew(student, "top_performer");
+        }
+    }catch(e){ console.log("recomputeBadgesFor error:", e.message); }
+}
+
+// Update streak + milestones on a self-attendance mark. Called inline by
+// /attendance/self after the record is saved.
+async function bumpStreakAndMilestones(student){
+    try{
+        const today = new Date(); today.setHours(0,0,0,0);
+        const last = student.lastAttendanceDate ? new Date(student.lastAttendanceDate) : null;
+        if(last) last.setHours(0,0,0,0);
+
+        if(!last){
+            student.currentStreak = 1;
+        } else {
+            const diffDays = Math.round((today - last) / (24*3600*1000));
+            if(diffDays === 0)         student.currentStreak = student.currentStreak || 1;
+            else if(diffDays === 1)    student.currentStreak = (student.currentStreak || 0) + 1;
+            else                       student.currentStreak = 1;
+        }
+        student.bestStreak = Math.max(student.bestStreak || 0, student.currentStreak || 0);
+        student.lastAttendanceDate = today;
+        student.milestones = student.milestones || {};
+        if(!student.milestones.firstAttendance) student.milestones.firstAttendance = today;
+
+        // Attendance-percentage milestones
+        const stats = await computeAttendanceStats(student.employeeId, student.joiningDate);
+        if((stats.combinedPct || 0) >= 50 && !student.milestones.reached50Attendance) student.milestones.reached50Attendance = today;
+        if((stats.combinedPct || 0) >= 75 && !student.milestones.reached75Attendance) student.milestones.reached75Attendance = today;
+
+        // Internship completed: today >= joining + tenureDays
+        if(student.joiningDate && !student.milestones.internshipCompleted){
+            const tenureDays = (student.tenure || "").includes("6") ? 180
+                             : (student.tenure || "").includes("3") ? 90
+                             : 30;
+            const j = new Date(student.joiningDate);
+            const end = new Date(j); end.setDate(end.getDate() + tenureDays);
+            if(today >= end) student.milestones.internshipCompleted = today;
+        }
+
+        await student.save();
+    }catch(e){ console.log("bumpStreakAndMilestones error:", e.message); }
+}
+
+// Async-safe milestone setter — mark a single milestone with a date if not set.
+async function setMilestone(employeeId, key, when){
+    try{
+        const s = await Student.findOne({ employeeId });
+        if(!s) return;
+        s.milestones = s.milestones || {};
+        if(!s.milestones[key]){
+            s.milestones[key] = when || new Date();
+            await s.save();
+        }
+    }catch(_){}
+}
+
+// Eligibility: combined attendance >= 75% AND ≥ 5 approved tasks.
+async function checkCertificateEligibility(employeeId){
+    try{
+        const s = await Student.findOne({ employeeId });
+        if(!s) return;
+        const stats = await computeAttendanceStats(employeeId, s.joiningDate);
+        const approved = await Submission.countDocuments({ employeeId, status:"Approved" });
+        if((stats.combinedPct || 0) >= 75 && approved >= 5){
+            await setMilestone(employeeId, "certificateEligible");
+        }
+    }catch(_){}
+}
+
+// ---- Build leaderboard entries for a domain or globally ----
+async function _buildLeaderboard(filter, limit){
+    const students = await Student.find(filter || {}).sort({ createdAt: 1 });
+    const rows = [];
+    for(const s of students){
+        const stats = await computeAttendanceStats(s.employeeId, s.joiningDate);
+        const perf = await calculatePerformance(s);
+        const approved = await Submission.countDocuments({ employeeId: s.employeeId, status:"Approved" });
+        rows.push({
+            employeeId: s.employeeId,
+            name: (s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim() || s.employeeId,
+            domain: s.domain || "",
+            score: perf ? perf.score : 0,
+            grade: perf ? perf.grade : "—",
+            attendancePct: stats.combinedPct || 0,
+            approved,
+            currentStreak: s.currentStreak || 0
+        });
+    }
+    rows.sort((a,b) => b.score - a.score
+                    || b.attendancePct - a.attendancePct
+                    || b.approved - a.approved);
+    return rows.slice(0, limit).map((r, i) => Object.assign({ rank: i+1 }, r));
+}
+async function buildDomainLeaderboard(domain, limit=10){ return _buildLeaderboard({ domain }, limit); }
+async function buildOverallLeaderboard(limit=20)        { return _buildLeaderboard({}, limit); }
+
+// ---- API ----
+
+// Feature 5 — leaderboards
+app.get("/leaderboard/domain/:domain", async(req,res)=>{
+    try{
+        const domain = decodeURIComponent(req.params.domain);
+        const rows = await buildDomainLeaderboard(domain, 10);
+        res.json({ success:true, leaderboard: rows, domain });
+    }catch(e){ console.log(e); res.status(500).json({ success:false, leaderboard:[] }); }
+});
+app.get("/leaderboard/overall", async(req,res)=>{
+    try{
+        const rows = await buildOverallLeaderboard(20);
+        res.json({ success:true, leaderboard: rows });
+    }catch(e){ console.log(e); res.status(500).json({ success:false, leaderboard:[] }); }
+});
+
+// Feature 6 — badges
+app.get("/badges/catalog", (req,res) => {
+    res.json({ success:true, catalog: BADGE_CATALOG });
+});
+app.get("/badges/student/:employeeId", async(req,res)=>{
+    try{
+        const employeeId = decodeURIComponent(req.params.employeeId);
+        const earned = await BadgeAward.find({ employeeId }).sort({ awardedAt: 1 });
+        const earnedIds = new Set(earned.map(b => b.badgeId));
+        const out = BADGE_CATALOG.map(b => {
+            const owned = earnedIds.has(b.id);
+            const e = owned ? earned.find(x => x.badgeId === b.id) : null;
+            return { ...b, earned: owned, awardedAt: e ? e.awardedAt : null };
+        });
+        res.json({ success:true, badges: out, earnedCount: earned.length, totalCount: BADGE_CATALOG.length });
+    }catch(e){ console.log(e); res.status(500).json({ success:false, badges:[] }); }
+});
+
+// Feature 7 — streak
+app.get("/students/:employeeId/streak", async(req,res)=>{
+    try{
+        const s = await Student.findOne({ employeeId: decodeURIComponent(req.params.employeeId) });
+        if(!s) return res.status(404).json({ success:false });
+        res.json({
+            success:true,
+            currentStreak: s.currentStreak || 0,
+            bestStreak: s.bestStreak || 0,
+            lastAttendanceDate: s.lastAttendanceDate
+        });
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// Feature 11 — timeline (returns the milestones object)
+app.get("/students/:employeeId/timeline", async(req,res)=>{
+    try{
+        const s = await Student.findOne({ employeeId: decodeURIComponent(req.params.employeeId) });
+        if(!s) return res.status(404).json({ success:false });
+        const tenureDays = (s.tenure || "").includes("6") ? 180
+                         : (s.tenure || "").includes("3") ? 90
+                         : 30;
+        let endDate = null;
+        if(s.joiningDate){
+            const j = new Date(s.joiningDate);
+            const end = new Date(j); end.setDate(end.getDate() + tenureDays);
+            endDate = end.toISOString().slice(0,10);
+        }
+        res.json({
+            success:true,
+            joiningDate: s.joiningDate || null,
+            tenure: s.tenure || "",
+            endDate,
+            registrationDate: s.createdAt,
+            milestones: s.milestones || {},
+            certificateApprovedByCoordinator: !!s.certificateApprovedByCoordinator,
+            certificateApprovedByHR: !!s.certificateApprovedByHR
+        });
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ================= SERVER =================

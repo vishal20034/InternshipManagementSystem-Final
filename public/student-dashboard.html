@@ -992,6 +992,9 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
+  <!-- ── Streak / Timeline / Badges / Leaderboard / LinkedIn / GCal (Phase 1) ── -->
+  <div id="ten-extras-mount" style="margin-top:20px;"></div>
+
   <!-- TEN footer -->
   <div class="ten-footer">
     <strong>TEN</strong> — The Entrepreneurship Network &nbsp;·&nbsp; Student Portal
@@ -1695,6 +1698,35 @@ startStudentSSE();
     employeeId: student.employeeId,
     domain: student.domain || ""
   });
+})();
+</script>
+
+<!-- ===== Phase 1 extras: streak, badges, timeline, leaderboard, LinkedIn, GCal ===== -->
+<script src="/ten-extras.js"></script>
+<script src="/session-timeout.js"></script>
+<script>
+(function(){
+  if(!window.TenExtras || !student) return;
+  // Compute internship end date for the GCal button
+  var end = null;
+  try {
+    var t = (student.tenure || "").toLowerCase();
+    var days = t.indexOf("6")>=0 ? 180 : t.indexOf("3")>=0 ? 90 : 30;
+    if(student.joiningDate){
+      var d = new Date(student.joiningDate);
+      d.setDate(d.getDate() + days);
+      end = d;
+    }
+  } catch(e) {}
+  TenExtras.injectStudent({
+    employeeId: student.employeeId,
+    domain: student.domain || "",
+    name: ((student.firstName||"") + " " + (student.lastName||"")).trim(),
+    mountId: "ten-extras-mount",
+    internshipEndDate: end
+  });
+  // Session timeout (Feature 15)
+  if(window.TenSessionTimeout) TenSessionTimeout.start({ logoutUrl: "/login.html" });
 })();
 </script>
 </body>

@@ -273,6 +273,9 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     <div class="nav-section-title">Promotions</div>
     <button class="nav-btn" onclick="showView('promotions')" data-view="promotions"><span class="icon">🚀</span> Promotions</button>
     <div class="nav-divider"></div>
+    <div class="nav-section-title">Leaderboard</div>
+    <button class="nav-btn" onclick="showView('leaderboard')" data-view="leaderboard"><span class="icon">🏆</span> Performance Leaderboard</button>
+    <div class="nav-divider"></div>
     <div class="nav-section-title">Documents</div>
     <button class="nav-btn" onclick="showView('documents')" data-view="documents"><span class="icon">📄</span> Generate Documents</button>
     <div class="nav-divider"></div>
@@ -553,6 +556,11 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     </div>
   </div>
 
+  <!-- LEADERBOARD (Phase 1) -->
+  <div class="view" id="view-leaderboard">
+    <div id="ten-extras-hr-mount"></div>
+  </div>
+
   <!-- PROMOTIONS -->
   <div class="view" id="view-promotions">
     <div class="doc-tabs">
@@ -765,7 +773,7 @@ function showView(v){
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
-  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals',promotions:'<span>Promotions</span>'};
+  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals',promotions:'<span>Promotions</span>',leaderboard:'<span>Performance</span> Leaderboard'};
   document.getElementById('pageTitle').innerHTML=t[v]||v;
   if(v==='students') loadStudents();
   if(v==='tracker') loadTracker();
@@ -776,6 +784,11 @@ function showView(v){
   if(v==='attendance-monitor') loadAttendanceMonitor();
   if(v==='certificates') loadCertPending();
   if(v==='promotions') loadPromoCandidatesStudents();
+  if(v==='leaderboard'){
+    if(window.TenExtras){
+      TenExtras.injectHR({ mountId: "ten-extras-hr-mount" });
+    }
+  }
 }
 
 async function loadOverview(){
@@ -1449,6 +1462,7 @@ function renderCertApproved(){
           <button class="cert-gen-btn" onclick="genCert(${i},'loc')">🎓 Generate LOC</button>
           <button class="cert-gen-btn" onclick="genCert(${i},'lor')">📝 Generate LOR</button>
           <button class="cert-gen-btn" onclick="genCert(${i},'star')">⭐ Star Performer</button>
+          <button class="cert-gen-btn" style="background:linear-gradient(135deg,#0a66c2,#004182);color:#fff;border-color:transparent;" onclick="shareCertOnLinkedIn(${i})">🔗 Share on LinkedIn</button>
         </div>`;
     return `<div class="cert-card">
       <div class="cert-card-head">
@@ -1472,6 +1486,20 @@ function genCert(i,type){
   if(type==='loc') generateLOC();
   else if(type==='lor') generateLOR();
   else if(type==='star') generateStarCert();
+}
+function shareCertOnLinkedIn(i){
+  const s = hrApprovedStudents[i]; if(!s) return;
+  const role = s.domain ? (s.domain + " Intern") : "Intern";
+  const period = (s.joiningDate || "—") + " to " + (s.tenure || "—");
+  const summary = `🎓 I have successfully completed my internship as a ${role} at The Entrepreneurship Network!\n`
+    + `Earned: Letter of Completion + Letter of Recommendation\n`
+    + `Duration: ${period}\n`
+    + `Employee ID: ${s.employeeId || '—'}\n`
+    + `#Internship #TEN #TheEntrepreneurshipNetwork #${(s.domain || 'Internship').replace(/\s+/g,'')} #Certificate`;
+  const url = window.TenExtras
+    ? TenExtras.linkedInShareUrl({ url: location.origin, title: `Internship Certificate — ${role}`, summary })
+    : `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(location.origin)}&title=${encodeURIComponent("Internship Certificate")}&summary=${encodeURIComponent(summary)}`;
+  window.open(url, "_blank", "noopener");
 }
 
 /* ============ PROMOTIONS ============ */
@@ -1761,6 +1789,15 @@ loadOverview();
     name: hrUser.name || hrIdent,
     username: hrIdent
   });
+})();
+</script>
+
+<!-- ===== Phase 1 extras: leaderboard + LinkedIn + session timeout ===== -->
+<script src="/ten-extras.js"></script>
+<script src="/session-timeout.js"></script>
+<script>
+(function(){
+  if(window.TenSessionTimeout) TenSessionTimeout.start({ logoutUrl: "/hr-login" });
 })();
 </script>
 </body>
