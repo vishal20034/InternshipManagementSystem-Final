@@ -10,14 +10,15 @@
 <style>
 
 :root {
-  --bg: #05070e;
-  --surface: #090d1a;
+  --bg: #04070f;
+  --surface: #080d1a;
   --surface2: #0e1428;
-  --border: rgba(212,175,55,0.08);
-  --border-glow: rgba(212,175,55,0.22);
-  --accent: #4f9fff;
-  --accent2: #7c3aed;
-  --gold: #D4AF37;
+  --border: rgba(245,197,66,0.10);
+  --border-glow: rgba(245,197,66,0.25);
+  --accent: #f5c542;
+  --accent2: #c9a227;
+  --gold: #f5c542;
+  --gold2: #c9a227;
   --cyan: #22d3ee;
   --green: #10b981;
   --red: #f43f5e;
@@ -119,8 +120,10 @@ body::before {
 .banner-content { position:relative; z-index:2; }
 .banner-eyebrow { font-size:12px; font-weight:500; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
 .banner-eyebrow::before { content:""; display:inline-block; width:24px; height:1px; background:var(--accent); }
-.banner h1 { font-family:var(--font-display); font-size:clamp(36px,5vw,62px); font-weight:800; letter-spacing:-2px; line-height:1; color:white; margin-bottom:14px; }
-.banner h1 span { background:linear-gradient(90deg,var(--accent),var(--cyan)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.banner h1 { font-family: var(--font-display); font-size: 28px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; color: white; margin-bottom: 8px; }
+.banner h1 span { color: var(--accent); }
+.banner-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.banner-eyebrow::before { content:""; display:inline-block; width:18px; height:1px; background:var(--accent); }
 .banner p { font-size:17px; color:rgba(226,234,247,0.65); font-weight:300; }
 
 /* Stats Grid */
@@ -384,13 +387,12 @@ body::before {
     </div>
   </div>
 
-  <!-- Banner -->
+  <!-- Banner (slim, professional) -->
   <div class="banner">
     <div class="banner-accent-line"></div>
-    <div class="banner-glow"></div>
     <div class="banner-content">
-      <div class="banner-eyebrow">Command Center</div>
-      <h1>Coordinator <span>Dashboard</span></h1>
+      <div class="banner-eyebrow">Coordinator</div>
+      <h1>Dashboard</h1>
       <p id="domainTitle">Managing submissions dynamically</p>
     </div>
   </div>
@@ -426,6 +428,7 @@ body::before {
     <button class="tab-btn" onclick="switchTab('overview')">👥 Student Overview</button>
     <button class="tab-btn" onclick="switchTab('notice')">📢 Notice Board</button>
     <button class="tab-btn" onclick="switchTab('test')">📝 Test Manager</button>
+    <button class="tab-btn" onclick="switchTab('coding')">💻 Coding Problems</button>
     <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Leaderboard</button>
     <button class="tab-btn" onclick="switchTab('lbperf')">⭐ Performance Ranking</button>
     <button class="tab-btn" onclick="switchTab('tasks')">📋 Task Manager</button>
@@ -542,6 +545,30 @@ body::before {
 
   <!-- TAB: Test Manager -->
   <div class="tab-section" id="tab-test">
+    <!-- F4 — PDF upload card (sits ABOVE existing manual editor) -->
+    <div class="test-section" style="margin-bottom:18px;">
+      <div class="section-header">
+        <div class="section-icon">📄</div>
+        <div class="section-title">Upload Questions via PDF</div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+        Upload a PDF with questions in this format:<br>
+        <code style="background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:6px;font-size:12px;">Q1. Question text? / A) option / B) option / C) option / D) option / Answer: B</code>
+      </p>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input id="pdfQuestionFile" type="file" accept=".pdf"
+          style="background:rgba(255,255,255,0.04);border:1px solid rgba(245,197,66,0.18);border-radius:10px;padding:10px 14px;color:#cdd9ec;font-family:inherit;font-size:13px;flex:1;min-width:240px;">
+        <button class="btn btn-primary" onclick="parsePdfQuestions()">📤 Parse PDF</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);" onclick="clearPdfPreview()">❌ Clear</button>
+      </div>
+      <div id="pdfParseStatus" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+      <div id="pdfParsePreview" style="display:none;margin-top:14px;"></div>
+      <div id="pdfImportRow" style="display:none;margin-top:14px;">
+        <button class="btn btn-approve" onclick="importParsedQuestions()">✅ Import Selected Questions</button>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px;">Imported questions are appended to the manual editor below — review, then click Save Test.</span>
+      </div>
+    </div>
+
     <div class="test-section">
       <div class="section-header">
         <div class="section-icon">📝</div>
@@ -556,6 +583,79 @@ body::before {
         <button class="btn btn-primary" onclick="saveTestQuestions()">💾 Save Test</button>
         <button class="btn" style="background:rgba(34,211,238,0.1);color:var(--cyan);border:1px solid rgba(34,211,238,0.25);" onclick="loadExistingQuestions()">🔄 Load Existing</button>
       </div>
+    </div>
+  </div>
+
+  <!-- TAB: Coding Problems (F5) -->
+  <div class="tab-section" id="tab-coding">
+    <div class="test-section" style="margin-bottom:18px;">
+      <div class="section-header">
+        <div class="section-icon">💻</div>
+        <div class="section-title">Add Coding Problem</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Problem Title</div>
+          <input id="cqTitle" placeholder="e.g. Reverse a string" />
+        </div>
+        <div class="form-group">
+          <div class="form-label">Difficulty</div>
+          <select id="cqDifficulty" style="width:100%;padding:10px 12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:10px;color:#cdd9ec;font-family:inherit;">
+            <option value="Easy">Easy</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <div class="form-label">Problem Description</div>
+          <textarea id="cqDescription" rows="5" placeholder="Describe the problem. You can use multiple paragraphs and code samples."></textarea>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Input Format</div>
+          <input id="cqInputFormat" placeholder="e.g. A single line containing two integers" />
+        </div>
+        <div class="form-group">
+          <div class="form-label">Output Format</div>
+          <input id="cqOutputFormat" placeholder="e.g. A single integer" />
+        </div>
+        <div class="form-group">
+          <div class="form-label">Sample Input</div>
+          <textarea id="cqSampleInput" rows="3" placeholder="3 4"></textarea>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Sample Output</div>
+          <textarea id="cqSampleOutput" rows="3" placeholder="7"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:700;color:#cdd9ec;">Test Cases</div>
+          <button class="btn btn-amber" onclick="addCqTestCase()">➕ Add Test Case</button>
+        </div>
+        <div id="cqTestCases"></div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:14px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="saveCodingQuestion()">💾 Save Problem</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);" onclick="resetCodingForm()">↺ Reset Form</button>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <div class="section-header">
+        <div class="section-icon">📚</div>
+        <div class="section-title">Existing Problems</div>
+      </div>
+      <div id="codingQuestionsContainer"><p style="color:var(--muted)">Loading…</p></div>
+    </div>
+
+    <div class="test-section" style="margin-top:18px;">
+      <div class="section-header">
+        <div class="section-icon">📥</div>
+        <div class="section-title">Student Submissions</div>
+      </div>
+      <div id="codingSubmissionsContainer"><p style="color:var(--muted)">Loading…</p></div>
     </div>
   </div>
 
@@ -707,6 +807,7 @@ function switchTab(name){
   document.getElementById("tab-"+name).classList.add("active");
   event.target.classList.add("active");
   if(name==="leaderboard"){ loadLeaderboard(); }
+  if(name==="coding"){ loadCodingQuestionsCoord(); loadCodingSubmissionsCoord(); }
   if(name==="lbperf"){
     if(window.TenExtras){
       TenExtras.injectCoordinator({ domain: domainStr, mountId: "ten-extras-coord-mount" });
@@ -1349,6 +1450,258 @@ async function saveTestQuestions(){
   }catch(e){
     Swal.fire({icon:"error",title:"Server Error",background:"#090e1a",color:"#e2eaf7"});
   }
+}
+
+// ════════════════════════════════════════════════
+//  F4 — PDF question upload (coordinator)
+// ════════════════════════════════════════════════
+let _pdfParsedQuestions = [];
+function clearPdfPreview(){
+  _pdfParsedQuestions = [];
+  document.getElementById("pdfQuestionFile").value = "";
+  document.getElementById("pdfParsePreview").style.display = "none";
+  document.getElementById("pdfParsePreview").innerHTML = "";
+  document.getElementById("pdfImportRow").style.display = "none";
+  document.getElementById("pdfParseStatus").textContent = "";
+}
+async function parsePdfQuestions(){
+  const fi = document.getElementById("pdfQuestionFile");
+  if(!fi || !fi.files || !fi.files[0]){
+    Swal.fire({icon:"info",title:"Pick a PDF first",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+  const status = document.getElementById("pdfParseStatus");
+  status.textContent = "📄 Extracting questions…";
+  try{
+    const fd = new FormData();
+    fd.append("pdfFile", fi.files[0]);
+    const r = await fetch("/coordinator/test/upload-pdf", { method:"POST", body: fd });
+    const d = await r.json();
+    if(!d.success){
+      status.innerHTML = '<span style="color:#f43f5e;">' + (d.message || "Could not parse PDF") + '</span>';
+      return;
+    }
+    _pdfParsedQuestions = d.questions || [];
+    status.innerHTML = '<span style="color:#10b981;">✅ ' + _pdfParsedQuestions.length + ' question' + (_pdfParsedQuestions.length===1?"":"s") + ' extracted</span>';
+    renderPdfPreview();
+  }catch(e){
+    status.innerHTML = '<span style="color:#f43f5e;">Network error: ' + (e.message||e) + '</span>';
+  }
+}
+function renderPdfPreview(){
+  const wrap = document.getElementById("pdfParsePreview");
+  if(!_pdfParsedQuestions.length){ wrap.style.display="none"; document.getElementById("pdfImportRow").style.display="none"; return; }
+  const letters = ["A","B","C","D"];
+  wrap.innerHTML = _pdfParsedQuestions.map((q, i) =>
+    '<div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;">'
+    + '<div style="display:flex;align-items:flex-start;gap:10px;">'
+    +   '<input type="checkbox" data-pdfq="' + i + '" checked style="margin-top:5px;">'
+    +   '<div style="flex:1;">'
+    +     '<div style="font-weight:700;color:#cdd9ec;margin-bottom:8px;">Q' + (i+1) + '. ' + (q.question || "").replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])) + '</div>'
+    +     '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;">'
+    +       q.options.map((o, j) => {
+              const correct = q.correctAnswer === j;
+              return '<div style="padding:6px 10px;border-radius:8px;background:' + (correct?"rgba(16,185,129,0.10)":"rgba(99,140,210,0.05)") + ';border:1px solid ' + (correct?"rgba(16,185,129,0.32)":"rgba(99,140,210,0.18)") + ';">'
+                  + '<b>' + letters[j] + ')</b> ' + (o || "").replace(/[<>&]/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]))
+                  + (correct?' &nbsp;<span style="color:#10b981;font-size:11px;font-weight:700;">✓ correct</span>':'')
+                  + '</div>';
+            }).join("")
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
+    + '</div>'
+  ).join("");
+  wrap.style.display = "block";
+  document.getElementById("pdfImportRow").style.display = "block";
+}
+function importParsedQuestions(){
+  const checked = Array.from(document.querySelectorAll('#pdfParsePreview input[data-pdfq]:checked'))
+    .map(el => parseInt(el.dataset.pdfq, 10))
+    .map(i => _pdfParsedQuestions[i])
+    .filter(Boolean);
+  if(!checked.length){
+    Swal.fire({icon:"info",title:"Nothing selected",text:"Tick at least one parsed question to import.",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+  // Append into the existing manual editor — coordinator can review then click Save Test.
+  checked.forEach(q => addQuestion(q));
+  Swal.fire({toast:true,position:"top-end",icon:"success",title:checked.length + " imported into editor",showConfirmButton:false,timer:1800,background:"#090e1a",color:"#e2eaf7"});
+  // Also ensure the test-section auto-scrolls to show the editor
+  const ed = document.getElementById("questionsContainer");
+  if(ed) ed.scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+
+// ════════════════════════════════════════════════
+//  F5 — Coding Problems (coordinator)
+// ════════════════════════════════════════════════
+function _diffPill(d){
+  const colors = { Easy:"#10b981", Medium:"#f59e0b", Hard:"#f43f5e" };
+  const c = colors[d] || "#9aa4bf";
+  return '<span style="display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;color:' + c + ';background:' + c + '22;border:1px solid ' + c + '55;">' + d + '</span>';
+}
+function _esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+let _cqTcCount = 0;
+function addCqTestCase(initial){
+  const wrap = document.getElementById("cqTestCases");
+  const idx = _cqTcCount++;
+  const row = document.createElement("div");
+  row.className = "cq-tc-row";
+  row.dataset.idx = idx;
+  row.style.cssText = "background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px;";
+  row.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+    +   '<div style="font-size:12px;color:var(--muted);font-weight:700;letter-spacing:1px;text-transform:uppercase;">Test Case #' + (idx+1) + '</div>'
+    +   '<div style="display:flex;gap:8px;align-items:center;">'
+    +     '<label style="font-size:12px;color:#cdd9ec;cursor:pointer;display:inline-flex;gap:6px;align-items:center;"><input type="checkbox" class="cq-tc-hidden" ' + (initial && initial.isHidden ? "checked" : "") + '> Hidden from student</label>'
+    +     '<button class="btn btn-reject" onclick="removeCqTestCase(this)" style="padding:4px 10px;font-size:11px;">🗑 Remove</button>'
+    +   '</div>'
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+    +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Input</div>'
+    +     '<textarea class="cq-tc-input" rows="3" style="width:100%;background:#0d1117;color:#cdd9ec;border:1px solid var(--border);border-radius:8px;padding:8px;font-family:Consolas,Monaco,monospace;font-size:13px;">' + _esc(initial && initial.input || "") + '</textarea>'
+    +   '</div>'
+    +   '<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Expected Output</div>'
+    +     '<textarea class="cq-tc-output" rows="3" style="width:100%;background:#0d1117;color:#cdd9ec;border:1px solid var(--border);border-radius:8px;padding:8px;font-family:Consolas,Monaco,monospace;font-size:13px;">' + _esc(initial && initial.expectedOutput || "") + '</textarea>'
+    +   '</div>'
+    + '</div>';
+  wrap.appendChild(row);
+}
+function removeCqTestCase(btn){
+  const row = btn.closest(".cq-tc-row");
+  if(row) row.remove();
+}
+function resetCodingForm(){
+  ["cqTitle","cqDescription","cqInputFormat","cqOutputFormat","cqSampleInput","cqSampleOutput"].forEach(id => { const el = document.getElementById(id); if(el) el.value = ""; });
+  document.getElementById("cqDifficulty").value = "Easy";
+  document.getElementById("cqTestCases").innerHTML = "";
+  _cqTcCount = 0;
+}
+async function loadCodingQuestionsCoord(){
+  const c = document.getElementById("codingQuestionsContainer");
+  if(!c) return;
+  c.innerHTML = '<p style="color:var(--muted)">Loading…</p>';
+  try{
+    const r = await fetch("/coordinator/coding-questions/" + encodeURIComponent(domainStr));
+    const d = await r.json();
+    if(!d.success || !d.questions || !d.questions.length){
+      c.innerHTML = '<div class="empty-state"><div class="empty-icon">💻</div><div class="empty-text">No coding problems yet</div><div class="empty-sub">Add one with the form above.</div></div>';
+      return;
+    }
+    c.innerHTML = d.questions.map(q =>
+        '<div class="submission-card">'
+      +   '<div class="card-top">'
+      +     '<div class="card-employee">'
+      +       '<div class="employee-avatar">💻</div>'
+      +       '<div><div class="employee-id">' + _esc(q.title) + '</div>'
+      +       '<div class="employee-domain">' + _diffPill(q.difficulty) + ' &nbsp;·&nbsp; ' + (q.testCases||[]).length + ' test case' + ((q.testCases||[]).length===1?"":"s") + '</div></div>'
+      +     '</div>'
+      +     '<button class="btn btn-reject" onclick="deleteCodingQuestion(\'' + q._id + '\')">🗑 Delete</button>'
+      +   '</div>'
+      +   '<div style="font-size:13px;color:#cdd9ec;margin-top:8px;line-height:1.55;white-space:pre-wrap;max-height:120px;overflow:auto;">' + _esc((q.description||"").slice(0,400)) + ((q.description||"").length>400?"…":"") + '</div>'
+      + '</div>'
+    ).join("");
+  }catch(e){ c.innerHTML = '<p style="color:#f43f5e">Failed to load coding problems.</p>'; }
+}
+async function saveCodingQuestion(){
+  const title = document.getElementById("cqTitle").value.trim();
+  const description = document.getElementById("cqDescription").value.trim();
+  if(!title || !description){
+    Swal.fire({icon:"warning",title:"Title and description are required",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+  const testCases = Array.from(document.querySelectorAll(".cq-tc-row")).map(row => ({
+    input:          row.querySelector(".cq-tc-input").value,
+    expectedOutput: row.querySelector(".cq-tc-output").value,
+    isHidden:       row.querySelector(".cq-tc-hidden").checked
+  })).filter(t => t.expectedOutput.trim().length > 0);
+  if(!testCases.length){
+    Swal.fire({icon:"warning",title:"Add at least one test case",text:"Each test case needs an expected output.",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+  try{
+    const r = await fetch("/coordinator/coding-questions",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        domain: domainStr, title, description,
+        inputFormat:  document.getElementById("cqInputFormat").value.trim(),
+        outputFormat: document.getElementById("cqOutputFormat").value.trim(),
+        sampleInput:  document.getElementById("cqSampleInput").value,
+        sampleOutput: document.getElementById("cqSampleOutput").value,
+        difficulty:   document.getElementById("cqDifficulty").value,
+        testCases
+      })
+    });
+    const d = await r.json();
+    if(d.success){
+      Swal.fire({toast:true,position:"top-end",icon:"success",title:"Coding problem saved",showConfirmButton:false,timer:1800,background:"#090e1a",color:"#e2eaf7"});
+      resetCodingForm();
+      loadCodingQuestionsCoord();
+      loadCodingSubmissionsCoord();
+    } else {
+      Swal.fire({icon:"error",title:"Save failed",text:d.message||"",background:"#090e1a",color:"#e2eaf7"});
+    }
+  }catch(e){ Swal.fire({icon:"error",title:"Network error",background:"#090e1a",color:"#e2eaf7"}); }
+}
+async function deleteCodingQuestion(id){
+  const c = await Swal.fire({
+    title:"Delete this problem?", icon:"warning", showCancelButton:true,
+    confirmButtonText:"Yes, delete", confirmButtonColor:"#f43f5e",
+    background:"#090e1a", color:"#e2eaf7"
+  });
+  if(!c.isConfirmed) return;
+  try{
+    const r = await fetch("/coordinator/coding-questions/" + id, { method:"DELETE" });
+    const d = await r.json();
+    if(d.success){ loadCodingQuestionsCoord(); }
+  }catch(e){ /* ignore */ }
+}
+async function loadCodingSubmissionsCoord(){
+  const c = document.getElementById("codingSubmissionsContainer");
+  if(!c) return;
+  c.innerHTML = '<p style="color:var(--muted)">Loading…</p>';
+  try{
+    const r = await fetch("/coordinator/coding-submissions/" + encodeURIComponent(domainStr));
+    const d = await r.json();
+    if(!d.success || !d.submissions || !d.submissions.length){
+      c.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">No submissions yet</div></div>';
+      return;
+    }
+    c.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="color:#9aa4bf;font-size:11px;text-transform:uppercase;letter-spacing:1px;">'
+      +   '<th style="text-align:left;padding:8px 10px;">Employee ID</th>'
+      +   '<th style="text-align:left;padding:8px 10px;">Language</th>'
+      +   '<th style="text-align:left;padding:8px 10px;">Result</th>'
+      +   '<th style="text-align:left;padding:8px 10px;">Cases</th>'
+      +   '<th style="text-align:left;padding:8px 10px;">Submitted</th>'
+      +   '<th style="text-align:left;padding:8px 10px;">Code</th>'
+      + '</tr></thead><tbody>'
+      + d.submissions.map(s => {
+          const stClass = s.status === "Accepted" ? "approved" : s.status === "Wrong Answer" ? "rejected" : "pending";
+          return '<tr style="border-top:1px solid var(--border);">'
+            + '<td style="padding:8px 10px;font-family:\'JetBrains Mono\',Consolas,monospace;color:var(--accent);font-size:12px;">' + _esc(s.employeeId) + '</td>'
+            + '<td style="padding:8px 10px;">' + _esc(s.language) + '</td>'
+            + '<td style="padding:8px 10px;"><span class="status-pill ' + stClass + '">' + _esc(s.status) + '</span></td>'
+            + '<td style="padding:8px 10px;">' + s.passedCases + '/' + s.totalCases + '</td>'
+            + '<td style="padding:8px 10px;color:#9aa4bf;">' + new Date(s.submittedAt).toLocaleString("en-IN") + '</td>'
+            + '<td style="padding:8px 10px;"><button class="btn" style="padding:5px 10px;font-size:12px;background:rgba(99,140,210,0.10);border:1px solid rgba(99,140,210,0.25);color:#cdd9ec;" onclick="viewCodingSubmission(\'' + s._id + '\')">View Code</button></td>'
+            + '</tr>';
+        }).join("")
+      + '</tbody></table></div>';
+    window._codingSubsCache = d.submissions;
+  }catch(e){ c.innerHTML = '<p style="color:#f43f5e">Failed to load submissions.</p>'; }
+}
+function viewCodingSubmission(id){
+  const s = (window._codingSubsCache || []).find(x => String(x._id) === String(id));
+  if(!s) return;
+  Swal.fire({
+    title: "Submission · " + _esc(s.employeeId) + " (" + _esc(s.language) + ")",
+    html: '<div style="text-align:left;">'
+        + '<div style="font-size:12px;color:#9aa4bf;margin-bottom:8px;">Status: <b style="color:' + (s.status==="Accepted"?"#10b981":(s.status==="Wrong Answer"?"#f43f5e":"#f59e0b")) + ';">' + _esc(s.status) + '</b> · ' + s.passedCases + '/' + s.totalCases + ' test cases</div>'
+        + '<pre style="background:#0d1117;color:#cdd9ec;padding:14px;border-radius:10px;font-family:Consolas,Monaco,monospace;font-size:12px;text-align:left;max-height:50vh;overflow:auto;">' + _esc(s.code) + '</pre>'
+        + '</div>',
+    width: 720, background:"#090e1a", color:"#e2eaf7", confirmButtonColor:"#4f9fff"
+  });
 }
 
 // ── Leaderboard ──

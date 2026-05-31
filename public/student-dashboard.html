@@ -9,6 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<!-- CodeMirror for the F5 coding editor (CDN, no build step) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+
 <style>
 :root {
   --bg-base:        #05070e;
@@ -799,6 +807,54 @@ button:active { transform: translateY(0); }
   letter-spacing: 1px;
 }
 .ten-footer strong { color: var(--accent-gold); font-weight: 700; }
+
+/* ════════════════════════════════
+   F5 — Coding problems list + modal
+═══════════════════════════════════ */
+.coding-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s,transform .15s;}
+.coding-card:hover{border-color:var(--accent-gold);transform:translateY(-1px);}
+.coding-card .ttl{font-size:14px;font-weight:700;color:#e8e6df;}
+.coding-card .desc{font-size:12px;color:#8aa4c8;margin-top:3px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.diff-badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.4px;}
+.diff-easy{color:#10b981;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.32);}
+.diff-medium{color:#ff9100;background:rgba(255,145,0,0.12);border:1px solid rgba(255,145,0,0.32);}
+.diff-hard{color:#f43f5e;background:rgba(244,63,94,0.12);border:1px solid rgba(244,63,94,0.32);}
+
+.coding-modal{position:fixed;inset:0;z-index:9999;display:flex;align-items:stretch;justify-content:center;}
+.coding-modal .cm-bg{position:absolute;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);}
+.coding-modal .cm-shell{position:relative;width:min(1280px,96vw);height:min(92vh,920px);background:#0c1220;border:1px solid rgba(245,197,66,0.22);border-radius:18px;margin:auto;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.55);}
+.coding-modal .cm-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid rgba(245,197,66,.12);background:linear-gradient(135deg,#0d1a2e,#112240);}
+.coding-modal .cm-close{background:rgba(244,63,94,.12);color:#f43f5e;border:1px solid rgba(244,63,94,.32);border-radius:8px;padding:6px 12px;cursor:pointer;font-weight:700;font-family:inherit;}
+.coding-modal .cm-body{display:grid;grid-template-columns:minmax(0,42%) minmax(0,58%);flex:1;min-height:0;}
+.coding-modal .cm-left{padding:18px 22px;overflow:auto;border-right:1px solid rgba(245,197,66,.10);background:#0a1020;color:#cdd9ec;}
+.coding-modal .cm-desc{font-size:14px;line-height:1.65;white-space:pre-wrap;}
+.coding-modal #cmFmt{margin-top:14px;font-size:13px;color:#9aa4bf;line-height:1.55;}
+.coding-modal #cmFmt b{color:#cdd9ec;}
+.coding-modal #cmSample{margin-top:14px;}
+.coding-modal #cmSample pre{background:#0d1117;color:#cdd9ec;padding:10px 12px;border-radius:8px;font-size:12px;font-family:Consolas,Monaco,monospace;}
+.coding-modal .cm-right{display:flex;flex-direction:column;min-height:0;background:#0c1220;}
+.coding-modal .cm-toolbar{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(245,197,66,.10);background:#0a1020;}
+.coding-modal .cm-toolbar select{background:#0d1117;color:#cdd9ec;border:1px solid rgba(245,197,66,.18);border-radius:8px;padding:6px 10px;font-family:inherit;}
+.coding-modal #codeEditor{display:none;}
+.coding-modal .CodeMirror{flex:1;min-height:0;height:auto !important;font-family:Consolas,Monaco,'Courier New',monospace;font-size:14px;}
+.coding-modal .cm-actions{display:flex;gap:8px;align-items:center;padding:10px 14px;border-top:1px solid rgba(245,197,66,.10);background:#0a1020;flex-wrap:wrap;}
+.coding-modal .cm-btn{padding:8px 14px;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;}
+.coding-modal .cm-btn-run{background:#10b981;color:#0c1220;}
+.coding-modal .cm-btn-submit{background:linear-gradient(135deg,#f5c542,#c9a227);color:#0c1220;}
+.coding-modal .cm-btn-clear{background:rgba(255,255,255,.06);color:#cdd9ec;border:1px solid rgba(255,255,255,.10);}
+.coding-modal .cm-btn:disabled{opacity:.55;cursor:not-allowed;}
+.coding-modal .cm-stdin{padding:8px 14px;border-top:1px solid rgba(245,197,66,.10);background:#0a1020;color:#9aa4bf;font-size:12px;}
+.coding-modal .cm-stdin summary{cursor:pointer;}
+.coding-modal .cm-stdin textarea{width:100%;margin-top:6px;background:#0d1117;color:#cdd9ec;border:1px solid rgba(245,197,66,.16);border-radius:6px;padding:8px;font-family:Consolas,Monaco,monospace;font-size:12px;}
+.coding-modal .cm-output-label{padding:8px 14px;font-size:11px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;}
+.coding-modal .cm-output{margin:0 14px 14px;background:#0d1117;color:#00ff41;border:1px solid #1f2937;border-radius:8px;padding:12px;font-family:Consolas,Monaco,monospace;font-size:13px;min-height:120px;max-height:240px;overflow:auto;white-space:pre-wrap;}
+.coding-modal .cm-output.is-error{color:#f43f5e;}
+.coding-modal .cm-output.is-warn{color:#ff9100;}
+@media (max-width: 900px){
+  .coding-modal .cm-shell{width:100vw;height:100vh;border-radius:0;}
+  .coding-modal .cm-body{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+  .coding-modal .cm-left{max-height:35vh;border-right:none;border-bottom:1px solid rgba(245,197,66,.10);}
+}
 </style>
 </head>
 
@@ -919,6 +975,60 @@ button:active { transform: translateY(0); }
     </div>
     <div id="coordTaskContainer">
       <div class="empty-state">⏳ No task file uploaded by coordinator yet.</div>
+    </div>
+  </div>
+
+  <!-- ── F5: CODING PROBLEMS BOX ── -->
+  <div class="tasks-box" id="codingProblemsSection" style="margin-bottom:16px;display:none;">
+    <div class="section-title">
+      <h2>💻 Coding Problems</h2>
+      <span class="badge">FROM COORDINATOR</span>
+    </div>
+    <div id="codingProblemsList"></div>
+  </div>
+
+  <!-- ── F5: CODING MODAL ── -->
+  <div id="codingModal" class="coding-modal" style="display:none;">
+    <div class="cm-bg" onclick="closeCodingModal()"></div>
+    <div class="cm-shell">
+      <div class="cm-head">
+        <div>
+          <span id="cmTitle" style="font-size:18px;font-weight:800;">Problem</span>
+          <span id="cmDifficulty" style="margin-left:10px;"></span>
+        </div>
+        <button class="cm-close" onclick="closeCodingModal()" aria-label="Close">✕</button>
+      </div>
+      <div class="cm-body">
+        <div class="cm-left">
+          <div id="cmDescription" class="cm-desc"></div>
+          <div id="cmFmt"></div>
+          <div id="cmSample"></div>
+        </div>
+        <div class="cm-right">
+          <div class="cm-toolbar">
+            <label style="font-size:11px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Language</label>
+            <select id="cmLang" onchange="setLanguage(this.value)">
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+            </select>
+          </div>
+          <textarea id="codeEditor"></textarea>
+          <div class="cm-actions">
+            <button class="cm-btn cm-btn-run" onclick="runCode()">▶ Run Code</button>
+            <button class="cm-btn cm-btn-submit" onclick="submitCode()">📤 Submit</button>
+            <button class="cm-btn cm-btn-clear" onclick="document.getElementById('codeOutput').textContent='';">🧹 Clear Output</button>
+            <span id="cmLangLabel" style="margin-left:auto;font-size:12px;color:#9aa4bf;">Mode: javascript</span>
+          </div>
+          <details class="cm-stdin">
+            <summary>Custom Input (used by Run Code)</summary>
+            <textarea id="customInput" rows="3" placeholder="stdin for Run Code..."></textarea>
+          </details>
+          <div class="cm-output-label">Output</div>
+          <pre id="codeOutput" class="cm-output">— output will appear here —</pre>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1434,7 +1544,8 @@ async function refreshDashboard(){
     loadStudentSubmissions(),
     loadCoordinatorTasks(),
     loadNotifications(),
-    loadAttendance()
+    loadAttendance(),
+    loadCodingProblems()
   ]);
 }
 
@@ -1538,6 +1649,210 @@ function renderAttendanceHistory(records){
 
 // (SSE handled by startStudentSSE above)
 
+// ════════════════════════════════════════════════
+//  F5 — Coding Problems (student)
+// ════════════════════════════════════════════════
+const _STARTER = {
+  javascript: "// Read stdin if needed:\n// let s=''; process.stdin.on('data',d=>s+=d); process.stdin.on('end',()=>{ /* parse and print */ });\n\n",
+  python:     "# Read stdin if needed:\n# import sys; data = sys.stdin.read()\n\n",
+  java:       "import java.util.*;\npublic class Solution {\n    public static void main(String[] args) {\n        \n    }\n}\n",
+  cpp:        "#include<bits/stdc++.h>\nusing namespace std;\nint main(){\n    \n    return 0;\n}\n"
+};
+const _CM_MODE = { javascript:"javascript", python:"python", java:"text/x-java", cpp:"text/x-c++src" };
+let _codingEditor = null;
+let _currentCodingQuestion = null;
+
+function _cmDiffPill(d){
+  const cls = d === "Easy" ? "diff-easy" : d === "Medium" ? "diff-medium" : "diff-hard";
+  return '<span class="diff-badge ' + cls + '">' + (d || "Easy") + '</span>';
+}
+function _cmEsc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+async function loadCodingProblems(){
+  if(!domain) return;
+  const root = document.getElementById("codingProblemsList");
+  const sec = document.getElementById("codingProblemsSection");
+  if(!root || !sec) return;
+  try{
+    const r = await fetch("/student/coding-questions/" + encodeURIComponent(domain));
+    const d = await r.json();
+    const list = (d && d.questions) || [];
+    if(!list.length){ sec.style.display = "none"; root.innerHTML = ""; return; }
+    sec.style.display = "block";
+    root.innerHTML = list.map(q =>
+        '<div class="coding-card" onclick="openCodingProblem(\'' + q._id + '\')">'
+      +   '<div style="flex:1;min-width:0;">'
+      +     '<div class="ttl">' + _cmEsc(q.title) + '</div>'
+      +     '<div class="desc">' + _cmEsc((q.description || "").slice(0, 220)) + '</div>'
+      +   '</div>'
+      +   '<div>' + _cmDiffPill(q.difficulty) + '</div>'
+      + '</div>'
+    ).join("");
+  }catch(e){ /* silent — section just stays hidden */ }
+}
+
+async function openCodingProblem(qid){
+  try{
+    const r = await fetch("/student/coding-questions/question/" + qid);
+    const d = await r.json();
+    if(!d.success || !d.question){ throw new Error(d.message || "Could not load problem"); }
+    _currentCodingQuestion = d.question;
+
+    document.getElementById("cmTitle").textContent = d.question.title || "Problem";
+    document.getElementById("cmDifficulty").innerHTML = _cmDiffPill(d.question.difficulty);
+    document.getElementById("cmDescription").textContent = d.question.description || "";
+    document.getElementById("cmFmt").innerHTML =
+        (d.question.inputFormat  ? '<div><b>Input:</b> '  + _cmEsc(d.question.inputFormat)  + '</div>' : '')
+      + (d.question.outputFormat ? '<div style="margin-top:6px;"><b>Output:</b> ' + _cmEsc(d.question.outputFormat) + '</div>' : '');
+    document.getElementById("cmSample").innerHTML =
+        (d.question.sampleInput  ? '<div><b style="font-size:12px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Sample Input</b><pre>' + _cmEsc(d.question.sampleInput) + '</pre></div>' : '')
+      + (d.question.sampleOutput ? '<div><b style="font-size:12px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Sample Output</b><pre>' + _cmEsc(d.question.sampleOutput) + '</pre></div>' : '');
+
+    document.getElementById("codingModal").style.display = "flex";
+
+    // Initialise CodeMirror lazily, the first time we open the modal.
+    const langSel = document.getElementById("cmLang");
+    const lang = langSel.value || "javascript";
+    if(!_codingEditor && typeof CodeMirror !== "undefined"){
+      _codingEditor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
+        lineNumbers: true,
+        theme: "dracula",
+        mode: _CM_MODE[lang],
+        indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        lineWrapping: false,
+        autofocus: true
+      });
+      _codingEditor.setOption("extraKeys", {
+        Tab: function(cm){ cm.replaceSelection("    ", "end"); }
+      });
+    } else if(!_codingEditor){
+      // CodeMirror failed to load — fall back to plain textarea.
+      const ta = document.getElementById("codeEditor");
+      ta.style.display = "block";
+      ta.style.width = "100%";
+      ta.style.height = "100%";
+      ta.style.background = "#0d1117";
+      ta.style.color = "#cdd9ec";
+      ta.style.fontFamily = "Consolas,Monaco,monospace";
+      ta.style.fontSize = "14px";
+      ta.style.padding = "12px";
+      ta.style.border = "none";
+      ta.style.outline = "none";
+    }
+    setLanguage(lang);
+    // Reset output and submit button each time
+    const out = document.getElementById("codeOutput");
+    out.textContent = "— output will appear here —";
+    out.classList.remove("is-error","is-warn");
+    document.querySelector("#codingModal .cm-btn-submit").disabled = false;
+  }catch(e){
+    Swal.fire({icon:"error",title:"Failed to load problem",text:e.message||String(e),background:"#0c1220",color:"#f0eee8"});
+  }
+}
+
+function closeCodingModal(){
+  document.getElementById("codingModal").style.display = "none";
+}
+
+function setLanguage(lang){
+  document.getElementById("cmLangLabel").textContent = "Mode: " + lang;
+  if(_codingEditor){
+    _codingEditor.setOption("mode", _CM_MODE[lang] || "javascript");
+    if(!(_codingEditor.getValue() || "").trim()){
+      _codingEditor.setValue(_STARTER[lang] || "");
+    }
+  } else {
+    const ta = document.getElementById("codeEditor");
+    if(ta && !(ta.value || "").trim()) ta.value = _STARTER[lang] || "";
+  }
+}
+
+function _readCode(){
+  if(_codingEditor) return _codingEditor.getValue();
+  return document.getElementById("codeEditor").value;
+}
+
+async function runCode(){
+  const out = document.getElementById("codeOutput");
+  const lang = document.getElementById("cmLang").value;
+  const stdin = document.getElementById("customInput").value || "";
+  out.classList.remove("is-error","is-warn");
+  out.textContent = "⏳ Running…";
+  const btn = document.querySelector("#codingModal .cm-btn-run");
+  btn.disabled = true;
+  try{
+    const r = await fetch("/code/run",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ code: _readCode(), language: lang, input: stdin })
+    });
+    const d = await r.json();
+    const time = (d.executionTime != null) ? "  ·  " + d.executionTime + " ms" : "";
+    if(d.success){
+      out.classList.remove("is-error","is-warn");
+      out.textContent = (d.output && d.output.length ? d.output : "(no output)") + "\n\n— ✅ Run complete" + time;
+    } else {
+      out.classList.add(/Time limit/i.test(d.error || "") ? "is-warn" : "is-error");
+      out.textContent = (d.output ? d.output + "\n\n" : "") + (d.error || "(unknown error)") + "\n\n— ❌ Status: " + (d.error || "Error") + time;
+    }
+  }catch(e){
+    out.classList.add("is-error");
+    out.textContent = "Network error: " + (e.message || e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function submitCode(){
+  if(!_currentCodingQuestion){ return; }
+  const empId = (typeof employeeId !== "undefined" && employeeId)
+    || (student && student.employeeId) || "";
+  if(!empId){
+    Swal.fire({icon:"error",title:"Not logged in",background:"#0c1220",color:"#f0eee8"});
+    return;
+  }
+  const lang = document.getElementById("cmLang").value;
+  const out = document.getElementById("codeOutput");
+  out.classList.remove("is-error","is-warn");
+  out.textContent = "⏳ Submitting and running against all test cases…";
+  const submitBtn = document.querySelector("#codingModal .cm-btn-submit");
+  submitBtn.disabled = true;
+  try{
+    const r = await fetch("/code/submit",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ employeeId: empId, questionId: _currentCodingQuestion._id, language: lang, code: _readCode() })
+    });
+    const d = await r.json();
+    const verdict = d.status || (d.success ? "Accepted" : "Failed");
+    let lines = ["── Verdict: " + verdict + " ──",
+                 "Passed " + (d.passedCases||0) + " / " + (d.totalCases||0) + " test cases",
+                 ""];
+    (d.results || []).forEach((c, i) => {
+      lines.push("• Case " + (i+1) + (c.isHidden ? " (hidden)" : "") + ": " + (c.passed ? "✅ pass" : "❌ fail"));
+      if(!c.passed && !c.isHidden){
+        lines.push("    input    : " + (c.input || "").split("\n").join("\\n"));
+        lines.push("    expected : " + (c.expected || "").split("\n").join("\\n"));
+        lines.push("    actual   : " + (c.actual || "").split("\n").join("\\n"));
+        if(c.error) lines.push("    error    : " + c.error.split("\n").join(" "));
+      }
+    });
+    out.textContent = lines.join("\n");
+    if(verdict === "Accepted"){
+      out.classList.remove("is-error","is-warn");
+      Swal.fire({toast:true,position:"top-end",icon:"success",title:"Accepted!",text:d.passedCases+"/"+d.totalCases+" test cases",showConfirmButton:false,timer:2200,background:"#0c1220",color:"#f0eee8"});
+      submitBtn.disabled = true; submitBtn.textContent = "✅ Submitted";
+    } else {
+      out.classList.add(verdict === "Runtime Error" ? "is-warn" : "is-error");
+      submitBtn.disabled = false;   // allow retry
+    }
+  }catch(e){
+    out.classList.add("is-error");
+    out.textContent = "Network error: " + (e.message || e);
+    submitBtn.disabled = false;
+  }
+}
+
 // ── Tab visibility: auto refresh student page when tab becomes visible ──
 document.addEventListener("visibilitychange", function(){
   if(!document.hidden){
@@ -1550,6 +1865,7 @@ document.addEventListener("visibilitychange", function(){
 loadNotice();
 renderTasks();          // Show domain tasks immediately without waiting for fetch
 loadCoordinatorTasks(); // Then load coordinator tasks (updates coordTaskContainer)
+loadCodingProblems();   // F5: show coding section if domain has any
 loadStudentSubmissions();
 loadAttendance();       // NEW dual-attendance system
 

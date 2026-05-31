@@ -3016,6 +3016,392 @@ app.get("/chat/blocked-list", async(req,res)=>{
     }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
+// ==================================================================
+// ============ F4 — PDF UPLOAD FOR TEST QUESTIONS ==================
+// ==================================================================
+// Coordinator uploads a PDF in this format:
+//   Q1. What is X?
+//   A) option1
+//   B) option2
+//   C) option3
+//   D) option4
+//   Answer: B
+// We parse it server-side and return a JSON array the dashboard can preview
+// and import. We do NOT save anything here — coordinator reviews + imports
+// via the existing /save-test-questions flow so existing logic is untouched.
+
+// pdf-parse@1's index.js runs a self-test on require. Pulling it from
+// /lib/pdf-parse.js avoids that and is the standard workaround.
+let _pdfParse;
+function getPdfParse(){
+    if(!_pdfParse){ _pdfParse = require("pdf-parse/lib/pdf-parse.js"); }
+    return _pdfParse;
+}
+
+function parsePdfQuestionText(rawText){
+    if(!rawText) return [];
+    // Normalize line endings; collapse "Q12.\nWhat is X?" into a single line.
+    const text = String(rawText).replace(/\r\n?/g, "\n");
+    // Split on "Q1.", "Q2." etc. — keep numbering by capturing at the boundary.
+    // We split AFTER each Q-marker so each block's first non-empty line is the
+    // question, then 4 option lines and one answer line.
+    const blocks = text.split(/Q\s*\d+\s*[.):]/i).slice(1);
+    const out = [];
+    for(const block of blocks){
+        const lines = block
+            .split("\n")
+            .map(l => l.trim())
+            .filter(l => l.length > 0);
+        if(lines.length < 5) continue;          // need question + 4 options + answer
+        // First line(s) before the first option are the question text.
+        let qParts = [];
+        let i = 0;
+        for(; i < lines.length; i++){
+            if(/^[A-D]\s*[).:]/.test(lines[i])) break;
+            qParts.push(lines[i]);
+        }
+        const question = qParts.join(" ").trim();
+        if(!question) continue;
+
+        function findOpt(letter){
+            const r = new RegExp("^" + letter + "\\s*[).:]\\s*(.*)$", "i");
+            const ln = lines.find(l => r.test(l));
+            if(!ln) return null;
+            return ln.replace(r, "$1").trim();
+        }
+        const options = ["A","B","C","D"].map(findOpt);
+        if(options.some(o => o === null || o === "")) continue;
+
+        const ansLine = lines.find(l => /^answer\s*[:.\-]/i.test(l));
+        if(!ansLine) continue;
+        const ansChar = (ansLine.split(/[:.\-]/)[1] || "").trim().toUpperCase().charAt(0);
+        const correctAnswer = "ABCD".indexOf(ansChar);
+        if(correctAnswer < 0) continue;
+
+        out.push({ question, options, correctAnswer });
+    }
+    return out;
+}
+
+// Re-uses the existing `upload` multer instance (disk storage). We read the
+// uploaded file, parse it, and unlink the temp file afterwards.
+app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), async(req, res) => {
+    let tmpPath = null;
+    try {
+        if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
+        tmpPath = req.file.path;
+        const buf = fs.readFileSync(tmpPath);
+        const data = await getPdfParse()(buf);
+        const questions = parsePdfQuestionText(data && data.text);
+        if(!questions.length){
+            return res.json({ success:false, message:"Could not parse questions from PDF" });
+        }
+        res.json({ success:true, count: questions.length, questions });
+    } catch(e){
+        console.log("PDF parse error:", e && e.message);
+        res.json({ success:false, message:"Could not parse questions from PDF" });
+    } finally {
+        if(tmpPath){ try{ fs.unlinkSync(tmpPath); }catch(_){} }
+    }
+});
+
+// ==================================================================
+// ============ F5 — CODING QUESTIONS + LOCAL CODE RUNNER ===========
+// ==================================================================
+// CodingQuestion + CodingSubmission models live inline (per spec).
+const codingQuestionSchema = new mongoose.Schema({
+    domain:        { type: String, required: true, index: true },
+    title:         { type: String, required: true },
+    description:   { type: String, required: true },
+    inputFormat:   { type: String, default: "" },
+    outputFormat:  { type: String, default: "" },
+    sampleInput:   { type: String, default: "" },
+    sampleOutput:  { type: String, default: "" },
+    difficulty:    { type: String, enum: ["Easy","Medium","Hard"], default: "Easy" },
+    testCases:     [{ input: String, expectedOutput: String, isHidden: Boolean }],
+    createdAt:     { type: Date, default: Date.now }
+});
+const CodingQuestion = mongoose.model("CodingQuestion", codingQuestionSchema);
+
+const codingSubmissionSchema = new mongoose.Schema({
+    employeeId:    { type: String, required: true, index: true },
+    domain:        { type: String, required: true },
+    questionId:    { type: mongoose.Schema.Types.ObjectId, ref: "CodingQuestion" },
+    language:      { type: String, default: "javascript" },
+    code:          { type: String, default: "" },
+    status:        { type: String, enum: ["Accepted","Wrong Answer","Runtime Error","Pending"], default: "Pending" },
+    passedCases:   { type: Number, default: 0 },
+    totalCases:    { type: Number, default: 0 },
+    submittedAt:   { type: Date, default: Date.now }
+});
+const CodingSubmission = mongoose.model("CodingSubmission", codingSubmissionSchema);
+
+// ----- Coordinator CRUD -----
+app.get("/coordinator/coding-questions/:domain", async(req,res)=>{
+    try {
+        const domain = decodeURIComponent(req.params.domain);
+        const list = await CodingQuestion.find({ domain }).sort({ createdAt:-1 });
+        res.json({ success:true, questions:list });
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+app.post("/coordinator/coding-questions", async(req,res)=>{
+    try {
+        const b = req.body || {};
+        if(!b.domain || !b.title || !b.description){
+            return res.json({ success:false, message:"domain, title and description are required" });
+        }
+        const cleanCases = Array.isArray(b.testCases)
+            ? b.testCases
+                .map(t => ({
+                    input: String(t && t.input || ""),
+                    expectedOutput: String(t && t.expectedOutput || ""),
+                    isHidden: !!(t && t.isHidden)
+                }))
+                .filter(t => t.expectedOutput.length > 0)
+            : [];
+        const q = await CodingQuestion.create({
+            domain: b.domain,
+            title: b.title,
+            description: b.description,
+            inputFormat: b.inputFormat || "",
+            outputFormat: b.outputFormat || "",
+            sampleInput: b.sampleInput || "",
+            sampleOutput: b.sampleOutput || "",
+            difficulty: ["Easy","Medium","Hard"].includes(b.difficulty) ? b.difficulty : "Easy",
+            testCases: cleanCases
+        });
+        res.json({ success:true, question:q });
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+app.delete("/coordinator/coding-questions/:id", async(req,res)=>{
+    try {
+        await CodingQuestion.findByIdAndDelete(req.params.id);
+        res.json({ success:true });
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ----- Student-facing -----
+app.get("/student/coding-questions/:domain", async(req,res)=>{
+    try {
+        const domain = decodeURIComponent(req.params.domain);
+        const list = await CodingQuestion.find({ domain }).sort({ createdAt:-1 });
+        // Strip hidden test cases for the listing
+        const safe = list.map(q => {
+            const obj = q.toObject();
+            obj.testCases = (obj.testCases || []).filter(t => !t.isHidden);
+            return obj;
+        });
+        res.json({ success:true, questions:safe });
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+app.get("/student/coding-questions/question/:id", async(req,res)=>{
+    try {
+        const q = await CodingQuestion.findById(req.params.id);
+        if(!q) return res.status(404).json({ success:false, message:"Not found" });
+        const obj = q.toObject();
+        obj.testCases = (obj.testCases || []).filter(t => !t.isHidden);
+        res.json({ success:true, question:obj });
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+app.get("/student/coding-submissions/:employeeId", async(req,res)=>{
+    try {
+        const employeeId = decodeURIComponent(req.params.employeeId);
+        const list = await CodingSubmission.find({ employeeId }).sort({ submittedAt:-1 });
+        res.json({ success:true, submissions:list });
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ----- Local code runner (child_process) -----
+// Runs source code in a temp file with a 5-second timeout. Returns
+// {success, output, error, executionTime}. NEVER throws on user-code errors;
+// any stderr / nonzero exit is reported back as `error`. Temp files are
+// cleaned up in `finally`. The runner refuses to start if the required
+// language toolchain is missing, returning a friendly error.
+const { spawn } = require("child_process");
+const os = require("os");
+
+function _hasCmd(cmd){
+    // synchronous check — used once per /code/run call
+    try {
+        const r = require("child_process").spawnSync(
+            process.platform === "win32" ? "where" : "which",
+            [cmd],
+            { stdio: "ignore" }
+        );
+        return r.status === 0;
+    } catch(_) { return false; }
+}
+
+function _runWithTimeout(cmd, args, opts){
+    return new Promise((resolve) => {
+        const startedAt = Date.now();
+        let stdout = "";
+        let stderr = "";
+        let killed = false;
+        let child;
+        try {
+            child = spawn(cmd, args, { ...opts, shell: false });
+        } catch(e){
+            return resolve({ ok:false, error: String(e.message || e), code: -1, executionTime: 0 });
+        }
+        const timer = setTimeout(() => {
+            killed = true;
+            try { child.kill("SIGKILL"); } catch(_){}
+        }, (opts && opts.timeoutMs) || 5000);
+
+        child.stdout.on("data", d => { stdout += d.toString(); if(stdout.length > 200000) stdout = stdout.slice(0, 200000) + "\n…[truncated]"; });
+        child.stderr.on("data", d => { stderr += d.toString(); if(stderr.length > 200000) stderr = stderr.slice(0, 200000) + "\n…[truncated]"; });
+        child.on("error", err => {
+            clearTimeout(timer);
+            resolve({ ok:false, error: String(err.message || err), code: -1, executionTime: Date.now() - startedAt });
+        });
+        child.on("close", code => {
+            clearTimeout(timer);
+            const elapsed = Date.now() - startedAt;
+            if(killed) return resolve({ ok:false, error:"⏱ Time limit exceeded (5s).", code, executionTime: elapsed, stdout, stderr });
+            resolve({ ok: code === 0, error: code === 0 ? "" : (stderr || `Process exited with code ${code}`), code, executionTime: elapsed, stdout, stderr });
+        });
+
+        if(opts && typeof opts.stdin === "string"){
+            try { child.stdin.write(opts.stdin); child.stdin.end(); }
+            catch(_){ try { child.stdin.end(); } catch(__){} }
+        } else {
+            try { child.stdin.end(); } catch(_){}
+        }
+    });
+}
+
+// Run a single piece of source code in `language`, with optional `stdin`.
+// Returns: { success, output, error, executionTime }
+async function runSourceCode({ code, language, stdin }){
+    const lang = String(language || "javascript").toLowerCase();
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "ten-run-"));
+    const cleanup = () => { try { fs.rmSync(tmpRoot, { recursive:true, force:true }); } catch(_){} };
+    try {
+        let result;
+        if(lang === "javascript" || lang === "js"){
+            const file = path.join(tmpRoot, "program.js");
+            fs.writeFileSync(file, code, "utf8");
+            result = await _runWithTimeout(process.execPath, [file], { stdin: stdin || "", cwd: tmpRoot, timeoutMs: 5000 });
+        } else if(lang === "python" || lang === "py"){
+            const file = path.join(tmpRoot, "program.py");
+            fs.writeFileSync(file, code, "utf8");
+            const py = _hasCmd("python3") ? "python3" : (_hasCmd("python") ? "python" : null);
+            if(!py) return { success:false, output:"", error:"Python runtime not available on this server.", executionTime: 0 };
+            result = await _runWithTimeout(py, ["-I", file], { stdin: stdin || "", cwd: tmpRoot, timeoutMs: 5000 });
+        } else if(lang === "java"){
+            if(!_hasCmd("javac") || !_hasCmd("java")) return { success:false, output:"", error:"Java toolchain (javac/java) not available on this server.", executionTime: 0 };
+            // Force public class name to "Solution"
+            const file = path.join(tmpRoot, "Solution.java");
+            fs.writeFileSync(file, code, "utf8");
+            const compile = await _runWithTimeout("javac", ["Solution.java"], { cwd: tmpRoot, timeoutMs: 10000 });
+            if(!compile.ok) return { success:false, output:"", error: compile.error || compile.stderr || "Compilation failed", executionTime: compile.executionTime };
+            result = await _runWithTimeout("java", ["-cp", ".", "Solution"], { stdin: stdin || "", cwd: tmpRoot, timeoutMs: 5000 });
+        } else if(lang === "cpp" || lang === "c++"){
+            if(!_hasCmd("g++")) return { success:false, output:"", error:"C++ compiler (g++) not available on this server.", executionTime: 0 };
+            const src = path.join(tmpRoot, "program.cpp");
+            const exe = path.join(tmpRoot, "a.out");
+            fs.writeFileSync(src, code, "utf8");
+            const compile = await _runWithTimeout("g++", ["-O2", "-std=c++17", "program.cpp", "-o", "a.out"], { cwd: tmpRoot, timeoutMs: 15000 });
+            if(!compile.ok) return { success:false, output:"", error: compile.error || compile.stderr || "Compilation failed", executionTime: compile.executionTime };
+            result = await _runWithTimeout(exe, [], { stdin: stdin || "", cwd: tmpRoot, timeoutMs: 5000 });
+        } else {
+            return { success:false, output:"", error:"Unsupported language: " + lang, executionTime: 0 };
+        }
+
+        return {
+            success: !!result.ok,
+            output: result.stdout || "",
+            error:  result.ok ? "" : (result.error || result.stderr || ""),
+            executionTime: result.executionTime || 0
+        };
+    } finally { cleanup(); }
+}
+
+app.post("/code/run", async(req,res)=>{
+    try {
+        const { code, language, input } = req.body || {};
+        if(!code) return res.json({ success:false, output:"", error:"No code provided", executionTime: 0 });
+        const r = await runSourceCode({ code, language, stdin: input || "" });
+        res.json(r);
+    } catch(e){
+        console.log("/code/run error:", e && e.message);
+        res.status(500).json({ success:false, output:"", error:"Server error: " + (e && e.message), executionTime: 0 });
+    }
+});
+
+app.post("/code/submit", async(req,res)=>{
+    try {
+        const { employeeId, questionId, language, code } = req.body || {};
+        if(!employeeId || !questionId || !code){
+            return res.json({ success:false, message:"employeeId, questionId and code are required" });
+        }
+        const q = await CodingQuestion.findById(questionId);
+        if(!q) return res.status(404).json({ success:false, message:"Question not found" });
+        const cases = q.testCases || [];
+        if(!cases.length){
+            return res.json({ success:false, message:"This question has no test cases configured" });
+        }
+
+        const results = [];
+        let passed = 0;
+        let runtimeError = false;
+        for(const tc of cases){
+            const r = await runSourceCode({ code, language, stdin: tc.input || "" });
+            const expected = String(tc.expectedOutput || "").trim();
+            const actual   = String(r.output || "").trim();
+            const ok = r.success && actual === expected;
+            if(!r.success && r.error) runtimeError = true;
+            if(ok) passed++;
+            results.push({
+                input: tc.isHidden ? "(hidden)" : (tc.input || ""),
+                expected: tc.isHidden ? "(hidden)" : expected,
+                actual: r.success ? actual : "",
+                error: r.success ? "" : (r.error || ""),
+                isHidden: !!tc.isHidden,
+                passed: ok,
+                executionTime: r.executionTime || 0
+            });
+        }
+
+        const status = passed === cases.length
+            ? "Accepted"
+            : (runtimeError ? "Runtime Error" : "Wrong Answer");
+
+        const sub = await CodingSubmission.create({
+            employeeId,
+            domain: q.domain,
+            questionId: q._id,
+            language: language || "javascript",
+            code,
+            status,
+            passedCases: passed,
+            totalCases: cases.length
+        });
+
+        res.json({
+            success: status === "Accepted",
+            status,
+            passedCases: passed,
+            totalCases: cases.length,
+            results,
+            submissionId: sub._id
+        });
+    } catch(e){
+        console.log("/code/submit error:", e && e.message);
+        res.status(500).json({ success:false, message:"Server error: " + (e && e.message) });
+    }
+});
+
+// Coordinator's read-only view of student coding submissions in their domain
+app.get("/coordinator/coding-submissions/:domain", async(req,res)=>{
+    try {
+        const domain = decodeURIComponent(req.params.domain);
+        const list = await CodingSubmission.find({ domain }).sort({ submittedAt:-1 }).limit(200);
+        res.json({ success:true, submissions:list });
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
 // ================= SERVER =================
 
 const PORT = process.env.PORT || 5000;
