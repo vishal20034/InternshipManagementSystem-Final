@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Feature 1: Coordinator PDF Upload for Coding Problems - adds parseCodingPdfText parser, POST /coordinator/coding/upload-pdf route, and the upload UI panel in coordinator-dashboard.html",
+  "status": "in_progress",
+  "steps": [
+    "STEP 1 - Add parseCodingPdfText(rawText) function in server.js. Insert it AFTER the existing parsePdfQuestionText function (around line 3110, before handlePdfUpload). The parser must: split text on /PROBLEM\\s+\\d+\\s*[.:]/i markers; for each block extract Title (required), Difficulty (optional, default 'Easy'), Description (required), Input Format, Output Format, Sample Input, Sample Output fields; then parse Test Cases section with lines like 'TC1:' or 'TC1 [Hidden]:' followed by 'Input: ...' and 'Output: ...' lines; [Hidden] means isHidden:true; multi-line inputs use | as separator (replace with newline); stop collecting a field value when the next known label (Title, Difficulty, Description, Input Format, Output Format, Sample Input, Sample Output, Test Cases) is encountered. Return array of objects: {title, difficulty, description, inputFormat, outputFormat, sampleInput, sampleOutput, testCases:[{input, expectedOutput, isHidden}]}",
+    "STEP 2 - Add route POST /coordinator/coding/upload-pdf in server.js. Insert it right after the existing app.post('/coordinator/test/upload-pdf-alt'...) line (around line 3170). Use upload.single('pdfFile') multer middleware. Follow the EXACT same try/catch/finally pattern as handlePdfUpload: read file to buffer, call getPdfParse()(buf, {version:'v1.10.100'}) with pdftotext CLI fallback, pass extracted text to parseCodingPdfText(rawText), return {success:true, count:N, problems:[...]} or {success:false, message:...}. Always delete temp file in finally block.",
+    "STEP 3 - In public/coordinator-dashboard.html, add the 'Upload Coding Problems via PDF' panel ABOVE the existing 'Add Coding Problem' section (insert before the div.test-section that starts at line 590). The panel includes: a test-section div with section-header icon and title, a file input for PDF, a 'Parse PDF' button, a format guide toggle (details/summary element), a status span, a preview container (div#codingPdfPreview) that shows parsed problem cards with title/difficulty/description/testCase count, and an Import All button that POSTs each selected problem to /coordinator/coding-questions with the domain from domainStr. Use the existing _esc() function for HTML escaping. Style using existing dark-theme CSS variables (--border, --bg-card, --muted, --text, var(--accent) etc.).",
+    "STEP 4 - Add the JavaScript functions for the coding PDF upload panel: parseCodingPdf() fetches POST /coordinator/coding/upload-pdf with FormData, displays status and renders preview cards; importCodingPdfProblems() loops through checked problems and POSTs each to /coordinator/coding-questions with domain:domainStr; resetCodingPdfUpload() clears the UI. Place these functions in the existing <script> block in coordinator-dashboard.html, near the other coding-related functions (around line 1739+)."
+  ],
+  "acceptance_criteria": [
+    "parseCodingPdfText correctly parses multi-problem PDF text with all fields and test cases including hidden markers",
+    "POST /coordinator/coding/upload-pdf returns {success:true, count, problems} for valid PDF",
+    "The coordinator dashboard coding tab shows the PDF upload panel above the manual form",
+    "Parse button triggers extraction, preview shows problem cards, Import button POSTs each to existing route",
+    "node --check server.js passes with no syntax errors",
+    "Existing routes and functionality are completely unchanged"
+  ],
+  "verification": [
+    "Run: node --check server.js (exit code 0)",
+    "Run: node -e \"const {parseCodingPdfText} = (function(){ const m={}; const code=require('fs').readFileSync('/projects/sandbox/InternshipManagementSystem-Final/server.js','utf8'); const match=code.match(/function parseCodingPdfText[\\s\\S]*?^}/m); console.log(match?'FOUND':'NOT FOUND'); })()\" to confirm function exists",
+    "Grep server.js for 'coordinator/coding/upload-pdf' route to confirm it exists",
+    "Grep coordinator-dashboard.html for 'codingPdfPreview' to confirm UI panel exists"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

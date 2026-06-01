@@ -590,6 +590,46 @@ body::before {
   <div class="tab-section" id="tab-coding">
     <div class="test-section" style="margin-bottom:18px;">
       <div class="section-header">
+        <div class="section-icon">📄</div>
+        <div class="section-title">Upload Coding Problems via PDF</div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+        Upload a PDF with coding problems. Each problem should start with <code style="background:rgba(255,255,255,0.04);padding:2px 6px;border-radius:6px;font-size:12px;">PROBLEM N.</code>
+      </p>
+      <details style="margin-bottom:14px;background:rgba(13,21,37,0.6);border:1px solid var(--border);border-radius:10px;padding:0;">
+        <summary style="padding:12px 16px;cursor:pointer;color:var(--amber);font-size:13px;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px;">
+          📋 View PDF Format Guide
+        </summary>
+        <div style="padding:4px 16px 14px;color:#9aa4bf;font-size:12px;line-height:1.7;font-family:monospace;white-space:pre-wrap;">PROBLEM 1.
+Title: Two Sum
+Difficulty: Medium
+Description: Given an array of integers, return indices of the two numbers that add up to a target.
+Input Format: First line: N (array size). Second line: N integers. Third line: target.
+Output Format: Two space-separated indices.
+Sample Input: 4|2 7 11 15|9
+Sample Output: 0 1
+Test Cases:
+TC1:
+Input: 4|2 7 11 15|9
+Output: 0 1
+TC2 [Hidden]:
+Input: 3|3 2 4|6
+Output: 1 2</div>
+      </details>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <input type="file" id="codingPdfFile" accept=".pdf" style="font-size:13px;color:var(--text);" />
+        <button class="btn btn-primary" onclick="parseCodingPdf()">📄 Parse PDF</button>
+        <button class="btn" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);" onclick="resetCodingPdfUpload()">↺ Reset</button>
+      </div>
+      <div id="codingPdfStatus" style="margin-top:10px;font-size:13px;"></div>
+      <div id="codingPdfPreview" style="display:none;margin-top:14px;"></div>
+      <div id="codingPdfImportRow" style="display:none;margin-top:12px;">
+        <button class="btn btn-primary" onclick="importCodingPdfProblems()">📥 Import Selected Problems</button>
+      </div>
+    </div>
+
+    <div class="test-section" style="margin-bottom:18px;">
+      <div class="section-header">
         <div class="section-icon">💻</div>
         <div class="section-title">Add Coding Problem</div>
       </div>
@@ -1776,6 +1816,100 @@ async function saveCodingQuestion(){
     }
   }catch(e){ Swal.fire({icon:"error",title:"Network error",background:"#090e1a",color:"#e2eaf7"}); }
 }
+
+// ======== Coding PDF Upload Functions ========
+let _codingPdfParsed = [];
+
+function resetCodingPdfUpload(){
+  document.getElementById("codingPdfFile").value = "";
+  document.getElementById("codingPdfStatus").innerHTML = "";
+  document.getElementById("codingPdfPreview").style.display = "none";
+  document.getElementById("codingPdfPreview").innerHTML = "";
+  document.getElementById("codingPdfImportRow").style.display = "none";
+  _codingPdfParsed = [];
+}
+
+async function parseCodingPdf(){
+  const fileInput = document.getElementById("codingPdfFile");
+  const statusEl = document.getElementById("codingPdfStatus");
+  if(!fileInput.files || !fileInput.files[0]){
+    statusEl.innerHTML = '<span style="color:#f43f5e;">Please select a PDF file.</span>';
+    return;
+  }
+  statusEl.innerHTML = '<span style="color:var(--amber);">Parsing PDF...</span>';
+  const fd = new FormData();
+  fd.append("pdfFile", fileInput.files[0]);
+  try {
+    const r = await fetch("/coordinator/coding/upload-pdf", { method:"POST", body: fd });
+    const d = await r.json();
+    if(d.success){
+      _codingPdfParsed = d.problems;
+      statusEl.innerHTML = '<span style="color:#22c55e;">Found ' + d.count + ' coding problem(s).</span>';
+      renderCodingPdfPreview();
+    } else {
+      statusEl.innerHTML = '<span style="color:#f43f5e;">' + _esc(d.message || "Parse failed") + '</span>';
+    }
+  } catch(e){
+    statusEl.innerHTML = '<span style="color:#f43f5e;">Network error while parsing PDF.</span>';
+  }
+}
+
+function renderCodingPdfPreview(){
+  const container = document.getElementById("codingPdfPreview");
+  if(!_codingPdfParsed.length){ container.style.display="none"; return; }
+  container.style.display = "block";
+  let html = '';
+  _codingPdfParsed.forEach((p, idx) => {
+    const descShort = p.description.length > 120 ? p.description.substring(0,120) + '...' : p.description;
+    const diffClass = p.difficulty === 'Easy' ? 'color:#22c55e' : p.difficulty === 'Medium' ? 'color:#f59e0b' : 'color:#f43f5e';
+    html += '<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:10px;">'
+      + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+      + '<input type="checkbox" class="codingPdfCheck" data-idx="' + idx + '" checked />'
+      + '<strong style="color:var(--text);font-size:14px;">' + _esc(p.title) + '</strong>'
+      + '<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.05);' + diffClass + ';">' + _esc(p.difficulty) + '</span>'
+      + '</div>'
+      + '<p style="color:var(--muted);font-size:12px;margin:0 0 4px 28px;">' + _esc(descShort) + '</p>'
+      + '<span style="color:#9aa4bf;font-size:11px;margin-left:28px;">Test cases: ' + p.testCases.length + '</span>'
+      + '</div>';
+  });
+  container.innerHTML = html;
+  document.getElementById("codingPdfImportRow").style.display = "block";
+}
+
+async function importCodingPdfProblems(){
+  const checks = document.querySelectorAll(".codingPdfCheck");
+  const selected = [];
+  checks.forEach(cb => { if(cb.checked) selected.push(_codingPdfParsed[parseInt(cb.dataset.idx)]); });
+  if(!selected.length){
+    Swal.fire({icon:"warning",title:"No problems selected",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+  let imported = 0;
+  for(const p of selected){
+    try {
+      const r = await fetch("/coordinator/coding-questions", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          domain: domainStr,
+          title: p.title,
+          description: p.description,
+          inputFormat: p.inputFormat || "",
+          outputFormat: p.outputFormat || "",
+          sampleInput: p.sampleInput || "",
+          sampleOutput: p.sampleOutput || "",
+          difficulty: p.difficulty,
+          testCases: p.testCases
+        })
+      });
+      const d = await r.json();
+      if(d.success) imported++;
+    } catch(e){ /* skip failed */ }
+  }
+  Swal.fire({toast:true,position:"top-end",icon:"success",title:imported + " problem(s) imported",showConfirmButton:false,timer:2000,background:"#090e1a",color:"#e2eaf7"});
+  loadCodingQuestionsCoord();
+  resetCodingPdfUpload();
+}
+
 async function deleteCodingQuestion(id){
   const c = await Swal.fire({
     title:"Delete this problem?", icon:"warning", showCancelButton:true,

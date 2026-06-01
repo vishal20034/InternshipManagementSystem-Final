@@ -3106,6 +3106,82 @@ function parsePdfQuestionText(rawText){
     return out;
 }
 
+// ---------- Coding Problem PDF Parser ----------
+function parseCodingPdfText(rawText){
+    if(!rawText) return [];
+    const text = String(rawText).replace(/\r\n?/g, "\n");
+    // Split on PROBLEM N. or PROBLEM N: markers
+    const blocks = text.split(/PROBLEM\s+\d+\s*[.:]/i).slice(1);
+    const knownLabels = ["Title","Difficulty","Description","Input Format","Output Format","Sample Input","Sample Output","Test Cases"];
+    const labelRe = new RegExp("^(" + knownLabels.join("|") + ")\\s*:", "i");
+
+    const results = [];
+    for(const block of blocks){
+        const lines = block.split("\n");
+        // Collect fields by scanning labels
+        const fields = {};
+        let currentLabel = null;
+        let currentLines = [];
+
+        function flushField(){
+            if(currentLabel){
+                fields[currentLabel] = currentLines.join("\n").trim();
+            }
+        }
+
+        for(const line of lines){
+            const m = line.match(labelRe);
+            if(m){
+                flushField();
+                currentLabel = m[1].toLowerCase().replace(/\s+/g, "_");
+                // remainder on same line after "Label:"
+                const rest = line.slice(m[0].length).trim();
+                currentLines = rest ? [rest] : [];
+            } else {
+                currentLines.push(line);
+            }
+        }
+        flushField();
+
+        const title = (fields["title"] || "").trim();
+        const description = (fields["description"] || "").trim();
+        if(!title || !description) continue;
+
+        let difficulty = (fields["difficulty"] || "Easy").trim();
+        if(!["Easy","Medium","Hard"].includes(difficulty)) difficulty = "Easy";
+
+        const inputFormat = (fields["input_format"] || "").trim();
+        const outputFormat = (fields["output_format"] || "").trim();
+        const sampleInput = (fields["sample_input"] || "").trim();
+        const sampleOutput = (fields["sample_output"] || "").trim();
+
+        // Parse test cases
+        const testCases = [];
+        const tcRaw = fields["test_cases"] || "";
+        if(tcRaw){
+            // Split on TC markers: "TC1:", "TC 1:", "TC1 [Hidden]:"
+            const tcBlocks = tcRaw.split(/TC\s*\d+\s*(\[Hidden\])?\s*:/i);
+            // tcBlocks: [before, hiddenOrUndef, content, hiddenOrUndef, content, ...]
+            for(let i = 1; i < tcBlocks.length; i += 2){
+                const hiddenMarker = tcBlocks[i];
+                const content = tcBlocks[i+1] || "";
+                const isHidden = !!(hiddenMarker && /hidden/i.test(hiddenMarker));
+                // Extract Input: and Output: from content
+                const inputMatch = content.match(/Input\s*:\s*([\s\S]*?)(?=Output\s*:|$)/i);
+                const outputMatch = content.match(/Output\s*:\s*([\s\S]*?)$/i);
+                const tcInput = inputMatch ? inputMatch[1].trim().replace(/\|/g, "\n") : "";
+                const tcOutput = outputMatch ? outputMatch[1].trim().replace(/\|/g, "\n") : "";
+                if(tcInput || tcOutput){
+                    testCases.push({ input: tcInput, expectedOutput: tcOutput, isHidden });
+                }
+            }
+        }
+
+        results.push({ title, difficulty, description, inputFormat, outputFormat, sampleInput, sampleOutput, testCases });
+    }
+    return results;
+}
+
 // Re-uses the existing `upload` multer instance (disk storage). We read the
 // uploaded file, parse it, and unlink the temp file afterwards.
 // Shared handler for both field names ("pdfFile" and "pdf").
@@ -3168,6 +3244,40 @@ async function handlePdfUpload(req, res) {
 
 app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), handlePdfUpload);
 app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), handlePdfUpload);
+
+// Coding problems PDF upload route
+app.post("/coordinator/coding/upload-pdf", upload.single("pdfFile"), async (req, res) => {
+    let tmpPath = null;
+    try {
+        if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
+        tmpPath = req.file.path;
+        const buf = fs.readFileSync(tmpPath);
+
+        let text = null;
+        // Primary: pdf-parse
+        try {
+            const data = await getPdfParse()(buf, { version: 'v1.10.100' });
+            if(data && data.text && data.text.trim().length > 0) text = data.text;
+        } catch(e){}
+        // Fallback: pdftotext CLI
+        if(!text){
+            try {
+                const result = require("child_process").spawnSync("pdftotext", ["-layout", tmpPath, "-"], { encoding:"utf8", timeout:10000 });
+                if(result.stdout && result.stdout.trim().length > 0) text = result.stdout;
+            } catch(e){}
+        }
+        if(!text) return res.json({ success:false, message:"Could not extract text from PDF" });
+
+        const problems = parseCodingPdfText(text);
+        if(!problems.length) return res.json({ success:false, message:"No coding problems found in PDF" });
+        res.json({ success:true, count: problems.length, problems });
+    } catch(e){
+        console.log("Coding PDF parse error:", e && e.message);
+        res.json({ success:false, message:"Could not parse coding problems from PDF" });
+    } finally {
+        if(tmpPath){ try{ fs.unlinkSync(tmpPath); }catch(_){} }
+    }
+});
 
 // ==================================================================
 // ============ GITHUB PUSH HELPER (fire-and-forget) ===============
