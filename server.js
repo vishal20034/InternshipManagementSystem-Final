@@ -3543,16 +3543,23 @@ app.post("/code/submit", async(req,res)=>{
 });
 
 // ----- Open in Terminal: create temp workspace -----
+// NOTE: Directories are created under /tmp and will be cleaned by the OS tmpfile cleaner (e.g., systemd-tmpfiles or tmpreaper). This is acceptable for ephemeral coding workspaces.
 app.post("/student/coding/open-terminal", async(req,res)=>{
     try {
         const { employeeId, questionId, language } = req.body || {};
         if(!employeeId || !questionId || !language){
             return res.json({ success:false, message:"employeeId, questionId, and language are required" });
         }
-        const q = await CodingQuestion.findById(questionId);
+        // Sanitize employeeId and questionId to prevent path traversal and shell injection
+        const safeId = String(employeeId).replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeQid = String(questionId).replace(/[^a-zA-Z0-9_-]/g, '');
+        if(!safeId || !safeQid){
+            return res.json({ success:false, message:"Invalid employeeId or questionId" });
+        }
+        const q = await CodingQuestion.findById(safeQid);
         if(!q) return res.status(404).json({ success:false, message:"Question not found" });
 
-        const dirPath = `/tmp/coding_${employeeId}_${questionId}/`;
+        const dirPath = `/tmp/coding_${safeId}_${safeQid}/`;
         fs.mkdirSync(dirPath, { recursive: true });
 
         // Write starter code file
@@ -3587,7 +3594,7 @@ app.post("/student/coding/open-terminal", async(req,res)=>{
 
         // Write submit.sh
         const port = process.env.PORT || 5000;
-        const submitScript = '#!/bin/bash\n# Submit your solution\n# Usage: ./submit.sh\nFILE="' + filename + '"\nCODE=$(cat "$FILE")\ncurl -s -X POST http://localhost:' + port + '/student/coding/submit-from-terminal \\\n  -H "Content-Type: application/json" \\\n  -d "{\\"employeeId\\":\\"' + employeeId + '\\",\\"questionId\\":\\"' + questionId + '\\",\\"language\\":\\"' + lang + '\\",\\"code\\":$(echo \\"$CODE\\" | jq -Rs .)}"\n';
+        const submitScript = '#!/bin/bash\n# Submit your solution\n# Usage: ./submit.sh\nFILE="' + filename + '"\nCODE=$(cat "$FILE")\ncurl -s -X POST http://localhost:' + port + '/student/coding/submit-from-terminal \\\n  -H "Content-Type: application/json" \\\n  -d "{\\"employeeId\\":\\"' + safeId + '\\",\\"questionId\\":\\"' + safeQid + '\\",\\"language\\":\\"' + lang + '\\",\\"code\\":$(echo \\"$CODE\\" | jq -Rs .)}"\n';
         fs.writeFileSync(path.join(dirPath, "submit.sh"), submitScript, { mode: 0o755 });
 
         res.json({ success:true, workDir:dirPath, launchCmd:"cd " + dirPath + " && cat README.txt" });
