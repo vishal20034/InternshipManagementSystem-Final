@@ -3465,65 +3465,150 @@ app.post("/code/run", async(req,res)=>{
     }
 });
 
+// ==================================================================
+// ============ SHARED CODE EVALUATION FUNCTION ====================
+// ==================================================================
+async function evaluateCodeSubmission({ employeeId, questionId, language, code }) {
+    const q = await CodingQuestion.findById(questionId);
+    if(!q) return { success:false, message:"Question not found", notFound:true };
+    const cases = q.testCases || [];
+    if(!cases.length){
+        return { success:false, message:"This question has no test cases configured" };
+    }
+
+    const results = [];
+    let passed = 0;
+    let runtimeError = false;
+    for(const tc of cases){
+        const r = await runSourceCode({ code, language, stdin: tc.input || "" });
+        const expected = String(tc.expectedOutput || "").trim();
+        const actual   = String(r.output || "").trim();
+        const ok = r.success && actual === expected;
+        if(!r.success && r.error) runtimeError = true;
+        if(ok) passed++;
+        results.push({
+            input: tc.isHidden ? "(hidden)" : (tc.input || ""),
+            expected: tc.isHidden ? "(hidden)" : expected,
+            actual: r.success ? actual : "",
+            error: r.success ? "" : (r.error || ""),
+            isHidden: !!tc.isHidden,
+            passed: ok,
+            executionTime: r.executionTime || 0
+        });
+    }
+
+    const status = passed === cases.length
+        ? "Accepted"
+        : (runtimeError ? "Runtime Error" : "Wrong Answer");
+
+    const sub = await CodingSubmission.create({
+        employeeId,
+        domain: q.domain,
+        questionId: q._id,
+        language: language || "javascript",
+        code,
+        status,
+        passedCases: passed,
+        totalCases: cases.length
+    });
+
+    // Fire-and-forget GitHub push on Accepted
+    if(status === "Accepted"){
+        pushToGitHub(sub, q, code).catch(e => console.log("[GitHub Push] fire-and-forget error:", e.message));
+    }
+
+    return {
+        success: status === "Accepted",
+        status,
+        passedCases: passed,
+        totalCases: cases.length,
+        results,
+        submissionId: sub._id
+    };
+}
+
 app.post("/code/submit", async(req,res)=>{
     try {
         const { employeeId, questionId, language, code } = req.body || {};
         if(!employeeId || !questionId || !code){
             return res.json({ success:false, message:"employeeId, questionId and code are required" });
         }
-        const q = await CodingQuestion.findById(questionId);
-        if(!q) return res.status(404).json({ success:false, message:"Question not found" });
-        const cases = q.testCases || [];
-        if(!cases.length){
-            return res.json({ success:false, message:"This question has no test cases configured" });
-        }
-
-        const results = [];
-        let passed = 0;
-        let runtimeError = false;
-        for(const tc of cases){
-            const r = await runSourceCode({ code, language, stdin: tc.input || "" });
-            const expected = String(tc.expectedOutput || "").trim();
-            const actual   = String(r.output || "").trim();
-            const ok = r.success && actual === expected;
-            if(!r.success && r.error) runtimeError = true;
-            if(ok) passed++;
-            results.push({
-                input: tc.isHidden ? "(hidden)" : (tc.input || ""),
-                expected: tc.isHidden ? "(hidden)" : expected,
-                actual: r.success ? actual : "",
-                error: r.success ? "" : (r.error || ""),
-                isHidden: !!tc.isHidden,
-                passed: ok,
-                executionTime: r.executionTime || 0
-            });
-        }
-
-        const status = passed === cases.length
-            ? "Accepted"
-            : (runtimeError ? "Runtime Error" : "Wrong Answer");
-
-        const sub = await CodingSubmission.create({
-            employeeId,
-            domain: q.domain,
-            questionId: q._id,
-            language: language || "javascript",
-            code,
-            status,
-            passedCases: passed,
-            totalCases: cases.length
-        });
-
-        res.json({
-            success: status === "Accepted",
-            status,
-            passedCases: passed,
-            totalCases: cases.length,
-            results,
-            submissionId: sub._id
-        });
+        const result = await evaluateCodeSubmission({ employeeId, questionId, language, code });
+        if(result.notFound) return res.status(404).json({ success:false, message:result.message });
+        res.json(result);
     } catch(e){
         console.log("/code/submit error:", e && e.message);
+        res.status(500).json({ success:false, message:"Server error: " + (e && e.message) });
+    }
+});
+
+// ----- Open in Terminal: create temp workspace -----
+app.post("/student/coding/open-terminal", async(req,res)=>{
+    try {
+        const { employeeId, questionId, language } = req.body || {};
+        if(!employeeId || !questionId || !language){
+            return res.json({ success:false, message:"employeeId, questionId, and language are required" });
+        }
+        const q = await CodingQuestion.findById(questionId);
+        if(!q) return res.status(404).json({ success:false, message:"Question not found" });
+
+        const dirPath = `/tmp/coding_${employeeId}_${questionId}/`;
+        fs.mkdirSync(dirPath, { recursive: true });
+
+        // Write starter code file
+        const lang = String(language).toLowerCase();
+        let filename, starterCode;
+        if(lang === "javascript" || lang === "js"){
+            filename = "solution.js";
+            starterCode = "// Problem: " + q.title + "\n// Read input from stdin\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin });\nlet lines = [];\nrl.on('line', l => lines.push(l));\nrl.on('close', () => {\n  // Your solution here\n});\n";
+        } else if(lang === "python" || lang === "py"){
+            filename = "solution.py";
+            starterCode = "# Problem: " + q.title + "\nimport sys\n\ndef solve():\n    # Your solution here\n    pass\n\nif __name__ == \"__main__\":\n    solve()\n";
+        } else if(lang === "java"){
+            filename = "Solution.java";
+            starterCode = "// Problem: " + q.title + "\nimport java.util.Scanner;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // Your solution here\n    }\n}\n";
+        } else if(lang === "cpp" || lang === "c++"){
+            filename = "solution.cpp";
+            starterCode = "#include <iostream>\nusing namespace std;\n// Problem: " + q.title + "\nint main() {\n    // Your solution here\n    return 0;\n}\n";
+        } else {
+            filename = "solution.txt";
+            starterCode = "// Problem: " + q.title + "\n// Unsupported language: " + lang + "\n";
+        }
+        fs.writeFileSync(path.join(dirPath, filename), starterCode, "utf8");
+
+        // Write README.txt
+        let readme = "=== " + q.title + " ===\n\n";
+        readme += "Description:\n" + (q.description || "N/A") + "\n\n";
+        readme += "Input Format:\n" + (q.inputFormat || "N/A") + "\n\n";
+        readme += "Output Format:\n" + (q.outputFormat || "N/A") + "\n\n";
+        readme += "Sample Input:\n" + (q.sampleInput || "N/A") + "\n\n";
+        readme += "Sample Output:\n" + (q.sampleOutput || "N/A") + "\n";
+        fs.writeFileSync(path.join(dirPath, "README.txt"), readme, "utf8");
+
+        // Write submit.sh
+        const port = process.env.PORT || 5000;
+        const submitScript = '#!/bin/bash\n# Submit your solution\n# Usage: ./submit.sh\nFILE="' + filename + '"\nCODE=$(cat "$FILE")\ncurl -s -X POST http://localhost:' + port + '/student/coding/submit-from-terminal \\\n  -H "Content-Type: application/json" \\\n  -d "{\\"employeeId\\":\\"' + employeeId + '\\",\\"questionId\\":\\"' + questionId + '\\",\\"language\\":\\"' + lang + '\\",\\"code\\":$(echo \\"$CODE\\" | jq -Rs .)}"\n';
+        fs.writeFileSync(path.join(dirPath, "submit.sh"), submitScript, { mode: 0o755 });
+
+        res.json({ success:true, workDir:dirPath, launchCmd:"cd " + dirPath + " && cat README.txt" });
+    } catch(e){
+        console.log("/student/coding/open-terminal error:", e && e.message);
+        res.status(500).json({ success:false, message:"Server error: " + (e && e.message) });
+    }
+});
+
+// ----- Submit from terminal -----
+app.post("/student/coding/submit-from-terminal", async(req,res)=>{
+    try {
+        const { employeeId, questionId, language, code } = req.body || {};
+        if(!employeeId || !questionId || !code){
+            return res.json({ success:false, message:"employeeId, questionId and code are required" });
+        }
+        const result = await evaluateCodeSubmission({ employeeId, questionId, language, code });
+        if(result.notFound) return res.status(404).json({ success:false, message:result.message });
+        res.json(result);
+    } catch(e){
+        console.log("/student/coding/submit-from-terminal error:", e && e.message);
         res.status(500).json({ success:false, message:"Server error: " + (e && e.message) });
     }
 });
