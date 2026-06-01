@@ -3108,36 +3108,52 @@ function parsePdfQuestionText(rawText){
 
 // Re-uses the existing `upload` multer instance (disk storage). We read the
 // uploaded file, parse it, and unlink the temp file afterwards.
-// Accepts field name "pdfFile" OR "pdf" for backward compatibility.
-app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), async(req, res) => {
+// Shared handler for both field names ("pdfFile" and "pdf").
+async function handlePdfUpload(req, res) {
     let tmpPath = null;
     try {
         if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
         tmpPath = req.file.path;
+        console.log("[PDF] File size:", req.file.size, "bytes");
         const buf = fs.readFileSync(tmpPath);
-        const data = await getPdfParse()(buf);
-        const questions = parsePdfQuestionText(data && data.text);
-        if(!questions.length){
-            return res.json({ success:false, message:"Could not parse questions from PDF" });
-        }
-        res.json({ success:true, count: questions.length, questions });
-    } catch(e){
-        console.log("PDF parse error:", e && e.message);
-        res.json({ success:false, message:"Could not parse questions from PDF" });
-    } finally {
-        if(tmpPath){ try{ fs.unlinkSync(tmpPath); }catch(_){} }
-    }
-});
 
-// Alias: same route but accepting field name "pdf" (some frontends use this)
-app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), async(req, res) => {
-    let tmpPath = null;
-    try {
-        if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
-        tmpPath = req.file.path;
-        const buf = fs.readFileSync(tmpPath);
-        const data = await getPdfParse()(buf);
-        const questions = parsePdfQuestionText(data && data.text);
+        let text = null;
+        let primaryError = null;
+        let fallbackError = null;
+
+        // Primary strategy: pdf-parse with version option
+        try {
+            const data = await getPdfParse()(buf, { version: 'v1.10.100' });
+            if(data && data.text && data.text.trim().length > 0){
+                text = data.text;
+            } else {
+                primaryError = "pdf-parse returned empty text";
+            }
+        } catch(e){
+            primaryError = (e && e.message) || "unknown error";
+        }
+
+        // Fallback A: pdftotext CLI
+        if(!text){
+            try {
+                const result = require("child_process").spawnSync("pdftotext", ["-layout", tmpPath, "-"], { encoding:"utf8", timeout:10000 });
+                if(result.stdout && result.stdout.trim().length > 0){
+                    text = result.stdout;
+                } else {
+                    fallbackError = result.stderr || "pdftotext returned empty output";
+                }
+            } catch(e){
+                fallbackError = (e && e.message) || "not available";
+            }
+        }
+
+        // Fallback B: both strategies failed
+        if(!text){
+            return res.json({ success:false, message:"PDF text extraction failed. Primary (pdf-parse): " + (primaryError || "empty text") + ". Fallback (pdftotext): " + (fallbackError || "not available") + "." });
+        }
+
+        console.log("[PDF] Raw text length:", text.length);
+        const questions = parsePdfQuestionText(text);
         if(!questions.length){
             return res.json({ success:false, message:"Could not parse questions from PDF" });
         }
@@ -3148,7 +3164,10 @@ app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), async(req, re
     } finally {
         if(tmpPath){ try{ fs.unlinkSync(tmpPath); }catch(_){} }
     }
-});
+}
+
+app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), handlePdfUpload);
+app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), handlePdfUpload);
 
 // ==================================================================
 // ============ F5 — CODING QUESTIONS + LOCAL CODE RUNNER ===========
