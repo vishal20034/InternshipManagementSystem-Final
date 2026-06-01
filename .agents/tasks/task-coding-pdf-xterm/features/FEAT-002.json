@@ -2,7 +2,7 @@
   "id": "FEAT-002",
   "type": "feat",
   "description": "Feature 1: Coordinator PDF Upload for Coding Problems - adds parseCodingPdfText parser, POST /coordinator/coding/upload-pdf route, and the upload UI panel in coordinator-dashboard.html",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "STEP 1 - Add parseCodingPdfText(rawText) function in server.js. Insert it AFTER the existing parsePdfQuestionText function (around line 3110, before handlePdfUpload). The parser must: split text on /PROBLEM\\s+\\d+\\s*[.:]/i markers; for each block extract Title (required), Difficulty (optional, default 'Easy'), Description (required), Input Format, Output Format, Sample Input, Sample Output fields; then parse Test Cases section with lines like 'TC1:' or 'TC1 [Hidden]:' followed by 'Input: ...' and 'Output: ...' lines; [Hidden] means isHidden:true; multi-line inputs use | as separator (replace with newline); stop collecting a field value when the next known label (Title, Difficulty, Description, Input Format, Output Format, Sample Input, Sample Output, Test Cases) is encountered. Return array of objects: {title, difficulty, description, inputFormat, outputFormat, sampleInput, sampleOutput, testCases:[{input, expectedOutput, isHidden}]}",
     "STEP 2 - Add route POST /coordinator/coding/upload-pdf in server.js. Insert it right after the existing app.post('/coordinator/test/upload-pdf-alt'...) line (around line 3170). Use upload.single('pdfFile') multer middleware. Follow the EXACT same try/catch/finally pattern as handlePdfUpload: read file to buffer, call getPdfParse()(buf, {version:'v1.10.100'}) with pdftotext CLI fallback, pass extracted text to parseCodingPdfText(rawText), return {success:true, count:N, problems:[...]} or {success:false, message:...}. Always delete temp file in finally block.",
@@ -24,5 +24,5 @@
     "Grep coordinator-dashboard.html for 'codingPdfPreview' to confirm UI panel exists"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "All 4 steps implemented successfully. parseCodingPdfText added at line 3110, route at line 3249, HTML panel before Add Coding Problem section, JS functions after saveCodingQuestion. node --check passes cleanly."
 }
