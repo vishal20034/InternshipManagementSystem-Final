@@ -1,0 +1,32 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Add AI-Assisted Quick Entry UI to the Coding Problems section of coordinator-dashboard.html. This includes a textarea for pasting problem text, an auto-fill button that uses regex/heuristics to populate the form fields, a success banner, and a collapsible format guide. Does NOT modify saveCodingQuestion() or the backend.",
+  "status": "completed",
+  "steps": [
+    "In public/coordinator-dashboard.html, locate the 'Add Coding Problem' section (around line 590, inside div#tab-coding .test-section). Insert new UI elements ABOVE the existing form-grid div but BELOW the section-header.",
+    "Add: (1) A collapsible 'View Format Guide' hint box using a <details> element styled with the dark theme (--border, --muted colors). The guide should show the expected paste format with labeled sections: Title, Difficulty, Description, Input Format, Output Format, Sample Input, Sample Output, Test Cases.",
+    "Add: (2) A large textarea with id='aiQuickEntry' and placeholder text showing a brief format example. Style it with background:rgba(13,21,37,0.8), border using var(--border), color:var(--text), border-radius:10px, font-family:monospace.",
+    "Add: (3) A button labeled 'Auto-Fill Form' (with wand emoji) using class 'btn btn-amber'. On click, call a new JS function autoFillCodingForm().",
+    "Add: (4) A hidden banner div with id='autoFillBanner' that shows the checkmark message when auto-fill succeeds. Style with green background similar to existing success patterns.",
+    "In the <script> section (NOT inside saveCodingQuestion), add function autoFillCodingForm() that: reads the textarea value, uses regex/heuristics to extract title (first non-empty line or 'Title:' prefixed line), difficulty (look for Easy/Medium/Hard keyword), description (block after 'Description:' label or second paragraph), inputFormat, outputFormat, sampleInput, sampleOutput, and testCases. Populates the corresponding form fields (cqTitle, cqDifficulty, cqDescription, cqInputFormat, cqOutputFormat, cqSampleInput, cqSampleOutput). For test cases, dynamically adds rows using the existing addCqTestCase() pattern. Shows the autoFillBanner.",
+    "Do NOT change the saveCodingQuestion() function or any backend routes.",
+    "Match the existing dark-theme CSS variables: use var(--border), var(--muted), var(--text), var(--accent) or var(--gold), rgba backgrounds."
+  ],
+  "acceptance_criteria": [
+    "node --check server.js still passes (no backend changes)",
+    "The coordinator-dashboard.html contains the new AI Quick Entry textarea, auto-fill button, format guide, and success banner",
+    "The saveCodingQuestion() function is byte-for-byte unchanged",
+    "No new backend routes are added",
+    "The autoFillCodingForm() function exists and uses regex to parse the textarea",
+    "All new UI elements use dark theme CSS variables consistent with existing design"
+  ],
+  "verification": [
+    "Run: node --check /projects/sandbox/InternshipManagementSystem-Final/server.js",
+    "Run: grep -n 'autoFillCodingForm' /projects/sandbox/InternshipManagementSystem-Final/public/coordinator-dashboard.html to confirm new function exists",
+    "Run: grep -n 'aiQuickEntry' /projects/sandbox/InternshipManagementSystem-Final/public/coordinator-dashboard.html to confirm textarea exists",
+    "Run: grep -n 'autoFillBanner' /projects/sandbox/InternshipManagementSystem-Final/public/coordinator-dashboard.html to confirm banner exists"
+  ],
+  "blocked_reason": null,
+  "findings": "Inserted HTML between section-header and form-grid at line ~596. autoFillCodingForm() placed at line 1634, before saveCodingQuestion() at line 1739. All verifications pass. saveCodingQuestion is byte-for-byte unchanged."
+}

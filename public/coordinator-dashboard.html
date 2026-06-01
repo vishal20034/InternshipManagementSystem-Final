@@ -593,6 +593,34 @@ body::before {
         <div class="section-icon">💻</div>
         <div class="section-title">Add Coding Problem</div>
       </div>
+
+      <details style="margin-bottom:16px;background:rgba(13,21,37,0.6);border:1px solid var(--border);border-radius:10px;padding:0;">
+        <summary style="padding:12px 16px;cursor:pointer;color:var(--amber);font-size:13px;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px;">
+          📋 View Format Guide
+        </summary>
+        <div style="padding:4px 16px 14px;color:#9aa4bf;font-size:12px;line-height:1.7;font-family:monospace;white-space:pre-wrap;">Title: Reverse a String
+Difficulty: Easy
+Description: Write a function that reverses a given string.
+Input Format: A single line containing a string S
+Output Format: A single line with the reversed string
+Sample Input: hello
+Sample Output: olleh
+Test Cases:
+- input: hello | output: olleh
+- input: world | output: dlrow | hidden: true</div>
+      </details>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div class="form-label" style="margin:0;">AI-Assisted Quick Entry</div>
+        </div>
+        <textarea id="aiQuickEntry" rows="8" placeholder="Paste your problem text here using the format above, then click Auto-Fill..." style="width:100%;padding:12px 14px;background:rgba(13,21,37,0.8);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',Consolas,monospace;font-size:13px;line-height:1.6;resize:vertical;"></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px;align-items:center;">
+          <button class="btn btn-amber" onclick="autoFillCodingForm()">🪄 Auto-Fill Form</button>
+          <div id="autoFillBanner" style="display:none;padding:6px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:8px;color:#10b981;font-size:13px;font-weight:600;">✅ Fields auto-filled — please review before saving.</div>
+        </div>
+      </div>
+
       <div class="form-grid">
         <div class="form-group">
           <div class="form-label">Problem Title</div>
@@ -1602,6 +1630,111 @@ async function loadCodingQuestionsCoord(){
       + '</div>'
     ).join("");
   }catch(e){ c.innerHTML = '<p style="color:#f43f5e">Failed to load coding problems.</p>'; }
+}
+function autoFillCodingForm(){
+  const raw = document.getElementById("aiQuickEntry").value.trim();
+  if(!raw){
+    Swal.fire({icon:"warning",title:"Paste problem text first",text:"The quick entry textarea is empty.",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+
+  const lines = raw.split("\n");
+  let title="", difficulty="Easy", description="", inputFormat="", outputFormat="", sampleInput="", sampleOutput="";
+  let testCases = [];
+  let currentSection = "";
+  let descLines = [];
+
+  for(let i=0; i<lines.length; i++){
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if(/^title\s*[:=]/i.test(trimmed)){
+      title = trimmed.replace(/^title\s*[:=]\s*/i, "").trim();
+      currentSection = "";
+      continue;
+    }
+    if(/^difficulty\s*[:=]/i.test(trimmed)){
+      const val = trimmed.replace(/^difficulty\s*[:=]\s*/i, "").trim();
+      if(/easy/i.test(val)) difficulty = "Easy";
+      else if(/medium/i.test(val)) difficulty = "Medium";
+      else if(/hard/i.test(val)) difficulty = "Hard";
+      currentSection = "";
+      continue;
+    }
+    if(/^description\s*[:=]/i.test(trimmed)){
+      description = trimmed.replace(/^description\s*[:=]\s*/i, "").trim();
+      currentSection = "description";
+      continue;
+    }
+    if(/^input\s*format\s*[:=]/i.test(trimmed)){
+      inputFormat = trimmed.replace(/^input\s*format\s*[:=]\s*/i, "").trim();
+      currentSection = "inputFormat";
+      continue;
+    }
+    if(/^output\s*format\s*[:=]/i.test(trimmed)){
+      outputFormat = trimmed.replace(/^output\s*format\s*[:=]\s*/i, "").trim();
+      currentSection = "outputFormat";
+      continue;
+    }
+    if(/^sample\s*input\s*[:=]/i.test(trimmed)){
+      sampleInput = trimmed.replace(/^sample\s*input\s*[:=]\s*/i, "").trim();
+      currentSection = "sampleInput";
+      continue;
+    }
+    if(/^sample\s*output\s*[:=]/i.test(trimmed)){
+      sampleOutput = trimmed.replace(/^sample\s*output\s*[:=]\s*/i, "").trim();
+      currentSection = "sampleOutput";
+      continue;
+    }
+    if(/^test\s*cases?\s*[:=]/i.test(trimmed)){
+      currentSection = "testCases";
+      continue;
+    }
+
+    if(currentSection === "description" && trimmed) descLines.push(trimmed);
+    else if(currentSection === "inputFormat" && trimmed) inputFormat += (inputFormat?" ":"") + trimmed;
+    else if(currentSection === "outputFormat" && trimmed) outputFormat += (outputFormat?" ":"") + trimmed;
+    else if(currentSection === "sampleInput") sampleInput += (sampleInput?"\n":"") + line;
+    else if(currentSection === "sampleOutput") sampleOutput += (sampleOutput?"\n":"") + line;
+    else if(currentSection === "testCases" && trimmed){
+      const tcMatch = trimmed.match(/^[-*]\s*input\s*[:=]\s*(.*?)\s*\|\s*output\s*[:=]\s*(.*?)(?:\s*\|\s*hidden\s*[:=]\s*(true|false))?\s*$/i);
+      if(tcMatch){
+        testCases.push({ input: tcMatch[1].trim(), expectedOutput: tcMatch[2].trim(), isHidden: tcMatch[3] === "true" });
+      }
+    }
+  }
+
+  if(!title && lines.length > 0){
+    title = lines.find(l => l.trim().length > 0) || "";
+    title = title.trim();
+  }
+
+  if(descLines.length) description = (description ? description + "\n" : "") + descLines.join("\n");
+
+  if(title) document.getElementById("cqTitle").value = title;
+  document.getElementById("cqDifficulty").value = difficulty;
+  if(description) document.getElementById("cqDescription").value = description;
+  if(inputFormat) document.getElementById("cqInputFormat").value = inputFormat;
+  if(outputFormat) document.getElementById("cqOutputFormat").value = outputFormat;
+  if(sampleInput) document.getElementById("cqSampleInput").value = sampleInput.trim();
+  if(sampleOutput) document.getElementById("cqSampleOutput").value = sampleOutput.trim();
+
+  if(testCases.length){
+    document.getElementById("cqTestCases").innerHTML = "";
+    testCases.forEach(tc => {
+      addCqTestCase();
+      const rows = document.querySelectorAll(".cq-tc-row");
+      const lastRow = rows[rows.length - 1];
+      if(lastRow){
+        lastRow.querySelector(".cq-tc-input").value = tc.input;
+        lastRow.querySelector(".cq-tc-output").value = tc.expectedOutput;
+        if(tc.isHidden) lastRow.querySelector(".cq-tc-hidden").checked = true;
+      }
+    });
+  }
+
+  document.getElementById("autoFillBanner").style.display = "inline-block";
+  setTimeout(() => { document.getElementById("autoFillBanner").style.display = "none"; }, 6000);
 }
 async function saveCodingQuestion(){
   const title = document.getElementById("cqTitle").value.trim();
