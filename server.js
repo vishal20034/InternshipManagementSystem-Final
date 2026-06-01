@@ -3170,6 +3170,77 @@ app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), handlePdfUplo
 app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), handlePdfUpload);
 
 // ==================================================================
+// ============ GITHUB PUSH HELPER (fire-and-forget) ===============
+// ==================================================================
+async function pushToGitHub(submission, question, code) {
+    try {
+        const token = process.env.GITHUB_TOKEN;
+        const owner = process.env.GITHUB_REPO_OWNER;
+        const repo = process.env.GITHUB_REPO_NAME;
+
+        if (!token || !owner || !repo) {
+            console.log("[GitHub Push] Skipping - env vars not configured");
+            return;
+        }
+
+        // Slugify question title
+        const slug = question.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+        // Determine filename based on language
+        const filenameMap = {
+            javascript: 'solution.js',
+            python: 'solution.py',
+            java: 'Solution.java',
+            cpp: 'solution.cpp'
+        };
+        const filename = filenameMap[submission.language] || 'solution.txt';
+
+        const filePath = `solutions/${submission.employeeId}/${slug}/${submission.language}/${filename}`;
+        const base64Content = Buffer.from(code).toString('base64');
+        const commitMessage = `Accepted: ${question.title} (${submission.language}) by ${submission.employeeId}`;
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+        const headers = {
+            'Authorization': 'token ' + token,
+            'Content-Type': 'application/json',
+            'User-Agent': 'InternshipPortal'
+        };
+        const body = {
+            message: commitMessage,
+            content: base64Content,
+            committer: {
+                name: submission.employeeId,
+                email: submission.employeeId + '@intern.local'
+            }
+        };
+
+        const response = await fetch(apiUrl, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(body)
+        });
+
+        if (response.status === 422) {
+            // File exists - get SHA and update
+            const getResp = await fetch(apiUrl, { method: 'GET', headers: headers });
+            if (getResp.ok) {
+                const fileData = await getResp.json();
+                body.sha = fileData.sha;
+                await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify(body)
+                });
+            }
+        }
+
+        console.log("[GitHub Push] Pushed:", filePath);
+    } catch (e) {
+        console.log("[GitHub Push] Error:", e.message);
+        return;
+    }
+}
+
+// ==================================================================
 // ============ F5 — CODING QUESTIONS + LOCAL CODE RUNNER ===========
 // ==================================================================
 // CodingQuestion + CodingSubmission models live inline (per spec).
