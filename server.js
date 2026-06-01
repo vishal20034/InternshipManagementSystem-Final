@@ -3814,6 +3814,124 @@ io.on("connection", (socket) => {
             if(ack) ack({ success:false, message:"server_error" });
         }
     });
+
+    // ── Terminal events (F5: in-browser terminal) ──
+    socket.on("terminal:start", async (payload) => {
+        try {
+            const { employeeId: rawEmpId, questionId: rawQid, language } = payload || {};
+            if (!rawEmpId || !rawQid) {
+                socket.emit("terminal:data", "\r\n\x1b[31mError: missing employeeId or questionId\x1b[0m\r\n");
+                return;
+            }
+            // Sanitize (same pattern as open-terminal route)
+            const safeId = String(rawEmpId).replace(/[^a-zA-Z0-9_-]/g, '');
+            const safeQid = String(rawQid).replace(/[^a-zA-Z0-9_-]/g, '');
+            if (!safeId || !safeQid) {
+                socket.emit("terminal:data", "\r\n\x1b[31mError: invalid IDs\x1b[0m\r\n");
+                return;
+            }
+
+            const q = await CodingQuestion.findById(safeQid);
+            if (!q) {
+                socket.emit("terminal:data", "\r\n\x1b[31mError: question not found\x1b[0m\r\n");
+                return;
+            }
+
+            const dirPath = `/tmp/coding_${safeId}_${safeQid}/`;
+            fs.mkdirSync(dirPath, { recursive: true });
+
+            // Write starter code file (same logic as open-terminal route)
+            const lang = String(language || "javascript").toLowerCase();
+            let filename, starterCode;
+            if (lang === "javascript" || lang === "js") {
+                filename = "solution.js";
+                starterCode = "// Problem: " + q.title + "\n// " + (q.description || "").split("\n").join("\n// ") + "\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin });\nlet lines = [];\nrl.on('line', l => lines.push(l));\nrl.on('close', () => {\n  // Your solution here\n});\n";
+            } else if (lang === "python" || lang === "py") {
+                filename = "solution.py";
+                starterCode = "# Problem: " + q.title + "\n# " + (q.description || "").split("\n").join("\n# ") + "\nimport sys\n\ndef solve():\n    # Your solution here\n    pass\n\nif __name__ == \"__main__\":\n    solve()\n";
+            } else if (lang === "java") {
+                filename = "Solution.java";
+                starterCode = "// Problem: " + q.title + "\n// " + (q.description || "").split("\n").join("\n// ") + "\nimport java.util.Scanner;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // Your solution here\n    }\n}\n";
+            } else if (lang === "cpp" || lang === "c++") {
+                filename = "solution.cpp";
+                starterCode = "#include <iostream>\nusing namespace std;\n// Problem: " + q.title + "\n// " + (q.description || "").split("\n").join("\n// ") + "\nint main() {\n    // Your solution here\n    return 0;\n}\n";
+            } else {
+                filename = "solution.txt";
+                starterCode = "// Problem: " + q.title + "\n";
+            }
+            fs.writeFileSync(path.join(dirPath, filename), starterCode, "utf8");
+
+            // Write README.txt
+            let readme = "=== " + q.title + " ===\n\n";
+            readme += "Description:\n" + (q.description || "N/A") + "\n\n";
+            readme += "Input Format:\n" + (q.inputFormat || "N/A") + "\n\n";
+            readme += "Output Format:\n" + (q.outputFormat || "N/A") + "\n\n";
+            readme += "Sample Input:\n" + (q.sampleInput || "N/A") + "\n\n";
+            readme += "Sample Output:\n" + (q.sampleOutput || "N/A") + "\n";
+            fs.writeFileSync(path.join(dirPath, "README.txt"), readme, "utf8");
+
+            // Write submit.sh
+            const port = process.env.PORT || 5000;
+            const submitScript = '#!/bin/bash\nFILE="' + filename + '"\nCODE=$(cat "$FILE")\ncurl -s -X POST http://localhost:' + port + '/student/coding/submit-from-terminal \\\n  -H "Content-Type: application/json" \\\n  -d "{\\"employeeId\\":\\"' + safeId + '\\",\\"questionId\\":\\"' + safeQid + '\\",\\"language\\":\\"' + lang + '\\",\\"code\\":$(echo \\"$CODE\\" | jq -Rs .)}"\necho ""\n';
+            fs.writeFileSync(path.join(dirPath, "submit.sh"), submitScript, { mode: 0o755 });
+
+            // Try to spawn shell via node-pty
+            let pty;
+            try { pty = require("node-pty"); } catch(e) { pty = null; }
+
+            if (pty) {
+                const shell = pty.spawn("/bin/bash", [], {
+                    name: "xterm-256color",
+                    cwd: dirPath,
+                    env: Object.assign({}, process.env, { TERM: "xterm-256color" }),
+                    cols: 80,
+                    rows: 24
+                });
+                socket._ptyProcess = shell;
+
+                shell.onData((data) => {
+                    socket.emit("terminal:data", data);
+                });
+                shell.onExit(() => {
+                    socket.emit("terminal:data", "\r\n\x1b[33m[Process exited]\x1b[0m\r\n");
+                    socket._ptyProcess = null;
+                });
+
+                socket.on("terminal:input", (data) => {
+                    if (socket._ptyProcess) {
+                        try { socket._ptyProcess.write(data); } catch(e){}
+                    }
+                });
+            } else {
+                // Graceful fallback when node-pty is not available
+                socket.emit("terminal:data", "\r\n\x1b[33m========================================\x1b[0m\r\n");
+                socket.emit("terminal:data", "\x1b[33m  node-pty is not available on this server\x1b[0m\r\n");
+                socket.emit("terminal:data", "\x1b[33m========================================\x1b[0m\r\n");
+                socket.emit("terminal:data", "\x1b[33m  Use the 'Open in Terminal' button to get\x1b[0m\r\n");
+                socket.emit("terminal:data", "\x1b[33m  a workspace path for your local terminal\x1b[0m\r\n");
+                socket.emit("terminal:data", "\x1b[33m========================================\x1b[0m\r\n");
+                socket.emit("terminal:data", "\r\nWorkspace: " + dirPath + "\r\n");
+                socket.emit("terminal:data", "Files: " + filename + ", README.txt, submit.sh\r\n");
+            }
+        } catch(e) {
+            console.log("terminal:start error:", e && e.message);
+            socket.emit("terminal:data", "\r\n\x1b[31mServer error: " + ((e && e.message) || "unknown") + "\x1b[0m\r\n");
+        }
+    });
+
+    socket.on("terminal:kill", () => {
+        if (socket._ptyProcess) {
+            try { socket._ptyProcess.kill(); } catch(e){}
+            socket._ptyProcess = null;
+        }
+    });
+
+    socket.on("disconnect", () => {
+        if (socket._ptyProcess) {
+            try { socket._ptyProcess.kill(); } catch(e){}
+            socket._ptyProcess = null;
+        }
+    });
 });
 
 server.listen(PORT, ()=>{ console.log(`Server running on port ${PORT}`); });

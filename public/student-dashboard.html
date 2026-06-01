@@ -17,6 +17,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
 
+<!-- xterm.js for in-browser terminal -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+
 <style>
 :root {
   --bg-base:        #05070e;
@@ -855,6 +860,12 @@ button:active { transform: translateY(0); }
   .coding-modal .cm-body{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
   .coding-modal .cm-left{max-height:35vh;border-right:none;border-bottom:1px solid rgba(245,197,66,.10);}
 }
+/* Tab bar for Editor/Terminal switcher */
+.cm-tab-bar { display:flex; gap:0; margin-bottom:10px; border-bottom:1px solid rgba(99,140,210,0.15); }
+.cm-tab { padding:8px 18px; font-size:13px; font-weight:700; background:transparent; border:none; color:#9aa4bf; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; }
+.cm-tab:hover { color:#cdd9ec; }
+.cm-tab.active { color:var(--accent-blue, #3b82f6); border-bottom-color:var(--accent-blue, #3b82f6); }
+#terminalPane { display:none; }
 </style>
 </head>
 
@@ -1005,29 +1016,42 @@ button:active { transform: translateY(0); }
           <div id="cmSample"></div>
         </div>
         <div class="cm-right">
-          <div class="cm-toolbar">
-            <label style="font-size:11px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Language</label>
-            <select id="cmLang" onchange="setLanguage(this.value)">
-              <option value="javascript">JavaScript</option>
-              <option value="python">Python</option>
-              <option value="java">Java</option>
-              <option value="cpp">C++</option>
-            </select>
+          <!-- Tab Switcher -->
+          <div class="cm-tab-bar">
+            <button class="cm-tab active" id="tabBtnEditor" onclick="switchCodingTab('editor')">&#x1F4DD; Editor</button>
+            <button class="cm-tab" id="tabBtnTerminal" onclick="switchCodingTab('terminal')">&#x1F4BB; Terminal</button>
           </div>
-          <textarea id="codeEditor"></textarea>
-          <div class="cm-actions">
-            <button class="cm-btn cm-btn-run" onclick="runCode()">▶ Run Code</button>
-            <button class="cm-btn cm-btn-submit" onclick="submitCode()">📤 Submit</button>
-            <button class="cm-btn" style="background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.3);" onclick="openInTerminal()">💻 Open in Terminal</button>
-            <button class="cm-btn cm-btn-clear" onclick="document.getElementById('codeOutput').textContent='';">🧹 Clear Output</button>
-            <span id="cmLangLabel" style="margin-left:auto;font-size:12px;color:#9aa4bf;">Mode: javascript</span>
+          <!-- Editor Pane (default) -->
+          <div id="editorPane">
+            <div class="cm-toolbar">
+              <label style="font-size:11px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Language</label>
+              <select id="cmLang" onchange="setLanguage(this.value)">
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+              </select>
+            </div>
+            <textarea id="codeEditor"></textarea>
+            <div class="cm-actions">
+              <button class="cm-btn cm-btn-run" onclick="runCode()">&#x25B6; Run Code</button>
+              <button class="cm-btn cm-btn-submit" onclick="submitCode()">&#x1F4E4; Submit</button>
+              <button class="cm-btn" style="background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.3);" onclick="openInTerminal()">&#x1F4BB; Open in Terminal</button>
+              <button class="cm-btn cm-btn-clear" onclick="document.getElementById('codeOutput').textContent='';">&#x1F9F9; Clear Output</button>
+              <span id="cmLangLabel" style="margin-left:auto;font-size:12px;color:#9aa4bf;">Mode: javascript</span>
+            </div>
+            <details class="cm-stdin">
+              <summary>Custom Input (used by Run Code)</summary>
+              <textarea id="customInput" rows="3" placeholder="stdin for Run Code..."></textarea>
+            </details>
+            <div class="cm-output-label">Output</div>
+            <pre id="codeOutput" class="cm-output">&mdash; output will appear here &mdash;</pre>
           </div>
-          <details class="cm-stdin">
-            <summary>Custom Input (used by Run Code)</summary>
-            <textarea id="customInput" rows="3" placeholder="stdin for Run Code..."></textarea>
-          </details>
-          <div class="cm-output-label">Output</div>
-          <pre id="codeOutput" class="cm-output">— output will appear here —</pre>
+          <!-- Terminal Pane -->
+          <div id="terminalPane" style="display:none;flex:1;flex-direction:column;">
+            <div style="padding:8px 0 6px;font-size:12px;color:#9aa4bf;">Connected to server shell. Type commands, edit your code, and run submit.sh to submit.</div>
+            <div id="xtermContainer" style="flex:1;min-height:420px;background:#000;border-radius:8px;overflow:hidden;border:1px solid rgba(99,140,210,0.15);"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1692,6 +1716,102 @@ async function loadCodingProblems(){
   }catch(e){ /* silent — section just stays hidden */ }
 }
 
+// ── Terminal state ──
+let _termSocket = null;
+let _termXterm = null;
+let _termFitAddon = null;
+
+function switchCodingTab(tab) {
+  const editorPane = document.getElementById('editorPane');
+  const terminalPane = document.getElementById('terminalPane');
+  const tabBtnEditor = document.getElementById('tabBtnEditor');
+  const tabBtnTerminal = document.getElementById('tabBtnTerminal');
+  if (tab === 'terminal') {
+    editorPane.style.display = 'none';
+    terminalPane.style.display = 'flex';
+    tabBtnEditor.classList.remove('active');
+    tabBtnTerminal.classList.add('active');
+    // Initialize terminal if not already connected
+    if (!_termXterm) {
+      initTerminal();
+    }
+  } else {
+    editorPane.style.display = '';
+    terminalPane.style.display = 'none';
+    tabBtnEditor.classList.add('active');
+    tabBtnTerminal.classList.remove('active');
+  }
+}
+
+function initTerminal() {
+  if (!_currentCodingQuestion) return;
+  const empId = (typeof employeeId !== 'undefined' && employeeId) || (student && student.employeeId) || '';
+  if (!empId) return;
+
+  // Create xterm instance
+  const Terminal = window.Terminal;
+  const FitAddon = window.FitAddon ? window.FitAddon.FitAddon : (window.FitAddon || null);
+  if (!Terminal) {
+    document.getElementById('xtermContainer').innerHTML = '<p style="color:#f43f5e;padding:20px;">xterm.js failed to load.</p>';
+    return;
+  }
+  _termXterm = new Terminal({
+    cursorBlink: true,
+    fontSize: 14,
+    fontFamily: "'JetBrains Mono', 'DM Mono', Consolas, monospace",
+    theme: { background: '#0d1117', foreground: '#cdd9ec', cursor: '#3b82f6' },
+    rows: 24,
+    cols: 80
+  });
+  if (FitAddon) {
+    _termFitAddon = new FitAddon();
+    _termXterm.loadAddon(_termFitAddon);
+  }
+  _termXterm.open(document.getElementById('xtermContainer'));
+  if (_termFitAddon) {
+    try { _termFitAddon.fit(); } catch(e){}
+  }
+  _termXterm.writeln('\x1b[33mConnecting to terminal...\x1b[0m');
+
+  // Create Socket.IO connection for terminal
+  _termSocket = io({ forceNew: true, auth: { role: 'student', employeeId: empId, name: student.name || student.firstName || empId, domain: student.domain || '' } });
+  _termSocket.on('connect', () => {
+    _termSocket.emit('terminal:start', {
+      questionId: _currentCodingQuestion._id,
+      employeeId: empId,
+      language: document.getElementById('cmLang').value
+    });
+  });
+  _termSocket.on('terminal:data', (data) => {
+    if (_termXterm) _termXterm.write(data);
+  });
+  _termSocket.on('connect_error', (err) => {
+    if (_termXterm) _termXterm.writeln('\r\n\x1b[31mConnection error: ' + (err.message || 'unknown') + '\x1b[0m');
+  });
+  // Send keystrokes to server
+  _termXterm.onData((data) => {
+    if (_termSocket && _termSocket.connected) {
+      _termSocket.emit('terminal:input', data);
+    }
+  });
+}
+
+function destroyTerminal() {
+  if (_termSocket) {
+    try { _termSocket.emit('terminal:kill'); } catch(e){}
+    try { _termSocket.disconnect(); } catch(e){}
+    _termSocket = null;
+  }
+  if (_termXterm) {
+    try { _termXterm.dispose(); } catch(e){}
+    _termXterm = null;
+  }
+  _termFitAddon = null;
+  // Clear the container
+  const container = document.getElementById('xtermContainer');
+  if (container) container.innerHTML = '';
+}
+
 async function openCodingProblem(qid){
   try{
     const r = await fetch("/student/coding-questions/question/" + qid);
@@ -1710,6 +1830,9 @@ async function openCodingProblem(qid){
       + (d.question.sampleOutput ? '<div><b style="font-size:12px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Sample Output</b><pre>' + _cmEsc(d.question.sampleOutput) + '</pre></div>' : '');
 
     document.getElementById("codingModal").style.display = "flex";
+
+    // Always reset to editor tab when opening
+    switchCodingTab('editor');
 
     // Initialise CodeMirror lazily, the first time we open the modal.
     const langSel = document.getElementById("cmLang");
@@ -1754,6 +1877,8 @@ async function openCodingProblem(qid){
 }
 
 function closeCodingModal(){
+  destroyTerminal();
+  switchCodingTab('editor');
   document.getElementById("codingModal").style.display = "none";
 }
 
