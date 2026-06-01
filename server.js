@@ -62,10 +62,19 @@ const COORDINATORS = {
 
 const app = express();
 
+// ===== Production config =====
+const PORT = process.env.PORT || 5000;
+const BASE_URL = process.env.BASE_URL || "http://15.207.123.212";
+
+// Ensure uploads directory exists (multer writes to it)
+const uploadsAbs = path.join(__dirname, "uploads");
+try { fs.mkdirSync(uploadsAbs, { recursive: true }); } catch(_) {}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
 app.use('/uploads', express.static('uploads'));
+
 
 // ===== Feature 14: security hardening =====
 // helmet sets secure HTTP headers; we keep CSP off so the existing inline
@@ -3449,7 +3458,7 @@ app.get("/coordinator/coding-submissions/:domain", async(req,res)=>{
 
 // ================= SERVER =================
 
-const PORT = process.env.PORT || 5000;
+// (PORT already declared earlier)
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
@@ -3523,5 +3532,6 @@ io.on("connection", (socket) => {
         }
     });
 });
+
 
 server.listen(PORT, ()=>{ console.log(`Server running on port ${PORT}`); });
