@@ -1846,7 +1846,7 @@ async function submitCode(){
       // Show GitHub push note
       setTimeout(() => {
         const out = document.getElementById("codeOutput");
-        out.textContent += "\n\n\uD83D\uDC19 Your solution has been pushed to GitHub!";
+        out.textContent += "\n\n\uD83D\uDC19 If GitHub integration is configured, your solution will be pushed automatically.";
       }, 1500);
     } else {
       out.classList.add(verdict === "Runtime Error" ? "is-warn" : "is-error");
