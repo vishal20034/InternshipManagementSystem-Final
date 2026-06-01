@@ -3818,7 +3818,9 @@ io.on("connection", (socket) => {
     // ── Terminal events (F5: in-browser terminal) ──
     socket.on("terminal:start", async (payload) => {
         try {
-            const { employeeId: rawEmpId, questionId: rawQid, language } = payload || {};
+            const { questionId: rawQid, language } = payload || {};
+            // Use the authenticated identity instead of client-supplied employeeId
+            const rawEmpId = socket.data && socket.data.identity && socket.data.identity.id;
             if (!rawEmpId || !rawQid) {
                 socket.emit("terminal:data", "\r\n\x1b[31mError: missing employeeId or questionId\x1b[0m\r\n");
                 return;
@@ -3859,7 +3861,11 @@ io.on("connection", (socket) => {
                 filename = "solution.txt";
                 starterCode = "// Problem: " + q.title + "\n";
             }
-            fs.writeFileSync(path.join(dirPath, filename), starterCode, "utf8");
+            // Only write starter code if file does not already exist (preserve existing work)
+            const solutionPath = path.join(dirPath, filename);
+            if (!fs.existsSync(solutionPath)) {
+                fs.writeFileSync(solutionPath, starterCode, "utf8");
+            }
 
             // Write README.txt
             let readme = "=== " + q.title + " ===\n\n";
@@ -3880,10 +3886,13 @@ io.on("connection", (socket) => {
             try { pty = require("node-pty"); } catch(e) { pty = null; }
 
             if (pty) {
+                const safeEnv = {};
+                ["HOME", "PATH", "LANG", "SHELL", "USER"].forEach(k => { if (process.env[k]) safeEnv[k] = process.env[k]; });
+                safeEnv.TERM = "xterm-256color";
                 const shell = pty.spawn("/bin/bash", [], {
                     name: "xterm-256color",
                     cwd: dirPath,
-                    env: Object.assign({}, process.env, { TERM: "xterm-256color" }),
+                    env: safeEnv,
                     cols: 80,
                     rows: 24
                 });
