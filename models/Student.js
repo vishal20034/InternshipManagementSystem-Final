@@ -63,7 +63,20 @@ const studentsSchema = new mongoose.Schema({
         hrApproved:             { type: Date },
         certificatesGenerated:  { type: Date },
         internshipCompleted:    { type: Date }
-    }
+    },
+
+    // ===== F9 — automated email reminder tracking =====
+    // Each key tracks when (or whether) a reminder was last sent so the cron
+    // doesn't spam the same student. The two well-known keys are:
+    //   - attendanceWarning3d   (Date | null) — last sent for >=3-day gap
+    //   - lowAttendance         (Date | null) — last sent when combined < 60%
+    //   - internshipEnding7d    (Date | null) — once when 7d before end date
+    reminderEmailsSent: {
+        type: Map,
+        of: Date,
+        default: {}
+    },
+    certificateEligibilityEmailSent: { type: Boolean, default: false }
 }, {
     timestamps: true
 });

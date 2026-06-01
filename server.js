@@ -174,7 +174,11 @@ const submissionSchema = new mongoose.Schema({
     meetingsJoined: { type: Number, default: 0 },
     tasksCompleted: { type: Number, default: 0 },
     performance: { type: String, default: "B" },
-    submittedAt: { type: Date, default: Date.now }
+    submittedAt: { type: Date, default: Date.now },
+    // F8 — task deadline tracking. The deadline itself lives on CoordinatorTask
+    // (one per domain); isOverdue is a per-submission flag the cron flips when
+    // the deadline elapses without an Approved review.
+    isOverdue: { type: Boolean, default: false }
 });
 
 const Submission = mongoose.model("Submission", submissionSchema);
@@ -1211,6 +1215,11 @@ const coordinatorTaskSchema = new mongoose.Schema({
     tasks:     [String],
     fileUrl:   { type: String, default: "" },
     fileName:  { type: String, default: "" },
+    // F8 — optional submission deadline for the domain task. When present and
+    // in the past, the hourly cron flips the per-student `isOverdue` flag and
+    // sends a one-time overdue notification (idempotent via lastOverdueRun).
+    deadline:           { type: Date,   default: null },
+    lastOverdueRunAt:   { type: Date,   default: null },
     updatedAt: { type: Date, default: Date.now }
 });
 const CoordinatorTask = mongoose.model("CoordinatorTask", coordinatorTaskSchema);
@@ -1229,10 +1238,25 @@ try{
 
 app.post("/coordinator/tasks", async(req,res)=>{
 try{
-    const { domain, tasks } = req.body;
+    const { domain, tasks, deadline } = req.body;
+    // Empty string clears the deadline; a real ISO/parsable date sets it.
+    let deadlineVal = undefined;     // undefined means: don't touch in $set
+    if(deadline === "" || deadline === null){
+        deadlineVal = null;
+    } else if(deadline){
+        const d = new Date(deadline);
+        if(!isNaN(d.getTime())) deadlineVal = d;
+    }
+    const update = { domain, tasks, updatedAt: new Date() };
+    if(deadlineVal !== undefined){
+        update.deadline = deadlineVal;
+        // Reset cron-throttle when the deadline changes, so the new
+        // deadline can fire its overdue notifications fresh.
+        update.lastOverdueRunAt = null;
+    }
     await CoordinatorTask.findOneAndUpdate(
         { domain },
-        { domain, tasks, updatedAt: new Date() },
+        update,
         { upsert:true, new:true }
     );
     res.json({ success:true });
@@ -3030,11 +3054,10 @@ app.get("/chat/blocked-list", async(req,res)=>{
 // and import. We do NOT save anything here — coordinator reviews + imports
 // via the existing /save-test-questions flow so existing logic is untouched.
 
-// pdf-parse@1's index.js runs a self-test on require. Pulling it from
-// /lib/pdf-parse.js avoids that and is the standard workaround.
+// Lazy-load pdf-parse so the server boots even if the package is missing.
 let _pdfParse;
 function getPdfParse(){
-    if(!_pdfParse){ _pdfParse = require("pdf-parse/lib/pdf-parse.js"); }
+    if(!_pdfParse){ _pdfParse = require("pdf-parse"); }
     return _pdfParse;
 }
 
@@ -3085,7 +3108,29 @@ function parsePdfQuestionText(rawText){
 
 // Re-uses the existing `upload` multer instance (disk storage). We read the
 // uploaded file, parse it, and unlink the temp file afterwards.
+// Accepts field name "pdfFile" OR "pdf" for backward compatibility.
 app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), async(req, res) => {
+    let tmpPath = null;
+    try {
+        if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
+        tmpPath = req.file.path;
+        const buf = fs.readFileSync(tmpPath);
+        const data = await getPdfParse()(buf);
+        const questions = parsePdfQuestionText(data && data.text);
+        if(!questions.length){
+            return res.json({ success:false, message:"Could not parse questions from PDF" });
+        }
+        res.json({ success:true, count: questions.length, questions });
+    } catch(e){
+        console.log("PDF parse error:", e && e.message);
+        res.json({ success:false, message:"Could not parse questions from PDF" });
+    } finally {
+        if(tmpPath){ try{ fs.unlinkSync(tmpPath); }catch(_){} }
+    }
+});
+
+// Alias: same route but accepting field name "pdf" (some frontends use this)
+app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), async(req, res) => {
     let tmpPath = null;
     try {
         if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
