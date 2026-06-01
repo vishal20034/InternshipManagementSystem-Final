@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Feature 2: Student In-Browser Terminal in Coding Modal - adds xterm.js CDN, tab switcher UI (Editor/Terminal), terminal Socket.IO client logic in student-dashboard.html, and terminal Socket.IO server events in server.js",
+  "status": "completed",
+  "steps": [
+    "STEP 1 - In public/student-dashboard.html <head> section (after the CodeMirror script tags, around line 18), add xterm.js v5.3.0 CDN links: the CSS file (https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css), the main JS (https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js), and the fit addon (https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js).",
+    "STEP 2 - Modify the coding modal's right panel (div.cm-right, currently starting around line 1006) to add a tab switcher. Insert a tab bar div BEFORE the existing cm-toolbar div with two tab buttons: 'Editor' (default active) and 'Terminal'. Wrap the existing content from cm-toolbar through cm-output (the textarea#codeEditor, cm-actions, custom input details, and output pre) inside a new div#editorPane. Add a new div#terminalPane (display:none initially) containing a div#xtermContainer with appropriate styling (min-height:400px, background:#000, border-radius:8px). Add CSS for the tab bar using existing dark-theme variables.",
+    "STEP 3 - Add switchCodingTab(tab) JavaScript function in student-dashboard.html. When 'editor' is selected: show #editorPane, hide #terminalPane, mark editor tab active. When 'terminal' is selected: hide #editorPane, show #terminalPane, mark terminal tab active, then initialize/connect the terminal if not already connected. The terminal connection logic: create a new Socket.IO connection (use io() from the already-loaded socket.io client), emit 'terminal:start' with {questionId: _currentCodingQuestion._id, employeeId: student.employeeId, language: document.getElementById('cmLang').value}, create new Terminal() from xterm.js with theme matching the dark UI, use FitAddon, open terminal in #xtermContainer, call fitAddon.fit(), listen for 'terminal:data' events and write to xterm, send keystrokes via terminal.onData -> socket.emit('terminal:input', data).",
+    "STEP 4 - Modify the closeCodingModal() function (line 1756) to: kill the terminal socket (emit 'terminal:kill', disconnect), dispose xterm instance, reset to editor tab (call switchCodingTab('editor')), then hide the modal. Also modify openCodingProblem() to ensure it always resets to editor tab when opening. Store terminal state in variables like _termSocket, _termXterm, _termFitAddon.",
+    "STEP 5 - In server.js, inside the existing io.on('connection', ...) block (before the closing }); of that block at line 3706), add terminal Socket.IO event handlers. Add socket.on('terminal:start', ...) that: validates and sanitizes employeeId/questionId (same pattern as open-terminal route), creates working directory /tmp/coding_<safeId>_<safeQid>/, writes starter code file (reuse same language logic as open-terminal route), writes README.txt and submit.sh (chmod 755), then tries to spawn a shell via node-pty (lazy-load with try/catch: let pty; try { pty = require('node-pty'); } catch(e) {...}). If node-pty is available, spawn('/bin/bash', [], {cwd: dirPath, env: process.env, cols:80, rows:24}), pipe pty.onData to socket.emit('terminal:data'), listen for socket.on('terminal:input') to pty.write(data). If node-pty is NOT available, send a graceful fallback message via socket.emit('terminal:data', 'node-pty not available...'). Add socket.on('terminal:kill') to kill the pty process. Add cleanup on socket.on('disconnect') to kill pty if still running. Store pty reference on socket object (socket._ptyProcess).",
+    "STEP 6 - Verify no existing functionality is broken: the existing CodeMirror editor, Run button, Submit button, output panel, and Open in Terminal button must all still work exactly as before. The tab switcher defaults to Editor tab every time the modal opens."
+  ],
+  "acceptance_criteria": [
+    "xterm.js v5.3.0 CDN (CSS + JS + fit addon) is loaded in student-dashboard.html head",
+    "Coding modal right panel has Editor/Terminal tab switcher, defaults to Editor tab",
+    "Switching to Terminal tab initializes xterm.js and connects via Socket.IO",
+    "Terminal Socket.IO events (terminal:start, terminal:input, terminal:data, terminal:kill) are handled in server.js",
+    "node-pty failure is handled gracefully with a fallback message",
+    "closeCodingModal kills terminal socket, disposes xterm, resets to editor tab",
+    "Existing CodeMirror editor, Run, Submit, Open in Terminal, and output panel work unchanged",
+    "node --check server.js passes with no syntax errors"
+  ],
+  "verification": [
+    "Run: node --check server.js (exit code 0)",
+    "Grep student-dashboard.html for 'xterm@5.3.0' to confirm CDN links",
+    "Grep student-dashboard.html for 'switchCodingTab' to confirm tab function exists",
+    "Grep student-dashboard.html for 'terminal:start' to confirm socket events",
+    "Grep server.js for 'terminal:start' to confirm server handler exists",
+    "Grep server.js for 'node-pty' to confirm lazy-load with fallback"
+  ],
+  "blocked_reason": null,
+  "findings": "All 6 steps implemented. xterm.js CDN at lines 21-23, tab bar CSS before </style>, tab switcher HTML in cm-right div, terminal JS functions before openCodingProblem at line 1724, closeCodingModal destroys terminal and resets tab, server terminal events at line 3819. node --check passes. Existing functionality (CodeMirror, Run, Submit, Open in Terminal, Socket.IO chat events) all preserved."
+}
