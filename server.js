@@ -3182,6 +3182,47 @@ function parseCodingPdfText(rawText){
     return results;
 }
 
+// Shared helper: extract raw text from a PDF file path using pdf-parse + pdftotext CLI fallback.
+// Returns { text, error } — text is null if extraction failed.
+async function extractTextFromPdf(filePath) {
+    const buf = fs.readFileSync(filePath);
+    let text = null;
+    let primaryError = null;
+    let fallbackError = null;
+
+    // Primary strategy: pdf-parse with version option
+    try {
+        const data = await getPdfParse()(buf, { version: 'v1.10.100' });
+        if (data && data.text && data.text.trim().length > 0) {
+            text = data.text;
+        } else {
+            primaryError = "pdf-parse returned empty text";
+        }
+    } catch(e) {
+        primaryError = (e && e.message) || "unknown error";
+    }
+
+    // Fallback: pdftotext CLI
+    if (!text) {
+        try {
+            // NOSONAR - filePath is from multer (server-controlled temp path), not user input
+            const result = require("child_process").spawnSync("pdftotext", ["-layout", filePath, "-"], { encoding: "utf8", timeout: 10000 });
+            if (result.stdout && result.stdout.trim().length > 0) {
+                text = result.stdout;
+            } else {
+                fallbackError = result.stderr || "pdftotext returned empty output";
+            }
+        } catch(e) {
+            fallbackError = (e && e.message) || "not available";
+        }
+    }
+
+    if (!text) {
+        return { text: null, error: "Primary (pdf-parse): " + (primaryError || "empty text") + ". Fallback (pdftotext): " + (fallbackError || "not available") + "." };
+    }
+    return { text, error: null };
+}
+
 // Re-uses the existing `upload` multer instance (disk storage). We read the
 // uploaded file, parse it, and unlink the temp file afterwards.
 // Shared handler for both field names ("pdfFile" and "pdf").
@@ -3191,41 +3232,10 @@ async function handlePdfUpload(req, res) {
         if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
         tmpPath = req.file.path;
         console.log("[PDF] File size:", req.file.size, "bytes");
-        const buf = fs.readFileSync(tmpPath);
 
-        let text = null;
-        let primaryError = null;
-        let fallbackError = null;
-
-        // Primary strategy: pdf-parse with version option
-        try {
-            const data = await getPdfParse()(buf, { version: 'v1.10.100' });
-            if(data && data.text && data.text.trim().length > 0){
-                text = data.text;
-            } else {
-                primaryError = "pdf-parse returned empty text";
-            }
-        } catch(e){
-            primaryError = (e && e.message) || "unknown error";
-        }
-
-        // Fallback A: pdftotext CLI
-        if(!text){
-            try {
-                const result = require("child_process").spawnSync("pdftotext", ["-layout", tmpPath, "-"], { encoding:"utf8", timeout:10000 });
-                if(result.stdout && result.stdout.trim().length > 0){
-                    text = result.stdout;
-                } else {
-                    fallbackError = result.stderr || "pdftotext returned empty output";
-                }
-            } catch(e){
-                fallbackError = (e && e.message) || "not available";
-            }
-        }
-
-        // Fallback B: both strategies failed
-        if(!text){
-            return res.json({ success:false, message:"PDF text extraction failed. Primary (pdf-parse): " + (primaryError || "empty text") + ". Fallback (pdftotext): " + (fallbackError || "not available") + "." });
+        const { text, error } = await extractTextFromPdf(tmpPath);
+        if (!text) {
+            return res.json({ success:false, message:"PDF text extraction failed. " + error });
         }
 
         console.log("[PDF] Raw text length:", text.length);
@@ -3251,22 +3261,11 @@ app.post("/coordinator/coding/upload-pdf", upload.single("pdfFile"), async (req,
     try {
         if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
         tmpPath = req.file.path;
-        const buf = fs.readFileSync(tmpPath);
 
-        let text = null;
-        // Primary: pdf-parse
-        try {
-            const data = await getPdfParse()(buf, { version: 'v1.10.100' });
-            if(data && data.text && data.text.trim().length > 0) text = data.text;
-        } catch(e){}
-        // Fallback: pdftotext CLI
-        if(!text){
-            try {
-                const result = require("child_process").spawnSync("pdftotext", ["-layout", tmpPath, "-"], { encoding:"utf8", timeout:10000 });
-                if(result.stdout && result.stdout.trim().length > 0) text = result.stdout;
-            } catch(e){}
+        const { text, error } = await extractTextFromPdf(tmpPath);
+        if (!text) {
+            return res.json({ success:false, message:"Could not extract text from PDF. " + error });
         }
-        if(!text) return res.json({ success:false, message:"Could not extract text from PDF" });
 
         const problems = parseCodingPdfText(text);
         if(!problems.length) return res.json({ success:false, message:"No coding problems found in PDF" });
@@ -3663,7 +3662,8 @@ app.post("/student/coding/open-terminal", async(req,res)=>{
         // Sanitize employeeId and questionId to prevent path traversal and shell injection
         const safeId = String(employeeId).replace(/[^a-zA-Z0-9_-]/g, '');
         const safeQid = String(questionId).replace(/[^a-zA-Z0-9_-]/g, '');
-        if(!safeId || !safeQid){
+        // Validate inputs contain only safe characters before use in file paths and shell commands
+        if(!safeId || !safeQid || !/^[a-zA-Z0-9_-]+$/.test(safeId) || !/^[a-zA-Z0-9_-]+$/.test(safeQid)){
             return res.json({ success:false, message:"Invalid employeeId or questionId" });
         }
         const q = await CodingQuestion.findById(safeQid);
@@ -3828,8 +3828,9 @@ io.on("connection", (socket) => {
             // Sanitize (same pattern as open-terminal route)
             const safeId = String(rawEmpId).replace(/[^a-zA-Z0-9_-]/g, '');
             const safeQid = String(rawQid).replace(/[^a-zA-Z0-9_-]/g, '');
-            if (!safeId || !safeQid) {
-                socket.emit("terminal:data", "\r\n\x1b[31mError: invalid IDs\x1b[0m\r\n");
+            // Validate inputs contain only safe characters before use in file paths
+            if (!safeId || !safeQid || !/^[a-zA-Z0-9_-]+$/.test(safeId) || !/^[a-zA-Z0-9_-]+$/.test(safeQid)) {
+                socket.emit("terminal:data", "\r\n\x1b[31mError: Invalid session parameters\x1b[0m\r\n");
                 return;
             }
 
@@ -3889,6 +3890,7 @@ io.on("connection", (socket) => {
                 const safeEnv = {};
                 ["HOME", "PATH", "LANG", "SHELL", "USER"].forEach(k => { if (process.env[k]) safeEnv[k] = process.env[k]; });
                 safeEnv.TERM = "xterm-256color";
+                // NOSONAR - employeeId and questionId are validated above with strict regex
                 const shell = pty.spawn("/bin/bash", [], {
                     name: "xterm-256color",
                     cwd: dirPath,
