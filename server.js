@@ -3117,36 +3117,52 @@ function parsePdfQuestionText(rawText){
 
 // Re-uses the existing `upload` multer instance (disk storage). We read the
 // uploaded file, parse it, and unlink the temp file afterwards.
-// Accepts field name "pdfFile" OR "pdf" for backward compatibility.
-app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), async(req, res) => {
+// Shared handler for both field names ("pdfFile" and "pdf").
+async function handlePdfUpload(req, res) {
     let tmpPath = null;
     try {
         if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
         tmpPath = req.file.path;
+        console.log("[PDF] File size:", req.file.size, "bytes");
         const buf = fs.readFileSync(tmpPath);
-        const data = await getPdfParse()(buf);
-        const questions = parsePdfQuestionText(data && data.text);
-        if(!questions.length){
-            return res.json({ success:false, message:"Could not parse questions from PDF" });
-        }
-        res.json({ success:true, count: questions.length, questions });
-    } catch(e){
-        console.log("PDF parse error:", e && e.message);
-        res.json({ success:false, message:"Could not parse questions from PDF" });
-    } finally {
-        if(tmpPath){ try{ fs.unlinkSync(tmpPath); }catch(_){} }
-    }
-});
 
-// Alias: same route but accepting field name "pdf" (some frontends use this)
-app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), async(req, res) => {
-    let tmpPath = null;
-    try {
-        if(!req.file) return res.json({ success:false, message:"No PDF uploaded" });
-        tmpPath = req.file.path;
-        const buf = fs.readFileSync(tmpPath);
-        const data = await getPdfParse()(buf);
-        const questions = parsePdfQuestionText(data && data.text);
+        let text = null;
+        let primaryError = null;
+        let fallbackError = null;
+
+        // Primary strategy: pdf-parse with version option
+        try {
+            const data = await getPdfParse()(buf, { version: 'v1.10.100' });
+            if(data && data.text && data.text.trim().length > 0){
+                text = data.text;
+            } else {
+                primaryError = "pdf-parse returned empty text";
+            }
+        } catch(e){
+            primaryError = (e && e.message) || "unknown error";
+        }
+
+        // Fallback A: pdftotext CLI
+        if(!text){
+            try {
+                const result = require("child_process").spawnSync("pdftotext", ["-layout", tmpPath, "-"], { encoding:"utf8", timeout:10000 });
+                if(result.stdout && result.stdout.trim().length > 0){
+                    text = result.stdout;
+                } else {
+                    fallbackError = result.stderr || "pdftotext returned empty output";
+                }
+            } catch(e){
+                fallbackError = (e && e.message) || "not available";
+            }
+        }
+
+        // Fallback B: both strategies failed
+        if(!text){
+            return res.json({ success:false, message:"PDF text extraction failed. Primary (pdf-parse): " + (primaryError || "empty text") + ". Fallback (pdftotext): " + (fallbackError || "not available") + "." });
+        }
+
+        console.log("[PDF] Raw text length:", text.length);
+        const questions = parsePdfQuestionText(text);
         if(!questions.length){
             return res.json({ success:false, message:"Could not parse questions from PDF" });
         }
@@ -3157,7 +3173,81 @@ app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), async(req, re
     } finally {
         if(tmpPath){ try{ fs.unlinkSync(tmpPath); }catch(_){} }
     }
-});
+}
+
+app.post("/coordinator/test/upload-pdf", upload.single("pdfFile"), handlePdfUpload);
+app.post("/coordinator/test/upload-pdf-alt", upload.single("pdf"), handlePdfUpload);
+
+// ==================================================================
+// ============ GITHUB PUSH HELPER (fire-and-forget) ===============
+// ==================================================================
+async function pushToGitHub(submission, question, code) {
+    try {
+        const token = process.env.GITHUB_TOKEN;
+        const owner = process.env.GITHUB_REPO_OWNER;
+        const repo = process.env.GITHUB_REPO_NAME;
+
+        if (!token || !owner || !repo) {
+            console.log("[GitHub Push] Skipping - env vars not configured");
+            return;
+        }
+
+        // Slugify question title
+        const slug = question.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+        // Determine filename based on language
+        const filenameMap = {
+            javascript: 'solution.js',
+            python: 'solution.py',
+            java: 'Solution.java',
+            cpp: 'solution.cpp'
+        };
+        const filename = filenameMap[submission.language] || 'solution.txt';
+
+        const filePath = `solutions/${submission.employeeId}/${slug}/${submission.language}/${filename}`;
+        const base64Content = Buffer.from(code).toString('base64');
+        const commitMessage = `Accepted: ${question.title} (${submission.language}) by ${submission.employeeId}`;
+        const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+        const headers = {
+            'Authorization': 'token ' + token,
+            'Content-Type': 'application/json',
+            'User-Agent': 'InternshipPortal'
+        };
+        const body = {
+            message: commitMessage,
+            content: base64Content,
+            committer: {
+                name: submission.employeeId,
+                email: submission.employeeId + '@intern.local'
+            }
+        };
+
+        const response = await fetch(apiUrl, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(body)
+        });
+
+        if (response.status === 422) {
+            // File exists - get SHA and update
+            const getResp = await fetch(apiUrl, { method: 'GET', headers: headers });
+            if (getResp.ok) {
+                const fileData = await getResp.json();
+                body.sha = fileData.sha;
+                await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: JSON.stringify(body)
+                });
+            }
+        }
+
+        console.log("[GitHub Push] Pushed:", filePath);
+    } catch (e) {
+        console.log("[GitHub Push] Error:", e.message);
+        return;
+    }
+}
 
 // ==================================================================
 // ============ F5 — CODING QUESTIONS + LOCAL CODE RUNNER ===========
@@ -3384,65 +3474,157 @@ app.post("/code/run", async(req,res)=>{
     }
 });
 
+// ==================================================================
+// ============ SHARED CODE EVALUATION FUNCTION ====================
+// ==================================================================
+async function evaluateCodeSubmission({ employeeId, questionId, language, code }) {
+    const q = await CodingQuestion.findById(questionId);
+    if(!q) return { success:false, message:"Question not found", notFound:true };
+    const cases = q.testCases || [];
+    if(!cases.length){
+        return { success:false, message:"This question has no test cases configured" };
+    }
+
+    const results = [];
+    let passed = 0;
+    let runtimeError = false;
+    for(const tc of cases){
+        const r = await runSourceCode({ code, language, stdin: tc.input || "" });
+        const expected = String(tc.expectedOutput || "").trim();
+        const actual   = String(r.output || "").trim();
+        const ok = r.success && actual === expected;
+        if(!r.success && r.error) runtimeError = true;
+        if(ok) passed++;
+        results.push({
+            input: tc.isHidden ? "(hidden)" : (tc.input || ""),
+            expected: tc.isHidden ? "(hidden)" : expected,
+            actual: r.success ? actual : "",
+            error: r.success ? "" : (r.error || ""),
+            isHidden: !!tc.isHidden,
+            passed: ok,
+            executionTime: r.executionTime || 0
+        });
+    }
+
+    const status = passed === cases.length
+        ? "Accepted"
+        : (runtimeError ? "Runtime Error" : "Wrong Answer");
+
+    const sub = await CodingSubmission.create({
+        employeeId,
+        domain: q.domain,
+        questionId: q._id,
+        language: language || "javascript",
+        code,
+        status,
+        passedCases: passed,
+        totalCases: cases.length
+    });
+
+    // Fire-and-forget GitHub push on Accepted
+    if(status === "Accepted"){
+        pushToGitHub(sub, q, code).catch(e => console.log("[GitHub Push] fire-and-forget error:", e.message));
+    }
+
+    return {
+        success: status === "Accepted",
+        status,
+        passedCases: passed,
+        totalCases: cases.length,
+        results,
+        submissionId: sub._id
+    };
+}
+
 app.post("/code/submit", async(req,res)=>{
     try {
         const { employeeId, questionId, language, code } = req.body || {};
         if(!employeeId || !questionId || !code){
             return res.json({ success:false, message:"employeeId, questionId and code are required" });
         }
-        const q = await CodingQuestion.findById(questionId);
-        if(!q) return res.status(404).json({ success:false, message:"Question not found" });
-        const cases = q.testCases || [];
-        if(!cases.length){
-            return res.json({ success:false, message:"This question has no test cases configured" });
-        }
-
-        const results = [];
-        let passed = 0;
-        let runtimeError = false;
-        for(const tc of cases){
-            const r = await runSourceCode({ code, language, stdin: tc.input || "" });
-            const expected = String(tc.expectedOutput || "").trim();
-            const actual   = String(r.output || "").trim();
-            const ok = r.success && actual === expected;
-            if(!r.success && r.error) runtimeError = true;
-            if(ok) passed++;
-            results.push({
-                input: tc.isHidden ? "(hidden)" : (tc.input || ""),
-                expected: tc.isHidden ? "(hidden)" : expected,
-                actual: r.success ? actual : "",
-                error: r.success ? "" : (r.error || ""),
-                isHidden: !!tc.isHidden,
-                passed: ok,
-                executionTime: r.executionTime || 0
-            });
-        }
-
-        const status = passed === cases.length
-            ? "Accepted"
-            : (runtimeError ? "Runtime Error" : "Wrong Answer");
-
-        const sub = await CodingSubmission.create({
-            employeeId,
-            domain: q.domain,
-            questionId: q._id,
-            language: language || "javascript",
-            code,
-            status,
-            passedCases: passed,
-            totalCases: cases.length
-        });
-
-        res.json({
-            success: status === "Accepted",
-            status,
-            passedCases: passed,
-            totalCases: cases.length,
-            results,
-            submissionId: sub._id
-        });
+        const result = await evaluateCodeSubmission({ employeeId, questionId, language, code });
+        if(result.notFound) return res.status(404).json({ success:false, message:result.message });
+        res.json(result);
     } catch(e){
         console.log("/code/submit error:", e && e.message);
+        res.status(500).json({ success:false, message:"Server error: " + (e && e.message) });
+    }
+});
+
+// ----- Open in Terminal: create temp workspace -----
+// NOTE: Directories are created under /tmp and will be cleaned by the OS tmpfile cleaner (e.g., systemd-tmpfiles or tmpreaper). This is acceptable for ephemeral coding workspaces.
+app.post("/student/coding/open-terminal", async(req,res)=>{
+    try {
+        const { employeeId, questionId, language } = req.body || {};
+        if(!employeeId || !questionId || !language){
+            return res.json({ success:false, message:"employeeId, questionId, and language are required" });
+        }
+        // Sanitize employeeId and questionId to prevent path traversal and shell injection
+        const safeId = String(employeeId).replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeQid = String(questionId).replace(/[^a-zA-Z0-9_-]/g, '');
+        if(!safeId || !safeQid){
+            return res.json({ success:false, message:"Invalid employeeId or questionId" });
+        }
+        const q = await CodingQuestion.findById(safeQid);
+        if(!q) return res.status(404).json({ success:false, message:"Question not found" });
+
+        const dirPath = `/tmp/coding_${safeId}_${safeQid}/`;
+        fs.mkdirSync(dirPath, { recursive: true });
+
+        // Write starter code file
+        const lang = String(language).toLowerCase();
+        let filename, starterCode;
+        if(lang === "javascript" || lang === "js"){
+            filename = "solution.js";
+            starterCode = "// Problem: " + q.title + "\n// Read input from stdin\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin });\nlet lines = [];\nrl.on('line', l => lines.push(l));\nrl.on('close', () => {\n  // Your solution here\n});\n";
+        } else if(lang === "python" || lang === "py"){
+            filename = "solution.py";
+            starterCode = "# Problem: " + q.title + "\nimport sys\n\ndef solve():\n    # Your solution here\n    pass\n\nif __name__ == \"__main__\":\n    solve()\n";
+        } else if(lang === "java"){
+            filename = "Solution.java";
+            starterCode = "// Problem: " + q.title + "\nimport java.util.Scanner;\n\npublic class Solution {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        // Your solution here\n    }\n}\n";
+        } else if(lang === "cpp" || lang === "c++"){
+            filename = "solution.cpp";
+            starterCode = "#include <iostream>\nusing namespace std;\n// Problem: " + q.title + "\nint main() {\n    // Your solution here\n    return 0;\n}\n";
+        } else {
+            filename = "solution.txt";
+            starterCode = "// Problem: " + q.title + "\n// Unsupported language: " + lang + "\n";
+        }
+        fs.writeFileSync(path.join(dirPath, filename), starterCode, "utf8");
+
+        // Write README.txt
+        let readme = "=== " + q.title + " ===\n\n";
+        readme += "Description:\n" + (q.description || "N/A") + "\n\n";
+        readme += "Input Format:\n" + (q.inputFormat || "N/A") + "\n\n";
+        readme += "Output Format:\n" + (q.outputFormat || "N/A") + "\n\n";
+        readme += "Sample Input:\n" + (q.sampleInput || "N/A") + "\n\n";
+        readme += "Sample Output:\n" + (q.sampleOutput || "N/A") + "\n";
+        fs.writeFileSync(path.join(dirPath, "README.txt"), readme, "utf8");
+
+        // Write submit.sh
+        const port = process.env.PORT || 5000;
+        const submitScript = '#!/bin/bash\n# Submit your solution\n# Usage: ./submit.sh\nFILE="' + filename + '"\nCODE=$(cat "$FILE")\ncurl -s -X POST http://localhost:' + port + '/student/coding/submit-from-terminal \\\n  -H "Content-Type: application/json" \\\n  -d "{\\"employeeId\\":\\"' + safeId + '\\",\\"questionId\\":\\"' + safeQid + '\\",\\"language\\":\\"' + lang + '\\",\\"code\\":$(echo \\"$CODE\\" | jq -Rs .)}"\n';
+        fs.writeFileSync(path.join(dirPath, "submit.sh"), submitScript, { mode: 0o755 });
+
+        res.json({ success:true, workDir:dirPath, launchCmd:"cd " + dirPath + " && cat README.txt" });
+    } catch(e){
+        console.log("/student/coding/open-terminal error:", e && e.message);
+        res.status(500).json({ success:false, message:"Server error: " + (e && e.message) });
+    }
+});
+
+// ----- Submit from terminal -----
+app.post("/student/coding/submit-from-terminal", async(req,res)=>{
+    try {
+        const { employeeId, questionId, language, code } = req.body || {};
+        if(!employeeId || !questionId || !code){
+            return res.json({ success:false, message:"employeeId, questionId and code are required" });
+        }
+        const result = await evaluateCodeSubmission({ employeeId, questionId, language, code });
+        if(result.notFound) return res.status(404).json({ success:false, message:result.message });
+        res.json(result);
+    } catch(e){
+        console.log("/student/coding/submit-from-terminal error:", e && e.message);
         res.status(500).json({ success:false, message:"Server error: " + (e && e.message) });
     }
 });

@@ -3,9 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#D4AF37">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TEN Portal">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>HR Portal — TEN Internship</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{--gold:#f5c542;--gold2:#c9a227;--dark:#04070f;--surface:#080d1a;--card:#0c1220;--card2:#0e1628;--border:rgba(245,197,66,0.1);--border-glow:rgba(245,197,66,0.25);--text:#f0eee8;--muted:#6a6255;--green:#10b981;--red:#f43f5e;--blue:#3b82f6;--cyan:#06b6d4;--amber:#f59e0b;--purple:#8b5cf6;--orange:#f97316;}
@@ -13,7 +20,8 @@
 *::-webkit-scrollbar{width:5px}*::-webkit-scrollbar-track{background:var(--surface)}*::-webkit-scrollbar-thumb{background:var(--gold2);border-radius:99px}
 body{background:var(--dark);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh;}
 .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(245,197,66,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,197,66,0.025) 1px,transparent 1px);background-size:56px 56px;pointer-events:none;z-index:0;}
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;background:var(--surface);border-right:1px solid var(--border);z-index:100;display:flex;flex-direction:column;padding:28px 0;}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;background:var(--surface);border-right:1px solid var(--border);z-index:100;display:flex;flex-direction:column;padding:28px 0;transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);}
+.sidebar.open{transform:translateX(0);}
 .sidebar-logo{padding:0 24px 28px;border-bottom:1px solid var(--border);}
 .logo-badge-sm{display:flex;align-items:center;gap:12px;}
 .logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 20px rgba(245,197,66,0.3);}
@@ -33,7 +41,7 @@ body{background:var(--dark);color:var(--text);font-family:'Outfit',sans-serif;mi
 .hr-name{font-size:13px;font-weight:600;color:var(--text);}.hr-sub{font-size:11px;color:var(--muted);}
 .logout-btn-sidebar{width:100%;padding:11px;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:10px;color:var(--red);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;}
 .logout-btn-sidebar:hover{background:rgba(244,63,94,0.16);}
-.main{margin-left:260px;padding:32px 36px;position:relative;z-index:1;min-height:100vh;}
+.main{margin-left:0;padding:32px 36px;position:relative;z-index:1;min-height:100vh;}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px;}
 .page-title{font-size:28px;font-weight:800;letter-spacing:-0.5px;}
 .page-title span{background:linear-gradient(90deg,var(--gold),#fff176);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
@@ -243,6 +251,63 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 .doc-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,197,66,0.3);}
 .doc-btn.secondary{background:var(--surface);color:var(--gold);border:1px solid rgba(245,197,66,0.3);}
 .doc-btn.secondary:hover{background:rgba(245,197,66,0.08);}
+.hamburger-btn{display:flex;width:42px;height:42px;background:rgba(245,197,66,0.1);border:1px solid rgba(245,197,66,0.25);border-radius:10px;color:var(--gold);font-size:20px;cursor:pointer;align-items:center;justify-content:center;flex-shrink:0;}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99;display:none;}
+.sidebar-overlay.show{display:block;}
+@media(max-width:1024px){
+  .sidebar{width:220px;}
+}
+@media(max-width:768px){
+  .stats-grid{grid-template-columns:repeat(2,1fr);}
+  .form-row{grid-template-columns:1fr;}
+  .table-wrap{border-radius:14px;}
+  .table-top{flex-direction:column;align-items:stretch;}
+  .search-input{width:100%;}
+  .domain-grid{grid-template-columns:1fr;}
+  .action-btns{flex-direction:column;}
+  .btn-edit-hr,.btn-del-hr,.btn-view-hr,.btn-doc-hr{width:100%;}
+  .slide-panel{width:100vw;right:-100vw;}
+  .modal-box-hr{max-width:95vw;margin:16px;}
+  .big-modal-box{max-width:95vw;padding:20px;}
+  .topbar{flex-direction:column;align-items:flex-start;}
+}
+@media(max-width:420px){
+  .page-title{font-size:22px;}
+  .stat-card{padding:18px;}
+  .stat-value{font-size:36px;}
+  .stats-grid{grid-template-columns:1fr;}
+  td,th{padding:10px 12px;font-size:12px;}
+  .send-btn{width:100%;}
+  .notif-composer{padding:18px;}
+}
+
+.theme-switch{position:relative;display:inline-block;width:44px;height:24px;}
+.theme-switch input{opacity:0;width:0;height:0;}
+.theme-slider{position:absolute;inset:0;background:rgba(212,175,55,0.2);border:1px solid rgba(212,175,55,0.3);border-radius:99px;cursor:pointer;transition:background 0.3s;}
+.theme-slider::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:2px;background:#D4AF37;border-radius:50%;transition:transform 0.3s;}
+.theme-switch input:checked + .theme-slider{background:rgba(212,175,55,0.35);}
+.theme-switch input:checked + .theme-slider::before{transform:translateX(20px);}
+
+[data-theme="light"]{--bg:#f0f4fb;--surface:#ffffff;--surface2:#f4f6fb;--border:rgba(212,175,55,0.15);--text:#111827;--muted:#6b7280;--gold:#92660a;--red:#dc2626;}
+[data-theme="light"] body{background:#f0f4fb;color:#111827;}
+[data-theme="light"] .sidebar{background:#ffffff;border-right-color:rgba(212,175,55,0.12);box-shadow:4px 0 16px rgba(0,0,0,0.06);}
+[data-theme="light"] .nav-btn{color:#4b5563;}
+[data-theme="light"] .nav-btn:hover{background:rgba(212,175,55,0.08);color:#111827;}
+[data-theme="light"] .nav-btn.active{color:#92660a;background:rgba(212,175,55,0.12);}
+[data-theme="light"] .topbar{background:rgba(255,255,255,0.9);border-bottom-color:rgba(212,175,55,0.12);}
+[data-theme="light"] .stat-card,[data-theme="light"] .card,[data-theme="light"] .section-card{background:#ffffff;border-color:rgba(212,175,55,0.15);box-shadow:0 2px 16px rgba(0,0,0,0.06);}
+[data-theme="light"] input,[data-theme="light"] textarea,[data-theme="light"] select{background:#f8f9ff;color:#111827;border-color:rgba(212,175,55,0.20);}
+[data-theme="light"] table{background:#ffffff;}
+[data-theme="light"] th{background:rgba(212,175,55,0.08);color:#111827;}
+[data-theme="light"] td{border-color:rgba(212,175,55,0.10);color:#4b5563;}
+[data-theme="light"] .bg-grid{opacity:0.04;}
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.chart-card-wide{grid-column:1 / -1;}
+.chart-card{background:var(--card, #0e1428);border:1px solid var(--border, rgba(245,197,66,0.10));border-radius:18px;padding:22px 24px;}
+.chart-card-title{font-size:14px;font-weight:700;margin-bottom:16px;}
+.chart-wrap{position:relative;height:220px;}
+.chart-wrap-tall{height:260px;}
+@media (max-width: 768px){.charts-grid{grid-template-columns:1fr;}.chart-card-wide{grid-column:1;}}
 </style>
 </head>
 <body>
@@ -284,6 +349,13 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     <button class="nav-btn" onclick="showView('notif-history')" data-view="notif-history"><span class="icon">🔔</span> Notification History</button>
   </div>
   <div class="sidebar-bottom">
+    <div style="padding:12px 16px;border-top:1px solid rgba(212,175,55,0.08);margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:14px;">🌙</span>
+        <label class="theme-switch"><input type="checkbox" id="themeToggle" onchange="toggleTheme()"><span class="theme-slider"></span></label>
+        <span style="font-size:14px;">☀️</span>
+      </div>
+    </div>
     <div class="hr-user-info">
       <div class="hr-avatar" id="hrAvatar">H</div>
       <div><div class="hr-name" id="hrNameDisplay">HR Admin</div><div class="hr-sub">HR Department</div></div>
@@ -294,13 +366,42 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 
 <main class="main">
   <div class="topbar">
+    <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
     <div class="page-title" id="pageTitle"><span>Dashboard</span> Overview</div>
-    <div class="topbar-right"><div class="date-badge" id="dateBadge"></div></div>
+    <div class="topbar-right">
+      <div class="date-badge" id="dateBadge"></div>
+      <button onclick="openHRProfileModal()" title="My Profile"
+        style="height:38px;padding:0 16px;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:10px;color:#D4AF37;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;transition:all 0.2s;"
+        onmouseover="this.style.background='rgba(212,175,55,0.22)'" onmouseout="this.style.background='rgba(212,175,55,0.12)'">
+        👤 Profile
+      </button>
+    </div>
   </div>
 
   <!-- OVERVIEW -->
   <div class="view active" id="view-overview">
     <div class="stats-grid" id="statsGrid"><div class="loading"><div class="spinner"></div><br>Loading stats...</div></div>
+    <!-- Analytics Charts -->
+    <div class="charts-grid" id="chartsGrid">
+      <div class="chart-card">
+        <div class="chart-card-title">👥 Students by Domain</div>
+        <div class="chart-wrap">
+          <canvas id="domainChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">📋 Task Status Breakdown</div>
+        <div class="chart-wrap">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card chart-card-wide">
+        <div class="chart-card-title">📈 Registrations by Domain</div>
+        <div class="chart-wrap chart-wrap-tall">
+          <canvas id="regChart"></canvas>
+        </div>
+      </div>
+    </div>
     <div class="section-header"><div class="section-title">Recent Notifications Sent</div></div>
     <div class="notif-list" id="recentNotifs"></div>
   </div>
@@ -757,6 +858,11 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 </div>
 
 <script>
+// ── Theme System ──
+function applyTheme(theme){document.documentElement.setAttribute('data-theme',theme);var t=document.getElementById('themeToggle');if(t)t.checked=(theme==='light');}
+function toggleTheme(){var c=localStorage.getItem('ten-theme')||'dark';var n=c==='dark'?'light':'dark';localStorage.setItem('ten-theme',n);applyTheme(n);}
+(function(){applyTheme(localStorage.getItem('ten-theme')||'dark');})();
+
 const hrUser=JSON.parse(sessionStorage.getItem('hrUser')||'null');
 if(!hrUser){window.location.href='/hr-login';}
 // Stable HR identifier: prefer email (Requirement 4), fall back to username for legacy sessions.
@@ -803,6 +909,7 @@ async function loadOverview(){
       <div class="stat-card" data-c="red" onclick="openSubmissionModal('Rejected')"><div class="stat-icon">❌</div><div class="stat-label">Rejected Tasks</div><div class="stat-value">${stats.rejected}</div><div class="stat-sub">Click to view</div></div>
       <div class="stat-card" data-c="amber" onclick="openSubmissionModal('Pending')"><div class="stat-icon">⏳</div><div class="stat-label">Pending Review</div><div class="stat-value">${stats.pending}</div><div class="stat-sub">Click to view</div></div>
       <div class="stat-card" data-c="cyan" onclick="openSubmissionModal('All')"><div class="stat-icon">📋</div><div class="stat-label">Total Submissions</div><div class="stat-value">${stats.totalSubmissions}</div><div class="stat-sub">Click to view</div></div>`;
+    renderHRCharts(stats, domainStats);
     const rn=document.getElementById('recentNotifs');
     if(!notifications.length){rn.innerHTML='<div class="empty-state"><div class="es-icon">🔔</div><p>No notifications yet</p></div>';return;}
     rn.innerHTML=notifications.map(n=>notifItemHTML(n)).join('');
@@ -1799,6 +1906,161 @@ loadOverview();
 (function(){
   if(window.TenSessionTimeout) TenSessionTimeout.start({ logoutUrl: "/hr-login" });
 })();
+</script>
+<script>
+function toggleSidebar(){document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('show');}
+function closeSidebar(){document.querySelector('.sidebar').classList.remove('open');document.querySelector('.sidebar-overlay').classList.remove('show');}
+
+function renderHRCharts(stats, domainStats) {
+  if (!window.Chart || !domainStats || !domainStats.length) return;
+  Chart.defaults.color = '#8a8070';
+  Chart.defaults.borderColor = 'rgba(245,197,66,0.08)';
+
+  var domainNames = domainStats.map(function(d) { return d.domain.replace(' Development','').replace(' with AWS',''); });
+  var domainCounts = domainStats.map(function(d) { return d.count; });
+
+  var goldPalette = ['#D4AF37','#c9a227','#b8901f','#a87817','#986010','#874808','#763000','#651800','#540000','#430000'];
+
+  ['domainChart','statusChart','regChart'].forEach(function(id) {
+    var existing = Chart.getChart(id);
+    if (existing) existing.destroy();
+  });
+
+  new Chart(document.getElementById('domainChart'), {
+    type: 'doughnut',
+    data: {
+      labels: domainNames,
+      datasets: [{ data: domainCounts, backgroundColor: goldPalette, borderColor: '#080d1a', borderWidth: 2 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 11 }, padding: 12 } } } }
+  });
+
+  new Chart(document.getElementById('statusChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Approved', 'Pending', 'Rejected'],
+      datasets: [{ data: [stats.approved||0, stats.pending||0, stats.rejected||0], backgroundColor: ['rgba(16,185,129,0.7)','rgba(245,158,11,0.7)','rgba(244,63,94,0.7)'], borderColor: ['#10b981','#f59e0b','#f43f5e'], borderWidth: 1.5, borderRadius: 8 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } }
+  });
+
+  new Chart(document.getElementById('regChart'), {
+    type: 'bar',
+    data: {
+      labels: domainStats.map(function(d) { return d.domain; }),
+      datasets: [{ label: 'Students', data: domainCounts, backgroundColor: 'rgba(212,175,55,0.55)', borderColor: '#D4AF37', borderWidth: 1.5, borderRadius: 6 }]
+    },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } } }
+  });
+}
+
+// ── Back Button Trap for HR ──
+history.pushState({ page: 'hr-portal' }, '', window.location.href);
+
+window.addEventListener('popstate', function (e) {
+  // Re-arm back button
+  history.pushState({ page: 'hr-portal' }, '', window.location.href);
+
+  // 1. If chat widget is open, close it first
+  var chatWin = document.querySelector('.tc-win.open');
+  if (chatWin) {
+    chatWin.classList.remove('open');
+    return;
+  }
+
+  // 2. If notification panel is open, close it
+  var notifPanel = document.getElementById('notifPanel');
+  if (notifPanel && notifPanel.classList.contains('open')) {
+    if (typeof closeHrNotif === 'function') closeHrNotif();
+    else notifPanel.classList.remove('open');
+    return;
+  }
+
+  // 3. If sidebar is open, close it
+  var sidebar = document.querySelector('[class*="sidebar"].open');
+  if (sidebar) {
+    sidebar.classList.remove('open');
+    var overlay = document.querySelector('.sidebar-overlay');
+    if (overlay) overlay.classList.remove('show');
+    return;
+  }
+
+  // 4. Nothing is open — show logout confirmation
+  Swal.fire({
+    title: 'Exit HR Portal?',
+    text: 'Do you want to logout from HR Portal?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Logout',
+    cancelButtonText: 'No, Stay',
+    background: '#0c1220',
+    color: '#f0eee8',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#f5c542',
+    reverseButtons: true
+  }).then(function(result) {
+    if (result.isConfirmed) {
+      sessionStorage.removeItem('hrUser');
+      window.location.replace('/hr-login.html');
+    }
+  });
+});
+</script>
+<div class="sidebar-overlay" onclick="closeSidebar()"></div>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js')
+        .then(function (reg) { console.log('SW registered'); })
+        .catch(function (err) { console.log('SW error:', err); });
+    });
+  }
+</script>
+
+<!-- ══════ PROFILE MODAL (HR) ══════ -->
+<div id="hrProfileModal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;">
+  <div onclick="closeHRProfileModal()" style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);"></div>
+  <div style="position:relative;background:#0c1220;border:1px solid rgba(212,175,55,0.3);border-radius:20px;padding:32px;min-width:320px;max-width:440px;width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.7);z-index:1;">
+    <button onclick="closeHRProfileModal()" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:18px;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div id="hpAvatar" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#D4AF37,#b8932a);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#0a0600;margin:0 auto 14px;border:3px solid rgba(212,175,55,0.4);">H</div>
+      <div id="hpName" style="font-size:22px;font-weight:800;color:#f0eee8;"></div>
+      <div style="font-size:13px;color:#D4AF37;font-weight:600;margin-top:8px;background:rgba(212,175,55,0.1);padding:4px 14px;border-radius:20px;display:inline-block;">HR Department</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Username</div>
+        <div id="hpUsername" style="font-size:14px;font-weight:700;color:#f0eee8;font-family:monospace;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Role</div>
+        <div style="font-size:14px;font-weight:700;color:#D4AF37;">HR Admin</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;grid-column:1/-1;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Email</div>
+        <div id="hpEmail" style="font-size:13px;font-weight:600;color:#f0eee8;word-break:break-all;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function openHRProfileModal() {
+  var hr = JSON.parse(sessionStorage.getItem('hrUser') || '{}');
+  var name = hr.name || 'HR Admin';
+  document.getElementById('hpAvatar').textContent = name[0] ? name[0].toUpperCase() : 'H';
+  document.getElementById('hpName').textContent = name;
+  document.getElementById('hpUsername').textContent = hr.username || hr.email || '—';
+  document.getElementById('hpEmail').textContent = hr.email || '—';
+  document.getElementById('hrProfileModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeHRProfileModal() {
+  document.getElementById('hrProfileModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('hrProfileModal').style.display === 'flex') closeHRProfileModal();
+});
 </script>
 </body>
 </html>

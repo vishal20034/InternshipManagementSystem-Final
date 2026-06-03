@@ -3,11 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#D4AF37">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TEN Portal">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>TEN — Student Dashboard</title>
 <link rel="stylesheet" href="ten-theme.css">
 <link rel="stylesheet" href="ten-theme.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 
 <!-- CodeMirror for the F5 coding editor (CDN, no build step) -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
@@ -16,6 +24,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addon-fit/addon-fit.min.js"></script>
 
 <style>
 :root {
@@ -58,7 +69,7 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
-  padding: 32px 28px;
+  padding: 24px 24px 24px 24px;
 }
 
 /* ── Ambient background blobs ── */
@@ -86,8 +97,10 @@ body::after {
 .page-wrapper {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 /* ════════════════════════════════
@@ -177,7 +190,7 @@ body::after {
 ════════════════════════════════ */
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -763,13 +776,12 @@ button:active { transform: translateY(0); }
   background: rgba(0,0,0,0.5); z-index: 999;
 }
 .notif-overlay.show { display: block; }
-  .stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .stat-box h1 { font-size: 30px; }
-  .notice-box, .tasks-box, .submissions-box, .attendance-box { padding: 24px 20px; }
-  .section-title h2 { font-size: 17px; }
-  .meeting-row { flex-direction: column; }
-  .modal-content { padding: 26px 22px; }
-}
+.stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.stat-box h1 { font-size: 30px; }
+.notice-box, .tasks-box, .submissions-box, .attendance-box { padding: 24px 20px; }
+.section-title h2 { font-size: 17px; }
+.meeting-row { flex-direction: column; }
+.modal-content { padding: 26px 22px; }
 @media (max-width: 400px) {
   .stats { grid-template-columns: 1fr 1fr; }
 }
@@ -814,7 +826,7 @@ button:active { transform: translateY(0); }
 .coding-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s,transform .15s;}
 .coding-card:hover{border-color:var(--accent-gold);transform:translateY(-1px);}
 .coding-card .ttl{font-size:14px;font-weight:700;color:#e8e6df;}
-.coding-card .desc{font-size:12px;color:#8aa4c8;margin-top:3px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.coding-card .desc{font-size:12px;color:#8aa4c8;margin-top:3px;line-height:1.5;display:-webkit-box;line-clamp:2;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .diff-badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;letter-spacing:.4px;}
 .diff-easy{color:#10b981;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.32);}
 .diff-medium{color:#ff9100;background:rgba(255,145,0,0.12);border:1px solid rgba(255,145,0,0.32);}
@@ -850,15 +862,628 @@ button:active { transform: translateY(0); }
 .coding-modal .cm-output{margin:0 14px 14px;background:#0d1117;color:#00ff41;border:1px solid #1f2937;border-radius:8px;padding:12px;font-family:Consolas,Monaco,monospace;font-size:13px;min-height:120px;max-height:240px;overflow:auto;white-space:pre-wrap;}
 .coding-modal .cm-output.is-error{color:#f43f5e;}
 .coding-modal .cm-output.is-warn{color:#ff9100;}
+.cm-tab-bar{display:flex;background:#0a1020;border-bottom:1px solid rgba(245,197,66,.12);}
+.cm-tab-btn{padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;color:#9aa4bf;border:none;border-bottom:2px solid transparent;background:none;font-family:inherit;transition:color .15s,border-color .15s;}
+.cm-tab-btn.active{color:#f5c542;border-bottom-color:#f5c542;}
+.cm-tab-btn:hover{color:#cdd9ec;}
+#cmEditorPane{display:flex;flex-direction:column;flex:1;min-height:0;}
+#cmTerminalPane{display:none;flex:1;flex-direction:column;min-height:0;background:#0d1117;}
+#cmTerminalPane.visible{display:flex;}
+#xtermContainer{flex:1;min-height:420px;width:100%;overflow:hidden;}
+#xtermContainer .xterm{height:100%;}
 @media (max-width: 900px){
   .coding-modal .cm-shell{width:100vw;height:100vh;border-radius:0;}
   .coding-modal .cm-body{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
   .coding-modal .cm-left{max-height:35vh;border-right:none;border-bottom:1px solid rgba(245,197,66,.10);}
 }
+
+/* ════════════════════════════════
+   SIDEBAR NAVIGATION
+════════════════════════════════ */
+.stu-sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 280px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 18px;
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  background-image: radial-gradient(circle, rgba(212,175,55,0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  transform: translateX(-100%);
+}
+.stu-sidebar.open {
+  transform: translateX(0);
+}
+.stu-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 32px;
+  padding: 0 6px;
+}
+.stu-sidebar-brand-icon {
+  width: 40px; height: 40px;
+  background: rgba(212,175,55,0.1);
+  border: 1px solid rgba(212,175,55,0.25);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.stu-sidebar-brand-text {
+  display: flex; flex-direction: column;
+}
+.stu-sidebar-brand-text .brand-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #D4AF37;
+}
+.stu-sidebar-brand-text .brand-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-top: 2px;
+}
+.stu-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.stu-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  width: 100%;
+}
+.stu-nav-btn:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+}
+.stu-nav-btn.active {
+  background: var(--domain-color-bg);
+  color: var(--domain-color);
+  border: 1px solid rgba(59,130,246,0.2);
+  box-shadow: 0 2px 12px rgba(59,130,246,0.08);
+}
+.stu-nav-btn .nav-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════
+   TOPBAR
+════════════════════════════════ */
+.stu-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  margin-bottom: 20px;
+}
+.stu-topbar-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.stu-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hamburger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px; height: 42px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+.hamburger-btn:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+/* ════════════════════════════════
+   VIEW SECTIONS
+════════════════════════════════ */
+.stu-view {
+  display: none;
+}
+.stu-view.active {
+  display: block;
+}
+
+/* ════════════════════════════════
+   SIDEBAR OVERLAY
+════════════════════════════════ */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+.sidebar-overlay.show {
+  display: block;
+}
+
+/* ════════════════════════════════
+   LAYOUT ADJUSTMENT FOR SIDEBAR
+════════════════════════════════ */
+.page-wrapper {
+  margin-left: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* ════════════════════════════════
+   RESPONSIVE: SIDEBAR + LAYOUT
+════════════════════════════════ */
+@media (max-width: 1024px) {
+  .stu-sidebar { width: 220px; padding: 22px 14px; }
+  .stu-nav-btn { padding: 10px 14px; font-size: 13px; }
+}
+@media (max-width: 768px) {
+  .stu-sidebar {
+    width: 280px;
+  }
+  .page-wrapper { margin-left: 0; max-width: 100%; }
+}
+@media (max-width: 420px) {
+  .stu-topbar-title { font-size: 16px; }
+  .stu-nav-btn { padding: 10px 12px; font-size: 12px; }
+  .stu-sidebar { width: calc(100vw - 60px); max-width: 260px; padding: 18px 12px; }
+  .logout-topbtn { padding: 8px 12px; font-size: 12px; }
+}
+
+/* Theme Toggle */
+.theme-switch{position:relative;display:inline-block;width:44px;height:24px;}
+.theme-switch input{opacity:0;width:0;height:0;}
+.theme-slider{position:absolute;inset:0;background:rgba(212,175,55,0.2);border:1px solid rgba(212,175,55,0.3);border-radius:99px;cursor:pointer;transition:background 0.3s;}
+.theme-slider::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:2px;background:#D4AF37;border-radius:50%;transition:transform 0.3s;}
+.theme-switch input:checked + .theme-slider{background:rgba(212,175,55,0.35);}
+.theme-switch input:checked + .theme-slider::before{transform:translateX(20px);}
+
+/* Light Mode */
+[data-theme="light"]{--bg-base:#f4f6fb;--bg-surface:#ffffff;--bg-card:#ffffff;--bg-card-hover:#f0f4ff;--bg-input:#f8f9ff;--border:rgba(212,175,55,0.15);--border-strong:rgba(212,175,55,0.30);--text-primary:#111827;--text-secondary:#4b5563;--text-muted:#9ca3af;--accent-gold:#92660a;--shadow-card:0 2px 16px rgba(0,0,0,0.08);}
+[data-theme="light"] body{background:#f0f4fb;color:#111827;}
+[data-theme="light"] .stu-sidebar{background:#ffffff;border-right-color:rgba(212,175,55,0.15);box-shadow:4px 0 16px rgba(0,0,0,0.06);}
+[data-theme="light"] .stu-sidebar{background-image:none;}
+[data-theme="light"] .stu-nav-item{color:#4b5563;}
+[data-theme="light"] .stu-nav-item:hover{background:rgba(212,175,55,0.08);color:#111827;}
+[data-theme="light"] .stu-nav-item.active{color:#92660a;background:rgba(212,175,55,0.12);}
+[data-theme="light"] .stat-box,[data-theme="light"] .notice-box,[data-theme="light"] .tasks-box,[data-theme="light"] .submissions-box,[data-theme="light"] .attendance-box{background:#ffffff;border-color:rgba(212,175,55,0.15);box-shadow:0 2px 16px rgba(0,0,0,0.06);}
+[data-theme="light"] .top-card{background:linear-gradient(135deg,#e8f0fe 0%,#f0f4fb 40%,#fef9e7 100%);border-color:rgba(212,175,55,0.2);}
+[data-theme="light"] .top-card h1,[data-theme="light"] .section-title h2{color:#111827;}
+[data-theme="light"] .task-card,[data-theme="light"] .submission-card{background:#ffffff;border-color:rgba(212,175,55,0.12);}
+[data-theme="light"] input,[data-theme="light"] textarea,[data-theme="light"] select{background:#f8f9ff;color:#111827;border-color:rgba(212,175,55,0.20);}
+[data-theme="light"] .modal-content{background:#ffffff;color:#111827;}
+[data-theme="light"] .coding-modal .cm-shell{background:#f8f9ff;}
+[data-theme="light"] .coding-modal .cm-left{background:#ffffff;color:#111827;}
+[data-theme="light"] .coding-modal .cm-head{background:linear-gradient(135deg,#e8f0fe,#f0f4fb);}
+[data-theme="light"] body::before,[data-theme="light"] body::after{opacity:0.08;}
+[data-theme="light"] .stu-topbar{background:rgba(255,255,255,0.9);border-bottom-color:rgba(212,175,55,0.12);}
+[data-theme="light"] #notifPanel{background:#ffffff;}
+[data-theme="light"] .notif-item-card{background:#f8f9ff;border-color:rgba(212,175,55,0.12);}
+
+/* ════════════════════════════════
+   ATTENDANCE BREAKDOWN GRID
+════════════════════════════════ */
+.att-breakdown-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 18px;
+  background: rgba(13,22,41,0.6);
+  border: 1px solid rgba(99,140,210,0.15);
+  border-radius: 14px;
+}
+.att-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(99,140,210,0.08);
+}
+.att-row-total {
+  background: rgba(16,185,129,0.08);
+  border-color: rgba(16,185,129,0.2);
+}
+.att-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.att-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.att-threshold {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.2);
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* ════════════════════════════════
+   SECTION CARD GRID
+════════════════════════════════ */
+#sectionCardGrid {
+  padding: 20px 0;
+}
+.section-cards-heading {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+.section-cards-sub {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 28px;
+}
+.section-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+.sec-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  cursor: pointer;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  overflow: hidden;
+}
+.sec-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+  opacity: 0;
+  transition: opacity 0.22s;
+}
+.sec-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--border-strong);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(59,130,246,0.1);
+}
+.sec-card:hover::before { opacity: 1; }
+.sec-card-icon {
+  font-size: 32px;
+  margin-bottom: 14px;
+  line-height: 1;
+}
+.sec-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.sec-card-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ════════════════════════════════
+   SECTION MODAL (FULL-SCREEN)
+════════════════════════════════ */
+.section-modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--bg-base);
+  z-index: 600;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.section-modal.open {
+  display: flex;
+  animation: slideInModal 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes slideInModal {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.section-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 28px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.section-modal-back {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.section-modal-back:hover {
+  background: rgba(255,255,255,0.12);
+  transform: none;
+}
+.section-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+.section-modal-close {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: #f87171;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.section-modal-close:hover {
+  background: rgba(239,68,68,0.2);
+  transform: none;
+}
+.section-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.section-modal-body .stu-view {
+  display: none;
+}
+.section-modal-body .stu-view.active {
+  display: block;
+}
+
+/* Light mode overrides for section cards/modal */
+[data-theme="light"] .sec-card { background: #ffffff; border-color: rgba(212,175,55,0.15); box-shadow: 0 2px 16px rgba(0,0,0,0.06); }
+[data-theme="light"] .sec-card:hover { border-color: rgba(212,175,55,0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+[data-theme="light"] .section-modal { background: #f0f4fb; }
+[data-theme="light"] .section-modal-header { background: #ffffff; border-bottom-color: rgba(212,175,55,0.12); }
+[data-theme="light"] .section-modal-back { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #111827; }
+[data-theme="light"] .section-modal-close { background: rgba(239,68,68,0.08); }
+[data-theme="light"] .att-breakdown-grid { background: rgba(240,244,251,0.8); border-color: rgba(212,175,55,0.12); }
+
+@media (max-width: 768px) {
+  .section-card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .sec-card { padding: 20px 18px; }
+  .sec-card-icon { font-size: 26px; margin-bottom: 10px; }
+  .sec-card-title { font-size: 14px; }
+  .section-modal-header { padding: 14px 18px; }
+  .section-modal-body { padding: 18px; }
+  .section-modal-title { font-size: 16px; }
+}
+
+/* ═══ Certificate Banner ═══ */
+.cert-eligible-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.06));
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 16px;
+  gap: 16px;
+  flex-wrap: wrap;
+  animation: glowPulse 2s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%,100% { box-shadow: 0 0 20px rgba(212,175,55,0.15); }
+  50%      { box-shadow: 0 0 40px rgba(212,175,55,0.35); }
+}
+.cert-banner-left { display: flex; align-items: center; gap: 14px; }
+.cert-banner-icon { font-size: 36px; }
+.cert-banner-title { font-size: 16px; font-weight: 800; color: #D4AF37; }
+.cert-banner-sub   { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.cert-download-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #D4AF37, #92660a);
+  border: none; border-radius: 12px;
+  color: #0a0600; font-family: inherit;
+  font-size: 14px; font-weight: 800;
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.cert-download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(212,175,55,0.4);
+}
+
+/* ═══ Streak Counter ═══ */
+.streak-box { position: relative; overflow: hidden; }
+.streak-box h1 { color: #f97316; }
+.streak-box::after {
+  content: '🔥';
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 32px;
+  opacity: 0.15;
+}
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* ═══ Completion Badge ═══ */
+.completion-badge-wrap {
+  position: relative;
+  padding: 22px 24px;
+  background: linear-gradient(135deg, #0d1a0a, #142b10);
+  border: 2px solid rgba(16,185,129,0.4);
+  border-radius: 18px;
+  overflow: hidden;
+  animation: badgeAppear 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes badgeAppear {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.completion-badge-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(16,185,129,0.12), transparent 70%);
+  pointer-events: none;
+}
+.completion-badge-inner {
+  display: flex; align-items: center; gap: 16px;
+  position: relative; z-index: 1;
+}
+.cb-icon { font-size: 42px; flex-shrink: 0; }
+.cb-title { font-size: 18px; font-weight: 800; color: #10b981; letter-spacing: -0.3px; }
+.cb-sub { font-size: 12px; color: #6ee7b7; margin-top: 4px; }
+.cb-stamp {
+  margin-left: auto;
+  padding: 6px 16px;
+  border: 2px solid #10b981;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 900;
+  color: #10b981; letter-spacing: 3px;
+  opacity: 0.7;
+  transform: rotate(-3deg);
+}
+
+/* ═══ ID Card & Extras ═══ */
+.extras-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.extras-card-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.extras-card-sub { font-size: 12px; color: var(--text-secondary); }
+.extras-action-btn {
+  padding: 10px 22px;
+  background: linear-gradient(135deg, #D4AF37, #92660a);
+  border: none; border-radius: 10px;
+  color: #0a0600; font-family: inherit;
+  font-size: 13px; font-weight: 800;
+  cursor: pointer; transition: all 0.2s;
+}
+.extras-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(212,175,55,0.35);
+}
+
+/* ═══ Profile Card ═══ */
+.profile-card {
+  display: flex; align-items: center; gap: 18px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, rgba(212,175,55,0.06), rgba(212,175,55,0.02));
+  border: 1px solid rgba(212,175,55,0.15);
+  border-radius: 18px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.profile-avatar {
+  width: 64px; height: 64px; flex-shrink: 0;
+  background: linear-gradient(135deg, #D4AF37, #92660a);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 900; color: #0a0600;
+  box-shadow: 0 0 20px rgba(212,175,55,0.3);
+}
+.profile-info { flex: 1; min-width: 0; }
+.profile-name { font-size: 18px; font-weight: 800; color: var(--text-primary); margin-bottom: 6px; }
+.profile-domain-badge {
+  display: inline-block; padding: 3px 12px;
+  background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.25);
+  border-radius: 99px; font-size: 11px; font-weight: 700; color: #D4AF37; margin-bottom: 6px;
+}
+.profile-id { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.profile-meta { font-size: 12px; color: var(--text-secondary); display: flex; gap: 6px; flex-wrap: wrap; }
+.profile-dot { color: var(--text-muted); }
+.profile-grade-ring { position: relative; width: 64px; height: 64px; flex-shrink: 0; }
+.ring-svg { width: 64px; height: 64px; }
+.ring-label {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; color: #D4AF37;
+}
 </style>
 </head>
 
 <body>
+
+<!-- ── SIDEBAR NAVIGATION ── -->
+<div class="stu-sidebar">
+  <div class="stu-sidebar-brand">
+    <div class="stu-sidebar-brand-icon">🎓</div>
+    <div class="stu-sidebar-brand-text">
+      <span class="brand-name">TEN</span>
+      <span class="brand-sub">Student Portal</span>
+    </div>
+  </div>
+  <nav class="stu-sidebar-nav">
+    <button class="stu-nav-btn active" data-view="stu-view-overview" onclick="switchStudentView('stu-view-overview')"><span class="nav-icon">📊</span> Overview</button>
+    <button class="stu-nav-btn" data-view="stu-view-notice" onclick="switchStudentView('stu-view-notice')"><span class="nav-icon">📢</span> Announcements</button>
+    <button class="stu-nav-btn" data-view="stu-view-tasks" onclick="switchStudentView('stu-view-tasks')"><span class="nav-icon">📋</span> My Tasks</button>
+    <button class="stu-nav-btn" data-view="stu-view-coding" onclick="switchStudentView('stu-view-coding')"><span class="nav-icon">💻</span> Coding Problems</button>
+    <button class="stu-nav-btn" data-view="stu-view-submissions" onclick="switchStudentView('stu-view-submissions')"><span class="nav-icon">📥</span> Submissions</button>
+    <button class="stu-nav-btn" data-view="stu-view-attendance" onclick="switchStudentView('stu-view-attendance')"><span class="nav-icon">🪪</span> Attendance</button>
+    <button class="stu-nav-btn" data-view="stu-view-test" onclick="switchStudentView('stu-view-test')"><span class="nav-icon">📝</span> Take Test</button>
+    <button class="stu-nav-btn" data-view="stu-view-leaderboard" onclick="switchStudentView('stu-view-leaderboard')"><span class="nav-icon">🏆</span> Leaderboard &amp; Badges</button>
+  </nav>
+  <div class="theme-toggle-wrap" style="padding:12px 20px;border-top:1px solid rgba(212,175,55,0.08);">
+    <span style="font-size:12px;color:#6a7a94;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:block;">Theme</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:14px;">🌙</span>
+      <label class="theme-switch"><input type="checkbox" id="themeToggle" onchange="toggleTheme()"><span class="theme-slider"></span></label>
+      <span style="font-size:14px;">☀️</span>
+    </div>
+  </div>
+</div>
+
 <div class="page-wrapper">
 
   <!-- ── Notification Panel ── -->
@@ -873,7 +1498,92 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
-  <!-- ── TOP HERO CARD ── -->
+  <!-- ── TOPBAR ── -->
+  <div class="stu-topbar">
+    <button class="hamburger-btn" onclick="toggleSidebar()">☰</button>
+    <div class="stu-topbar-title">My Dashboard</div>
+    <div class="stu-topbar-actions">
+      <button class="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications">
+        🔔
+        <span class="notif-badge" id="notifBadge2">0</span>
+      </button>
+      <button id="refreshBtn2" onclick="refreshDashboard()" title="Refresh Dashboard"
+        style="width:42px;height:42px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;">
+        🔄
+      </button>
+      <button onclick="openProfileModal()" title="My Profile"
+        style="width:42px;height:42px;background:rgba(99,140,210,0.15);border:1px solid rgba(99,140,210,0.3);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;"
+        onmouseover="this.style.background='rgba(99,140,210,0.28)'" onmouseout="this.style.background='rgba(99,140,210,0.15)'">
+        👤
+      </button>
+      <button class="logout-topbtn" onclick="doStudentLogout()">⏻ Logout</button>
+    </div>
+  </div>
+
+  <!-- ══════ SECTION CARD GRID ══════ -->
+  <div id="sectionCardGrid">
+    <h1 class="section-cards-heading">Welcome, <span id="welcomeNameInline">Student</span> 🚀</h1>
+    <p class="section-cards-sub">Select a section to get started</p>
+    <div class="section-card-grid">
+      <div class="sec-card" onclick="openSectionModal('stu-view-overview')">
+        <div class="sec-card-icon">📊</div>
+        <div class="sec-card-title">Dashboard</div>
+        <div class="sec-card-desc">Overview of your stats and progress</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-notice')">
+        <div class="sec-card-icon">📢</div>
+        <div class="sec-card-title">Important Notice</div>
+        <div class="sec-card-desc">Announcements from your coordinator</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-coordinator-tasks')">
+        <div class="sec-card-icon">📋</div>
+        <div class="sec-card-title">Coordinator Task</div>
+        <div class="sec-card-desc">Tasks assigned by your coordinator</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-domain-tasks')">
+        <div class="sec-card-icon">📚</div>
+        <div class="sec-card-title">Your Domain Tasks</div>
+        <div class="sec-card-desc">Domain-specific learning tasks</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-submissions')">
+        <div class="sec-card-icon">📥</div>
+        <div class="sec-card-title">Submitted Tasks</div>
+        <div class="sec-card-desc">View your submission history</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-attendance')">
+        <div class="sec-card-icon">🪪</div>
+        <div class="sec-card-title">Daily Attendance</div>
+        <div class="sec-card-desc">Mark attendance and view stats</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-test')">
+        <div class="sec-card-icon">📝</div>
+        <div class="sec-card-title">Domain MCQ Test</div>
+        <div class="sec-card-desc">Take your domain knowledge test</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-coding')">
+        <div class="sec-card-icon">💻</div>
+        <div class="sec-card-title">Coding Problems</div>
+        <div class="sec-card-desc">Solve coding challenges</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-leaderboard')">
+        <div class="sec-card-icon">🏆</div>
+        <div class="sec-card-title">Extras &amp; Badges</div>
+        <div class="sec-card-desc">Leaderboard, badges and achievements</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ SECTION MODAL ══════ -->
+  <div id="sectionModal" class="section-modal">
+    <div class="section-modal-header">
+      <button class="section-modal-back" onclick="closeSectionModal()">← Back</button>
+      <div class="section-modal-title" id="sectionModalTitle">Section</div>
+      <button class="section-modal-close" onclick="closeSectionModal()">✕ Close</button>
+    </div>
+    <div class="section-modal-body">
+
+  <!-- ══════ VIEW: OVERVIEW ══════ -->
+  <div class="stu-view active" id="stu-view-overview">
   <div class="top-card">
     <div class="top-card-left">
       <!-- TEN brand tag -->
@@ -913,6 +1623,32 @@ button:active { transform: translateY(0); }
     </div>
   </div>
 
+  <!-- Profile Card -->
+  <div class="profile-card">
+    <div class="profile-avatar" id="profileAvatar">?</div>
+    <div class="profile-info">
+      <div class="profile-name" id="profileName">—</div>
+      <div class="profile-domain-badge" id="profileDomain">—</div>
+      <div class="profile-id" id="profileId">—</div>
+      <div class="profile-meta">
+        <span id="profileTenure">—</span>
+        <span class="profile-dot">·</span>
+        <span id="profileJoined">—</span>
+        <span class="profile-dot">·</span>
+        <span id="profileDaysLeft">—</span>
+      </div>
+    </div>
+    <div class="profile-grade-ring">
+      <svg viewBox="0 0 60 60" class="ring-svg">
+        <circle cx="30" cy="30" r="24" fill="none" stroke="rgba(212,175,55,0.15)" stroke-width="5"/>
+        <circle cx="30" cy="30" r="24" fill="none" stroke="#D4AF37" stroke-width="5"
+          stroke-dasharray="150.8" id="attRingCircle" stroke-dashoffset="150.8"
+          stroke-linecap="round" transform="rotate(-90 30 30)"/>
+      </svg>
+      <div class="ring-label" id="attRingPct">0%</div>
+    </div>
+  </div>
+
   <!-- ── STATS ── -->
   <div class="domain-accent-line"></div>
   <div class="stats">
@@ -932,8 +1668,53 @@ button:active { transform: translateY(0); }
       <h2>Performance</h2>
       <h1 id="performanceText">B</h1>
     </div>
+    <div class="stat-box streak-box">
+      <h2>🔥 Current Streak</h2>
+      <h1 id="currentStreakText">0</h1>
+      <p class="stat-sub" id="streakSubText">days</p>
+    </div>
+    <div class="stat-box">
+      <h2>⭐ Best Streak</h2>
+      <h1 id="bestStreakText">0</h1>
+      <p class="stat-sub">days record</p>
+    </div>
   </div>
 
+<!-- Certificate Download — shown only when HR approved -->
+<div id="certificateSection" style="display:none; margin-top:24px;">
+  <div class="cert-eligible-banner">
+    <div class="cert-banner-left">
+      <div class="cert-banner-icon">🎓</div>
+      <div>
+        <div class="cert-banner-title">Certificate Ready!</div>
+        <div class="cert-banner-sub">HR has approved your internship certificate</div>
+      </div>
+    </div>
+    <button class="cert-download-btn" onclick="generateCertificate()">
+      ⬇ Download Certificate
+    </button>
+  </div>
+</div>
+
+<!-- Completion Badge -->
+<div id="completionBadgeSection" style="display:none; margin-top:20px;">
+  <div class="completion-badge-wrap">
+    <div class="completion-badge-glow"></div>
+    <div class="completion-badge-inner">
+      <div class="cb-icon">🏆</div>
+      <div class="cb-text">
+        <div class="cb-title">Internship Completed!</div>
+        <div class="cb-sub">Attendance ✅ · Task Approved ✅ · Test Passed ✅</div>
+      </div>
+      <div class="cb-stamp">CERTIFIED</div>
+    </div>
+  </div>
+</div>
+
+  </div><!-- /stu-view-overview -->
+
+  <!-- ══════ VIEW: ANNOUNCEMENTS ══════ -->
+  <div class="stu-view" id="stu-view-notice">
   <!-- ── NOTICE BOX ── -->
   <div class="notice-box">
     <div class="section-title">
@@ -966,9 +1747,11 @@ button:active { transform: translateY(0); }
       </div>
     </div>
   </div>
+  </div><!-- /stu-view-notice -->
 
-  <!-- ── COORDINATOR TASK BOX ── -->
-  <div class="tasks-box" style="margin-bottom:16px;">
+  <!-- ══════ VIEW: COORDINATOR TASK ══════ -->
+  <div class="stu-view" id="stu-view-coordinator-tasks">
+  <div class="tasks-box">
     <div class="section-title">
       <h2>📋 Coordinator Task</h2>
       <span class="badge">FROM COORDINATOR</span>
@@ -977,17 +1760,32 @@ button:active { transform: translateY(0); }
       <div class="empty-state">⏳ No task file uploaded by coordinator yet.</div>
     </div>
   </div>
+  </div><!-- /stu-view-coordinator-tasks -->
 
+  <!-- ══════ VIEW: DOMAIN TASKS ══════ -->
+  <div class="stu-view" id="stu-view-domain-tasks">
+  <div class="tasks-box">
+    <div class="section-title">
+      <h2>📚 Your Domain Tasks</h2>
+      <span class="badge">Domain Tasks</span>
+    </div>
+    <div id="tasksContainer"></div>
+  </div>
+  </div><!-- /stu-view-domain-tasks -->
+
+  <!-- ══════ VIEW: CODING PROBLEMS ══════ -->
+  <div class="stu-view" id="stu-view-coding">
   <!-- ── F5: CODING PROBLEMS BOX ── -->
-  <div class="tasks-box" id="codingProblemsSection" style="margin-bottom:16px;display:none;">
+  <div class="tasks-box" id="codingProblemsSection" style="display:none;margin-bottom:16px;">
     <div class="section-title">
       <h2>💻 Coding Problems</h2>
       <span class="badge">FROM COORDINATOR</span>
     </div>
     <div id="codingProblemsList"></div>
   </div>
+  </div><!-- /stu-view-coding -->
 
-  <!-- ── F5: CODING MODAL ── -->
+  <!-- ── F5: CODING MODAL (stays outside views - position:fixed) ── -->
   <div id="codingModal" class="coding-modal" style="display:none;">
     <div class="cm-bg" onclick="closeCodingModal()"></div>
     <div class="cm-shell">
@@ -998,6 +1796,17 @@ button:active { transform: translateY(0); }
         </div>
         <button class="cm-close" onclick="closeCodingModal()" aria-label="Close">✕</button>
       </div>
+      <!-- PROCTORING BAR -->
+      <div id="proctoringBar" style="display:flex;align-items:center;gap:12px;padding:8px 18px;background:#060e1a;border-bottom:1px solid rgba(244,63,94,0.25);font-size:12px;color:#9aa4bf;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span id="procStatusDot" style="width:10px;height:10px;border-radius:50%;background:#f43f5e;display:inline-block;box-shadow:0 0 6px #f43f5e;"></span>
+          <span id="procStatusText">Camera: Initializing…</span>
+        </div>
+        <video id="procVideo" autoplay muted playsinline style="width:120px;height:90px;border-radius:8px;border:2px solid rgba(244,63,94,0.4);object-fit:cover;background:#000;display:none;"></video>
+        <div id="procWarningBadge" style="display:none;background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.5);border-radius:6px;padding:4px 10px;color:#f43f5e;font-weight:700;font-size:11px;">⚠️ <span id="procWarningText">Warning</span></div>
+        <div id="procViolationCount" style="margin-left:auto;font-size:11px;color:#8aa4c8;">Violations: <span id="procVCount" style="color:#f5c542;font-weight:700;">0</span></div>
+      </div>
+      <!-- END PROCTORING BAR -->
       <div class="cm-body">
         <div class="cm-left">
           <div id="cmDescription" class="cm-desc"></div>
@@ -1005,6 +1814,11 @@ button:active { transform: translateY(0); }
           <div id="cmSample"></div>
         </div>
         <div class="cm-right">
+          <div class="cm-tab-bar">
+            <button class="cm-tab-btn active" id="cmTabEditor" onclick="switchCmTab('editor')">📝 Editor</button>
+            <button class="cm-tab-btn" id="cmTabTerminal" onclick="switchCmTab('terminal')">💻 Terminal</button>
+          </div>
+          <div id="cmEditorPane">
           <div class="cm-toolbar">
             <label style="font-size:11px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Language</label>
             <select id="cmLang" onchange="setLanguage(this.value)">
@@ -1018,6 +1832,7 @@ button:active { transform: translateY(0); }
           <div class="cm-actions">
             <button class="cm-btn cm-btn-run" onclick="runCode()">▶ Run Code</button>
             <button class="cm-btn cm-btn-submit" onclick="submitCode()">📤 Submit</button>
+            <button class="cm-btn" style="background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.3);" onclick="openInTerminal()">💻 Open in Terminal</button>
             <button class="cm-btn cm-btn-clear" onclick="document.getElementById('codeOutput').textContent='';">🧹 Clear Output</button>
             <span id="cmLangLabel" style="margin-left:auto;font-size:12px;color:#9aa4bf;">Mode: javascript</span>
           </div>
@@ -1027,20 +1842,21 @@ button:active { transform: translateY(0); }
           </details>
           <div class="cm-output-label">Output</div>
           <pre id="codeOutput" class="cm-output">— output will appear here —</pre>
+          </div>
+          <!-- Terminal Pane -->
+          <div id="cmTerminalPane">
+            <div style="padding:8px 14px;font-size:12px;color:#9aa4bf;border-bottom:1px solid rgba(245,197,66,.10);background:#0a1020;">
+              💻 Interactive terminal · Edit <span id="termFileName">solution.js</span> · <span style="color:#f5c542;">bash submit.sh</span> to submit
+            </div>
+            <div id="xtermContainer"></div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── TASKS BOX ── -->
-  <div class="tasks-box">
-    <div class="section-title">
-      <h2>📚 Your Domain Tasks</h2>
-      <span class="badge">Domain Tasks</span>
-    </div>
-    <div id="tasksContainer"></div>
-  </div>
-
+  <!-- ══════ VIEW: SUBMISSIONS ══════ -->
+  <div class="stu-view" id="stu-view-submissions">
   <!-- ── SUBMISSIONS BOX ── -->
   <div class="submissions-box">
     <div class="section-title">
@@ -1049,7 +1865,10 @@ button:active { transform: translateY(0); }
     </div>
     <div id="submissionContainer"></div>
   </div>
+  </div><!-- /stu-view-submissions -->
 
+  <!-- ══════ VIEW: ATTENDANCE ══════ -->
+  <div class="stu-view" id="stu-view-attendance">
   <!-- ── ATTENDANCE BOX (NEW: daily self-attendance) ── -->
   <div class="attendance-box">
     <div class="section-title">
@@ -1064,6 +1883,22 @@ button:active { transform: translateY(0); }
     </div>
 
     <!-- Attendance percentage cards -->
+    <div class="att-breakdown-grid">
+      <div class="att-row">
+        <span class="att-label">Self Attendance</span>
+        <span class="att-value" id="attBreakSelf">0%</span>
+      </div>
+      <div class="att-row">
+        <span class="att-label">Coordinator Marked</span>
+        <span class="att-value" id="attBreakCoord">0%</span>
+      </div>
+      <div class="att-row att-row-total">
+        <span class="att-label">Combined Total</span>
+        <span class="att-value" id="attBreakCombined">0%</span>
+      </div>
+      <div class="att-threshold" id="attBreakThreshold"></div>
+    </div>
+
     <div id="attendanceStatsRow" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:18px;">
       <div style="flex:1;min-width:140px;background:rgba(13,22,41,0.8);border:1px solid rgba(99,140,210,0.2);border-radius:12px;padding:14px 16px;text-align:center;">
         <div style="font-size:11px;color:#8aa4c8;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">My Attendance</div>
@@ -1088,7 +1923,10 @@ button:active { transform: translateY(0); }
       <div id="attendanceHistory"></div>
     </div>
   </div>
+  </div><!-- /stu-view-attendance -->
 
+  <!-- ══════ VIEW: TAKE TEST ══════ -->
+  <div class="stu-view" id="stu-view-test">
   <!-- ── TEST BOX ── -->
   <div class="attendance-box" style="margin-top:20px;">
     <div class="section-title" style="border-bottom:none;padding-bottom:0;">
@@ -1101,6 +1939,19 @@ button:active { transform: translateY(0); }
       </a>
     </div>
   </div>
+  </div><!-- /stu-view-test -->
+
+  <!-- ══════ VIEW: LEADERBOARD & BADGES ══════ -->
+  <div class="stu-view" id="stu-view-leaderboard">
+  <!-- ID Card Generator -->
+  <div class="extras-card" style="margin-bottom:16px;">
+    <div class="extras-card-title">🪪 Digital Intern ID Card</div>
+    <div class="extras-card-sub">Download your official TEN intern ID card</div>
+    <button class="extras-action-btn" onclick="generateIDCard()" style="margin-top:12px;">
+      ⬇ Download ID Card
+    </button>
+  </div>
+  <canvas id="idCardCanvas" style="display:none;"></canvas>
 
   <!-- ── My Coordinator + My Domains (Phase 2) ── -->
   <div id="ten-extras2-mount" style="margin-top:20px;"></div>
@@ -1112,6 +1963,10 @@ button:active { transform: translateY(0); }
   <div class="ten-footer">
     <strong>TEN</strong> — The Entrepreneurship Network &nbsp;·&nbsp; Student Portal
   </div>
+  </div><!-- /stu-view-leaderboard -->
+
+    </div><!-- /section-modal-body -->
+  </div><!-- /sectionModal -->
 
 </div><!-- /page-wrapper -->
 
@@ -1143,6 +1998,10 @@ button:active { transform: translateY(0); }
      ALL JAVASCRIPT — UNCHANGED
 ══════════════════════════════════ -->
 <script>
+// ── Theme System ──
+function applyTheme(theme){document.documentElement.setAttribute('data-theme',theme);var t=document.getElementById('themeToggle');if(t)t.checked=(theme==='light');}
+function toggleTheme(){var c=localStorage.getItem('ten-theme')||'dark';var n=c==='dark'?'light':'dark';localStorage.setItem('ten-theme',n);applyTheme(n);}
+(function(){applyTheme(localStorage.getItem('ten-theme')||'dark');})();
 
 const student = JSON.parse(localStorage.getItem("student"));
 
@@ -1394,6 +2253,7 @@ async function loadStudentSubmissions(){
     const data = await response.json();
     const submissions = data.submissions || [];
     latestSubmissions = submissions;
+    window._studentSubmissions = submissions;
     renderSubmissions(submissions);
     // Phase-2 bulk toolbar decoration (no-op if TenExtras2 isn't loaded yet)
     if(window.TenExtras2 && student && student.employeeId){
@@ -1434,6 +2294,24 @@ async function loadPerformance(){
         wrap.appendChild(g);
       }
       if(g) g.innerText = d.performance.grade;
+      // Streak display
+      const streak = d.performance.currentStreak || 0;
+      const best = d.performance.bestStreak || 0;
+      var streakEl = document.getElementById('currentStreakText');
+      var bestEl = document.getElementById('bestStreakText');
+      var subEl = document.getElementById('streakSubText');
+      if (streakEl) streakEl.textContent = streak;
+      if (bestEl) bestEl.textContent = best;
+      if (subEl) {
+        if (streak === 0) subEl.textContent = 'Start today!';
+        else if (streak === 1) subEl.textContent = 'day — keep going!';
+        else if (streak < 7) subEl.textContent = 'days — great start!';
+        else if (streak < 14) subEl.textContent = 'days — on fire! 🔥';
+        else subEl.textContent = 'days — legendary! 🏆';
+      }
+      if ((streak === 7 || streak === 14 || streak === 30) && window.confetti) {
+        confetti({ particleCount: 120, spread: 80, colors: ['#D4AF37','#f5c542','#fff176','#ffffff'] });
+      }
     }
   }catch(_){}
 }
@@ -1580,6 +2458,7 @@ async function loadAttendance(){
     const d = await r.json();
     if(!d.success) return;
     const s = d.stats || {};
+    window._attendanceStats = s;
 
     document.getElementById("selfAttPct").innerText   = (s.selfPct||0) + "%";
     document.getElementById("selfAttCount").innerText = (s.selfTotal||0) + " days marked";
@@ -1593,12 +2472,27 @@ async function loadAttendance(){
 
     // Headline stats
     document.getElementById("attendanceText").innerText = (s.combinedPct||0) + "%";
+    updateAttRing(s.combinedPct || 0);
     document.getElementById("meetingsJoinedText").innerText = (s.combinedPresentDays||0);
 
     const threshEl = document.getElementById("attendanceThreshold");
     if(threshEl){
-      if((s.combinedPct||0) >= 75){ threshEl.innerText = "✅ 75% attendance requirement met"; threshEl.style.color = "#10b981"; }
-      else { threshEl.innerText = "⚠️ " + (s.combinedPct||0) + "% / 75% required — keep marking attendance"; threshEl.style.color = "#f59e0b"; }
+      // Tenure-based threshold calculation
+      const tenure = (student.tenure || "").toLowerCase();
+      let totalDays = 20,  requiredDays = 15;   // default: 1 month
+      if(tenure.includes("3")){ totalDays = 60;  requiredDays = 45; }
+      if(tenure.includes("6")){ totalDays = 120; requiredDays = 90; }
+
+      const present = s.combinedPresentDays || 0;
+      const remaining = Math.max(0, requiredDays - present);
+
+      if(remaining === 0){
+        threshEl.innerText = "✅ You have met the 75% attendance requirement! (" + present + "/" + totalDays + " days)";
+        threshEl.style.color = "#10b981";
+      } else {
+        threshEl.innerText = "⚠️ " + present + "/" + totalDays + " days present — need " + remaining + " more to reach 75% (" + requiredDays + " days required)";
+        threshEl.style.color = "#f59e0b";
+      }
     }
 
     const btn = document.getElementById("attendanceBtn");
@@ -1614,6 +2508,16 @@ async function loadAttendance(){
     }
 
     renderAttendanceHistory(d.attendance||[]);
+
+    // Populate breakdown grid
+    var bSelf = document.getElementById('attBreakSelf');
+    var bCoord = document.getElementById('attBreakCoord');
+    var bCombined = document.getElementById('attBreakCombined');
+    var bThresh = document.getElementById('attBreakThreshold');
+    if(bSelf) bSelf.innerText = (s.selfPct||0) + '%';
+    if(bCoord) bCoord.innerText = (s.coordPct||0) + '%';
+    if(bCombined) bCombined.innerText = (s.combinedPct||0) + '%';
+    if(bThresh && threshEl) bThresh.innerText = threshEl.innerText;
   }catch(e){ console.log(e); }
 }
 
@@ -1691,6 +2595,101 @@ async function loadCodingProblems(){
   }catch(e){ /* silent — section just stays hidden */ }
 }
 
+// ─────────────────────────────────────────────
+//  PROCTORING — Camera & Anti-Cheat
+// ─────────────────────────────────────────────
+let _procStream = null;
+let _procViolations = 0;
+let _procWarningTimer = null;
+let _procBlurHandler = null;
+let _procVisibilityHandler = null;
+
+async function startProctoring() {
+  const video = document.getElementById('procVideo');
+  const statusDot = document.getElementById('procStatusDot');
+  const statusText = document.getElementById('procStatusText');
+  const warningBadge = document.getElementById('procWarningBadge');
+  const vcount = document.getElementById('procVCount');
+
+  _procViolations = 0;
+  if (vcount) vcount.textContent = '0';
+  if (warningBadge) warningBadge.style.display = 'none';
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
+      audio: false
+    });
+    _procStream = stream;
+    video.srcObject = stream;
+    video.style.display = 'block';
+    statusDot.style.background = '#10b981';
+    statusDot.style.boxShadow = '0 0 6px #10b981';
+    statusText.textContent = 'Camera: Active 🟢';
+  } catch (err) {
+    statusDot.style.background = '#f43f5e';
+    statusText.textContent = 'Camera: Blocked ❌';
+    _procShowWarning('Camera access denied — test may be flagged');
+  }
+
+  // Register tab/window switch listeners (always, even if camera denied)
+  _procBlurHandler = function() { _procRegisterViolation('Tab/Window switch detected'); };
+  _procVisibilityHandler = function() {
+    if (document.hidden) _procRegisterViolation('Tab hidden / minimized');
+  };
+  window.addEventListener('blur', _procBlurHandler);
+  document.addEventListener('visibilitychange', _procVisibilityHandler);
+}
+
+function stopProctoring() {
+  if (_procStream) {
+    _procStream.getTracks().forEach(function(track) { track.stop(); });
+    _procStream = null;
+  }
+  var video = document.getElementById('procVideo');
+  if (video) { video.srcObject = null; video.style.display = 'none'; }
+
+  var statusDot = document.getElementById('procStatusDot');
+  var statusText = document.getElementById('procStatusText');
+  if (statusDot) { statusDot.style.background = '#6b7280'; statusDot.style.boxShadow = 'none'; }
+  if (statusText) statusText.textContent = 'Camera: Off';
+
+  if (_procBlurHandler) { window.removeEventListener('blur', _procBlurHandler); _procBlurHandler = null; }
+  if (_procVisibilityHandler) { document.removeEventListener('visibilitychange', _procVisibilityHandler); _procVisibilityHandler = null; }
+  if (_procWarningTimer) { clearTimeout(_procWarningTimer); _procWarningTimer = null; }
+}
+
+function _procRegisterViolation(reason) {
+  _procViolations++;
+  var vcount = document.getElementById('procVCount');
+  if (vcount) vcount.textContent = String(_procViolations);
+  _procShowWarning(reason);
+  try {
+    var empId = (typeof employeeId !== 'undefined' && employeeId) || (student && student.employeeId) || '';
+    var qid = (_currentCodingQuestion && _currentCodingQuestion._id) || '';
+    fetch('/student/proctoring/violation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: empId, questionId: qid, reason: reason, violationNumber: _procViolations, timestamp: new Date().toISOString() })
+    }).catch(function() {});
+  } catch(_) {}
+}
+
+function _procShowWarning(text) {
+  var badge = document.getElementById('procWarningBadge');
+  var warningText = document.getElementById('procWarningText');
+  if (!badge || !warningText) return;
+  warningText.textContent = text;
+  badge.style.display = 'inline-flex';
+  if (_procWarningTimer) clearTimeout(_procWarningTimer);
+  _procWarningTimer = setTimeout(function() {
+    if (badge) badge.style.display = 'none';
+  }, 4000);
+}
+// ─────────────────────────────────────────────
+//  END PROCTORING
+// ─────────────────────────────────────────────
+
 async function openCodingProblem(qid){
   try{
     const r = await fetch("/student/coding-questions/question/" + qid);
@@ -1709,6 +2708,7 @@ async function openCodingProblem(qid){
       + (d.question.sampleOutput ? '<div><b style="font-size:12px;color:#9aa4bf;text-transform:uppercase;letter-spacing:1px;">Sample Output</b><pre>' + _cmEsc(d.question.sampleOutput) + '</pre></div>' : '');
 
     document.getElementById("codingModal").style.display = "flex";
+    startProctoring();
 
     // Initialise CodeMirror lazily, the first time we open the modal.
     const langSel = document.getElementById("cmLang");
@@ -1754,6 +2754,10 @@ async function openCodingProblem(qid){
 
 function closeCodingModal(){
   document.getElementById("codingModal").style.display = "none";
+  stopProctoring();
+  // Clean up terminal on close
+  _destroyCodingTerminal();
+  switchCmTab('editor');
 }
 
 function setLanguage(lang){
@@ -1842,6 +2846,11 @@ async function submitCode(){
       out.classList.remove("is-error","is-warn");
       Swal.fire({toast:true,position:"top-end",icon:"success",title:"Accepted!",text:d.passedCases+"/"+d.totalCases+" test cases",showConfirmButton:false,timer:2200,background:"#0c1220",color:"#f0eee8"});
       submitBtn.disabled = true; submitBtn.textContent = "✅ Submitted";
+      // Show GitHub push note
+      setTimeout(() => {
+        const out = document.getElementById("codeOutput");
+        out.textContent += "\n\n\uD83D\uDC19 If GitHub integration is configured, your solution will be pushed automatically.";
+      }, 1500);
     } else {
       out.classList.add(verdict === "Runtime Error" ? "is-warn" : "is-error");
       submitBtn.disabled = false;   // allow retry
@@ -1851,6 +2860,141 @@ async function submitCode(){
     out.textContent = "Network error: " + (e.message || e);
     submitBtn.disabled = false;
   }
+}
+
+async function openInTerminal(){
+  if(!_currentCodingQuestion) return;
+  const empId = (typeof employeeId !== "undefined" && employeeId) || (student && student.employeeId) || "";
+  if(!empId){ Swal.fire({icon:"error",title:"Not logged in",background:"#0c1220",color:"#f0eee8"}); return; }
+  const lang = document.getElementById("cmLang").value;
+  try {
+    const r = await fetch("/student/coding/open-terminal", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ employeeId: empId, questionId: _currentCodingQuestion._id, language: lang })
+    });
+    const d = await r.json();
+    if(d.success){
+      Swal.fire({
+        icon:"success", title:"Terminal Workspace Ready",
+        html: '<div style="text-align:left;font-size:14px;line-height:1.7;">' +
+          '<p style="margin-bottom:8px;"><b>Directory:</b></p>' +
+          '<code style="background:#0d1117;padding:6px 10px;border-radius:6px;display:block;margin-bottom:12px;word-break:break-all;">' + d.workDir + '</code>' +
+          '<p style="margin-bottom:8px;"><b>Instructions:</b></p>' +
+          '<ol style="padding-left:18px;"><li>Open a terminal</li><li>Run: <code>' + d.launchCmd + '</code></li><li>Edit the solution file</li><li>Run: <code>./submit.sh</code></li></ol>' +
+          '</div>' +
+          '<button onclick="navigator.clipboard.writeText(\'' + d.workDir + '\');this.textContent=\'Copied!\'" style="margin-top:12px;padding:8px 16px;background:rgba(59,130,246,0.15);color:#3b82f6;border:1px solid rgba(59,130,246,0.3);border-radius:8px;cursor:pointer;font-weight:600;">📋 Copy Path</button>',
+        showConfirmButton:true, confirmButtonText:"Got it",
+        background:"#0c1220", color:"#f0eee8", width:520
+      });
+    } else {
+      Swal.fire({icon:"error",title:"Failed",text:d.message||"Could not create workspace",background:"#0c1220",color:"#f0eee8"});
+    }
+  } catch(e){
+    Swal.fire({icon:"error",title:"Network error",text:e.message||String(e),background:"#0c1220",color:"#f0eee8"});
+  }
+}
+
+// ════════════════════════════════════════════════
+//  Coding Terminal (xterm.js)
+// ════════════════════════════════════════════════
+let _cmActiveTab = 'editor';
+let _xtermInstance = null;
+let _xtermFit = null;
+let _termConnected = false;
+let _termSocket = null;
+
+function switchCmTab(tab) {
+    _cmActiveTab = tab;
+    const edPane = document.getElementById('cmEditorPane');
+    const tmPane = document.getElementById('cmTerminalPane');
+    const tabEd = document.getElementById('cmTabEditor');
+    const tabTm = document.getElementById('cmTabTerminal');
+    if (!edPane || !tmPane) return;
+    if (tab === 'editor') {
+        edPane.style.display = 'flex';
+        tmPane.classList.remove('visible');
+        if (tabEd) tabEd.classList.add('active');
+        if (tabTm) tabTm.classList.remove('active');
+        if (_codingEditor) setTimeout(function(){ _codingEditor.refresh(); }, 50);
+    } else {
+        edPane.style.display = 'none';
+        tmPane.classList.add('visible');
+        if (tabEd) tabEd.classList.remove('active');
+        if (tabTm) tabTm.classList.add('active');
+        if (!_termConnected) _initCodingTerminal();
+        if (_xtermFit) setTimeout(function(){ _xtermFit.fit(); }, 80);
+    }
+}
+
+function _initCodingTerminal() {
+    if (_termConnected) return;
+    if (typeof Terminal === 'undefined') {
+        var c = document.getElementById('xtermContainer');
+        if (c) c.innerHTML = '<div style="padding:20px;color:#f43f5e;">xterm.js failed to load from CDN.</div>';
+        return;
+    }
+    var q = _currentCodingQuestion;
+    if (!q) return;
+    var lang = (document.getElementById('cmLang') || {}).value || 'javascript';
+    var ext = { javascript:'js', python:'py', java:'java', cpp:'cpp' }[lang] || 'js';
+    var fnEl = document.getElementById('termFileName');
+    if (fnEl) fnEl.textContent = 'solution.' + ext;
+
+    var term = new Terminal({
+        theme: { background:'#0d1117', foreground:'#cdd9ec', cursor:'#f5c542' },
+        fontFamily: 'Consolas, Monaco, monospace',
+        fontSize: 14,
+        cursorBlink: true,
+        convertEol: true,
+        scrollback: 1000,
+    });
+    var fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    var container = document.getElementById('xtermContainer');
+    if (container) container.innerHTML = '';
+    term.open(container);
+    fitAddon.fit();
+    _xtermInstance = term;
+    _xtermFit = fitAddon;
+
+    // Use socket.io - either the existing global `io` or create new connection
+    _termSocket = (typeof io !== 'undefined') ? io({ path: '/socket.io', auth: { role:'student', employeeId: employeeId } }) : null;
+    if (!_termSocket) {
+        term.writeln('\x1b[31mSocket.IO not available.\x1b[0m');
+        return;
+    }
+
+    _termSocket.emit('terminal:start', {
+        questionId: q._id,
+        employeeId: employeeId,
+        language: lang,
+        title: q.title || '',
+        description: q.description || '',
+        sampleInput: q.sampleInput || '',
+        sampleOutput: q.sampleOutput || '',
+    });
+
+    _termSocket.on('terminal:data', function(d) { term.write(d); });
+    _termSocket.on('terminal:error', function(msg) { term.writeln('\r\n\x1b[31m' + msg + '\x1b[0m\r\n'); });
+
+    term.onData(function(input) { _termSocket.emit('terminal:input', input); });
+
+    window.addEventListener('resize', function() { if (_xtermFit) _xtermFit.fit(); });
+    _termConnected = true;
+}
+
+function _destroyCodingTerminal() {
+    if (_termSocket) {
+        _termSocket.emit('terminal:kill');
+        _termSocket.off('terminal:data');
+        _termSocket.off('terminal:error');
+        _termSocket.disconnect();
+        _termSocket = null;
+    }
+    if (_xtermInstance) { _xtermInstance.dispose(); _xtermInstance = null; }
+    _xtermFit = null;
+    _termConnected = false;
+    _cmActiveTab = 'editor';
 }
 
 // ── Tab visibility: auto refresh student page when tab becomes visible ──
@@ -1971,6 +3115,77 @@ function doStudentLogout(){
   });
 }
 
+// ── Back Button Trap ──
+history.pushState({ page: 'student-dashboard' }, '', window.location.href);
+
+window.addEventListener('popstate', function (e) {
+  // Re-arm back button
+  history.pushState({ page: 'student-dashboard' }, '', window.location.href);
+
+  // 1. If chat widget is open, close it first
+  var chatWin = document.querySelector('.tc-win.open');
+  if (chatWin) {
+    chatWin.classList.remove('open');
+    return;
+  }
+
+  // 2. If section modal is open, close it
+  var sectionModal = document.getElementById('sectionModal');
+  if (sectionModal && sectionModal.classList.contains('open')) {
+    closeSectionModal();
+    return;
+  }
+
+  // 3. If coding modal is open, close it
+  var codingModal = document.getElementById('codingModal');
+  if (codingModal && codingModal.style.display !== 'none' && codingModal.style.display !== '') {
+    closeCodingModal();
+    return;
+  }
+
+  // 4. If submission modal is open, close it
+  var submissionModal = document.getElementById('submissionModal');
+  if (submissionModal && submissionModal.style.display === 'flex') {
+    closeSubmissionModal();
+    return;
+  }
+
+  // 5. If notification panel is open, close it
+  var notifPanel = document.getElementById('notifPanel');
+  if (notifPanel && notifPanel.classList.contains('open')) {
+    closeNotifPanel();
+    return;
+  }
+
+  // 6. If sidebar is open, close it
+  var sidebar = document.querySelector('.stu-sidebar.open');
+  if (sidebar) {
+    closeSidebar();
+    return;
+  }
+
+  // 7. Nothing is open — show logout confirmation
+  Swal.fire({
+    title: 'Exit Portal?',
+    text: 'Do you want to logout from TEN Portal?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Logout',
+    cancelButtonText: 'No, Stay',
+    background: '#080f1c',
+    color: '#edf2ff',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#3b82f6',
+    reverseButtons: true
+  }).then(function(result) {
+    if (result.isConfirmed) {
+      sessionStorage.clear();
+      localStorage.removeItem('ten-theme');
+      window.location.replace('/login.html');
+    }
+  });
+});
+
 // ── Extended SSE: listen for notifications too ──
 function startStudentSSE(){
   try{
@@ -2058,6 +3273,431 @@ startStudentSSE();
   // be enough for loadStudentSubmissions to finish; this is a safety net).
   setTimeout(() => { if(window.TenExtras2 && student) TenExtras2.bulkSubmissionsToolbar({ employeeId: student.employeeId }); }, 1500);
 })();
+</script>
+
+<!-- ===== Sidebar Navigation JS ===== -->
+<script>
+// Sidebar toggle for mobile
+function toggleSidebar() {
+  document.querySelector('.stu-sidebar').classList.toggle('open');
+  document.querySelector('.sidebar-overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.querySelector('.stu-sidebar').classList.remove('open');
+  document.querySelector('.sidebar-overlay').classList.remove('show');
+}
+// Section view switching
+function switchStudentView(viewId) {
+  document.querySelectorAll('.stu-view').forEach(function(v) { v.classList.remove('active'); });
+  document.querySelectorAll('.stu-nav-btn').forEach(function(b) { b.classList.remove('active'); });
+  var target = document.getElementById(viewId);
+  if (target) target.classList.add('active');
+  var navBtn = document.querySelector('.stu-nav-btn[data-view="' + viewId + '"]');
+  if (navBtn) navBtn.classList.add('active');
+  if (window.innerWidth <= 768) closeSidebar();
+  openSectionModal(viewId);
+}
+
+// ── Section Modal System ──
+var sectionTitles = {
+  'stu-view-overview': 'Dashboard Overview',
+  'stu-view-notice': 'Important Notice',
+  'stu-view-coordinator-tasks': 'Coordinator Task',
+  'stu-view-domain-tasks': 'Your Domain Tasks',
+  'stu-view-coding': 'Coding Problems',
+  'stu-view-submissions': 'Submitted Tasks',
+  'stu-view-attendance': 'Daily Attendance',
+  'stu-view-test': 'Domain MCQ Test',
+  'stu-view-leaderboard': 'Extras & Badges'
+};
+
+function openSectionModal(sectionId) {
+  var modal = document.getElementById('sectionModal');
+  var titleEl = document.getElementById('sectionModalTitle');
+  if (!modal) return;
+  // Hide all views inside modal, show target
+  modal.querySelectorAll('.stu-view').forEach(function(v) { v.classList.remove('active'); });
+  var target = document.getElementById(sectionId);
+  if (target) target.classList.add('active');
+  // Set title
+  titleEl.textContent = sectionTitles[sectionId] || 'Section';
+  // Open modal
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Hide sidebar when modal opens
+  var sidebar = document.querySelector('.stu-sidebar');
+  var overlay = document.querySelector('.sidebar-overlay');
+  if (sidebar) sidebar.classList.remove('open');
+  if (overlay) overlay.classList.remove('show');
+  // Trigger relevant data loads
+  if (sectionId === 'stu-view-attendance' && typeof loadAttendance === 'function') loadAttendance();
+  if (sectionId === 'stu-view-notice' && typeof loadNotice === 'function') loadNotice();
+  if (sectionId === 'stu-view-submissions' && typeof loadStudentSubmissions === 'function') loadStudentSubmissions();
+  if (sectionId === 'stu-view-coordinator-tasks' && typeof loadCoordinatorTasks === 'function') loadCoordinatorTasks();
+  if (sectionId === 'stu-view-domain-tasks' && typeof renderTasks === 'function') renderTasks();
+  if (sectionId === 'stu-view-coding' && typeof loadCodingProblems === 'function') loadCodingProblems();
+  if (sectionId === 'stu-view-test' && typeof loadTest === 'function') loadTest();
+}
+
+function closeSectionModal() {
+  var modal = document.getElementById('sectionModal');
+  if (modal) modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    // Don't close section modal if a higher-z overlay is visible
+    var codingModal = document.getElementById('codingModal');
+    var submissionModal = document.getElementById('submissionModal');
+    if (codingModal && codingModal.style.display !== 'none') return;
+    if (submissionModal && submissionModal.style.display !== 'none') return;
+    closeSectionModal();
+  }
+});
+
+// Populate welcome name
+(function() {
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var nameEl = document.getElementById('welcomeNameInline');
+  if (nameEl && stu.name) nameEl.textContent = stu.name;
+})();
+
+// ── Certificate Generator ──
+function checkCertificateEligibility() {
+  if (!student) return;
+  fetch('/students/' + encodeURIComponent(student.employeeId) + '/performance')
+    .then(r => r.json())
+    .then(d => {
+      if (d && d.performance && d.performance.certificateApprovedByHR) {
+        document.getElementById('certificateSection').style.display = 'block';
+      }
+    })
+    .catch(() => {});
+}
+
+async function generateCertificate() {
+  const btn = document.querySelector('.cert-download-btn');
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    const W = 297, H = 210;
+    const name = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+    const domain = student.domain || '';
+    const empId = student.employeeId || '';
+    const tenure = student.tenure || '1 Month';
+    const certId = 'TEN-CERT-' + empId.replace(/\//g,'-') + '-' + Date.now().toString(36).toUpperCase();
+    const dateStr = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+
+    doc.setFillColor(4, 7, 15);
+    doc.rect(0, 0, W, H, 'F');
+    doc.setDrawColor(212, 175, 55);
+    doc.setLineWidth(1.5);
+    doc.rect(8, 8, W-16, H-16);
+    doc.setLineWidth(0.4);
+    doc.rect(11, 11, W-22, H-22);
+    [[14,14],[W-14,14],[14,H-14],[W-14,H-14]].forEach(([x,y]) => {
+      doc.setFillColor(212,175,55);
+      doc.circle(x, y, 2, 'F');
+    });
+    doc.setFillColor(212, 175, 55);
+    doc.rect(20, 20, W-40, 1.5, 'F');
+    doc.setFontSize(9);
+    doc.setTextColor(212, 175, 55);
+    doc.setFont('helvetica', 'bold');
+    doc.text('THE ENTREPRENEURSHIP NETWORK', W/2, 30, { align: 'center' });
+    doc.setFontSize(28);
+    doc.setTextColor(240, 230, 200);
+    doc.text('Certificate of Completion', W/2, 52, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(160, 140, 100);
+    doc.setFont('helvetica', 'normal');
+    doc.text('This is to certify that', W/2, 65, { align: 'center' });
+    doc.setFontSize(32);
+    doc.setTextColor(212, 175, 55);
+    doc.setFont('helvetica', 'bold');
+    doc.text(name, W/2, 82, { align: 'center' });
+    const nameWidth = doc.getTextWidth(name);
+    doc.setDrawColor(212,175,55);
+    doc.setLineWidth(0.5);
+    doc.line(W/2 - nameWidth/2, 85, W/2 + nameWidth/2, 85);
+    doc.setFontSize(11);
+    doc.setTextColor(200, 190, 170);
+    doc.setFont('helvetica', 'normal');
+    doc.text('has successfully completed the', W/2, 95, { align: 'center' });
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text(domain + ' Internship', W/2, 108, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setTextColor(160, 150, 130);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Duration: ' + tenure + '   |   Employee ID: ' + empId, W/2, 120, { align: 'center' });
+    doc.setFillColor(212, 175, 55);
+    doc.rect(20, H-35, W-40, 0.8, 'F');
+    doc.setFontSize(9);
+    doc.setTextColor(200,190,170);
+    doc.text('_________________________', 55, H-22, { align: 'center' });
+    doc.text('Domain Coordinator', 55, H-16, { align: 'center' });
+    doc.setTextColor(212,175,55);
+    doc.setFont('helvetica', 'bold');
+    doc.text(domain, 55, H-11, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(200,190,170);
+    doc.text('_________________________', W-55, H-22, { align: 'center' });
+    doc.text('HR Department', W-55, H-16, { align: 'center' });
+    doc.setTextColor(212,175,55);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TEN — The Entrepreneurship Network', W-55, H-11, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(160,150,130);
+    doc.text('Issued on: ' + dateStr, W/2, H-22, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setTextColor(80,75,65);
+    doc.text('Certificate ID: ' + certId, W/2, H-15, { align: 'center' });
+
+    doc.save('TEN_Certificate_' + name.replace(/\s+/g,'_') + '.pdf');
+    btn.textContent = '✅ Downloaded!';
+    setTimeout(() => { btn.textContent = '⬇ Download Certificate'; btn.disabled = false; }, 3000);
+  } catch(e) {
+    console.error(e);
+    btn.textContent = '⬇ Download Certificate';
+    btn.disabled = false;
+    Swal.fire({ title: 'Error', text: 'Could not generate certificate.', icon: 'error', background: '#080f1c', color: '#edf2ff' });
+  }
+}
+
+setTimeout(checkCertificateEligibility, 1500);
+
+// ── Completion Badge Check ──
+function checkCompletionBadge() {
+  try {
+    var stats = window._attendanceStats || {};
+    var submissions = window._studentSubmissions || [];
+    var att75 = (stats.combinedPct >= 75);
+    var taskOk = submissions.some(function(s) { return s.status === 'Approved'; });
+
+    fetch('/test-leaderboard/' + encodeURIComponent(student.domain))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var myResult = (d.leaderboard || []).find(function(e) { return e.employeeId === student.employeeId; });
+        var testOk = myResult && myResult.percentage >= 50;
+        var allDone = att75 && taskOk && testOk;
+        var badgeSection = document.getElementById('completionBadgeSection');
+        if (allDone && badgeSection) {
+          badgeSection.style.display = 'block';
+          if (!sessionStorage.getItem('badgeShown')) {
+            sessionStorage.setItem('badgeShown', '1');
+            setTimeout(function() {
+              if (window.confetti) {
+                confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 }, colors: ['#D4AF37','#10b981','#ffffff','#f5c542'] });
+              }
+            }, 600);
+          }
+        }
+      });
+  } catch(e) {}
+}
+setTimeout(checkCompletionBadge, 3500);
+
+// ── ID Card Generator ──
+function generateIDCard() {
+  var canvas = document.getElementById('idCardCanvas');
+  var ctx = canvas.getContext('2d');
+  var W = 648, H = 408;
+  canvas.width = W;
+  canvas.height = H;
+  var name = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+  var empId = student.employeeId || '';
+  var domain = student.domain || '';
+  var joined = student.joiningDate || '';
+
+  ctx.fillStyle = '#04070f';
+  ctx.fillRect(0, 0, W, H);
+  var grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#D4AF37');
+  grad.addColorStop(1, '#6b4c0a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 10, H);
+  ctx.strokeStyle = 'rgba(212,175,55,0.5)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(5, 5, W-10, H-10);
+  ctx.fillStyle = '#D4AF37';
+  ctx.font = 'bold 22px Arial';
+  ctx.fillText('TEN', 30, 50);
+  ctx.fillStyle = '#8a8070';
+  ctx.font = '11px Arial';
+  ctx.fillText('The Entrepreneurship Network', 30, 68);
+  ctx.fillStyle = 'rgba(212,175,55,0.3)';
+  ctx.fillRect(30, 78, W-60, 1);
+  ctx.fillStyle = 'rgba(212,175,55,0.15)';
+  ctx.beginPath();
+  ctx.arc(80, 160, 52, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = '#D4AF37';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#D4AF37';
+  ctx.font = 'bold 32px Arial';
+  ctx.textAlign = 'center';
+  var initials = name.split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
+  ctx.fillText(initials, 80, 170);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#f0eee8';
+  ctx.font = 'bold 26px Arial';
+  ctx.fillText(name, 155, 130);
+  ctx.fillStyle = '#D4AF37';
+  ctx.font = 'bold 14px Courier New, monospace';
+  ctx.fillText(empId, 155, 155);
+  ctx.fillStyle = '#8a8070';
+  ctx.font = '12px Arial';
+  ctx.fillText('Domain:', 155, 180);
+  ctx.fillStyle = '#f0eee8';
+  ctx.font = 'bold 13px Arial';
+  ctx.fillText(domain, 155, 198);
+  if (joined) { ctx.fillStyle = '#8a8070'; ctx.font = '11px Arial'; ctx.fillText('Joined: ' + joined, 155, 220); }
+  ctx.fillStyle = 'rgba(212,175,55,0.08)';
+  ctx.fillRect(0, H-50, W, 50);
+  ctx.fillStyle = '#D4AF37';
+  ctx.font = 'bold 11px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('INTERN', W/2, H-28);
+  ctx.fillStyle = '#8a8070';
+  ctx.font = '10px Arial';
+  ctx.fillText('TEN — The Entrepreneurship Network', W/2, H-12);
+  ctx.textAlign = 'left';
+
+  var link = document.createElement('a');
+  link.download = 'TEN_ID_Card_' + empId.replace(/\//g,'-') + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ── Profile Card ──
+function populateProfileCard() {
+  if (!student) return;
+  var name = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+  var initials = name.split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
+  var av = document.getElementById('profileAvatar');
+  var nm = document.getElementById('profileName');
+  var dm = document.getElementById('profileDomain');
+  var id = document.getElementById('profileId');
+  var ten = document.getElementById('profileTenure');
+  var jo = document.getElementById('profileJoined');
+  var dl = document.getElementById('profileDaysLeft');
+  if (av) av.textContent = initials || '?';
+  if (nm) nm.textContent = name;
+  if (dm) dm.textContent = student.domain || '';
+  if (id) id.textContent = student.employeeId || '';
+  if (ten) ten.textContent = student.tenure || '';
+  if (jo) jo.textContent = student.joiningDate ? 'Joined ' + student.joiningDate : '';
+  if (student.joiningDate && student.tenure) {
+    try {
+      var t = (student.tenure || '').toLowerCase();
+      var months = t.includes('6') ? 6 : t.includes('3') ? 3 : 1;
+      var end = new Date(student.joiningDate);
+      end.setMonth(end.getMonth() + months);
+      var today = new Date();
+      var diff = Math.ceil((end - today) / (1000*60*60*24));
+      if (dl) dl.textContent = diff > 0 ? diff + ' days remaining' : 'Internship ended';
+    } catch(e) {}
+  }
+}
+
+function updateAttRing(pct) {
+  var circle = document.getElementById('attRingCircle');
+  var label = document.getElementById('attRingPct');
+  if (!circle || !label) return;
+  var circumference = 150.8;
+  var offset = circumference - (Math.min(pct, 100) / 100) * circumference;
+  circle.style.strokeDashoffset = offset;
+  circle.style.stroke = pct >= 75 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#f43f5e';
+  label.textContent = pct + '%';
+}
+
+populateProfileCard();
+</script>
+
+<div class="sidebar-overlay" onclick="closeSidebar()"></div>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js')
+        .then(function (reg) { console.log('SW registered'); })
+        .catch(function (err) { console.log('SW error:', err); });
+    });
+  }
+</script>
+
+<!-- ══════ PROFILE MODAL (Student) ══════ -->
+<div id="profileModal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;">
+  <div onclick="closeProfileModal()" style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);"></div>
+  <div style="position:relative;background:#0d1628;border:1px solid rgba(99,140,210,0.3);border-radius:20px;padding:32px;min-width:320px;max-width:460px;width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.6);z-index:1;">
+    <button onclick="closeProfileModal()" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:18px;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div id="pmAvatar" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#6366f1);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;margin:0 auto 14px;border:3px solid rgba(99,140,210,0.4);">?</div>
+      <div id="pmName" style="font-size:22px;font-weight:800;color:#f0eee8;"></div>
+      <div id="pmDomain" style="font-size:13px;color:#3b82f6;font-weight:600;margin-top:4px;background:rgba(59,130,246,0.1);padding:4px 12px;border-radius:20px;display:inline-block;margin-top:8px;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Employee ID</div>
+        <div id="pmEmpId" style="font-size:14px;font-weight:700;color:#f0eee8;font-family:'DM Mono',monospace;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">College</div>
+        <div id="pmCollege" style="font-size:14px;font-weight:700;color:#f0eee8;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Email</div>
+        <div id="pmEmail" style="font-size:13px;font-weight:600;color:#f0eee8;word-break:break-all;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Phone</div>
+        <div id="pmPhone" style="font-size:14px;font-weight:700;color:#f0eee8;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Joined</div>
+        <div id="pmJoined" style="font-size:14px;font-weight:700;color:#f0eee8;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Internship End</div>
+        <div id="pmEnd" style="font-size:14px;font-weight:700;color:#f0eee8;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function openProfileModal() {
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var name = stu.name || '—';
+  document.getElementById('pmAvatar').textContent = name[0] ? name[0].toUpperCase() : '?';
+  document.getElementById('pmName').textContent = name;
+  document.getElementById('pmDomain').textContent = stu.domain || '—';
+  document.getElementById('pmEmpId').textContent = stu.employeeId || stu.employee_id || '—';
+  document.getElementById('pmCollege').textContent = stu.college || stu.collegeName || '—';
+  document.getElementById('pmEmail').textContent = stu.email || '—';
+  document.getElementById('pmPhone').textContent = stu.phone || stu.mobile || '—';
+  var joined = stu.startDate || stu.joinDate || stu.createdAt;
+  document.getElementById('pmJoined').textContent = joined ? new Date(joined).toLocaleDateString('en-IN') : '—';
+  var end = stu.endDate || stu.internshipEnd;
+  document.getElementById('pmEnd').textContent = end ? new Date(end).toLocaleDateString('en-IN') : '—';
+  var modal = document.getElementById('profileModal');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeProfileModal() {
+  document.getElementById('profileModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('profileModal').style.display === 'flex') closeProfileModal();
+});
 </script>
 </body>
 </html>

@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#D4AF37">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TEN Portal">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>TEN — Coordinator Dashboard</title>
 <link rel="stylesheet" href="ten-theme.css">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -50,11 +56,15 @@ body::before {
 }
 
 .page-wrap {
-  position:relative;
-  z-index:1;
-  padding:28px 32px;
-  max-width:1400px;
-  margin:0 auto;
+  position: relative;
+  z-index: 1;
+  padding: 28px 32px;
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto;
+  margin-left: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .topbar {
@@ -346,13 +356,407 @@ body::before {
 .notif-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; }
 .notif-overlay.show { display:block; }
 .notif-empty { text-align:center; padding:60px 20px; color:var(--muted); }
+
+/* ── Coordinator Sidebar ── */
+.coord-sidebar {
+  position:fixed;
+  left:0;
+  top:0;
+  bottom:0;
+  width:260px;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  z-index:100;
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
+  transition:transform 0.3s cubic-bezier(.4,0,.2,1);
+  transform:translateX(-100%);
+}
+.coord-sidebar.open {
+  transform: translateX(0);
+}
+.coord-sidebar::before {
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:3px;
+  background:linear-gradient(90deg,#D4AF37,#c9a227,#D4AF37);
+}
+.coord-sidebar-logo {
+  padding:28px 20px 20px;
+  border-bottom:1px solid var(--border);
+  position:relative;
+}
+.coord-sidebar-logo::after {
+  content:"";
+  position:absolute;
+  bottom:0;
+  left:20px;
+  right:20px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(212,175,55,0.3),transparent);
+}
+.coord-sidebar-brand {
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.coord-sidebar-icon {
+  width:38px;
+  height:38px;
+  background:rgba(212,175,55,0.08);
+  border:1px solid rgba(212,175,55,0.25);
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.coord-sidebar-title {
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:800;
+  color:white;
+  letter-spacing:-0.3px;
+}
+.coord-sidebar-title span {
+  color:#D4AF37;
+}
+.coord-nav {
+  padding:16px 12px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.coord-nav-btn {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 16px;
+  background:transparent;
+  border:none;
+  border-left:3px solid transparent;
+  border-radius:6px;
+  color:var(--muted);
+  font-family:var(--font-display);
+  font-weight:600;
+  font-size:13px;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  text-align:left;
+  width:100%;
+}
+.coord-nav-btn:hover {
+  background:rgba(212,175,55,0.05);
+  color:var(--text);
+}
+.coord-nav-btn.active {
+  background:rgba(212,175,55,0.1);
+  color:#D4AF37;
+  border-left:3px solid #D4AF37;
+}
+.coord-nav-btn .nav-icon {
+  font-size:16px;
+  width:20px;
+  text-align:center;
+}
+
+/* ── Hamburger (mobile only) ── */
+.hamburger-btn {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:40px;
+  height:40px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  font-size:20px;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.hamburger-btn:hover {
+  border-color:var(--border-glow);
+  background:rgba(212,175,55,0.05);
+}
+
+/* ── Sidebar Overlay ── */
+.sidebar-overlay {
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  z-index:99;
+  transition:opacity 0.3s;
+}
+.sidebar-overlay.show {
+  display:block;
+}
+
+/* ── Responsive: Sidebar ── */
+@media (max-width:1024px) {
+  .coord-sidebar { width:220px; }
+}
+@media (max-width:768px) {
+  .coord-sidebar {
+    width: 260px;
+  }
+  .page-wrap {
+    padding:16px !important;
+  }
+}
+@media (max-width:420px) {
+  .coord-sidebar { width: calc(100vw - 60px); max-width: 260px; }
+  .coord-nav-btn { font-size:12px; padding:10px 14px; }
+  .coord-sidebar-title { font-size:14px; }
+  .page-wrap { padding:12px !important; }
+  .topbar { gap:8px; }
+  .topbar-btns { width:100%; }
+  .topbar-btns .refresh-btn,
+  .topbar-btns .logout-btn,
+  .topbar-btns .notif-bell-btn { width:100%; justify-content:center; }
+}
+
+.theme-switch{position:relative;display:inline-block;width:44px;height:24px;}
+.theme-switch input{opacity:0;width:0;height:0;}
+.theme-slider{position:absolute;inset:0;background:rgba(212,175,55,0.2);border:1px solid rgba(212,175,55,0.3);border-radius:99px;cursor:pointer;transition:background 0.3s;}
+.theme-slider::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:2px;background:#D4AF37;border-radius:50%;transition:transform 0.3s;}
+.theme-switch input:checked + .theme-slider{background:rgba(212,175,55,0.35);}
+.theme-switch input:checked + .theme-slider::before{transform:translateX(20px);}
+
+[data-theme="light"]{--bg:#f0f4fb;--surface:#ffffff;--surface2:#f4f6fb;--border:rgba(212,175,55,0.15);--border-glow:rgba(212,175,55,0.25);--text:#111827;--muted:#6b7280;--shadow-card:0 2px 16px rgba(0,0,0,0.08);}
+[data-theme="light"] body{background:#f0f4fb;color:#111827;}
+[data-theme="light"] .coord-sidebar{background:#ffffff;border-right-color:rgba(212,175,55,0.12);box-shadow:4px 0 16px rgba(0,0,0,0.06);}
+[data-theme="light"] .coord-nav-btn{color:#4b5563;}
+[data-theme="light"] .coord-nav-btn:hover{background:rgba(212,175,55,0.08);color:#111827;}
+[data-theme="light"] .coord-nav-btn.active{color:#92660a;background:rgba(212,175,55,0.12);}
+[data-theme="light"] .banner{background:linear-gradient(135deg,#e8f0fe 0%,#f0f4fb 50%,#fef9e7 100%);border-color:rgba(212,175,55,0.2);}
+[data-theme="light"] .banner h1{color:#111827;}
+[data-theme="light"] .stat-card,[data-theme="light"] .submission-card,[data-theme="light"] .notice-card,[data-theme="light"] .test-section{background:#ffffff;border-color:rgba(212,175,55,0.15);box-shadow:0 2px 16px rgba(0,0,0,0.06);}
+[data-theme="light"] input,[data-theme="light"] textarea,[data-theme="light"] select{background:#f8f9ff;color:#111827;border-color:rgba(212,175,55,0.20);}
+[data-theme="light"] .feedback-area{background:#f4f6fb;}
+[data-theme="light"] .feedback-area textarea{background:#ffffff;color:#111827;}
+[data-theme="light"] body::before{background-image:linear-gradient(rgba(0,0,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,0.04) 1px,transparent 1px);}
+[data-theme="light"] #notifPanel{background:#ffffff;border-left-color:rgba(212,175,55,0.15);}
+[data-theme="light"] .notif-card{background:#f8f9ff;border-color:rgba(212,175,55,0.12);}
+
+/* ════════════════════════════════
+   SECTION CARD GRID
+════════════════════════════════ */
+#coordCardGrid {
+  padding: 20px 0;
+}
+.section-cards-heading {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-family: var(--font-display);
+}
+.section-cards-sub {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+.section-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+.sec-card {
+  position: relative;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  cursor: pointer;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  overflow: hidden;
+}
+.sec-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  opacity: 0;
+  transition: opacity 0.22s;
+}
+.sec-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--border-glow);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(245,197,66,0.1);
+}
+.sec-card:hover::before { opacity: 1; }
+.sec-card-icon {
+  font-size: 32px;
+  margin-bottom: 14px;
+  line-height: 1;
+}
+.sec-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+}
+.sec-card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ════════════════════════════════
+   SECTION MODAL (FULL-SCREEN)
+════════════════════════════════ */
+.section-modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: var(--bg);
+  z-index: 600;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+.section-modal.open {
+  display: flex;
+  animation: slideInModal 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes slideInModal {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.section-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 28px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.section-modal-back {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  transition: all 0.2s;
+}
+.section-modal-back:hover {
+  background: rgba(255,255,255,0.12);
+  transform: none;
+}
+.section-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+  font-family: var(--font-display);
+}
+.section-modal-close {
+  background: rgba(244,63,94,0.1);
+  border: 1px solid rgba(244,63,94,0.25);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  transition: all 0.2s;
+}
+.section-modal-close:hover {
+  background: rgba(244,63,94,0.2);
+  transform: none;
+}
+.section-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 28px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.section-modal-body .tab-section {
+  display: none;
+}
+.section-modal-body .tab-section.active {
+  display: block;
+}
+
+/* Light mode overrides for section cards/modal */
+[data-theme="light"] .sec-card { background: #ffffff; border-color: rgba(212,175,55,0.15); box-shadow: 0 2px 16px rgba(0,0,0,0.06); }
+[data-theme="light"] .sec-card:hover { border-color: rgba(212,175,55,0.3); box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+[data-theme="light"] .section-modal { background: #f0f4fb; }
+[data-theme="light"] .section-modal-header { background: #ffffff; border-bottom-color: rgba(212,175,55,0.12); }
+[data-theme="light"] .section-modal-back { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #111827; }
+[data-theme="light"] .section-modal-close { background: rgba(244,63,94,0.08); }
+
+@media (max-width: 768px) {
+  .section-card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+  .sec-card { padding: 20px 18px; }
+  .sec-card-icon { font-size: 26px; margin-bottom: 10px; }
+  .sec-card-title { font-size: 14px; }
+  .section-modal-header { padding: 14px 18px; }
+  .section-modal-body { padding: 18px; }
+  .section-modal-title { font-size: 16px; }
+}
 </style>
 </head>
 <body>
+
+<!-- Coordinator Sidebar -->
+<nav class="coord-sidebar">
+  <div class="coord-sidebar-logo">
+    <div class="coord-sidebar-brand">
+      <div class="coord-sidebar-icon">
+        <svg width="20" height="16" viewBox="0 0 22 18" fill="none">
+          <path d="M2 7C2 5.34 3.34 4 5 4C6.66 4 8 5.34 8 7C8 8.66 6.66 10 5 10C3.34 10 2 8.66 2 7Z" stroke="#D4AF37" stroke-width="1.6" fill="none"/>
+          <path d="M8 7C8 5.34 9.34 4 11 4C12.66 4 14 5.34 14 7C14 8.66 12.66 10 11 10C9.34 10 8 8.66 8 7Z" stroke="#D4AF37" stroke-width="1.6" fill="none"/>
+          <path d="M3 17C3 14 5 12 6 12L7 15L6 17Z" fill="#D4AF37" opacity="0.75"/>
+          <path d="M19 17C19 14 17 12 16 12L15 15L16 17Z" fill="#D4AF37" opacity="0.75"/>
+        </svg>
+      </div>
+      <div class="coord-sidebar-title">TEN <span>Coordinator</span></div>
+    </div>
+  </div>
+  <div class="coord-nav">
+    <button class="coord-nav-btn active" data-tab="submissions" onclick="openCoordModal('submissions')"><span class="nav-icon">📂</span> Submissions</button>
+    <button class="coord-nav-btn" data-tab="attendance" onclick="openCoordModal('attendance')"><span class="nav-icon">🪪</span> Attendance</button>
+    <button class="coord-nav-btn" data-tab="overview" onclick="openCoordModal('overview')"><span class="nav-icon">👥</span> Student Overview</button>
+    <button class="coord-nav-btn" data-tab="notice" onclick="openCoordModal('notice')"><span class="nav-icon">📢</span> Notice Board</button>
+    <button class="coord-nav-btn" data-tab="test" onclick="openCoordModal('test')"><span class="nav-icon">📝</span> Test Manager</button>
+    <button class="coord-nav-btn" data-tab="coding" onclick="openCoordModal('coding')"><span class="nav-icon">💻</span> Coding Problems</button>
+    <button class="coord-nav-btn" data-tab="tasks" onclick="openCoordModal('tasks')"><span class="nav-icon">📋</span> Task Manager</button>
+    <button class="coord-nav-btn" data-tab="leaderboard" onclick="openCoordModal('leaderboard')"><span class="nav-icon">🏆</span> Leaderboard</button>
+    <button class="coord-nav-btn" data-tab="lbperf" onclick="openCoordModal('lbperf')"><span class="nav-icon">⭐</span> Performance Ranking</button>
+  </div>
+  <div style="padding:12px 16px;border-top:1px solid rgba(212,175,55,0.08);">
+    <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">THEME</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:14px;">🌙</span>
+      <label class="theme-switch"><input type="checkbox" id="themeToggle" onchange="toggleTheme()"><span class="theme-slider"></span></label>
+      <span style="font-size:14px;">☀️</span>
+    </div>
+  </div>
+</nav>
+
 <div class="page-wrap">
 
   <!-- Topbar -->
   <div class="topbar">
+    <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
     <div class="logo-mark">
       <div class="logo-icon" style="background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);">
         <svg width="22" height="18" viewBox="0 0 22 18" fill="none">
@@ -382,6 +786,11 @@ body::before {
       </button>
       <button class="refresh-btn" onclick="loadSubmissions()">
         <span>↻</span> Refresh Data
+      </button>
+      <button onclick="openCoordProfileModal()" title="My Profile"
+        style="height:42px;padding:0 16px;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:10px;color:#D4AF37;font-size:15px;cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;transition:all 0.2s;"
+        onmouseover="this.style.background='rgba(212,175,55,0.22)'" onmouseout="this.style.background='rgba(212,175,55,0.12)'">
+        👤 Profile
       </button>
       <button class="logout-btn" onclick="doLogout()">🚪 Logout</button>
     </div>
@@ -421,18 +830,67 @@ body::before {
     </div>
   </div>
 
-  <!-- Tab Nav -->
-  <div class="tab-nav">
-    <button class="tab-btn active" onclick="switchTab('submissions')">📂 Submissions</button>
-    <button class="tab-btn" onclick="switchTab('attendance')">🪪 Attendance</button>
-    <button class="tab-btn" onclick="switchTab('overview')">👥 Student Overview</button>
-    <button class="tab-btn" onclick="switchTab('notice')">📢 Notice Board</button>
-    <button class="tab-btn" onclick="switchTab('test')">📝 Test Manager</button>
-    <button class="tab-btn" onclick="switchTab('coding')">💻 Coding Problems</button>
-    <button class="tab-btn" onclick="switchTab('leaderboard')">🏆 Leaderboard</button>
-    <button class="tab-btn" onclick="switchTab('lbperf')">⭐ Performance Ranking</button>
-    <button class="tab-btn" onclick="switchTab('tasks')">📋 Task Manager</button>
+  <!-- ══════ SECTION CARD GRID ══════ -->
+  <div id="coordCardGrid">
+    <h1 class="section-cards-heading">Coordinator Panel</h1>
+    <p class="section-cards-sub">Select a section to manage</p>
+    <div class="section-card-grid">
+      <div class="sec-card" onclick="openCoordModal('submissions')">
+        <div class="sec-card-icon">📂</div>
+        <div class="sec-card-title">Submissions</div>
+        <div class="sec-card-desc">Review and manage student submissions</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('attendance')">
+        <div class="sec-card-icon">🪪</div>
+        <div class="sec-card-title">Attendance</div>
+        <div class="sec-card-desc">Mark and manage class attendance</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('overview')">
+        <div class="sec-card-icon">👥</div>
+        <div class="sec-card-title">Student Overview</div>
+        <div class="sec-card-desc">View student progress and approve certificates</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('notice')">
+        <div class="sec-card-icon">📢</div>
+        <div class="sec-card-title">Notice Board</div>
+        <div class="sec-card-desc">Post announcements for students</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('test')">
+        <div class="sec-card-icon">📝</div>
+        <div class="sec-card-title">Test Manager</div>
+        <div class="sec-card-desc">Create and manage MCQ tests</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('coding')">
+        <div class="sec-card-icon">💻</div>
+        <div class="sec-card-title">Coding Problems</div>
+        <div class="sec-card-desc">Manage coding challenges for students</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('leaderboard')">
+        <div class="sec-card-icon">🏆</div>
+        <div class="sec-card-title">Leaderboard</div>
+        <div class="sec-card-desc">View test leaderboard rankings</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('lbperf')">
+        <div class="sec-card-icon">⭐</div>
+        <div class="sec-card-title">Performance Ranking</div>
+        <div class="sec-card-desc">Overall performance analytics</div>
+      </div>
+      <div class="sec-card" onclick="openCoordModal('tasks')">
+        <div class="sec-card-icon">📋</div>
+        <div class="sec-card-title">Task Manager</div>
+        <div class="sec-card-desc">Assign tasks and upload files for students</div>
+      </div>
+    </div>
   </div>
+
+  <!-- ══════ SECTION MODAL ══════ -->
+  <div id="coordModal" class="section-modal">
+    <div class="section-modal-header">
+      <button class="section-modal-back" onclick="closeCoordModal()">← Back</button>
+      <div class="section-modal-title" id="coordModalTitle">Section</div>
+      <button class="section-modal-close" onclick="closeCoordModal()">✕ Close</button>
+    </div>
+    <div class="section-modal-body">
 
   <!-- TAB: Submissions -->
   <div class="tab-section active" id="tab-submissions">
@@ -588,11 +1046,76 @@ body::before {
 
   <!-- TAB: Coding Problems (F5) -->
   <div class="tab-section" id="tab-coding">
+    <!-- PDF Upload for Coding Problems -->
+    <div class="test-section" style="margin-bottom:18px;">
+      <div class="section-header">
+        <div class="section-icon">📄</div>
+        <div class="section-title">Upload Coding Problems via PDF</div>
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+        Upload a PDF with coding problems in the standard format.
+        <a href="#" onclick="toggleCodingPdfGuide(event)" style="color:var(--accent);">View format guide ▾</a>
+      </div>
+      <div id="codingPdfGuide" style="display:none;background:#0d1117;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#cdd9ec;font-family:Consolas,monospace;white-space:pre-wrap;line-height:1.6;">PROBLEM 1.
+Title: Two Sum
+Difficulty: Easy
+Description: Given an array of integers and a target, return indices of two numbers that add up to target.
+Input Format: First line space-separated integers. Second line integer target.
+Output Format: Two space-separated 0-based indices.
+Sample Input:
+2 7 11 15
+9
+Sample Output:
+0 1
+Test Cases:
+TC1: Input: 2 7 11 15 | 9   Output: 0 1
+TC2: Input: 3 2 4 | 6   Output: 1 2
+TC3 [Hidden]: Input: 3 3 | 6   Output: 0 1</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <input id="codingPdfFileInput" type="file" accept=".pdf" style="background:rgba(255,255,255,0.04);border:1px solid rgba(245,197,66,0.18);border-radius:10px;padding:10px 14px;color:#cdd9ec;font-family:inherit;font-size:13px;flex:1;min-width:240px;">
+        <button class="btn btn-primary" onclick="parseCodingPdf()">📤 Parse PDF</button>
+        <span id="codingPdfStatus" style="font-size:13px;"></span>
+      </div>
+      <div id="codingPdfPreview" style="display:none;margin-top:14px;"></div>
+      <div id="codingPdfImportRow" style="display:none;margin-top:10px;">
+        <button class="btn btn-approve" onclick="importCodingProblems()">✅ Import All Problems</button>
+        <span style="font-size:12px;color:var(--muted);margin-left:8px;">Problems will be saved to the portal for students.</span>
+      </div>
+    </div>
+
     <div class="test-section" style="margin-bottom:18px;">
       <div class="section-header">
         <div class="section-icon">💻</div>
         <div class="section-title">Add Coding Problem</div>
       </div>
+
+      <details style="margin-bottom:16px;background:rgba(13,21,37,0.6);border:1px solid var(--border);border-radius:10px;padding:0;">
+        <summary style="padding:12px 16px;cursor:pointer;color:var(--amber);font-size:13px;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px;">
+          📋 View Format Guide
+        </summary>
+        <div style="padding:4px 16px 14px;color:#9aa4bf;font-size:12px;line-height:1.7;font-family:monospace;white-space:pre-wrap;">Title: Reverse a String
+Difficulty: Easy
+Description: Write a function that reverses a given string.
+Input Format: A single line containing a string S
+Output Format: A single line with the reversed string
+Sample Input: hello
+Sample Output: olleh
+Test Cases:
+- input: hello | output: olleh
+- input: world | output: dlrow | hidden: true</div>
+      </details>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div class="form-label" style="margin:0;">AI-Assisted Quick Entry</div>
+        </div>
+        <textarea id="aiQuickEntry" rows="8" placeholder="Paste your problem text here using the format above, then click Auto-Fill..." style="width:100%;padding:12px 14px;background:rgba(13,21,37,0.8);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',Consolas,monospace;font-size:13px;line-height:1.6;resize:vertical;"></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px;align-items:center;">
+          <button class="btn btn-amber" onclick="autoFillCodingForm()">🪄 Auto-Fill Form</button>
+          <div id="autoFillBanner" style="display:none;padding:6px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:8px;color:#10b981;font-size:13px;font-weight:600;">✅ Fields auto-filled — please review before saving.</div>
+        </div>
+      </div>
+
       <div class="form-grid">
         <div class="form-group">
           <div class="form-label">Problem Title</div>
@@ -656,6 +1179,18 @@ body::before {
         <div class="section-title">Student Submissions</div>
       </div>
       <div id="codingSubmissionsContainer"><p style="color:var(--muted)">Loading…</p></div>
+    </div>
+    <!-- Proctoring Violations Panel -->
+    <div class="test-section" style="margin-top:18px;">
+      <div class="section-header">
+        <div class="section-icon">🎥</div>
+        <div class="section-title">Proctoring Violations</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <p style="font-size:13px;color:var(--muted);">Tab-switch and camera violations logged during coding tests.</p>
+        <button class="btn btn-amber" onclick="loadProctoringViolations()" style="font-size:12px;padding:6px 14px;">🔄 Refresh</button>
+      </div>
+      <div id="procViolationsList" style="font-size:13px;color:#9aa4bf;">Click Refresh to load violations.</div>
     </div>
   </div>
 
@@ -722,6 +1257,9 @@ body::before {
     </div>
   </div>
 
+    </div><!-- /section-modal-body -->
+  </div><!-- /coordModal -->
+
 </div><!-- /page-wrap -->
 
 <div style="text-align:center;padding:20px 0 10px;font-size:12px;color:var(--muted);letter-spacing:1px;">
@@ -729,6 +1267,10 @@ body::before {
 </div>
 
 <script>
+// ── Theme System ──
+function applyTheme(theme){document.documentElement.setAttribute('data-theme',theme);var t=document.getElementById('themeToggle');if(t)t.checked=(theme==='light');}
+function toggleTheme(){var c=localStorage.getItem('ten-theme')||'dark';var n=c==='dark'?'light':'dark';localStorage.setItem('ten-theme',n);applyTheme(n);}
+(function(){applyTheme(localStorage.getItem('ten-theme')||'dark');})();
 
 const coordinatorDomain = JSON.parse(sessionStorage.getItem("coordinatorDomain"));
 const isLoggedIn = sessionStorage.getItem("coordinatorLoggedIn");
@@ -803,9 +1345,11 @@ loadNoticeValues();
 // ── Tab switching ──
 function switchTab(name){
   document.querySelectorAll(".tab-section").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".coord-nav-btn").forEach(b=>b.classList.remove("active"));
   document.getElementById("tab-"+name).classList.add("active");
-  event.target.classList.add("active");
+  // Update sidebar nav active state
+  const clickedNav = document.querySelector('.coord-nav-btn[data-tab="'+name+'"]');
+  if(clickedNav) clickedNav.classList.add("active");
   if(name==="leaderboard"){ loadLeaderboard(); }
   if(name==="coding"){ loadCodingQuestionsCoord(); loadCodingSubmissionsCoord(); }
   if(name==="lbperf"){
@@ -821,10 +1365,85 @@ function switchTab(name){
 
 // ── Logout ──
 function doLogout(){
-  sessionStorage.removeItem("coordinatorLoggedIn");
-  sessionStorage.removeItem("coordinatorDomain");
-  window.location.href = "coordinator-login.html";
+  Swal.fire({
+    title: 'Logout?',
+    text: 'Are you sure you want to logout from Coordinator Portal?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Logout',
+    cancelButtonText: 'Cancel',
+    background: '#090e1a',
+    color: '#e2eaf7',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#3b82f6',
+    reverseButtons: true
+  }).then(result => {
+    if (result.isConfirmed) {
+      sessionStorage.removeItem("coordinatorLoggedIn");
+      sessionStorage.removeItem("coordinatorDomain");
+      sessionStorage.removeItem("coordinatorUsername");
+      window.location.replace("coordinator-login.html");
+    }
+  });
 }
+
+// ── Back Button Trap for Coordinator ──
+history.pushState({ page: 'coordinator-dashboard' }, '', window.location.href);
+
+window.addEventListener('popstate', function (e) {
+  // Re-arm back button
+  history.pushState({ page: 'coordinator-dashboard' }, '', window.location.href);
+
+  // 1. If chat widget is open, close it first
+  var chatWin = document.querySelector('.tc-win.open');
+  if (chatWin) {
+    chatWin.classList.remove('open');
+    return;
+  }
+
+  // 2. If section modal is open, close it
+  var coordModal = document.getElementById('coordModal');
+  if (coordModal && coordModal.classList.contains('open')) {
+    closeCoordModal();
+    return;
+  }
+
+  // 3. If notification panel is open, close it
+  var notifPanel = document.getElementById('notifPanel');
+  if (notifPanel && notifPanel.classList.contains('open')) {
+    closeCoordNotif();
+    return;
+  }
+
+  // 4. If sidebar is open, close it
+  var sidebar = document.querySelector('.coord-sidebar.open');
+  if (sidebar) {
+    closeSidebar();
+    return;
+  }
+
+  // 5. Nothing is open — show logout confirmation
+  Swal.fire({
+    title: 'Exit Portal?',
+    text: 'Do you want to logout from Coordinator Portal?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, Logout',
+    cancelButtonText: 'No, Stay',
+    background: '#090e1a',
+    color: '#e2eaf7',
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#3b82f6',
+    reverseButtons: true
+  }).then(function(result) {
+    if (result.isConfirmed) {
+      sessionStorage.removeItem("coordinatorLoggedIn");
+      sessionStorage.removeItem("coordinatorDomain");
+      sessionStorage.removeItem("coordinatorUsername");
+      window.location.replace("coordinator-login.html");
+    }
+  });
+});
 
 // ── Helpers ──
 function getStatusClass(status){
@@ -1603,6 +2222,111 @@ async function loadCodingQuestionsCoord(){
     ).join("");
   }catch(e){ c.innerHTML = '<p style="color:#f43f5e">Failed to load coding problems.</p>'; }
 }
+function autoFillCodingForm(){
+  const raw = document.getElementById("aiQuickEntry").value.trim();
+  if(!raw){
+    Swal.fire({icon:"warning",title:"Paste problem text first",text:"The quick entry textarea is empty.",background:"#090e1a",color:"#e2eaf7"});
+    return;
+  }
+
+  const lines = raw.split("\n");
+  let title="", difficulty="Easy", description="", inputFormat="", outputFormat="", sampleInput="", sampleOutput="";
+  let testCases = [];
+  let currentSection = "";
+  let descLines = [];
+
+  for(let i=0; i<lines.length; i++){
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if(/^title\s*[:=]/i.test(trimmed)){
+      title = trimmed.replace(/^title\s*[:=]\s*/i, "").trim();
+      currentSection = "";
+      continue;
+    }
+    if(/^difficulty\s*[:=]/i.test(trimmed)){
+      const val = trimmed.replace(/^difficulty\s*[:=]\s*/i, "").trim();
+      if(/easy/i.test(val)) difficulty = "Easy";
+      else if(/medium/i.test(val)) difficulty = "Medium";
+      else if(/hard/i.test(val)) difficulty = "Hard";
+      currentSection = "";
+      continue;
+    }
+    if(/^description\s*[:=]/i.test(trimmed)){
+      description = trimmed.replace(/^description\s*[:=]\s*/i, "").trim();
+      currentSection = "description";
+      continue;
+    }
+    if(/^input\s*format\s*[:=]/i.test(trimmed)){
+      inputFormat = trimmed.replace(/^input\s*format\s*[:=]\s*/i, "").trim();
+      currentSection = "inputFormat";
+      continue;
+    }
+    if(/^output\s*format\s*[:=]/i.test(trimmed)){
+      outputFormat = trimmed.replace(/^output\s*format\s*[:=]\s*/i, "").trim();
+      currentSection = "outputFormat";
+      continue;
+    }
+    if(/^sample\s*input\s*[:=]/i.test(trimmed)){
+      sampleInput = trimmed.replace(/^sample\s*input\s*[:=]\s*/i, "").trim();
+      currentSection = "sampleInput";
+      continue;
+    }
+    if(/^sample\s*output\s*[:=]/i.test(trimmed)){
+      sampleOutput = trimmed.replace(/^sample\s*output\s*[:=]\s*/i, "").trim();
+      currentSection = "sampleOutput";
+      continue;
+    }
+    if(/^test\s*cases?\s*[:=]/i.test(trimmed)){
+      currentSection = "testCases";
+      continue;
+    }
+
+    if(currentSection === "description" && trimmed) descLines.push(trimmed);
+    else if(currentSection === "inputFormat" && trimmed) inputFormat += (inputFormat?" ":"") + trimmed;
+    else if(currentSection === "outputFormat" && trimmed) outputFormat += (outputFormat?" ":"") + trimmed;
+    else if(currentSection === "sampleInput") sampleInput += (sampleInput?"\n":"") + line;
+    else if(currentSection === "sampleOutput") sampleOutput += (sampleOutput?"\n":"") + line;
+    else if(currentSection === "testCases" && trimmed){
+      const tcMatch = trimmed.match(/^[-*]\s*input\s*[:=]\s*(.*?)\s*\|\s*output\s*[:=]\s*(.*?)(?:\s*\|\s*hidden\s*[:=]\s*(true|false))?\s*$/i);
+      if(tcMatch){
+        testCases.push({ input: tcMatch[1].trim(), expectedOutput: tcMatch[2].trim(), isHidden: tcMatch[3] === "true" });
+      }
+    }
+  }
+
+  if(!title && lines.length > 0){
+    title = lines.find(l => l.trim().length > 0) || "";
+    title = title.trim();
+  }
+
+  if(descLines.length) description = (description ? description + "\n" : "") + descLines.join("\n");
+
+  if(title) document.getElementById("cqTitle").value = title;
+  document.getElementById("cqDifficulty").value = difficulty;
+  if(description) document.getElementById("cqDescription").value = description;
+  if(inputFormat) document.getElementById("cqInputFormat").value = inputFormat;
+  if(outputFormat) document.getElementById("cqOutputFormat").value = outputFormat;
+  if(sampleInput) document.getElementById("cqSampleInput").value = sampleInput.trim();
+  if(sampleOutput) document.getElementById("cqSampleOutput").value = sampleOutput.trim();
+
+  if(testCases.length){
+    document.getElementById("cqTestCases").innerHTML = "";
+    testCases.forEach(tc => {
+      addCqTestCase();
+      const rows = document.querySelectorAll(".cq-tc-row");
+      const lastRow = rows[rows.length - 1];
+      if(lastRow){
+        lastRow.querySelector(".cq-tc-input").value = tc.input;
+        lastRow.querySelector(".cq-tc-output").value = tc.expectedOutput;
+        if(tc.isHidden) lastRow.querySelector(".cq-tc-hidden").checked = true;
+      }
+    });
+  }
+
+  document.getElementById("autoFillBanner").style.display = "inline-block";
+  setTimeout(() => { document.getElementById("autoFillBanner").style.display = "none"; }, 6000);
+}
 async function saveCodingQuestion(){
   const title = document.getElementById("cqTitle").value.trim();
   const description = document.getElementById("cqDescription").value.trim();
@@ -2119,6 +2843,107 @@ function renderSubmissions(submissions){
   }).join("");
 }
 
+// ── Coding PDF Upload ──
+function toggleCodingPdfGuide(e) {
+    e.preventDefault();
+    const g = document.getElementById('codingPdfGuide');
+    g.style.display = g.style.display === 'none' ? 'block' : 'none';
+}
+
+let _parsedCodingProblems = [];
+
+async function parseCodingPdf() {
+    const fi = document.getElementById('codingPdfFileInput');
+    const status = document.getElementById('codingPdfStatus');
+    const preview = document.getElementById('codingPdfPreview');
+    const importRow = document.getElementById('codingPdfImportRow');
+    _parsedCodingProblems = [];
+    preview.style.display = 'none';
+    importRow.style.display = 'none';
+    if (!fi.files || !fi.files[0]) {
+        status.innerHTML = '<span style="color:#f43f5e;">Please select a PDF file.</span>';
+        return;
+    }
+    status.innerHTML = '<span style="color:var(--muted);">⏳ Parsing PDF…</span>';
+    const fd = new FormData();
+    fd.append('pdfFile', fi.files[0]);
+    try {
+        const r = await fetch('/coordinator/coding/upload-pdf', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.success || !d.problems || !d.problems.length) {
+            status.innerHTML = '<span style="color:#f43f5e;">❌ ' + _esc(d.message || 'No problems found') + '</span>';
+            return;
+        }
+        _parsedCodingProblems = d.problems;
+        status.innerHTML = '<span style="color:#10b981;">✅ ' + d.problems.length + ' problem(s) extracted</span>';
+        preview.style.display = 'block';
+        preview.innerHTML = _parsedCodingProblems.map(function(p, i) {
+            return '<div style="background:#0d1117;border:1px solid rgba(245,197,66,.15);border-radius:10px;padding:12px;margin-bottom:8px;">'
+            + '<div style="font-weight:700;color:#e2eaf7;margin-bottom:4px;">' + (i+1) + '. ' + _esc(p.title) + '</div>'
+            + '<div style="font-size:12px;color:#9aa4bf;">' + _esc((p.description||'').slice(0,140)) + '</div>'
+            + '<div style="margin-top:6px;font-size:12px;"><span style="color:#f5c542;">Difficulty: ' + _esc(p.difficulty||'Easy') + '</span> · <span style="color:#10b981;">Test Cases: ' + (p.testCases||[]).length + '</span></div>'
+            + '</div>';
+        }).join('');
+        importRow.style.display = 'block';
+    } catch(e) {
+        status.innerHTML = '<span style="color:#f43f5e;">❌ Error: ' + (e.message||e) + '</span>';
+    }
+}
+
+async function importCodingProblems() {
+    if (!_parsedCodingProblems.length) return;
+    let imported = 0, failed = 0;
+    for (const p of _parsedCodingProblems) {
+        try {
+            const r = await fetch('/coordinator/coding-questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...p, domain: domainStr })
+            });
+            const d = await r.json();
+            if (d.success) imported++; else failed++;
+        } catch(_) { failed++; }
+    }
+    Swal.fire({
+        icon: imported > 0 ? 'success' : 'error',
+        title: imported + ' problem(s) imported' + (failed > 0 ? ', ' + failed + ' failed' : ''),
+        background: '#090e1a', color: '#e2eaf7'
+    });
+    if (imported > 0) {
+        _parsedCodingProblems = [];
+        document.getElementById('codingPdfPreview').style.display = 'none';
+        document.getElementById('codingPdfImportRow').style.display = 'none';
+        document.getElementById('codingPdfStatus').innerHTML = '';
+        document.getElementById('codingPdfFileInput').value = '';
+        loadCodingQuestionsCoord();
+    }
+}
+
+// ── Proctoring Violations viewer ──
+async function loadProctoringViolations() {
+    var container = document.getElementById('procViolationsList');
+    if (!container) return;
+    container.textContent = 'Loading…';
+    try {
+        var r = await fetch('/coordinator/proctoring/violations/' + encodeURIComponent(domainStr));
+        var d = await r.json();
+        if (!d.success || !d.violations || !d.violations.length) {
+            container.textContent = 'No violations recorded yet.';
+            return;
+        }
+        container.innerHTML = d.violations.map(function(v) {
+            return '<div style="background:rgba(244,63,94,0.07);border:1px solid rgba(244,63,94,0.2);border-radius:8px;padding:10px 14px;margin-bottom:8px;">'
+                + '<b style="color:#f0eee8;">' + _esc(v.studentName || v.employeeId) + '</b>'
+                + '<span style="color:#f43f5e;margin-left:10px;">Violation #' + v.violationNumber + '</span>'
+                + '<span style="color:#8aa4c8;margin-left:10px;font-size:12px;">' + new Date(v.timestamp).toLocaleString() + '</span>'
+                + '<div style="margin-top:4px;color:#9aa4bf;">' + _esc(v.reason) + '</div>'
+                + '</div>';
+        }).join('');
+    } catch(e) {
+        container.textContent = 'Failed to load violations.';
+    }
+}
+
 </script>
 
 <!-- ===== Real-time chat (Domain + General + Staff) ===== -->
@@ -2149,5 +2974,121 @@ function renderSubmissions(submissions){
 })();
 </script>
 
+<script>
+// ── Sidebar toggle (mobile) ──
+function toggleSidebar() {
+  document.querySelector('.coord-sidebar').classList.toggle('open');
+  document.querySelector('.sidebar-overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.querySelector('.coord-sidebar').classList.remove('open');
+  document.querySelector('.sidebar-overlay').classList.remove('show');
+}
+</script>
+
+<script>
+// ── Section Modal System ──
+var coordSectionTitles = {
+  'submissions': 'Submissions',
+  'attendance': 'Attendance',
+  'overview': 'Student Overview',
+  'notice': 'Notice Board',
+  'test': 'Test Manager',
+  'coding': 'Coding Problems',
+  'leaderboard': 'Leaderboard',
+  'lbperf': 'Performance Ranking',
+  'tasks': 'Task Manager'
+};
+
+function openCoordModal(tabName) {
+  switchTab(tabName);
+  var modal = document.getElementById('coordModal');
+  var titleEl = document.getElementById('coordModalTitle');
+  if (!modal) return;
+  titleEl.textContent = coordSectionTitles[tabName] || 'Section';
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Hide sidebar when modal opens
+  document.querySelector('.coord-sidebar').classList.remove('open');
+  document.querySelector('.sidebar-overlay').classList.remove('show');
+}
+
+function closeCoordModal() {
+  var modal = document.getElementById('coordModal');
+  if (modal) modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    // Don't close coord modal if notification panel is open
+    var notifPanel = document.getElementById('notifPanel');
+    if (notifPanel && notifPanel.classList.contains('open')) return;
+    closeCoordModal();
+  }
+});
+</script>
+
+<div class="sidebar-overlay" onclick="closeSidebar()"></div>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js')
+        .then(function (reg) { console.log('SW registered'); })
+        .catch(function (err) { console.log('SW error:', err); });
+    });
+  }
+</script>
+
+<!-- ══════ PROFILE MODAL (Coordinator) ══════ -->
+<div id="coordProfileModal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;">
+  <div onclick="closeCoordProfileModal()" style="position:absolute;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);"></div>
+  <div style="position:relative;background:#0c1220;border:1px solid rgba(212,175,55,0.3);border-radius:20px;padding:32px;min-width:320px;max-width:440px;width:90%;box-shadow:0 24px 60px rgba(0,0,0,0.7);z-index:1;">
+    <button onclick="closeCoordProfileModal()" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.08);border:none;color:#fff;font-size:18px;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div style="text-align:center;margin-bottom:24px;">
+      <div id="cpAvatar" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#D4AF37,#b8932a);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#0a0600;margin:0 auto 14px;border:3px solid rgba(212,175,55,0.4);">C</div>
+      <div id="cpName" style="font-size:22px;font-weight:800;color:#f0eee8;"></div>
+      <div id="cpRole" style="font-size:13px;color:#D4AF37;font-weight:600;margin-top:8px;background:rgba(212,175,55,0.1);padding:4px 14px;border-radius:20px;display:inline-block;">Coordinator</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Username</div>
+        <div id="cpUsername" style="font-size:14px;font-weight:700;color:#f0eee8;font-family:monospace;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Domain</div>
+        <div id="cpDomain" style="font-size:14px;font-weight:700;color:#D4AF37;"></div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;grid-column:1/-1;">
+        <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Email</div>
+        <div id="cpEmail" style="font-size:13px;font-weight:600;color:#f0eee8;word-break:break-all;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function openCoordProfileModal() {
+  var username = sessionStorage.getItem('coordinatorUsername') || '—';
+  var domainRaw = sessionStorage.getItem('coordinatorDomain');
+  var domain = '—';
+  try { var d = JSON.parse(domainRaw); domain = Array.isArray(d) ? d.join(', ') : (d || '—'); } catch(e) { domain = domainRaw || '—'; }
+  var coordData = JSON.parse(sessionStorage.getItem('coordinatorData') || '{}');
+  var name = coordData.name || username;
+  document.getElementById('cpAvatar').textContent = name[0] ? name[0].toUpperCase() : 'C';
+  document.getElementById('cpName').textContent = name;
+  document.getElementById('cpUsername').textContent = username;
+  document.getElementById('cpDomain').textContent = domain;
+  document.getElementById('cpEmail').textContent = coordData.email || '—';
+  document.getElementById('coordProfileModal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeCoordProfileModal() {
+  document.getElementById('coordProfileModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('coordProfileModal').style.display === 'flex') closeCoordProfileModal();
+});
+</script>
 </body>
 </html>
