@@ -1087,16 +1087,42 @@ try{
     const { employeeId, password } = req.body;
     const student = await Student.findOne({ employeeId, password });
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
+
+    // Internship end date (used by student dashboard profile modal)
+    // tenure values in this app are "1 Month" | "3 Months" | "6 Months".
+    let computedEndDate = null;
+    if(student.joiningDate){
+        const jd = new Date(student.joiningDate);
+        if(!isNaN(jd.getTime())){
+            const t = String(student.tenure || "").toLowerCase();
+            const days = t.includes("6") ? 180 : t.includes("3") ? 90 : 30;
+            const end = new Date(jd);
+            end.setDate(end.getDate() + days);
+            computedEndDate = end;
+        }
+    }
+
     res.json({
         success:true,
         student:{
             name: student.firstName + " " + student.lastName,
             firstName: student.firstName, lastName: student.lastName,
             email: student.email || "",
+            // Student schema in this project uses `whatsapp` for phone.
+            phone: student.whatsapp || "",
+            college: student.college || student.collegeName || "",
+
             employeeId: student.employeeId,
             domain: student.domain,
             tenure: student.tenure,
+
+            // Dashboard uses `joiningDate` for the Joined field
             joiningDate: student.joiningDate,
+
+            // Dashboard uses `internshipEnd` / `endDate` for the Internship End field
+            internshipEnd: computedEndDate ? computedEndDate.toISOString() : null,
+            endDate: computedEndDate ? computedEndDate.toISOString() : null,
+
             linkedDomains: student.linkedDomains || []
         }
     });
