@@ -414,8 +414,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         <input class="search-input" id="studentSearch" placeholder="🔍  Search by name, ID, domain..." oninput="filterStudents()">
       </div>
       <div style="overflow-x:auto;"><table>
-        <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>Email</th><th>WhatsApp</th><th>Tenure</th><th>Joined</th><th>Actions</th></tr></thead>
-        <tbody id="studentsTable"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>College Name</th><th>Email</th><th>WhatsApp</th><th>Tenure</th><th>Joined</th><th>Actions</th></tr></thead>
+        <tbody id="studentsTable"><tr><td colspan="10"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
       </table></div>
     </div>
   </div>
@@ -434,8 +434,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <button class="tracker-filter-btn f-active" onclick="filterTracker('active',this)">🔵 Active</button>
     </div>
     <div class="table-wrap"><div style="overflow-x:auto;"><table>
-      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>Tenure</th><th>End Date</th><th>Status</th><th>Days Left/Since</th><th>Actions</th></tr></thead>
-      <tbody id="trackerTable"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>College Name</th><th>Tenure</th><th>End Date</th><th>Status</th><th>Days Left/Since</th><th>Actions</th></tr></thead>
+      <tbody id="trackerTable"><tr><td colspan="10"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
     </table></div></div>
   </div>
 
@@ -447,8 +447,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         <input class="search-input" id="subSearch" placeholder="🔍  Search submissions..." oninput="filterSubmissions()">
       </div>
       <div style="overflow-x:auto;"><table>
-        <thead><tr><th>#</th><th>Employee ID</th><th>Domain</th><th>Task</th><th>Status</th><th>Performance</th><th>Attendance</th><th>Submitted</th></tr></thead>
-        <tbody id="submissionsTable"><tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        <thead><tr><th>#</th><th>Employee ID</th><th>Domain</th><th>College Name</th><th>Task</th><th>Status</th><th>Performance</th><th>Attendance</th><th>Submitted</th></tr></thead>
+        <tbody id="submissionsTable"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
       </table></div>
     </div>
   </div>
@@ -621,10 +621,10 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     <div class="table-wrap">
       <div style="overflow-x:auto;"><table>
         <thead><tr>
-          <th>#</th><th>Student</th><th>Employee ID</th><th>Domain</th>
+          <th>#</th><th>Student</th><th>Employee ID</th><th>Domain</th><th>College Name</th>
           <th>Self (Present)</th><th>Class (Present)</th><th>Combined %</th><th>Eligibility</th>
         </tr></thead>
-        <tbody id="amTable"><tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        <tbody id="amTable"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
       </table></div>
     </div>
   </div>
@@ -727,7 +727,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <div><span class="sp-field-label">Employee ID</span><input class="sp-input" type="text" id="sp-employeeId" readonly></div>
       <div><span class="sp-field-label">Tenure</span><input class="sp-input" type="text" id="sp-tenure" placeholder="e.g. 3 Months"></div>
     </div>
-    <span class="sp-field-label">College</span><input class="sp-input" type="text" id="sp-college" placeholder="College/Institution">
+    <span class="sp-field-label">College</span><input class="sp-input" type="text" id="sp-college" placeholder="Not Provided">
     <span class="sp-field-label">Joining Date</span><input class="sp-input" type="text" id="sp-joining" readonly>
     
     <!-- Quick Stats Section -->
@@ -787,6 +787,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     <div class="modal-label">Email</div><input class="modal-input-hr" type="email" id="es-email">
     <div class="modal-label">WhatsApp</div><input class="modal-input-hr" type="text" id="es-whatsapp">
     <div class="modal-label">Domain</div><input class="modal-input-hr" type="text" id="es-domain">
+    <div class="modal-label">College Name</div><input class="modal-input-hr" type="text" id="es-college" placeholder="Not Provided">
     <div class="two-col-hr">
       <div><div class="modal-label">Employee ID (read-only)</div><input class="modal-input-hr" type="text" id="es-employeeId" readonly></div>
       <div><div class="modal-label">Tenure</div><input class="modal-input-hr" type="text" id="es-tenure"></div>
@@ -836,7 +837,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <span class="sub-count-badge" id="subCountBadge">0 records</span>
     </div>
     <div style="overflow-x:auto;"><table>
-      <thead><tr><th>#</th><th>Employee ID</th><th>Domain</th><th>Task</th><th>Status</th><th>Performance</th><th>Submitted</th></tr></thead>
+      <thead><tr><th>#</th><th>Employee ID</th><th>Domain</th><th>College Name</th><th>Task</th><th>Status</th><th>Performance</th><th>Submitted</th></tr></thead>
       <tbody id="subModalTable"></tbody>
     </table></div>
   </div>
@@ -851,7 +852,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     </div>
     <span class="sub-count-badge" id="domainStudentCount" style="display:inline-block;margin-bottom:16px;">0 students</span>
     <div style="overflow-x:auto;"><table>
-      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Email</th><th>WhatsApp</th><th>Tenure</th><th>Actions</th></tr></thead>
+      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>College Name</th><th>Email</th><th>WhatsApp</th><th>Tenure</th><th>Actions</th></tr></thead>
       <tbody id="domainStudentsTable"></tbody>
     </table></div>
   </div>
@@ -862,6 +863,13 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 function applyTheme(theme){document.documentElement.setAttribute('data-theme',theme);var t=document.getElementById('themeToggle');if(t)t.checked=(theme==='light');}
 function toggleTheme(){var c=localStorage.getItem('ten-theme')||'dark';var n=c==='dark'?'light':'dark';localStorage.setItem('ten-theme',n);applyTheme(n);}
 (function(){applyTheme(localStorage.getItem('ten-theme')||'dark');})();
+
+function collegeValue(s){
+  return ((s && (s.collegeName || s.college)) || '').trim();
+}
+function collegeText(s){
+  return collegeValue(s) || 'Not Provided';
+}
 
 const hrUser=JSON.parse(sessionStorage.getItem('hrUser')||'null');
 if(!hrUser){window.location.href='/hr-login';}
@@ -927,7 +935,7 @@ async function loadStudents(){
 }
 function renderStudents(list){
   const tb=document.getElementById('studentsTable');
-  if(!list.length){tb.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="es-icon">🎓</div><p>No students found</p></div></td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="es-icon">🎓</div><p>No students found</p></div></td></tr>';return;}
   tb.innerHTML=list.map((s,i)=>{
     const name=`${s.firstName||''} ${s.lastName||''}`.trim();
     const safeN=name.replace(/'/g,"\\'");
@@ -936,6 +944,7 @@ function renderStudents(list){
       <td style="font-weight:600;cursor:pointer" onclick="openSidePanel('${s._id}')">${name}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td>
       <td><span class="tag tag-pending">${s.domain||''}</span></td>
+      <td style="color:var(--muted);font-size:13px">${collegeText(s)}</td>
       <td style="color:var(--muted);font-size:13px">${s.email||''}</td>
       <td style="color:var(--muted);font-size:13px">${s.whatsapp||''}</td>
       <td style="font-size:13px">${s.tenure||'—'}</td>
@@ -950,7 +959,7 @@ function renderStudents(list){
 }
 function filterStudents(){
   const q=document.getElementById('studentSearch').value.toLowerCase();
-  renderStudents(allStudents.filter(s=>(s.firstName+s.lastName+s.employeeId+s.domain+s.email).toLowerCase().includes(q)));
+  renderStudents(allStudents.filter(s=>(s.firstName+s.lastName+s.employeeId+s.domain+s.email+collegeText(s)).toLowerCase().includes(q)));
 }
 
 /* SLIDE PANEL */
@@ -965,7 +974,7 @@ function openSidePanel(id){
   document.getElementById('sp-domain').value=s.domain||'';
   document.getElementById('sp-employeeId').value=s.employeeId||'';
   document.getElementById('sp-tenure').value=s.tenure||'';
-  document.getElementById('sp-college').value=s.college||'';
+  document.getElementById('sp-college').value=collegeValue(s);
   document.getElementById('sp-joining').value=s.joiningDate||'';
   const fn=((s.firstName||'')+' '+(s.lastName||'')).trim();
   document.getElementById('sp-name-display').textContent=fn||'—';
@@ -1034,7 +1043,7 @@ async function loadStudentSubmissionsInPanel(){
 }
 async function saveSidePanelStudent(){
   const id=document.getElementById('sp-id').value;
-  const body={firstName:document.getElementById('sp-firstName').value.trim(),lastName:document.getElementById('sp-lastName').value.trim(),email:document.getElementById('sp-email').value.trim(),whatsapp:document.getElementById('sp-whatsapp').value.trim(),domain:document.getElementById('sp-domain').value.trim(),tenure:document.getElementById('sp-tenure').value.trim(),college:document.getElementById('sp-college').value.trim()};
+  const body={firstName:document.getElementById('sp-firstName').value.trim(),lastName:document.getElementById('sp-lastName').value.trim(),email:document.getElementById('sp-email').value.trim(),whatsapp:document.getElementById('sp-whatsapp').value.trim(),domain:document.getElementById('sp-domain').value.trim(),tenure:document.getElementById('sp-tenure').value.trim(),collegeName:document.getElementById('sp-college').value.trim(),college:document.getElementById('sp-college').value.trim()};
   try{
     const res=await fetch('/students/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error();
@@ -1121,14 +1130,14 @@ function filterTracker(filter,btn){
 function renderTracker(students){
   const filtered=trackerFilter==='all'?students:students.filter(s=>s.status===trackerFilter);
   const tb=document.getElementById('trackerTable');
-  if(!filtered.length){tb.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="es-icon">⏱️</div><p>No students match this filter</p></div></td></tr>';return;}
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="es-icon">⏱️</div><p>No students match this filter</p></div></td></tr>';return;}
   tb.innerHTML=filtered.map((s,i)=>{
     const sc=s.status==='completed'?'tag-completed':s.status==='expiring'?'tag-expiring':s.status==='active'?'tag-active':'';
     const sl=s.status==='completed'?'✅ Completed':s.status==='expiring'?'⚠️ Expiring Soon':s.status==='active'?'🔵 Active':'❓ Unknown';
     const dp=s.status==='completed'?`<span class="days-pill completed">${s.daysLeft}d ago</span>`:s.status==='expiring'?`<span class="days-pill expiring">${s.daysLeft}d left</span>`:s.status==='active'?`<span class="days-pill active">${s.daysLeft}d left</span>`:`<span class="days-pill unknown">—</span>`;
     const es=s.endDate?s.endDate.toLocaleDateString('en-IN'):'—';
     const safeN=`${s.firstName||''} ${s.lastName||''}`.trim().replace(/'/g,"\\'");
-    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;color:var(--muted)">${s.tenure||'—'}</td><td style="font-size:13px">${es}</td><td><span class="tag ${sc}">${sl}</span></td><td>${dp}</td><td><div class="action-btns"><button class="btn-doc-hr" onclick="quickGenCerts('${s._id}')">📄 Certs</button><button class="btn-view-hr" onclick="openSidePanel('${s._id}')">👁 View</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑</button></div></td></tr>`;
+    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;color:var(--muted)">${collegeText(s)}</td><td style="font-size:13px;color:var(--muted)">${s.tenure||'—'}</td><td style="font-size:13px">${es}</td><td><span class="tag ${sc}">${sl}</span></td><td>${dp}</td><td><div class="action-btns"><button class="btn-doc-hr" onclick="quickGenCerts('${s._id}')">📄 Certs</button><button class="btn-view-hr" onclick="openSidePanel('${s._id}')">👁 View</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑</button></div></td></tr>`;
   }).join('');
 }
 function quickGenCerts(id){
@@ -1150,15 +1159,15 @@ async function loadSubmissions(){
 }
 function renderSubmissions(list){
   const tb=document.getElementById('submissionsTable');
-  if(!list.length){tb.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="es-icon">📋</div><p>No submissions yet</p></div></td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="9"><div class="empty-state"><div class="es-icon">📋</div><p>No submissions yet</p></div></td></tr>';return;}
   tb.innerHTML=list.map((s,i)=>{
     const sc=s.status==='Approved'?'tag-approved':s.status==='Rejected'?'tag-rejected':'tag-pending';
-    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td style="font-size:12px;color:var(--muted)">${s.domain||''}</td><td style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.task||'—'}</td><td><span class="tag ${sc}">${s.status}</span></td><td style="font-weight:700;color:var(--gold)">${s.performance||'—'}</td><td style="font-size:13px">${s.attendanceCount||0} days</td><td style="color:var(--muted);font-size:12px">${new Date(s.submittedAt).toLocaleDateString('en-IN')}</td></tr>`;
+    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td style="font-size:12px;color:var(--muted)">${s.domain||''}</td><td style="font-size:13px;color:var(--muted)">${collegeText(s)}</td><td style="font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.task||'—'}</td><td><span class="tag ${sc}">${s.status}</span></td><td style="font-weight:700;color:var(--gold)">${s.performance||'—'}</td><td style="font-size:13px">${s.attendanceCount||0} days</td><td style="color:var(--muted);font-size:12px">${new Date(s.submittedAt).toLocaleDateString('en-IN')}</td></tr>`;
   }).join('');
 }
 function filterSubmissions(){
   const q=document.getElementById('subSearch').value.toLowerCase();
-  renderSubmissions(allSubmissions.filter(s=>(s.employeeId+s.domain+s.task+s.status).toLowerCase().includes(q)));
+  renderSubmissions(allSubmissions.filter(s=>(s.employeeId+s.domain+s.task+s.status+collegeText(s)).toLowerCase().includes(q)));
 }
 
 async function loadDomains(){
@@ -1216,14 +1225,14 @@ async function openEditStudent(id){
     document.getElementById('es-id').value=s._id;
     document.getElementById('es-firstName').value=s.firstName||'';document.getElementById('es-lastName').value=s.lastName||'';
     document.getElementById('es-email').value=s.email||'';document.getElementById('es-whatsapp').value=s.whatsapp||'';
-    document.getElementById('es-domain').value=s.domain||'';document.getElementById('es-employeeId').value=s.employeeId||'';document.getElementById('es-tenure').value=s.tenure||'';
+    document.getElementById('es-domain').value=s.domain||'';document.getElementById('es-college').value=collegeValue(s);document.getElementById('es-employeeId').value=s.employeeId||'';document.getElementById('es-tenure').value=s.tenure||'';
     document.getElementById('editStudentModal').classList.add('open');
   }catch(e){showHRToast('Failed to load student.','error');}
 }
 function closeEditStudent(){document.getElementById('editStudentModal').classList.remove('open');}
 async function saveStudentEdit(){
   const id=document.getElementById('es-id').value;
-  const body={firstName:document.getElementById('es-firstName').value.trim(),lastName:document.getElementById('es-lastName').value.trim(),email:document.getElementById('es-email').value.trim(),whatsapp:document.getElementById('es-whatsapp').value.trim(),domain:document.getElementById('es-domain').value.trim(),tenure:document.getElementById('es-tenure').value.trim()};
+  const body={firstName:document.getElementById('es-firstName').value.trim(),lastName:document.getElementById('es-lastName').value.trim(),email:document.getElementById('es-email').value.trim(),whatsapp:document.getElementById('es-whatsapp').value.trim(),domain:document.getElementById('es-domain').value.trim(),collegeName:document.getElementById('es-college').value.trim(),college:document.getElementById('es-college').value.trim(),tenure:document.getElementById('es-tenure').value.trim()};
   try{
     const res=await fetch('/students/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok)throw new Error();
@@ -1255,7 +1264,7 @@ let allSubModalData=[];
 async function openSubmissionModal(status){
   document.getElementById('subModalTitle').textContent=status==='All'?'📋 All Submissions':status==='Approved'?'✅ Approved':status==='Rejected'?'❌ Rejected':'⏳ Pending';
   document.getElementById('submissionDetailModal').classList.add('open');
-  document.getElementById('subModalTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">Loading...</td></tr>';
+  document.getElementById('subModalTable').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">Loading...</td></tr>';
   try{
     const url=status==='All'?'/hr/submissions':'/hr/submissions/filter?status='+encodeURIComponent(status);
     const r=await fetch(url,{headers:{Authorization:hrToken}});const d=await r.json();
@@ -1265,27 +1274,27 @@ async function openSubmissionModal(status){
     sel.innerHTML='<option value="">All Domains</option>';
     doms.forEach(dm=>{const o=document.createElement('option');o.value=dm;o.textContent=dm;sel.appendChild(o);});
     renderSubModal(allSubModalData);
-  }catch(e){document.getElementById('subModalTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--red)">Failed to load.</td></tr>';}
+  }catch(e){document.getElementById('subModalTable').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--red)">Failed to load.</td></tr>';}
 }
 function filterSubModal(){const f=document.getElementById('subDomainFilter').value;renderSubModal(f?allSubModalData.filter(s=>s.domain===f):allSubModalData);}
 function renderSubModal(list){
   document.getElementById('subCountBadge').textContent=list.length+' records';
-  document.getElementById('subModalTable').innerHTML=list.length?list.map((s,i)=>`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.task||'—'}</td><td><span class="tag ${s.status==='Approved'?'tag-approved':s.status==='Rejected'?'tag-rejected':'tag-pending'}">${s.status||'Pending'}</span></td><td style="font-size:13px">${s.performance||'—'}</td><td style="font-size:12px;color:var(--muted)">${s.submittedAt?new Date(s.submittedAt).toLocaleDateString():'-'}</td></tr>`).join(''):'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">No records.</td></tr>';
+  document.getElementById('subModalTable').innerHTML=list.length?list.map((s,i)=>`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;color:var(--muted)">${collegeText(s)}</td><td style="font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.task||'—'}</td><td><span class="tag ${s.status==='Approved'?'tag-approved':s.status==='Rejected'?'tag-rejected':'tag-pending'}">${s.status||'Pending'}</span></td><td style="font-size:13px">${s.performance||'—'}</td><td style="font-size:12px;color:var(--muted)">${s.submittedAt?new Date(s.submittedAt).toLocaleDateString():'-'}</td></tr>`).join(''):'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">No records.</td></tr>';
 }
 function closeSubmissionModal(){document.getElementById('submissionDetailModal').classList.remove('open');}
 async function openDomainStudents(domain){
   document.getElementById('domainModalTitle').textContent='🏢 '+domain;
   document.getElementById('domainStudentsModal').classList.add('open');
-  document.getElementById('domainStudentsTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">Loading...</td></tr>';
+  document.getElementById('domainStudentsTable').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">Loading...</td></tr>';
   try{
     const r=await fetch('/hr/students/domain/'+encodeURIComponent(domain),{headers:{Authorization:hrToken}});
     const d=await r.json();const students=d.students||[];
     document.getElementById('domainStudentCount').textContent=students.length+' students';
     document.getElementById('domainStudentsTable').innerHTML=students.length?students.map((s,i)=>{
       const safeN=`${s.firstName||''} ${s.lastName||''}`.trim().replace(/'/g,"\\'");
-      return`<tr id="ds-${s._id}"><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td><td style="color:var(--muted);font-size:13px">${s.email||'—'}</td><td style="font-size:13px">${s.whatsapp||'—'}</td><td style="font-size:13px">${s.tenure||'—'}</td><td><div class="action-btns"><button class="btn-edit-hr" onclick="openEditStudent('${s._id}')">✏️ Edit</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑 Delete</button></div></td></tr>`;
-    }).join(''):'<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted)">No students in this domain.</td></tr>';
-  }catch(e){document.getElementById('domainStudentsTable').innerHTML='<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--red)">Failed.</td></tr>';}
+      return`<tr id="ds-${s._id}"><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td><td style="color:var(--muted);font-size:13px">${collegeText(s)}</td><td style="color:var(--muted);font-size:13px">${s.email||'—'}</td><td style="font-size:13px">${s.whatsapp||'—'}</td><td style="font-size:13px">${s.tenure||'—'}</td><td><div class="action-btns"><button class="btn-edit-hr" onclick="openEditStudent('${s._id}')">✏️ Edit</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑 Delete</button></div></td></tr>`;
+    }).join(''):'<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">No students in this domain.</td></tr>';
+  }catch(e){document.getElementById('domainStudentsTable').innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--red)">Failed.</td></tr>';}
 }
 function closeDomainModal(){document.getElementById('domainStudentsModal').classList.remove('open');}
 document.getElementById('submissionDetailModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeSubmissionModal();});
@@ -1327,9 +1336,9 @@ function autofillFromStudent(){
   document.getElementById('studentPickerModal').classList.add('open');
 }
 function closeStudentPicker(){document.getElementById('studentPickerModal').classList.remove('open');}
-function filterPicker(){const q=document.getElementById('pickerSearch').value.toLowerCase();renderPickerList(allStudents.filter(s=>(s.firstName+s.lastName+s.employeeId+s.domain).toLowerCase().includes(q)));}
+function filterPicker(){const q=document.getElementById('pickerSearch').value.toLowerCase();renderPickerList(allStudents.filter(s=>(s.firstName+s.lastName+s.employeeId+s.domain+collegeText(s)).toLowerCase().includes(q)));}
 function renderPickerList(list){
-  document.getElementById('pickerList').innerHTML=list.length?list.map(s=>`<div style="padding:12px 14px;border:1px solid rgba(245,197,66,0.1);border-radius:10px;cursor:pointer;margin-bottom:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;transition:border-color 0.2s" onmouseover="this.style.borderColor='rgba(245,197,66,0.35)'" onmouseout="this.style.borderColor='rgba(245,197,66,0.1)'" onclick="selectStudentForDoc('${s._id}')"><div><div style="font-weight:600;font-size:14px;color:var(--text)">${s.firstName||''} ${s.lastName||''}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${s.domain||''}</div></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${s.employeeId||''}</div></div>`).join(''):'<p style="text-align:center;color:var(--muted);padding:20px">No students found</p>';
+  document.getElementById('pickerList').innerHTML=list.length?list.map(s=>`<div style="padding:12px 14px;border:1px solid rgba(245,197,66,0.1);border-radius:10px;cursor:pointer;margin-bottom:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;transition:border-color 0.2s" onmouseover="this.style.borderColor='rgba(245,197,66,0.35)'" onmouseout="this.style.borderColor='rgba(245,197,66,0.1)'" onclick="selectStudentForDoc('${s._id}')"><div><div style="font-weight:600;font-size:14px;color:var(--text)">${s.firstName||''} ${s.lastName||''}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${s.domain||''} · ${collegeText(s)}</div></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${s.employeeId||''}</div></div>`).join(''):'<p style="text-align:center;color:var(--muted);padding:20px">No students found</p>';
 }
 function selectStudentForDoc(id){const s=allStudents.find(x=>x._id===id);if(!s)return;closeStudentPicker();prefillDocForms(s);showHRToast('✅ Student data filled!','success');}
 document.getElementById('studentPickerModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeStudentPicker();});
@@ -1338,19 +1347,19 @@ document.getElementById('studentPickerModal').addEventListener('click',e=>{if(e.
 let amStudents=[];
 async function loadAttendanceMonitor(){
   const tb=document.getElementById('amTable');
-  tb.innerHTML='<tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  tb.innerHTML='<tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr>';
   try{
     const r=await fetch('/attendance/monitor',{headers:{Authorization:hrToken}});
     const d=await r.json();
     amStudents=d.students||[];
     renderAttendanceMonitor();
-  }catch(e){ tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--red)">Failed to load</td></tr>'; }
+  }catch(e){ tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--red)">Failed to load</td></tr>'; }
 }
 function renderAttendanceMonitor(){
   const q=(document.getElementById('amSearch').value||'').toLowerCase();
-  const list=amStudents.filter(s=>((s.name||'')+(s.employeeId||'')+(s.domain||'')).toLowerCase().includes(q));
+  const list=amStudents.filter(s=>((s.name||'')+(s.employeeId||'')+(s.domain||'')+collegeText(s)).toLowerCase().includes(q));
   const tb=document.getElementById('amTable');
-  if(!list.length){ tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">No students</td></tr>'; return; }
+  if(!list.length){ tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">No students</td></tr>'; return; }
   tb.innerHTML=list.map((s,i)=>{
     const st=s.stats||{};
     const elig=st.eligible;
@@ -1360,6 +1369,7 @@ function renderAttendanceMonitor(){
       <td style="font-weight:600;cursor:pointer;color:var(--gold)" onclick="openAttHistory('${encodeURIComponent(s.employeeId)}','${safeName}')">${s.name||'—'}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td>
       <td><span class="tag tag-pending">${s.domain||'—'}</span></td>
+      <td style="font-size:13px;color:var(--muted)">${collegeText(s)}</td>
       <td>${st.selfPresent||0}</td>
       <td>${st.coordPresent||0}/${st.coordTotal||0}</td>
       <td style="font-weight:700">${st.combinedPct||0}%</td>
@@ -1500,7 +1510,7 @@ function renderCertPending(){
     const appDate=s.coordinatorApprovedAt?new Date(s.coordinatorApprovedAt).toLocaleDateString('en-IN'):'—';
     return `<div class="cert-card">
       <div class="cert-card-head">
-        <div><div class="cert-name">${s.name}</div><div class="cert-id">${s.employeeId}</div><div class="cert-meta">${s.domain} · Joined ${s.joiningDate||'—'} · ${s.tenure||''}</div></div>
+        <div><div class="cert-name">${s.name}</div><div class="cert-id">${s.employeeId}</div><div class="cert-meta">${s.domain} · ${collegeText(s)} · Joined ${s.joiningDate||'—'} · ${s.tenure||''}</div></div>
         <span class="elig-badge ${elig?'elig-yes':'elig-no'}">${st.combinedPct||0}% ${elig?'Attendance OK':'Below 75%'}</span>
       </div>
       <div class="cert-grid">
@@ -1573,7 +1583,7 @@ function renderCertApproved(){
         </div>`;
     return `<div class="cert-card">
       <div class="cert-card-head">
-        <div><div class="cert-name">${s.name}</div><div class="cert-id">${s.employeeId}</div><div class="cert-meta">${s.domain} · Joined ${s.joiningDate||'—'} · ${s.tenure||''}</div></div>
+        <div><div class="cert-name">${s.name}</div><div class="cert-id">${s.employeeId}</div><div class="cert-meta">${s.domain} · ${collegeText(s)} · Joined ${s.joiningDate||'—'} · ${s.tenure||''}</div></div>
         <span class="elig-badge elig-yes">✅ HR Approved</span>
       </div>
       <div class="cert-grid">
@@ -1588,7 +1598,7 @@ function renderCertApproved(){
 function genCert(i,type){
   const s=hrApprovedStudents[i]; if(!s) return;
   // prefillDocForms expects firstName/lastName — pass full name in firstName.
-  const obj={firstName:s.name||'',lastName:'',employeeId:s.employeeId||'',domain:s.domain||'',college:s.college||'',tenure:s.tenure||'',joiningDate:s.joiningDate||''};
+  const obj={firstName:s.name||'',lastName:'',employeeId:s.employeeId||'',domain:s.domain||'',college:collegeValue(s),collegeName:collegeValue(s),tenure:s.tenure||'',joiningDate:s.joiningDate||''};
   prefillDocForms(obj);
   if(type==='loc') generateLOC();
   else if(type==='lor') generateLOR();
@@ -1683,10 +1693,10 @@ function renderPromoStudents(){
   const c=document.getElementById('promoStudentsContainer');
   if(!c) return;
   const q=(document.getElementById('promoStudentSearch')?.value||'').toLowerCase();
-  const list=promoStudents.filter(s=>((s.name||'')+(s.employeeId||'')+(s.domain||'')).toLowerCase().includes(q));
+  const list=promoStudents.filter(s=>((s.name||'')+(s.employeeId||'')+(s.domain||'')+collegeText(s)).toLowerCase().includes(q));
   if(!list.length){ c.innerHTML = promoEmptyBox('No students match your search'); return; }
   c.innerHTML='<div class="table-wrap"><div style="overflow-x:auto;"><table>'+
-    '<thead><tr><th>#</th><th>Student</th><th>Employee ID</th><th>Domain</th><th>Joining</th><th>Attendance</th><th>Performance</th><th>Action</th></tr></thead><tbody>'+
+    '<thead><tr><th>#</th><th>Student</th><th>Employee ID</th><th>Domain</th><th>College Name</th><th>Joining</th><th>Attendance</th><th>Performance</th><th>Action</th></tr></thead><tbody>'+
     list.map((s,i)=>{
       const att=(s.stats&&s.stats.combinedPct)||0;
       const perf=s._perf?(s._perf.score+' · '+s._perf.grade):'<span style="color:var(--muted);">computing…</span>';
@@ -1696,6 +1706,7 @@ function renderPromoStudents(){
         <td style="font-weight:600">${s.name||'—'}</td>
         <td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||'—'}</td>
         <td><span class="tag tag-pending">${s.domain||'—'}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${collegeText(s)}</td>
         <td style="font-size:12px;color:var(--muted)">${s.joiningDate||'—'}</td>
         <td><span class="elig-badge ${att>=75?'elig-yes':'elig-no'}">${att}%</span></td>
         <td>${perf}</td>

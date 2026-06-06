@@ -7,6 +7,8 @@ const studentsSchema = new mongoose.Schema({
     domain: String,
     whatsapp: String,
     email: String,
+    collegeName: { type: String, default: "" },
+    college: { type: String, default: "" },
     tenure: String,
     joiningDate: String,
     employeeId: { type: String, unique: true, sparse: true },
