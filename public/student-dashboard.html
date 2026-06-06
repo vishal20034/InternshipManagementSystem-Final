@@ -1481,6 +1481,7 @@ button:active { transform: translateY(0); }
     <button class="stu-nav-btn" data-view="stu-view-submissions" onclick="switchStudentView('stu-view-submissions')"><span class="nav-icon">📥</span> Submissions</button>
     <button class="stu-nav-btn" data-view="stu-view-attendance" onclick="switchStudentView('stu-view-attendance')"><span class="nav-icon">🪪</span> Attendance</button>
     <button class="stu-nav-btn" data-view="stu-view-test" onclick="switchStudentView('stu-view-test')"><span class="nav-icon">📝</span> Take Test</button>
+    <button class="stu-nav-btn" data-view="stu-view-guidelines" onclick="switchStudentView('stu-view-guidelines')"><span class="nav-icon">📋</span> Guidelines</button>
     <button class="stu-nav-btn" data-view="stu-view-leaderboard" onclick="switchStudentView('stu-view-leaderboard')"><span class="nav-icon">🏆</span> Leaderboard &amp; Badges</button>
   </nav>
   <div class="theme-toggle-wrap" style="padding:12px 20px;border-top:1px solid rgba(212,175,55,0.08);">
@@ -1722,9 +1723,8 @@ button:active { transform: translateY(0); }
 
   </div><!-- /stu-view-overview -->
 
-  <!-- ══════ VIEW: ANNOUNCEMENTS ══════ -->
-  <!-- ===== PERMANENT ONBOARDING GUIDELINES SECTION ===== -->
-  <div class="stu-view active" id="stu-view-guidelines" style="display:block;margin-bottom:24px;">
+  <!-- ══════ VIEW: GUIDELINES ══════ -->
+  <div class="stu-view" id="stu-view-guidelines" style="display:none;">
   <div style="background:rgba(14,20,40,0.95);border:1px solid rgba(212,175,55,0.18);border-radius:16px;padding:28px 32px;">
     <h3 style="font-size:17px;font-weight:800;color:#D4AF37;margin-bottom:8px;">📋 Internship Onboarding Guidelines</h3>
     <p style="font-size:13px;color:#9a8a6a;margin-bottom:18px;line-height:1.6;">All interns must follow these guidelines throughout the internship. Non-compliance may result in certificate cancellation or termination.</p>
@@ -1752,7 +1752,7 @@ button:active { transform: translateY(0); }
     </div>
   </div>
   </div>
-  <!-- ===== END ONBOARDING GUIDELINES SECTION ===== -->
+  <!-- ===== END GUIDELINES VIEW ===== -->
 
   <div class="stu-view" id="stu-view-notice">
   <!-- ── NOTICE BOX ── -->
@@ -3353,6 +3353,7 @@ var sectionTitles = {
   'stu-view-submissions': 'Submitted Tasks',
   'stu-view-attendance': 'Daily Attendance',
   'stu-view-test': 'Domain MCQ Test',
+  'stu-view-guidelines': 'Internship Guidelines',
   'stu-view-leaderboard': 'Extras & Badges'
 };
 
