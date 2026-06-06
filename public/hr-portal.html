@@ -24,7 +24,26 @@ body{background:var(--dark);color:var(--text);font-family:'Outfit',sans-serif;mi
 .sidebar.open{transform:translateX(0);}
 .sidebar-logo{padding:0 24px 28px;border-bottom:1px solid var(--border);}
 .logo-badge-sm{display:flex;align-items:center;gap:12px;}
-.logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 20px rgba(245,197,66,0.3);}
+.logo-icon{
+  width: 48px; height: 48px;
+  background: rgba(212,175,55,0.08);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(212,175,55,0.35);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 0 40px rgba(212,175,55,0.25), inset 0 1px 1px rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+.logo-icon:hover {
+  background: rgba(212,175,55,0.12);
+  border-color: rgba(212,175,55,0.5);
+  box-shadow: 0 0 60px rgba(212,175,55,0.35), inset 0 1px 1px rgba(255,255,255,0.15);
+  transform: scale(1.05);
+}
 .logo-txt{font-size:18px;font-weight:800;letter-spacing:-0.5px;}
 .logo-txt span{background:linear-gradient(90deg,var(--gold),#fff176);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .logo-role{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px;}
@@ -318,7 +337,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
   <div class="sidebar-logo">
     <div class="logo-badge-sm">
       <div class="logo-icon">
-        <img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;" />
+        <img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;filter:drop-shadow(0 0 6px rgba(212,175,55,0.4));" />
       </div>
       <div><div class="logo-txt"><span>TEN</span> Portal</div><div class="logo-role">HR Management</div></div>
     </div>

@@ -31,15 +31,24 @@ html, body {
   margin-bottom: 32px;
 }
 .brand-logo-ring {
-  width: 68px; height: 68px;
-  background: var(--ten-gold-bg);
-  border: 1px solid var(--ten-border-strong);
-  border-radius: 20px;
+  width: 72px; height: 72px;
+  background: rgba(212,175,55,0.08);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(212,175,55,0.35);
+  border-radius: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 16px;
+  box-shadow: 0 0 40px rgba(212,175,55,0.25), inset 0 1px 1px rgba(255,255,255,0.1);
   animation: ten-pulse-gold 3s ease infinite;
+  transition: all 0.3s ease;
+}
+.brand-logo-ring:hover {
+  background: rgba(212,175,55,0.12);
+  border-color: rgba(212,175,55,0.5);
+  box-shadow: 0 0 60px rgba(212,175,55,0.35), inset 0 1px 1px rgba(255,255,255,0.15);
+  transform: translateY(-2px);
 }
 .brand-name {
   font-family: var(--ten-font-display);
@@ -192,7 +201,7 @@ html, body {
 
   <div class="brand-header">
     <div class="brand-logo-ring">
-      <img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;" />
+      <img src="ten-logo.png" alt="TEN Logo" style="width:48px;height:48px;object-fit:contain;display:block;filter:drop-shadow(0 0 8px rgba(212,175,55,0.4));" />
     </div>
     <div class="brand-name">TEN</div>
     <div class="brand-full">The Entrepreneurship Network</div>
