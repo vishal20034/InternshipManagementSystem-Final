@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEN — Intern Registration</title>
+<link rel="stylesheet" href="ten-theme.css">
+<style>
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  overflow-y: auto;
+}
+
+.reg-wrap {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1140px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  background: var(--ten-card);
+  border: 1px solid var(--ten-border);
+  border-radius: var(--ten-r-xl);
+  box-shadow: var(--ten-shadow-lg), var(--ten-glow-gold);
+  overflow: hidden;
+  animation: ten-fadeUp 0.65s ease both;
+}
+
+/* ── Left branding ── */
+.reg-left {
+  position: relative;
+  padding: 52px 44px;
+  background: linear-gradient(160deg, #0b0d14 0%, #100e08 60%, #0b0d14 100%);
+  border-right: 1px solid var(--ten-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+.reg-left::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ten-gold), transparent);
+}
+.reg-left::after {
+  content: '';
+  position: absolute;
+  bottom: -120px; right: -120px;
+  width: 300px; height: 300px;
+  border: 1px solid rgba(212,175,55,0.05);
+  border-radius: 50%;
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 40px;
+}
+.brand-icon {
+  width: 48px; height: 48px;
+  background: var(--ten-gold-bg);
+  border: 1px solid var(--ten-border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: ten-pulse-gold 3s ease infinite;
+}
+.brand-id {
+  font-family: var(--ten-font-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  color: var(--ten-gold);
+}
+.brand-id-sub {
+  font-size: 10px;
+  color: var(--ten-text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+.reg-hero h1 {
+  font-family: var(--ten-font-display);
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.15;
+  margin-bottom: 16px;
+}
+.reg-hero h1 span {
+  background: linear-gradient(90deg, var(--ten-gold), var(--ten-gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.reg-hero p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ten-text-sub);
+  margin-bottom: 32px;
+}
+
+.benefit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ten-text);
+}
+.b-icon {
+  width: 30px; height: 30px;
+  background: var(--ten-gold-bg);
+  border: 1px solid var(--ten-border);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.left-footer {
+  margin-top: 36px;
+  font-size: 11px;
+  color: var(--ten-text-muted);
+  letter-spacing: 0.5px;
+}
+
+/* ── Right form ── */
+.reg-right {
+  padding: 44px 48px;
+  background: var(--ten-card);
+  overflow-y: auto;
+  max-height: 92vh;
+}
+
+.form-header {
+  margin-bottom: 28px;
+}
+.form-header h2 {
+  font-family: var(--ten-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+.form-header p {
+  font-size: 13px;
+  color: var(--ten-text-sub);
+}
+
+.field-group { margin-bottom: 18px; }
+.field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ten-text-sub);
+  margin-bottom: 8px;
+}
+.field-input {
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--ten-border);
+  border-radius: var(--ten-r-sm);
+  color: var(--ten-text);
+  font-family: var(--ten-font-body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  appearance: none;
+}
+.field-input:focus {
+  border-color: var(--ten-gold);
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.10);
+}
+.field-input::placeholder { color: #2a2018; }
+.field-input option {
+  background: #0e1428;
+  color: var(--ten-text);
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, var(--ten-gold), var(--ten-gold-dim));
+  border: none;
+  border-radius: var(--ten-r-sm);
+  color: #0a0700;
+  font-family: var(--ten-font-display);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.22s;
+  margin-top: 6px;
+}
+.register-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(212,175,55,0.4);
+}
+
+.loading-text {
+  display: none;
+  text-align: center;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--ten-gold);
+  font-family: var(--ten-font-mono);
+}
+
+.nav-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.nav-btn {
+  flex: 1;
+  padding: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--ten-border);
+  border-radius: var(--ten-r-sm);
+  color: var(--ten-text-sub);
+  font-family: var(--ten-font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.nav-btn:hover {
+  background: var(--ten-gold-bg);
+  border-color: var(--ten-border-strong);
+  color: var(--ten-gold);
+}
+
+/* Already registered box */
+.already-box {
+  display: none;
+  margin-top: 20px;
+  padding: 28px;
+  border-radius: var(--ten-r-lg);
+  background: var(--ten-card2);
+  border: 1px solid var(--ten-border);
+  text-align: center;
+  animation: ten-fadeUp 0.4s ease;
+}
+.already-box h2 {
+  font-family: var(--ten-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  color: var(--ten-warning);
+}
+.already-box p { font-size: 14px; color: var(--ten-text-sub); }
+.employee-id-display {
+  margin-top: 16px;
+  font-family: var(--ten-font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ten-gold);
+  word-break: break-word;
+}
+
+.form-footer {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ten-text-muted);
+}
+
+@media (max-width: 920px) {
+  .reg-wrap { grid-template-columns: 1fr; }
+  .reg-left { display: none; }
+  .reg-right { padding: 32px 24px; max-height: none; }
+  .two-col { grid-template-columns: 1fr; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="ten-grid-bg"></div>
+<div class="ten-orb ten-orb-1"></div>
+<div class="ten-orb ten-orb-2"></div>
+
+<div class="reg-wrap">
+
+  <!-- ── Left Panel ── -->
+  <div class="reg-left">
+
+    <div>
+      <div class="brand-block">
+        <div class="brand-icon">
+          <img src="ten-logo.png" alt="TEN Logo" style="width:48px;height:48px;object-fit:contain;display:block;filter:drop-shadow(0 0 8px rgba(212,175,55,0.4));" />
+        </div>
+        <div>
+          <div class="brand-id">TEN</div>
+          <div class="brand-id-sub">The Entrepreneurship Network</div>
+        </div>
+      </div>
+
+      <div class="reg-hero">
+        <h1>Build Your <span>Professional</span> Career</h1>
+        <p>Join TEN's internship platform and gain real-world experience alongside top mentors and coordinators.</p>
+      </div>
+
+      <div class="benefit-list">
+        <div class="benefit-item">
+          <div class="b-icon">📊</div>
+          Real Industry Projects
+        </div>
+        <div class="benefit-item">
+          <div class="b-icon">📈</div>
+          Live Performance Tracking
+        </div>
+        <div class="benefit-item">
+          <div class="b-icon">🎓</div>
+          Internship Certificate
+        </div>
+        <div class="benefit-item">
+          <div class="b-icon">🧠</div>
+          Professional Mentorship
+        </div>
+        <div class="benefit-item">
+          <div class="b-icon">💼</div>
+          Career Placement Support
+        </div>
+      </div>
+    </div>
+
+    <div class="left-footer">
+      © 2026 TEN — Internship Management System
+    </div>
+
+  </div>
+
+  <!-- ── Right Form ── -->
+  <div class="reg-right">
+
+    <div class="form-header">
+      <h2>Intern Registration</h2>
+      <p>Create your account to access the TEN internship platform</p>
+    </div>
+
+    <form id="registerForm">
+
+      <div class="two-col">
+        <div class="field-group">
+          <label class="field-label">First Name</label>
+          <input class="field-input" type="text" id="firstName" placeholder="First name" required>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Last Name</label>
+          <input class="field-input" type="text" id="lastName" placeholder="Last name" required>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Email Address</label>
+        <input class="field-input" type="email" id="email" placeholder="your@email.com" required>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">WhatsApp Number</label>
+        <input class="field-input" type="text" id="whatsapp" placeholder="+91 XXXXX XXXXX" required>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">College / University Name</label>
+        <input class="field-input" type="text" id="collegeName" placeholder="Enter your college or university name" required>
+      </div>
+
+      <div class="two-col">
+        <div class="field-group">
+          <label class="field-label">Domain</label>
+          <select class="field-input" id="domain" required>
+            <option value="">Select Domain</option>
+            <option>DevOps with AWS</option>
+            <option>Python Development</option>
+            <option>Java Development</option>
+            <option>Web Development</option>
+            <option>MERN Stack Development</option>
+            <option>Artificial Intelligence</option>
+            <option>Data Science</option>
+            <option>Cyber Security</option>
+            <option>Software Engineering</option>
+            <option>Flutter Development</option>
+            <option>HR Management</option>
+            <option>Venture Capital</option>
+            <option>Vibe Coding</option>
+            <option>Space Research</option>
+            <option>Business Analyst</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Duration</label>
+          <select class="field-input" id="tenure" required>
+            <option value="">Select Duration</option>
+            <option>45 Days</option>
+            <option>1 Month</option>
+            <option>3 Months</option>
+            <option>6 Months</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="register-btn">Register Now →</button>
+      <div class="loading-text" id="loadingText">⟳ Creating your account...</div>
+
+    </form>
+
+    <div class="already-box" id="alreadyBox">
+      <h2>⚠ Already Registered</h2>
+      <p>You are already registered in the TEN Internship Portal.</p>
+      <div class="employee-id-display" id="employeeIdText"></div>
+      <br>
+      <button class="register-btn" onclick="window.location.href='login.html'">
+        Go to Login →
+      </button>
+    </div>
+
+    <div class="nav-btns">
+      <button class="nav-btn" onclick="window.location.href='login.html'">🎓 Student Login</button>
+      <button class="nav-btn" onclick="window.location.href='coordinator-login.html'">🛡 Coordinator</button>
+      <button class="nav-btn" onclick="window.location.href='index.html'">🏠 Home</button>
+    </div>
+
+    <div class="form-footer">© 2026 TEN — The Entrepreneurship Network</div>
+
+  </div>
+
+</div>
+
+<script>
+const form = document.getElementById("registerForm");
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  document.getElementById("loadingText").style.display = "block";
+
+  try {
+    const response = await fetch("/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName: document.getElementById("firstName").value,
+        lastName: document.getElementById("lastName").value,
+        email: document.getElementById("email").value,
+        whatsapp: document.getElementById("whatsapp").value,
+        collegeName: document.getElementById("collegeName").value,
+        domain: document.getElementById("domain").value,
+        tenure: document.getElementById("tenure").value,
+        joiningDate: new Date()
+      })
+    });
+
+    const data = await response.json();
+    document.getElementById("loadingText").style.display = "none";
+
+    if (data.success) {
+      sessionStorage.setItem("redirectAfterSuccess", "groups.html");
+      window.location.href = "success.html";
+    } else if (data.already) {
+      document.getElementById("registerForm").style.display = "none";
+      document.getElementById("alreadyBox").style.display = "block";
+      document.getElementById("employeeIdText").innerText = "Employee ID: " + data.employeeId;
+    } else {
+      alert("Registration Failed");
+    }
+  } catch (error) {
+    document.getElementById("loadingText").style.display = "none";
+    console.log(error);
+    alert("Server Error");
+  }
+});
+</script>
+
+</body>
+</html>
