@@ -11,7 +11,7 @@ body{ background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans','
 .bg-grid{ position:fixed; inset:0; background-image:linear-gradient(rgba(245,197,66,.025) 1px,transparent 1px), linear-gradient(90deg,rgba(245,197,66,.025) 1px,transparent 1px); background-size:56px 56px; pointer-events:none; z-index:0; }
 .wrap{ position:relative; z-index:1; width:100%; max-width:440px; }
 .brand{ text-align:center; margin-bottom:24px; }
-.brand-logo{ display:inline-flex; align-items:center; justify-content:center; width:64px; height:64px; background:linear-gradient(135deg,var(--gold),var(--gold-dim)); border-radius:18px; font-size:28px; box-shadow:0 0 40px rgba(245,197,66,0.4); margin-bottom:12px; }
+.brand-logo{ display:inline-flex; align-items:center; justify-content:center; width:72px; height:72px; background:rgba(212,175,55,0.08); backdrop-filter:blur(10px); border:1.5px solid rgba(212,175,55,0.35); border-radius:18px; font-size:28px; box-shadow:0 0 40px rgba(212,175,55,0.25), inset 0 1px 1px rgba(255,255,255,0.1); margin-bottom:12px; transition:all 0.3s ease; }\n.brand-logo:hover{ background:rgba(212,175,55,0.12); border-color:rgba(212,175,55,0.5); box-shadow:0 0 60px rgba(212,175,55,0.35), inset 0 1px 1px rgba(255,255,255,0.15); transform:translateY(-2px); }
 .brand-title{ font-size:20px; font-weight:800; letter-spacing:-.3px; }
 .brand-title span{ background:linear-gradient(90deg,var(--gold),#fff176); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
 .brand-sub{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-top:4px; }

@@ -907,12 +907,21 @@ button:active { transform: translateY(0); }
   padding: 0 6px;
 }
 .stu-sidebar-brand-icon {
-  width: 40px; height: 40px;
-  background: rgba(212,175,55,0.1);
-  border: 1px solid rgba(212,175,55,0.25);
-  border-radius: 12px;
+  width: 48px; height: 48px;
+  background: rgba(212,175,55,0.08);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(212,175,55,0.35);
+  border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
   font-size: 20px;
+  box-shadow: 0 0 40px rgba(212,175,55,0.25), inset 0 1px 1px rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+.stu-sidebar-brand-icon:hover {
+  background: rgba(212,175,55,0.12);
+  border-color: rgba(212,175,55,0.5);
+  box-shadow: 0 0 60px rgba(212,175,55,0.35), inset 0 1px 1px rgba(255,255,255,0.15);
+  transform: scale(1.05);
 }
 .stu-sidebar-brand-text {
   display: flex; flex-direction: column;
@@ -1458,7 +1467,7 @@ button:active { transform: translateY(0); }
 <!-- ── SIDEBAR NAVIGATION ── -->
 <div class="stu-sidebar">
   <div class="stu-sidebar-brand">
-    <div class="stu-sidebar-brand-icon">🎓</div>
+    <div class="stu-sidebar-brand-icon"><img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;filter:drop-shadow(0 0 6px rgba(212,175,55,0.4));" /></div>
     <div class="stu-sidebar-brand-text">
       <span class="brand-name">TEN</span>
       <span class="brand-sub">Student Portal</span>
@@ -1467,11 +1476,12 @@ button:active { transform: translateY(0); }
   <nav class="stu-sidebar-nav">
     <button class="stu-nav-btn active" data-view="stu-view-overview" onclick="switchStudentView('stu-view-overview')"><span class="nav-icon">📊</span> Overview</button>
     <button class="stu-nav-btn" data-view="stu-view-notice" onclick="switchStudentView('stu-view-notice')"><span class="nav-icon">📢</span> Announcements</button>
-    <button class="stu-nav-btn" data-view="stu-view-tasks" onclick="switchStudentView('stu-view-tasks')"><span class="nav-icon">📋</span> My Tasks</button>
+    <button class="stu-nav-btn" data-view="stu-view-domain-tasks" onclick="switchStudentView('stu-view-domain-tasks')"><span class="nav-icon">📋</span> My Tasks</button>
     <button class="stu-nav-btn" data-view="stu-view-coding" onclick="switchStudentView('stu-view-coding')"><span class="nav-icon">💻</span> Coding Problems</button>
     <button class="stu-nav-btn" data-view="stu-view-submissions" onclick="switchStudentView('stu-view-submissions')"><span class="nav-icon">📥</span> Submissions</button>
     <button class="stu-nav-btn" data-view="stu-view-attendance" onclick="switchStudentView('stu-view-attendance')"><span class="nav-icon">🪪</span> Attendance</button>
     <button class="stu-nav-btn" data-view="stu-view-test" onclick="switchStudentView('stu-view-test')"><span class="nav-icon">📝</span> Take Test</button>
+    <button class="stu-nav-btn" data-view="stu-view-guidelines" onclick="switchStudentView('stu-view-guidelines')"><span class="nav-icon">📋</span> Guidelines</button>
     <button class="stu-nav-btn" data-view="stu-view-leaderboard" onclick="switchStudentView('stu-view-leaderboard')"><span class="nav-icon">🏆</span> Leaderboard &amp; Badges</button>
   </nav>
   <div class="theme-toggle-wrap" style="padding:12px 20px;border-top:1px solid rgba(212,175,55,0.08);">
@@ -1564,6 +1574,11 @@ button:active { transform: translateY(0); }
         <div class="sec-card-icon">💻</div>
         <div class="sec-card-title">Coding Problems</div>
         <div class="sec-card-desc">Solve coding challenges</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-guidelines')">
+        <div class="sec-card-icon">📋</div>
+        <div class="sec-card-title">Guidelines</div>
+        <div class="sec-card-desc">Read internship rules and onboarding links</div>
       </div>
       <div class="sec-card" onclick="openSectionModal('stu-view-leaderboard')">
         <div class="sec-card-icon">🏆</div>
@@ -1713,7 +1728,37 @@ button:active { transform: translateY(0); }
 
   </div><!-- /stu-view-overview -->
 
-  <!-- ══════ VIEW: ANNOUNCEMENTS ══════ -->
+  <!-- ══════ VIEW: GUIDELINES ══════ -->
+  <div class="stu-view" id="stu-view-guidelines">
+  <div style="background:rgba(14,20,40,0.95);border:1px solid rgba(212,175,55,0.18);border-radius:16px;padding:28px 32px;">
+    <h3 style="font-size:17px;font-weight:800;color:#D4AF37;margin-bottom:8px;">📋 Internship Onboarding Guidelines</h3>
+    <p style="font-size:13px;color:#9a8a6a;margin-bottom:18px;line-height:1.6;">All interns must follow these guidelines throughout the internship. Non-compliance may result in certificate cancellation or termination.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="background:rgba(212,175,55,0.05);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
+        <b style="color:#D4AF37;font-size:13px;">📋 Attendance (Mandatory)</b>
+        <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;">Fill the attendance form twice daily (morning &amp; evening). Screenshot and share in group if allowed.<br><a href="https://docs.google.com/forms/d/e/1FAIpQLSf3qZwNUgQl7vqqTnGW4PKrMDwRWPJEMiVQ-NUI6h4NnJa8Zg/viewform" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ Open Attendance Form</a></p>
+      </div>
+      <div style="background:rgba(212,175,55,0.05);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
+        <b style="color:#D4AF37;font-size:13px;">📁 Onboarding Documents</b>
+        <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;"><a href="https://drive.google.com/file/d/1rMHH_-FE-FKD54xapu19P9NWS-dn1NfY/view?usp=drivesdk" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ Induction PDF</a> &nbsp;|&nbsp; <a href="https://docs.google.com/document/d/e/2PACX-1vTfWXe3t_wQ0DmVAmFcYehd_iSUYY6UemtmoxCtNgP145pGbgFdxAO2IiWMSLla3brwuc3BVkewRRSo/pub" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ Instructions Document</a> &nbsp;|&nbsp; <a href="https://drive.google.com/file/d/14TuDgp0LeyELj16dNKOZt_2zrgfZ-erh/view?usp=drive_link" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ Induction Video (start at 10 min)</a></p>
+      </div>
+      <div style="background:rgba(212,175,55,0.05);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
+        <b style="color:#D4AF37;font-size:13px;">📢 Daily Job Posting Task (Mandatory for All)</b>
+        <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;"><a href="https://docs.google.com/document/d/e/2PACX-1vRLH7Ri8KAyrjmbc8r2YNLZBFehGdHLwYJwcEhwa4wFAq3aDlLc5iUPbdPgWEFWAGT4TvV08T4m9eMX/pub" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ Open Daily Job Posting Instructions</a></p>
+      </div>
+      <div style="background:rgba(212,175,55,0.05);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
+        <b style="color:#D4AF37;font-size:13px;">💬 Communication &amp; Support</b>
+        <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;">Do not spam working groups. For issues: <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">Support Group</a> &nbsp;|&nbsp; For Employee ID: <a href="https://chat.whatsapp.com/JqzLUMGRkVVIGSsd8Qafl8?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">Employee ID Group</a> &nbsp;|&nbsp; Email: <a href="mailto:hr@entrepreneurshipnetwork.net" style="color:#D4AF37;font-weight:600;">hr@entrepreneurshipnetwork.net</a></p>
+      </div>
+      <div style="background:rgba(212,175,55,0.08);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
+        <b style="color:#D4AF37;font-size:13px;">🏆 Best Performers — Paid Projects &amp; Positions</b>
+        <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;">Top performers get paid projects &amp; positions. <a href="https://docs.google.com/document/d/e/2PACX-1vRZAg2cRitRTvw3GO7HWbUUGCiCJ44Jqg7WQOPC4N0pCidzTWKuyvqGp8rptrvXyJsBTryjm1a6b45i/pub" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ AI Development Playbook</a> &nbsp;|&nbsp; <a href="https://www.entrepreneurshipnetwork.net/Layers" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ Performance Layers</a></p>
+      </div>
+    </div>
+  </div>
+  </div>
+  <!-- ===== END GUIDELINES VIEW ===== -->
+
   <div class="stu-view" id="stu-view-notice">
   <!-- ── NOTICE BOX ── -->
   <div class="notice-box">
@@ -2085,7 +2130,12 @@ const tasksByDomain = {
   "Cyber Security":["Nmap scan","Security audit","Password strength tool","Basic firewall setup"],
   "Software Engineering":["Agile sprint plan","SDLC document","UML diagrams","Test case design"],
   "Flutter Development":["Flutter UI demo","Firebase auth","Todo app in Flutter","State management demo"],
-  "HR Management":["Employee onboarding plan","Performance review template","Policy document","Recruitment funnel analysis"]
+  "HR Management":["Employee onboarding plan","Performance review template","Policy document","Recruitment funnel analysis"],
+  "Venture Capital":["VC pitch deck","Startup valuation model","Term sheet analysis","Investment thesis document"],
+  "Vibe Coding":["Build a vibe-driven UI","AI-assisted app prototype","No-code tool project","Prompt engineering demo"],
+  "Space Research":["Satellite orbit simulator","Space mission report","Astronomy data analysis","Rocket trajectory model"],
+  "Business Analyst":["Requirements gathering doc","Business process flowchart","SWOT analysis report","Use case diagram"],
+  "HR":["Job description writing","Interview scorecard","HR policy draft","Employee engagement survey"]
 };
 
 // Coordinator-uploaded tasks
@@ -3308,6 +3358,7 @@ var sectionTitles = {
   'stu-view-submissions': 'Submitted Tasks',
   'stu-view-attendance': 'Daily Attendance',
   'stu-view-test': 'Domain MCQ Test',
+  'stu-view-guidelines': 'Internship Guidelines',
   'stu-view-leaderboard': 'Extras & Badges'
 };
 
@@ -3337,6 +3388,7 @@ function openSectionModal(sectionId) {
   if (sectionId === 'stu-view-domain-tasks' && typeof renderTasks === 'function') renderTasks();
   if (sectionId === 'stu-view-coding' && typeof loadCodingProblems === 'function') loadCodingProblems();
   if (sectionId === 'stu-view-test' && typeof loadTest === 'function') loadTest();
+  if (sectionId === 'stu-view-guidelines') { /* Guidelines content is static, no load function needed */ }
 }
 
 function closeSectionModal() {
@@ -3393,6 +3445,27 @@ async function generateCertificate() {
     const certId = 'TEN-CERT-' + empId.replace(/\//g,'-') + '-' + Date.now().toString(36).toUpperCase();
     const dateStr = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
 
+    const loadDataUrl = (url) => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error('Failed to load logo image'));
+      img.src = url;
+    });
+
+    let logoDataUrl = null;
+    try {
+      logoDataUrl = await loadDataUrl('/ten-logo.png');
+    } catch (err) {
+      console.warn('Could not load TEN logo for certificate:', err);
+    }
+
     doc.setFillColor(4, 7, 15);
     doc.rect(0, 0, W, H, 'F');
     doc.setDrawColor(212, 175, 55);
@@ -3406,21 +3479,27 @@ async function generateCertificate() {
     });
     doc.setFillColor(212, 175, 55);
     doc.rect(20, 20, W-40, 1.5, 'F');
+    if (logoDataUrl) {
+      const props = doc.getImageProperties(logoDataUrl);
+      const imgW = 32;
+      const imgH = (props.height / props.width) * imgW;
+      doc.addImage(logoDataUrl, 'PNG', W/2 - imgW/2, 22, imgW, imgH);
+    }
     doc.setFontSize(9);
     doc.setTextColor(212, 175, 55);
     doc.setFont('helvetica', 'bold');
-    doc.text('THE ENTREPRENEURSHIP NETWORK', W/2, 30, { align: 'center' });
+    doc.text('THE ENTREPRENEURSHIP NETWORK', W/2, 42, { align: 'center' });
     doc.setFontSize(28);
     doc.setTextColor(240, 230, 200);
-    doc.text('Certificate of Completion', W/2, 52, { align: 'center' });
+    doc.text('Certificate of Completion', W/2, 64, { align: 'center' });
     doc.setFontSize(10);
     doc.setTextColor(160, 140, 100);
     doc.setFont('helvetica', 'normal');
-    doc.text('This is to certify that', W/2, 65, { align: 'center' });
+    doc.text('This is to certify that', W/2, 77, { align: 'center' });
     doc.setFontSize(32);
     doc.setTextColor(212, 175, 55);
     doc.setFont('helvetica', 'bold');
-    doc.text(name, W/2, 82, { align: 'center' });
+    doc.text(name, W/2, 94, { align: 'center' });
     const nameWidth = doc.getTextWidth(name);
     doc.setDrawColor(212,175,55);
     doc.setLineWidth(0.5);
@@ -3699,6 +3778,118 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && document.getElementById('profileModal').style.display === 'flex') closeProfileModal();
 });
 </script>
+
+<!-- ===== FIRST-LOGIN ONBOARDING INSTRUCTION MODAL ===== -->
+<div id="instructionModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);overflow-y:auto;padding:24px 16px;">
+  <div style="max-width:800px;margin:32px auto 60px;background:linear-gradient(160deg,#0b0d14,#100e08);border:1px solid rgba(212,175,55,0.35);border-radius:18px;padding:44px 48px;color:#e8dcc8;font-family:inherit;position:relative;box-shadow:0 30px 80px rgba(0,0,0,0.7);">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:18px 18px 0 0;"></div>
+    <div style="text-align:center;margin-bottom:36px;">
+      <div style="font-size:46px;margin-bottom:14px;">🎓</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:4px;color:#D4AF37;text-transform:uppercase;margin-bottom:10px;">The Entrepreneurship Network</div>
+      <h2 style="font-size:24px;font-weight:800;color:#f0e6c8;margin-bottom:10px;">INTERNSHIP ONBOARDING GUIDELINES &amp; INSTRUCTIONS</h2>
+      <div style="display:inline-block;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:20px;padding:6px 18px;font-size:12px;color:#D4AF37;font-weight:600;">@all — Please read carefully before proceeding</div>
+    </div>
+    <div style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:14px 20px;margin-bottom:28px;font-size:14px;color:#D4AF37;font-weight:600;text-align:center;">🌅 Good Morning / Afternoon / Evening — Please submit your attendance.</div>
+    <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:36px;">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">01</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📋 Attendance <span style="font-size:11px;color:#e05c5c;font-weight:700;background:rgba(224,92,92,0.12);border:1px solid rgba(224,92,92,0.25);border-radius:4px;padding:2px 8px;margin-left:6px;">MANDATORY</span></span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Fill out the attendance form <b>twice daily</b> — morning &amp; evening.</li>
+          <li>After submitting, share a screenshot in the group to ensure eligibility for your certificate.</li>
+          <li>📎 Attendance Form: <a href="https://docs.google.com/forms/d/e/1FAIpQLSf3qZwNUgQl7vqqTnGW4PKrMDwRWPJEMiVQ-NUI6h4NnJa8Zg/viewform" target="_blank" rel="noopener" style="color:#D4AF37;">Click here to open attendance form</a></li>
+          <li><b style="color:#e05c5c;">Missing daily attendance may lead to termination and no certificate.</b></li>
+          <li>Attendance is <b>mandatory</b> even if you have not yet received your Employee ID.</li>
+          <li>For your Employee ID: <a href="https://docs.google.com/spreadsheets/d/1GZ7kvjVHUPygtgODan-2XevEfN-_tmEQYxhn1UW9DHM/edit?gid=0#gid=0" target="_blank" rel="noopener" style="color:#D4AF37;">Find Employee ID here</a></li>
+          <li>If you don't receive your Employee ID, email <a href="mailto:hr@entrepreneurshipnetwork.net" style="color:#D4AF37;">hr@entrepreneurshipnetwork.net</a> or join the <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">support WhatsApp group</a>.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">02</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📁 Onboarding Document</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>📄 <b>Induction PDF:</b> <a href="https://drive.google.com/file/d/1rMHH_-FE-FKD54xapu19P9NWS-dn1NfY/view?usp=drivesdk" target="_blank" rel="noopener" style="color:#D4AF37;">Open Induction PDF</a></li>
+          <li>📋 <b>All guidelines &amp; instructions:</b> <a href="https://docs.google.com/document/d/e/2PACX-1vTfWXe3t_wQ0DmVAmFcYehd_iSUYY6UemtmoxCtNgP145pGbgFdxAO2IiWMSLla3brwuc3BVkewRRSo/pub" target="_blank" rel="noopener" style="color:#D4AF37;">Open Instructions Document</a></li>
+          <li>🎬 <b>Induction Session Video:</b> <a href="https://drive.google.com/file/d/14TuDgp0LeyELj16dNKOZt_2zrgfZ-erh/view?usp=drive_link" target="_blank" rel="noopener" style="color:#D4AF37;">Watch Induction Video</a> <span style="color:#9a8a6a;">(start from 10 minutes)</span></li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">03</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">💬 Communication Rules</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Do <b>not</b> post complaints or spam in working groups.</li>
+          <li>For any issues: <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">Open Support Group</a></li>
+          <li><b style="color:#e05c5c;">Any misconduct or spamming may lead to termination.</b></li>
+          <li>For Employee ID issues: <a href="https://chat.whatsapp.com/JqzLUMGRkVVIGSsd8Qafl8?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">Employee ID Support Group</a></li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">04</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📢 Daily Job Posting Task <span style="font-size:11px;color:#e05c5c;font-weight:700;background:rgba(224,92,92,0.12);border:1px solid rgba(224,92,92,0.25);border-radius:4px;padding:2px 8px;margin-left:6px;">MANDATORY FOR ALL</span></span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li><a href="https://docs.google.com/document/d/e/2PACX-1vRLH7Ri8KAyrjmbc8r2YNLZBFehGdHLwYJwcEhwa4wFAq3aDlLc5iUPbdPgWEFWAGT4TvV08T4m9eMX/pub" target="_blank" rel="noopener" style="color:#D4AF37;">Open Daily Job Posting Instructions</a></li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">05</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📌 General Instructions</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Check your group description for additional details.</li>
+          <li>Be patient — further instructions will be shared regularly.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">06</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">🧭 Discipline</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Maintain professionalism in the group at all times.</li>
+          <li>Avoid unnecessary messages to prevent the group from becoming admin-only.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(224,92,92,0.05);border:1px solid rgba(224,92,92,0.2);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(224,92,92,0.15);border:1px solid rgba(224,92,92,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#e05c5c;">07</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">⚠️ Important</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li><b>Do not leave the group if you are confused.</b> All next steps will be communicated there.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">08</span><span style="font-size:15px;font-weight:800;color:#D4AF37;">🏆 Paid Projects &amp; Positions for Best Performers</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li><a href="https://docs.google.com/document/d/e/2PACX-1vRZAg2cRitRTvw3GO7HWbUUGCiCJ44Jqg7WQOPC4N0pCidzTWKuyvqGp8rptrvXyJsBTryjm1a6b45i/pub" target="_blank" rel="noopener" style="color:#D4AF37;">Open AI Development Playbook</a></li>
+          <li><b style="color:#D4AF37;">Best performers get paid projects and paid positions.</b></li>
+          <li>Performance layers: <a href="https://www.entrepreneurshipnetwork.net/Layers" target="_blank" rel="noopener" style="color:#D4AF37;">entrepreneurshipnetwork.net/Layers</a></li>
+          <li>Email: <a href="mailto:hr@entrepreneurshipnetwork.net" style="color:#D4AF37;">hr@entrepreneurshipnetwork.net</a></li>
+        </ul>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <button onclick="acknowledgeInstructions()" style="padding:16px 52px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 8px 28px rgba(212,175,55,0.35);">✅ I Have Read &amp; Understood — Let's Begin!</button>
+      <p style="margin-top:14px;font-size:11px;color:#6a5a3a;">This message will not be shown again on this device.</p>
+    </div>
+  </div>
+</div>
+<!-- ===== END ONBOARDING INSTRUCTION MODAL ===== -->
+
+<script>
+// ===== FIRST-LOGIN ONBOARDING POPUP =====
+function showInstructionModalIfNeeded(employeeId) {
+  var key = 'tenInstructionsSeen_' + employeeId;
+  if (!localStorage.getItem(key)) {
+    document.getElementById('instructionModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+}
+function acknowledgeInstructions() {
+  var empId = (typeof student !== 'undefined' && student && student.employeeId)
+    ? student.employeeId
+    : (localStorage.getItem('employeeId') || 'unknown');
+  localStorage.setItem('tenInstructionsSeen_' + empId, 'true');
+  document.getElementById('instructionModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+(function() {
+  try {
+    var stu = JSON.parse(localStorage.getItem('student') || '{}');
+    if (stu && stu.employeeId) showInstructionModalIfNeeded(stu.employeeId);
+  } catch(e) {}
+})();
+// ===== END ONBOARDING POPUP =====
+</script>
+
 </body>
 </html>
 

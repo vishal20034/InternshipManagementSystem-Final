@@ -36,14 +36,23 @@ body {
   gap: 14px;
 }
 .header-logo {
-  width: 46px; height: 46px;
-  background: var(--ten-gold-bg);
-  border: 1px solid var(--ten-border-strong);
+  width: 50px; height: 50px;
+  background: rgba(212,175,55,0.08);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(212,175,55,0.35);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   animation: ten-pulse-gold 3s ease infinite;
+  box-shadow: 0 0 40px rgba(212,175,55,0.25), inset 0 1px 1px rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+.header-logo:hover {
+  background: rgba(212,175,55,0.12);
+  border-color: rgba(212,175,55,0.5);
+  box-shadow: 0 0 60px rgba(212,175,55,0.35), inset 0 1px 1px rgba(255,255,255,0.15);
+  transform: scale(1.05);
 }
 .header-brand-text .brand-name {
   font-family: var(--ten-font-display);
