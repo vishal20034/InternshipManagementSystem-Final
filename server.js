@@ -3884,25 +3884,72 @@ app.get("/coordinator/coding-submissions/:domain", async(req,res)=>{
 // ================= PUBLIC DOCUMENT VERIFICATION =================
 
 app.get('/verify-document', (req, res) => {
-    const { id } = req.query;
-    res.send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document Verification — TEN</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0a0c14;color:#e8dcc8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}.card{max-width:520px;width:100%;background:linear-gradient(160deg,#0b0d14,#100e08);border:1px solid rgba(212,175,55,0.35);border-radius:18px;padding:44px 40px;text-align:center}.inf{font-size:52px;color:#D4AF37;margin-bottom:12px}h1{font-size:22px;color:#D4AF37;margin-bottom:8px}.sub{font-size:13px;color:#9a8a6a;margin-bottom:28px}.id-box{background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.25);border-radius:10px;padding:14px 18px;font-family:'Courier New',monospace;font-size:14px;color:#D4AF37;margin-bottom:24px;word-break:break-all}.valid{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#10b981;border-radius:10px;padding:16px;font-size:15px;font-weight:700;margin-bottom:16px}.invalid{background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.3);color:#f43f5e;border-radius:10px;padding:16px;font-size:15px;font-weight:700;margin-bottom:16px}.note{font-size:12px;color:#6a5a3a;margin-top:20px}a{color:#D4AF37}</style>
-</head><body><div class="card">
-<div class="inf">∞</div>
-<h1>Document Verification</h1>
-<p class="sub">The Entrepreneurship Network — Official Document Authenticity Check</p>
-${id
-    ? `<div class="id-box">${id}</div><div class="valid">✅ Document ID Format Valid<br><span style="font-size:12px;font-weight:400;color:#a0d4bc;margin-top:4px;display:block;">This document was issued by The Entrepreneurship Network (Limitless Technologies LLP)</span></div>`
-    : `<div class="invalid">⚠️ No Document ID provided</div>`
-}
-<p style="font-size:13px;color:#c8baa0;line-height:1.7;">For full verification or to report fraud, email <a href="mailto:hr@entrepreneurshipnetwork.net">hr@entrepreneurshipnetwork.net</a> with the Document ID above.</p>
-<p class="note">© The Entrepreneurship Network — <a href="https://virtualinternships.entrepreneurshipnetwork.net">virtualinternships.entrepreneurshipnetwork.net</a></p>
-</div></body></html>`);
+    res.sendFile(path.join(__dirname, 'public', 'verify.html'));
 });
 
 app.get('/verify', (req, res) => {
     res.redirect('/verify-document' + (req.query.id ? '?id=' + req.query.id : ''));
+});
+
+app.get('/api/verify-document/:id', async (req, res) => {
+    try {
+        const docId = decodeURIComponent(req.params.id).trim();
+        if (!docId) return res.status(400).json({ error: 'Document ID is required' });
+
+        const Student = require('./models/Student');
+
+        // Try to find by autoDocUniqueId first
+        let student = await Student.findOne({ autoDocUniqueId: docId }).select('firstName lastName employeeId domain collegeName college email');
+
+        // If not found by autoDocUniqueId, try to parse the ID and find by employeeId
+        if (!student) {
+            const parts = docId.split('-');
+            if (parts.length >= 3 && parts[0] === 'TEN') {
+                // Extract employeeId from format TEN-{empId}-{timestamp}
+                // empId may contain hyphens, so take everything between first and last segments
+                const empIdParts = parts.slice(1, parts.length - 1);
+                const empId = empIdParts.join('/');
+                student = await Student.findOne({ employeeId: empId }).select('firstName lastName employeeId domain collegeName college email');
+            }
+        }
+
+        if (!student) {
+            return res.status(404).json({ error: 'Document not found', docId });
+        }
+
+        // Determine doc type from the ID
+        let docType = 'unknown';
+        const lowerId = docId.toLowerCase();
+        if (lowerId.includes('offer')) docType = 'offer';
+        else if (lowerId.includes('loc') || lowerId.includes('completion')) docType = 'loc';
+        else if (lowerId.includes('lor')) docType = 'lor';
+        else if (lowerId.includes('star')) docType = 'star';
+
+        const isExactMatch = student.autoDocUniqueId === docId;
+
+        return res.json({
+            verified: true,
+            exactMatch: isExactMatch,
+            document: {
+                documentId: docId,
+                docType: docType,
+                employeeId: student.employeeId || '',
+                domain: student.domain || '',
+                generatedAt: student.documentsAutoSentAt || null,
+                generatedBy: 'System (Auto-generated)',
+            },
+            student: {
+                firstName: student.firstName || '',
+                lastName: student.lastName || '',
+                employeeId: student.employeeId || '',
+                domain: student.domain || '',
+                college: student.collegeName || student.college || '',
+            }
+        });
+    } catch (err) {
+        console.error('[VERIFY] Error:', err.message);
+        return res.status(500).json({ error: 'Server error during verification' });
+    }
 });
 
 // ================= SERVER =================
