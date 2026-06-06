@@ -390,11 +390,21 @@ body {
         <input class="field-input" type="text" id="whatsapp" placeholder="+91 XXXXX XXXXX" required>
       </div>
 
+      <div class="field-group">
+        <label class="field-label">College / University Name</label>
+        <input class="field-input" type="text" id="collegeName" placeholder="Enter your college or university name" required>
+      </div>
+
       <div class="two-col">
         <div class="field-group">
           <label class="field-label">Domain</label>
           <select class="field-input" id="domain" required>
             <option value="">Select Domain</option>
+            <option>Venture Capital</option>
+            <option>Vibe Coding</option>
+            <option>Space Research</option>
+            <option>Business Analyst</option>
+            <option>HR</option>
             <option>DevOps with AWS</option>
             <option>Python Development</option>
             <option>Java Development</option>
@@ -412,6 +422,7 @@ body {
           <label class="field-label">Duration</label>
           <select class="field-input" id="tenure" required>
             <option value="">Select Duration</option>
+            <option>45 Days</option>
             <option>1 Month</option>
             <option>3 Months</option>
             <option>6 Months</option>
@@ -462,6 +473,7 @@ form.addEventListener("submit", async (e) => {
         lastName: document.getElementById("lastName").value,
         email: document.getElementById("email").value,
         whatsapp: document.getElementById("whatsapp").value,
+        collegeName: document.getElementById("collegeName").value,
         domain: document.getElementById("domain").value,
         tenure: document.getElementById("tenure").value,
         joiningDate: new Date()
@@ -491,3 +503,4 @@ form.addEventListener("submit", async (e) => {
 
 </body>
 </html>
+
