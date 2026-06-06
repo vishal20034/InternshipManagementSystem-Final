@@ -34,7 +34,8 @@ const ALL_DOMAINS = [
     "DevOps with AWS","Python Development","Java Development","Web Development",
     "MERN Stack Development","Artificial Intelligence","Data Science",
     "Cyber Security","Software Engineering","Flutter Development",
-    "HR Management"
+    "HR Management",
+    "Venture Capital","Vibe Coding","Space Research","Business Analyst","HR"
 ];
 
 // Shared credential maps (legacy hardcoded accounts).
@@ -57,14 +58,20 @@ const COORDINATORS = {
     "software_admin":     { password:"Software@2026",   domain:"Software Engineering" },
     "flutter_admin":      { password:"Flutter@2026",    domain:"Flutter Development" },
     // Requirement 5 — HR Management treated like any other domain
-    "hrmgmt_admin":       { password:"HRMgmt@2026",     domain:"HR Management" }
+    "hrmgmt_admin":       { password:"HRMgmt@2026",     domain:"HR Management" },
+    // New domains added
+    "venturecapital_admin":  { password: "VC@TEN2026",        domain: "Venture Capital" },
+    "vibecoding_admin":      { password: "Vibe@TEN2026",       domain: "Vibe Coding" },
+    "spaceresearch_admin":   { password: "Space@TEN2026",      domain: "Space Research" },
+    "businessanalyst_admin": { password: "BA@TEN2026",         domain: "Business Analyst" },
+    "hr_domain_admin":       { password: "HRDomain@TEN2026",   domain: "HR" }
 };
 
 const app = express();
 
 // ===== Production config =====
 const PORT = process.env.PORT || 5000;
-const BASE_URL = process.env.BASE_URL || "http://15.207.123.212";
+const BASE_URL = process.env.BASE_URL || "https://virtualinternships.entrepreneurshipnetwork.net";
 
 // Ensure uploads directory exists (multer writes to it)
 const uploadsAbs = path.join(__dirname, "uploads");
@@ -238,7 +245,12 @@ async function generateEmployeeId(domain){
         "Cyber Security":           "CYBER",
         "Software Engineering":     "SDE",
         "Flutter Development":      "FLUTTER",
-        "HR Management":            "HRMGMT"
+        "HR Management":            "HRMGMT",
+        "Venture Capital":           "VC",
+        "Vibe Coding":               "VIBE",
+        "Space Research":            "SPACE",
+        "Business Analyst":          "BA",
+        "HR":                        "HR"
     };
     const shortCode = domainShortCodes[domain] || domain.toUpperCase();
     const totalStudents = await Student.countDocuments();
@@ -318,7 +330,7 @@ function welcomeEmailHtml({ name, employeeId, domain, email, password, joinedOn,
 
 app.post("/register", registerLimiter, async(req,res)=>{
 try{
-    const { firstName, lastName, domain, whatsapp, email, tenure, joiningDate } = req.body;
+    const { firstName, lastName, domain, whatsapp, email, tenure, joiningDate, collegeName } = req.body;
     if(!email || !domain){
         return res.json({ success:false, message:"Email and domain are required" });
     }
@@ -356,7 +368,8 @@ try{
         name: (firstName||"") + " " + (lastName||""),
         domain, whatsapp, email: emailLc,
         tenure, joiningDate,
-        employeeId, password
+        employeeId, password,
+        collegeName: collegeName || ""
     });
     await newStudent.save();
 
@@ -419,6 +432,7 @@ try{
         const t = student.tenure.toLowerCase();
         if(t.includes("6")){ internshipDuration = "6 Months"; }
         else if(t.includes("3")){ internshipDuration = "3 Months"; }
+        else if(t.includes("45")){ internshipDuration = "45 Days"; }
         else { internshipDuration = "1 Month"; }
     }
 
@@ -1110,7 +1124,7 @@ try{
             email: student.email || "",
             // Student schema in this project uses `whatsapp` for phone.
             phone: student.whatsapp || "",
-            college: student.college || student.collegeName || "",
+            college: student.collegeName || student.college || "",
 
             employeeId: student.employeeId,
             domain: student.domain,

@@ -741,6 +741,7 @@ body::before {
     <button class="coord-nav-btn" data-tab="tasks" onclick="openCoordModal('tasks')"><span class="nav-icon">📋</span> Task Manager</button>
     <button class="coord-nav-btn" data-tab="leaderboard" onclick="openCoordModal('leaderboard')"><span class="nav-icon">🏆</span> Leaderboard</button>
     <button class="coord-nav-btn" data-tab="lbperf" onclick="openCoordModal('lbperf')"><span class="nav-icon">⭐</span> Performance Ranking</button>
+    <button class="coord-nav-btn" data-tab="guidelines" onclick="openCoordModal('guidelines')"><span class="nav-icon">📋</span> Intern Guidelines</button>
   </div>
   <div style="padding:12px 16px;border-top:1px solid rgba(212,175,55,0.08);">
     <div style="font-size:10px;color:var(--muted);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;">THEME</div>
@@ -2997,7 +2998,8 @@ var coordSectionTitles = {
   'coding': 'Coding Problems',
   'leaderboard': 'Leaderboard',
   'lbperf': 'Performance Ranking',
-  'tasks': 'Task Manager'
+  'tasks': 'Task Manager',
+  'guidelines': 'Intern Onboarding Guidelines (Reference)'
 };
 
 function openCoordModal(tabName) {
@@ -3090,5 +3092,105 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && document.getElementById('coordProfileModal').style.display === 'flex') closeCoordProfileModal();
 });
 </script>
+
+<!-- ===== COORDINATOR FIRST-LOGIN ONBOARDING MODAL ===== -->
+<div id="coordInstructionModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);overflow-y:auto;padding:24px 16px;">
+  <div style="max-width:800px;margin:32px auto 60px;background:linear-gradient(160deg,#0b0d14,#100e08);border:1px solid rgba(212,175,55,0.35);border-radius:18px;padding:44px 48px;color:#e8dcc8;font-family:inherit;position:relative;box-shadow:0 30px 80px rgba(0,0,0,0.7);">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:18px 18px 0 0;"></div>
+    <div style="text-align:center;margin-bottom:36px;">
+      <div style="font-size:46px;margin-bottom:14px;">🛡️</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:4px;color:#D4AF37;text-transform:uppercase;margin-bottom:10px;">The Entrepreneurship Network</div>
+      <h2 style="font-size:24px;font-weight:800;color:#f0e6c8;margin-bottom:10px;">Coordinator Onboarding — TEN Internship Portal</h2>
+      <div style="display:inline-block;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:20px;padding:6px 18px;font-size:12px;color:#D4AF37;font-weight:600;">You are a domain coordinator. Please review all intern guidelines to effectively manage your team.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:36px;">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">01</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📋 Attendance <span style="font-size:11px;color:#e05c5c;font-weight:700;background:rgba(224,92,92,0.12);border:1px solid rgba(224,92,92,0.25);border-radius:4px;padding:2px 8px;margin-left:6px;">MANDATORY</span></span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Interns fill attendance form <b>twice daily</b>. Remind them every morning &amp; evening.</li>
+          <li>Attendance Form: <a href="https://docs.google.com/forms/d/e/1FAIpQLSf3qZwNUgQl7vqqTnGW4PKrMDwRWPJEMiVQ-NUI6h4NnJa8Zg/viewform" target="_blank" rel="noopener" style="color:#D4AF37;">Open Attendance Form</a></li>
+          <li>Employee ID Sheet: <a href="https://docs.google.com/spreadsheets/d/1GZ7kvjVHUPygtgODan-2XevEfN-_tmEQYxhn1UW9DHM/edit?gid=0#gid=0" target="_blank" rel="noopener" style="color:#D4AF37;">Find Employee ID here</a></li>
+          <li><b style="color:#e05c5c;">Missing daily attendance may lead to intern termination and no certificate.</b></li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">02</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📁 Onboarding Documents</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li><a href="https://drive.google.com/file/d/1rMHH_-FE-FKD54xapu19P9NWS-dn1NfY/view?usp=drivesdk" target="_blank" rel="noopener" style="color:#D4AF37;">Induction PDF</a> | <a href="https://docs.google.com/document/d/e/2PACX-1vTfWXe3t_wQ0DmVAmFcYehd_iSUYY6UemtmoxCtNgP145pGbgFdxAO2IiWMSLla3brwuc3BVkewRRSo/pub" target="_blank" rel="noopener" style="color:#D4AF37;">Instructions Document</a> | <a href="https://drive.google.com/file/d/14TuDgp0LeyELj16dNKOZt_2zrgfZ-erh/view?usp=drive_link" target="_blank" rel="noopener" style="color:#D4AF37;">Induction Video (10 min)</a></li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">03</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">💬 Communication Rules</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Do not allow spam in working groups. Direct issues to: <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">Support Group</a></li>
+          <li>Employee ID issues: <a href="https://chat.whatsapp.com/JqzLUMGRkVVIGSsd8Qafl8?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">Employee ID Support Group</a></li>
+          <li><b style="color:#e05c5c;">Misconduct or spamming may lead to termination.</b></li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">04</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📢 Daily Job Posting Task <span style="font-size:11px;color:#e05c5c;font-weight:700;background:rgba(224,92,92,0.12);border:1px solid rgba(224,92,92,0.25);border-radius:4px;padding:2px 8px;margin-left:6px;">MANDATORY FOR ALL</span></span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li><a href="https://docs.google.com/document/d/e/2PACX-1vRLH7Ri8KAyrjmbc8r2YNLZBFehGdHLwYJwcEhwa4wFAq3aDlLc5iUPbdPgWEFWAGT4TvV08T4m9eMX/pub" target="_blank" rel="noopener" style="color:#D4AF37;">Open Daily Job Posting Instructions</a></li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">05</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📌 General Instructions</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Check group description for additional details. Be patient — further instructions will be shared regularly.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">06</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">🧭 Discipline</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li>Maintain professionalism. Avoid unnecessary messages to prevent the group from becoming admin-only.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(224,92,92,0.05);border:1px solid rgba(224,92,92,0.2);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(224,92,92,0.15);border:1px solid rgba(224,92,92,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#e05c5c;">07</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">⚠️ Important</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li><b>Do not leave the group if confused.</b> All next steps will be communicated there.</li>
+        </ul>
+      </div>
+      <div style="background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:12px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">08</span><span style="font-size:15px;font-weight:800;color:#D4AF37;">🏆 Paid Projects &amp; Positions for Best Performers</span></div>
+        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
+          <li><a href="https://docs.google.com/document/d/e/2PACX-1vRZAg2cRitRTvw3GO7HWbUUGCiCJ44Jqg7WQOPC4N0pCidzTWKuyvqGp8rptrvXyJsBTryjm1a6b45i/pub" target="_blank" rel="noopener" style="color:#D4AF37;">AI Development Playbook</a> | <a href="https://www.entrepreneurshipnetwork.net/Layers" target="_blank" rel="noopener" style="color:#D4AF37;">Performance Layers</a> | <a href="mailto:hr@entrepreneurshipnetwork.net" style="color:#D4AF37;">hr@entrepreneurshipnetwork.net</a></li>
+        </ul>
+      </div>
+    </div>
+    <div style="text-align:center;">
+      <button onclick="acknowledgeCoordInstructions()" style="padding:16px 52px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 8px 28px rgba(212,175,55,0.35);">✅ I Have Read &amp; Understood — Let's Begin!</button>
+      <p style="margin-top:14px;font-size:11px;color:#6a5a3a;">This message will not be shown again on this device.</p>
+    </div>
+  </div>
+</div>
+<!-- ===== END COORDINATOR ONBOARDING MODAL ===== -->
+
+<script>
+// ===== COORDINATOR FIRST-LOGIN ONBOARDING POPUP =====
+function showCoordInstructionModalIfNeeded(coordId) {
+  var key = 'tenCoordInstructionsSeen_' + coordId;
+  if (!localStorage.getItem(key)) {
+    document.getElementById('coordInstructionModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+}
+function acknowledgeCoordInstructions() {
+  var coordId = (typeof coordinator !== 'undefined' && coordinator && (coordinator.username || coordinator.id))
+    ? (coordinator.username || coordinator.id)
+    : (sessionStorage.getItem('coordinatorUsername') || 'coord');
+  localStorage.setItem('tenCoordInstructionsSeen_' + coordId, 'true');
+  document.getElementById('coordInstructionModal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+(function() {
+  try {
+    var coordId = sessionStorage.getItem('coordinatorUsername') || 'coord';
+    if (coordId) showCoordInstructionModalIfNeeded(coordId);
+  } catch(e) {}
+})();
+// ===== END COORDINATOR ONBOARDING POPUP =====
+</script>
+
 </body>
 </html>
