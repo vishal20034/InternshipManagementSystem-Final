@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{--gold:#f5c542;--gold2:#c9a227;--dark:#04070f;--surface:#080d1a;--card:#0c1220;--card2:#0e1628;--border:rgba(245,197,66,0.1);--border-glow:rgba(245,197,66,0.25);--text:#f0eee8;--muted:#6a6255;--green:#10b981;--red:#f43f5e;--blue:#3b82f6;--cyan:#06b6d4;--amber:#f59e0b;--purple:#8b5cf6;--orange:#f97316;}
@@ -24,7 +25,26 @@ body{background:var(--dark);color:var(--text);font-family:'Outfit',sans-serif;mi
 .sidebar.open{transform:translateX(0);}
 .sidebar-logo{padding:0 24px 28px;border-bottom:1px solid var(--border);}
 .logo-badge-sm{display:flex;align-items:center;gap:12px;}
-.logo-icon{width:42px;height:42px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 0 20px rgba(245,197,66,0.3);}
+.logo-icon{
+  width: 48px; height: 48px;
+  background: rgba(212,175,55,0.08);
+  backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(212,175,55,0.35);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: 0 0 40px rgba(212,175,55,0.25), inset 0 1px 1px rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+.logo-icon:hover {
+  background: rgba(212,175,55,0.12);
+  border-color: rgba(212,175,55,0.5);
+  box-shadow: 0 0 60px rgba(212,175,55,0.35), inset 0 1px 1px rgba(255,255,255,0.15);
+  transform: scale(1.05);
+}
 .logo-txt{font-size:18px;font-weight:800;letter-spacing:-0.5px;}
 .logo-txt span{background:linear-gradient(90deg,var(--gold),#fff176);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .logo-role{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:2px;}
@@ -43,7 +63,7 @@ body{background:var(--dark);color:var(--text);font-family:'Outfit',sans-serif;mi
 .logout-btn-sidebar:hover{background:rgba(244,63,94,0.16);}
 .main{margin-left:0;padding:32px 36px;position:relative;z-index:1;min-height:100vh;}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:12px;}
-.page-title{font-size:28px;font-weight:800;letter-spacing:-0.5px;}
+.page-title{font-size:28px;font-weight:800;letter-spacing:-0.5px;text-align:center;}
 .page-title span{background:linear-gradient(90deg,var(--gold),#fff176);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .topbar-right{display:flex;align-items:center;gap:12px;}
 .date-badge{padding:8px 16px;background:var(--card);border:1px solid var(--border);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);}
@@ -55,8 +75,10 @@ body{background:var(--dark);color:var(--text);font-family:'Outfit',sans-serif;mi
 .stat-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--sc),transparent);}
 .stat-card[data-c="gold"]{--sc:var(--gold);}.stat-card[data-c="green"]{--sc:var(--green);}.stat-card[data-c="red"]{--sc:var(--red);}.stat-card[data-c="blue"]{--sc:var(--blue);}.stat-card[data-c="cyan"]{--sc:var(--cyan);}.stat-card[data-c="amber"]{--sc:var(--amber);}.stat-card[data-c="orange"]{--sc:var(--orange);}
 .stat-icon{font-size:24px;margin-bottom:14px;}.stat-label{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}.stat-value{font-size:48px;font-weight:800;letter-spacing:-2px;color:var(--sc,var(--gold));line-height:1;}.stat-sub{font-size:12px;color:var(--muted);margin-top:6px;}
-.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;}
-.section-title{font-size:20px;font-weight:700;}
+.section-header{display:flex;align-items:center;justify-content:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;text-align:center;}
+.section-title{font-size:20px;font-weight:700;text-align:center;width:100%;}
+.section-card h2, .section-card h3 { text-align: center; }
+#pageTitle { text-align: center; }
 .section-badge{padding:4px 12px;background:rgba(245,197,66,0.1);border:1px solid var(--border-glow);border-radius:99px;font-size:11px;font-weight:600;color:var(--gold);}
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;}
 .table-top{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
@@ -317,7 +339,9 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 <nav class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-badge-sm">
-      <div class="logo-icon">👔</div>
+      <div class="logo-icon">
+        <img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;filter:drop-shadow(0 0 6px rgba(212,175,55,0.4));" />
+      </div>
       <div><div class="logo-txt"><span>TEN</span> Portal</div><div class="logo-role">HR Management</div></div>
     </div>
   </div>
@@ -487,6 +511,18 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         <div class="form-group-hr"><label class="form-label">Date of Letter</label><input class="form-input" id="ol-date" type="date"></div>
         <button class="doc-btn" onclick="generateOfferLetter()">📥 Generate &amp; Download PDF</button>
         <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
+        <!-- Multi-select summary bar — shown when students are selected -->
+        <div id="multiSelectSummary" style="display:none;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:12px 16px;margin-top:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:8px;">
+            👥 <span id="multiSelectCount">0</span> student(s) selected:
+          </div>
+          <div id="multiSelectNames" style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="bulkGenerateDocs()" style="padding:8px 14px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:8px;color:#0a0700;font-size:12px;font-weight:800;cursor:pointer;">📥 Generate All PDFs</button>
+            <button onclick="reviewBeforeEmail()"    style="padding:8px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:#10b981;font-size:12px;font-weight:700;cursor:pointer;">📧 Email All</button>
+            <button onclick="clearAllSelections()" style="padding:8px 14px;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;">✕ Clear Selection</button>
+          </div>
+        </div>
       </div>
     </div>
     <!-- LOC -->
@@ -814,16 +850,110 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 
 <!-- STUDENT PICKER -->
 <div class="modal-overlay-hr" id="studentPickerModal">
-  <div class="modal-box-hr" style="max-width:600px;">
-    <div class="modal-title-hr">🔍 Select Student to Auto-fill</div>
-    <input class="modal-input-hr" type="text" id="pickerSearch" placeholder="Search name or ID..." oninput="filterPicker()" style="margin-bottom:16px;">
-    <div style="max-height:350px;overflow-y:auto;" id="pickerList"></div>
-    <div class="modal-actions-hr" style="margin-top:16px;"><button class="btn-cancel-hr" onclick="closeStudentPicker()">Cancel</button></div>
+  <div class="modal-hr" style="max-width:640px;width:100%;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+    <div>
+      <div style="font-size:17px;font-weight:800;color:var(--gold);">👥 Select Students</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">Tick multiple students — then generate or email documents for all at once</div>
+    </div>
+    <button onclick="closeStudentPicker()" style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.25);color:var(--red);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>
+  </div>
+
+  <!-- Search + Select All -->
+  <div style="display:flex;gap:10px;margin-bottom:14px;align-items:center;">
+    <input class="modal-input-hr" type="text" id="pickerSearch"
+      placeholder="Search by name, ID or domain..."
+      oninput="filterPicker()"
+      style="flex:1;margin-bottom:0;">
+    <button onclick="toggleSelectAll()" id="selectAllBtn"
+      style="white-space:nowrap;padding:9px 14px;background:rgba(245,197,66,0.1);border:1px solid rgba(245,197,66,0.25);color:var(--gold);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+      ☑ Select All
+    </button>
+  </div>
+
+  <!-- Count badge -->
+  <div id="selectedCountBar" style="display:none;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--gold);font-weight:700;">
+    <span id="selectedCountText">0 students selected</span>
+    <button onclick="clearAllSelections()" style="float:right;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;">Clear</button>
+  </div>
+
+  <!-- Student list -->
+  <div style="max-height:320px;overflow-y:auto;margin-bottom:16px;" id="pickerList"></div>
+
+  <!-- Action buttons -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button onclick="bulkGenerateDocs()"
+      style="flex:1;min-width:180px;padding:12px 16px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:14px;font-weight:800;cursor:pointer;">
+      📥 Generate PDFs for All Selected
+    </button>
+    <button onclick="reviewBeforeEmail()"
+      style="flex:1;min-width:180px;padding:12px 16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:10px;color:#10b981;font-size:14px;font-weight:700;cursor:pointer;">
+      📧 Email Docs to All Selected
+    </button>
+  </div>
+
+  <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px;">
+    💡 Tip: Click a student name directly to single-fill the form (existing behaviour still works).
+  </p>
   </div>
 </div>
 
 <!-- TOAST -->
 <div class="hr-toast" id="hrToast"></div>
+
+<!-- CERTIFICATE REVIEW MODAL -->
+<div class="modal-overlay-hr" id="certReviewModal" style="z-index:9999;">
+  <div style="max-width:900px;width:95%;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);background:var(--surface);">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:var(--gold);">📄 Review Certificates Before Sending</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="reviewProgress">Student 1 of 5</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="toggleReviewStudent()" id="reviewToggleBtn" style="padding:6px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:var(--green);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ Include</button>
+        <button onclick="closeCertReview()" style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.25);color:var(--red);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>
+      </div>
+    </div>
+    <!-- Student info bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:rgba(212,175,55,0.04);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="reviewPrevStudent()" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:14px;cursor:pointer;">◀</button>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--text);" id="reviewStudentName">—</div>
+          <div style="font-size:11px;color:var(--muted);" id="reviewStudentInfo">—</div>
+        </div>
+        <button onclick="reviewNextStudent()" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:14px;cursor:pointer;">▶</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:11px;color:var(--muted);">Doc type:</span>
+        <select id="reviewDocType" onchange="renderReviewPreview()" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;font-family:'Outfit',sans-serif;">
+          <option value="offer">Offer Letter</option>
+          <option value="loc">Letter of Completion</option>
+          <option value="lor">Letter of Recommendation</option>
+          <option value="star">Star Performer</option>
+        </select>
+      </div>
+    </div>
+    <!-- Preview iframe -->
+    <div style="flex:1;overflow:hidden;min-height:400px;background:#fff;">
+      <iframe id="reviewPreviewFrame" style="width:100%;height:100%;border:none;min-height:400px;"></iframe>
+    </div>
+    <!-- Footer -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface);flex-wrap:wrap;gap:10px;">
+      <div style="font-size:12px;color:var(--muted);">
+        <span id="reviewIncludedCount" style="color:var(--green);font-weight:700;">0</span> of <span id="reviewTotalCount">0</span> students included for email
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="reviewPrevStudent()" style="padding:8px 16px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer;">◀ Previous</button>
+        <button onclick="reviewNextStudent()" style="padding:8px 16px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer;">Next ▶</button>
+        <button onclick="sendReviewedDocs()" style="padding:8px 20px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📧 Send Reviewed Docs</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- SUBMISSION MODAL -->
 <div class="big-modal-overlay" id="submissionDetailModal">
@@ -881,6 +1011,21 @@ document.getElementById('hrAvatar').textContent=(hrUser?.name||'H')[0].toUpperCa
 document.getElementById('dateBadge').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
 let allStudents=[],allSubmissions=[],allTrackerStudents=[],selectedType='info',trackerFilter='all';
+let selectedStudentsForDocs = [];
+
+function generateUniqueDocId(type, empId) {
+    const ts     = Date.now().toString(36).toUpperCase();
+    const safe   = (empId || 'XX').replace(/\//g, '-');
+    const prefix = { offer:'TEN-OL', loc:'TEN-CT', lor:'TEN-LOR', star:'TEN-SP' };
+    return (prefix[type] || 'TEN-DOC') + '-' + safe + '-' + ts;
+}
+
+async function generateQRDataUrl(text) {
+    return new Promise((resolve) => {
+        QRCode.toDataURL(text, { width:100, margin:1, color:{ dark:'#000000', light:'#ffffff' } },
+            (err, url) => resolve(err ? '' : url));
+    });
+}
 
 function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
@@ -974,7 +1119,7 @@ function openSidePanel(id){
   document.getElementById('sp-domain').value=s.domain||'';
   document.getElementById('sp-employeeId').value=s.employeeId||'';
   document.getElementById('sp-tenure').value=s.tenure||'';
-  document.getElementById('sp-college').value=collegeValue(s);
+  document.getElementById('sp-college').value=s.collegeName||s.college||'';
   document.getElementById('sp-joining').value=s.joiningDate||'';
   const fn=((s.firstName||'')+' '+(s.lastName||'')).trim();
   document.getElementById('sp-name-display').textContent=fn||'—';
@@ -1315,7 +1460,7 @@ async function loadStudentsForPicker(){if(allStudents.length)return;try{const r=
 function fmtDate(ds){if(!ds)return'';const d=new Date(ds);if(isNaN(d))return ds;return`${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;}
 function prefillDocForms(s){
   const name=((s.firstName||'')+' '+(s.lastName||'')).trim();
-  const emp=s.employeeId||'',role=s.domain||'',college=s.college||'',tenure=s.tenure||'';
+  const emp=s.employeeId||'',role=s.domain||'',college=s.collegeName||s.college||'',tenure=s.tenure||'';
   let sd='',ed='';
   const rm=(tenure).match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s*[-–]+\s*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if(rm){const[,d1,m1,y1,d2,m2,y2]=rm;sd=`${y1}-${m1.padStart(2,'0')}-${d1.padStart(2,'0')}`;ed=`${y2}-${m2.padStart(2,'0')}-${d2.padStart(2,'0')}`;}
@@ -1335,12 +1480,392 @@ function autofillFromStudent(){
   document.getElementById('pickerSearch').value='';renderPickerList(allStudents);
   document.getElementById('studentPickerModal').classList.add('open');
 }
-function closeStudentPicker(){document.getElementById('studentPickerModal').classList.remove('open');}
+function closeStudentPicker(){document.getElementById('studentPickerModal').classList.remove('open');updateMultiSelectSummary();}
 function filterPicker(){const q=document.getElementById('pickerSearch').value.toLowerCase();renderPickerList(allStudents.filter(s=>(s.firstName+s.lastName+s.employeeId+s.domain+collegeText(s)).toLowerCase().includes(q)));}
 function renderPickerList(list){
-  document.getElementById('pickerList').innerHTML=list.length?list.map(s=>`<div style="padding:12px 14px;border:1px solid rgba(245,197,66,0.1);border-radius:10px;cursor:pointer;margin-bottom:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;transition:border-color 0.2s" onmouseover="this.style.borderColor='rgba(245,197,66,0.35)'" onmouseout="this.style.borderColor='rgba(245,197,66,0.1)'" onclick="selectStudentForDoc('${s._id}')"><div><div style="font-weight:600;font-size:14px;color:var(--text)">${s.firstName||''} ${s.lastName||''}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${s.domain||''} · ${collegeText(s)}</div></div><div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold)">${s.employeeId||''}</div></div>`).join(''):'<p style="text-align:center;color:var(--muted);padding:20px">No students found</p>';
+  const container = document.getElementById('pickerList');
+  if (!list.length) {
+    container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:20px">No students found</p>';
+    return;
+  }
+  container.innerHTML = list.map(s => {
+    const fullName   = ((s.firstName||'') + ' ' + (s.lastName||'')).trim() || '—';
+    const isSelected = selectedStudentsForDocs.some(x => x._id === s._id);
+    return `<div id="picker-row-${s._id}"
+      style="padding:12px 14px;border:1px solid ${isSelected ? 'rgba(212,175,55,0.5)' : 'rgba(245,197,66,0.1)'};border-radius:10px;cursor:pointer;margin-bottom:8px;background:${isSelected ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.02)'};display:flex;justify-content:space-between;align-items:center;transition:all 0.2s;"
+      onclick="toggleStudentSelection('${s._id}')">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="chk-${s._id}" style="width:20px;height:20px;border-radius:5px;border:2px solid ${isSelected ? '#D4AF37' : 'rgba(212,175,55,0.3)'};background:${isSelected ? '#D4AF37' : 'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:#000;font-weight:900;transition:all 0.15s;">
+          ${isSelected ? '✓' : ''}
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:14px;color:var(--text);">${fullName}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${s.domain||''} — ${s.tenure||''}</div>
+          ${(s.collegeName||s.college) ? `<div style="font-size:11px;color:var(--muted);">${s.collegeName||s.college}</div>` : ''}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold);">${s.employeeId||''}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${s.email||''}</div>
+      </div>
+    </div>`;
+  }).join('');
 }
 function selectStudentForDoc(id){const s=allStudents.find(x=>x._id===id);if(!s)return;closeStudentPicker();prefillDocForms(s);showHRToast('✅ Student data filled!','success');}
+
+function toggleStudentSelection(id) {
+    const s   = allStudents.find(x => x._id === id);
+    if (!s) return;
+    const idx = selectedStudentsForDocs.findIndex(x => x._id === id);
+    if (idx === -1) selectedStudentsForDocs.push(s);
+    else            selectedStudentsForDocs.splice(idx, 1);
+    updateSelectedCountBar();
+    const row = document.getElementById('picker-row-' + id);
+    const chk = document.getElementById('chk-' + id);
+    const sel = selectedStudentsForDocs.some(x => x._id === id);
+    if (row) { row.style.borderColor = sel ? 'rgba(212,175,55,0.5)' : 'rgba(245,197,66,0.1)'; row.style.background = sel ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.02)'; }
+    if (chk) { chk.style.background = sel ? '#D4AF37' : 'transparent'; chk.style.borderColor = sel ? '#D4AF37' : 'rgba(212,175,55,0.3)'; chk.innerHTML = sel ? '✓' : ''; }
+}
+
+function toggleSelectAll() {
+    const ids      = Array.from(document.querySelectorAll('[id^="picker-row-"]')).map(el => el.id.replace('picker-row-',''));
+    const visible  = ids.map(id => allStudents.find(s => s._id === id)).filter(Boolean);
+    const allDone  = visible.every(s => selectedStudentsForDocs.some(x => x._id === s._id));
+    if (allDone) {
+        visible.forEach(s => { selectedStudentsForDocs = selectedStudentsForDocs.filter(x => x._id !== s._id); });
+    } else {
+        visible.forEach(s => { if (!selectedStudentsForDocs.some(x => x._id === s._id)) selectedStudentsForDocs.push(s); });
+    }
+    const q = document.getElementById('pickerSearch')?.value?.toLowerCase() || '';
+    renderPickerList(q ? allStudents.filter(s => (s.firstName+s.lastName+s.employeeId+s.domain).toLowerCase().includes(q)) : allStudents);
+    updateSelectedCountBar();
+}
+
+function clearAllSelections() {
+    selectedStudentsForDocs = [];
+    const q = document.getElementById('pickerSearch')?.value?.toLowerCase() || '';
+    renderPickerList(q ? allStudents.filter(s => (s.firstName+s.lastName+s.employeeId+s.domain).toLowerCase().includes(q)) : allStudents);
+    updateSelectedCountBar();
+    updateMultiSelectSummary();
+}
+
+function updateSelectedCountBar() {
+    const bar  = document.getElementById('selectedCountBar');
+    const text = document.getElementById('selectedCountText');
+    if (!bar || !text) return;
+    const n = selectedStudentsForDocs.length;
+    bar.style.display = n > 0 ? 'block' : 'none';
+    text.textContent  = n + ' student' + (n !== 1 ? 's' : '') + ' selected';
+}
+
+function updateMultiSelectSummary() {
+    const bar   = document.getElementById('multiSelectSummary');
+    const count = document.getElementById('multiSelectCount');
+    const names = document.getElementById('multiSelectNames');
+    if (!bar) return;
+    const n = selectedStudentsForDocs.length;
+    bar.style.display = n > 0 ? 'block' : 'none';
+    if (count) count.textContent = n;
+    if (names) names.innerHTML = selectedStudentsForDocs.map(s =>
+        `<span style="display:inline-block;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.2);border-radius:6px;padding:2px 8px;margin:2px;font-size:11px;color:var(--text);">
+          ${((s.firstName||'') + ' ' + (s.lastName||'')).trim()} <span style="color:var(--gold);">(${s.employeeId||'?'})</span>
+        </span>`
+    ).join('');
+}
+
+async function bulkGenerateDocs() {
+    if (!selectedStudentsForDocs.length) {
+        Swal.fire({ title:'No Students Selected', text:'Please select at least one student.', icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    const activeTab   = document.querySelector('.doc-tab.active')?.textContent?.trim() || '';
+    let docType = 'offer';
+    if (activeTab.includes('LOC') || activeTab.includes('Completion'))          docType = 'loc';
+    else if (activeTab.includes('LOR') || activeTab.includes('Recommendation')) docType = 'lor';
+    else if (activeTab.includes('Star'))                                         docType = 'star';
+    const docLabels   = { offer:'Offer Letter', loc:'LOC', lor:'LOR', star:'Star Performer' };
+    const confirmed   = await Swal.fire({
+        title: 'Generate ' + docLabels[docType],
+        html:  `Generate <b>${docLabels[docType]}</b> for <b>${selectedStudentsForDocs.length}</b> student(s)?<br><small style="color:#9a8a6a">Each document opens in a new tab — Print/Save as PDF from there.</small>`,
+        icon: 'question', showCancelButton: true, confirmButtonText: '📥 Generate All',
+        confirmButtonColor: '#D4AF37', background: '#0c1220', color: '#f0eee8'
+    });
+    if (!confirmed.isConfirmed) return;
+    closeStudentPicker();
+    let opened = 0;
+    for (const student of selectedStudentsForDocs) {
+        await new Promise(r => setTimeout(r, 420 * opened));
+        prefillDocForms(student);
+        await new Promise(r => setTimeout(r, 150));
+        if (docType === 'offer')     await generateOfferLetter(true);
+        else if (docType === 'loc')  await generateLOC(true);
+        else if (docType === 'lor')  await generateLOR(true);
+        else if (docType === 'star') await generateStarCert(true);
+        opened++;
+    }
+    showHRToast('✅ ' + opened + ' document(s) opened!', 'success');
+}
+
+async function bulkEmailDocs() {
+    if (!selectedStudentsForDocs.length) {
+        Swal.fire({ title:'No Students Selected', text:'Please select at least one student.', icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    const noEmail = selectedStudentsForDocs.filter(s => !s.email);
+    if (noEmail.length) {
+        Swal.fire({ title:'Missing Emails', text:'These students have no email: ' + noEmail.map(s => (s.firstName||'') + ' ' + (s.lastName||'')).join(', '), icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    const activeTab = document.querySelector('.doc-tab.active')?.textContent?.trim() || '';
+    let docType = 'offer';
+    if (activeTab.includes('LOC') || activeTab.includes('Completion'))          docType = 'loc';
+    else if (activeTab.includes('LOR') || activeTab.includes('Recommendation')) docType = 'lor';
+    else if (activeTab.includes('Star'))                                         docType = 'star';
+    const docLabels = { offer:'Offer Letter', loc:'LOC', lor:'LOR', star:'Star Performer Certificate' };
+    const confirmed = await Swal.fire({
+        title: 'Email ' + docLabels[docType],
+        html:  `Send <b>${docLabels[docType]}</b> to <b>${selectedStudentsForDocs.length}</b> student(s)?<br><br>` +
+               selectedStudentsForDocs.map(s => `<div style="font-size:12px;color:#9a8a6a;">📧 ${s.email}</div>`).join(''),
+        icon: 'question', showCancelButton: true, confirmButtonText: '📧 Send to All',
+        confirmButtonColor: '#10b981', background: '#0c1220', color: '#f0eee8'
+    });
+    if (!confirmed.isConfirmed) return;
+    closeStudentPicker();
+    Swal.fire({
+        title: 'Sending Emails...', allowOutsideClick: false, showConfirmButton: false,
+        html: `<div id="emailProgressText">Sending 0 of ${selectedStudentsForDocs.length}...</div>`,
+        background: '#0c1220', color: '#f0eee8', didOpen: () => Swal.showLoading()
+    });
+    let sent = 0, failed = 0;
+    for (const student of selectedStudentsForDocs) {
+        try {
+            const r = await fetch('/hr/send-documents-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+                body: JSON.stringify({ employeeId: student.employeeId, docType })
+            });
+            const d = await r.json();
+            if (d.success) sent++; else failed++;
+        } catch(e) { failed++; }
+        const el = document.getElementById('emailProgressText');
+        if (el) el.textContent = 'Sending ' + (sent + failed) + ' of ' + selectedStudentsForDocs.length + '...';
+        await new Promise(r => setTimeout(r, 500));
+    }
+    Swal.fire({
+        title: 'Email Report',
+        html:  `<b style="color:#10b981;">✅ Sent: ${sent}</b>${failed > 0 ? `<br><b style="color:#f43f5e;">❌ Failed: ${failed}</b>` : ''}`,
+        icon: sent > 0 ? 'success' : 'error', background: '#0c1220', color: '#f0eee8'
+    });
+}
+
+/* ============ CERTIFICATE REVIEW BEFORE EMAIL ============ */
+let reviewStudents = [];
+let reviewIndex = 0;
+let reviewIncluded = new Set();
+
+async function reviewBeforeEmail() {
+    if (!selectedStudentsForDocs.length) {
+        Swal.fire({ title:'No Students Selected', text:'Please select at least one student.', icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    reviewStudents = [...selectedStudentsForDocs];
+    reviewIndex = 0;
+    reviewIncluded = new Set(reviewStudents.map(s => s._id));
+
+    // Set doc type based on active tab
+    const activeTab = document.querySelector('.doc-tab.active')?.textContent?.trim() || '';
+    const sel = document.getElementById('reviewDocType');
+    if (activeTab.includes('LOC') || activeTab.includes('Completion'))          sel.value = 'loc';
+    else if (activeTab.includes('LOR') || activeTab.includes('Recommendation')) sel.value = 'lor';
+    else if (activeTab.includes('Star'))                                        sel.value = 'star';
+    else                                                                        sel.value = 'offer';
+
+    document.getElementById('reviewTotalCount').textContent = reviewStudents.length;
+    updateReviewCounts();
+    closeStudentPicker();
+    document.getElementById('certReviewModal').classList.add('open');
+    renderReviewPreview();
+}
+
+function closeCertReview() {
+    document.getElementById('certReviewModal').classList.remove('open');
+}
+
+function reviewPrevStudent() {
+    if (reviewIndex > 0) { reviewIndex--; renderReviewPreview(); }
+}
+
+function reviewNextStudent() {
+    if (reviewIndex < reviewStudents.length - 1) { reviewIndex++; renderReviewPreview(); }
+}
+
+function toggleReviewStudent() {
+    const s = reviewStudents[reviewIndex];
+    if (!s) return;
+    if (reviewIncluded.has(s._id)) reviewIncluded.delete(s._id);
+    else reviewIncluded.add(s._id);
+    updateReviewCounts();
+}
+
+function updateReviewCounts() {
+    document.getElementById('reviewIncludedCount').textContent = reviewIncluded.size;
+    document.getElementById('reviewProgress').textContent = `Student ${reviewIndex + 1} of ${reviewStudents.length}`;
+    const s = reviewStudents[reviewIndex];
+    if (s) {
+        document.getElementById('reviewStudentName').textContent = ((s.firstName||'') + ' ' + (s.lastName||'')).trim() || '—';
+        document.getElementById('reviewStudentInfo').textContent = `${s.employeeId||''} · ${s.domain||''} · ${s.email||''}`;
+    }
+    const btn = document.getElementById('reviewToggleBtn');
+    if (s && reviewIncluded.has(s._id)) {
+        btn.textContent = '✅ Include';
+        btn.style.background = 'rgba(16,185,129,0.1)';
+        btn.style.borderColor = 'rgba(16,185,129,0.3)';
+        btn.style.color = 'var(--green)';
+    } else {
+        btn.textContent = '❌ Exclude';
+        btn.style.background = 'rgba(244,63,94,0.08)';
+        btn.style.borderColor = 'rgba(244,63,94,0.2)';
+        btn.style.color = 'var(--red)';
+    }
+}
+
+function renderReviewPreview() {
+    const s = reviewStudents[reviewIndex];
+    if (!s) return;
+    updateReviewCounts();
+    const docType = document.getElementById('reviewDocType').value;
+    const name = ((s.firstName||'') + ' ' + (s.lastName||'')).trim();
+    const empId = s.employeeId || '';
+    const role = s.domain || '';
+    const college = s.collegeName || s.college || '';
+    const tenure = s.tenure || '';
+    const docId = generateUniqueDocId(docType, empId);
+    const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
+
+    let html = '';
+    if (docType === 'offer') {
+        const jf = fmtDate(s.joiningDate || '');
+        const lf = fmtDate(new Date().toISOString().split('T')[0]);
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>@page{size:A4;margin:0}*{margin:0;padding:0;box-sizing:border-box}body{font-family:'EB Garamond',Georgia,serif;background:#f5f5f5;color:#1a1a1a;font-size:14px;line-height:1.7}.page{width:210mm;min-height:297mm;margin:0 auto;padding:20mm 24mm 24mm;background:#fff;position:relative}.page::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#1a1a2e,#0f3460,#D4AF37,#0f3460,#1a1a2e)}.page::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#D4AF37,#c9a227,#D4AF37)}.watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:100px;color:rgba(212,175,55,0.04);font-weight:900;letter-spacing:20px;pointer-events:none;white-space:nowrap}.header{text-align:center;margin-bottom:28px;border-bottom:3px double #1a1a2e;padding-bottom:20px}.header img{max-height:80px;margin-bottom:10px}.org-name{font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#1a1a2e;margin-bottom:4px}.org-sub{font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase}.ref-line{display:flex;justify-content:space-between;font-size:12px;color:#444;margin:18px 0;padding:10px 14px;background:#fafafa;border:1px solid #e8e8e8;border-radius:4px}.title{text-align:center;font-size:20px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin:24px 0;padding:12px;border:2px solid #1a1a2e;background:#f9f9f9}.addr{margin:18px 0;font-size:13px;line-height:1.8}.addr strong{display:block;margin-bottom:2px}.body-text{text-align:justify;font-size:14px;line-height:1.9;margin-bottom:16px;text-indent:30px}.body-text:first-of-type{text-indent:0}.terms{margin:20px 0;padding:16px 20px;border:1px solid #ddd;border-radius:6px;background:#fdfdfd}.terms h4{font-size:13px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;color:#333}.terms ol{margin-left:18px;font-size:13px;line-height:2}.sig-area{display:flex;justify-content:space-between;margin-top:40px;gap:40px}.sig-block{text-align:center}.sig-line{border-bottom:1px solid #333;width:200px;margin:0 auto 6px}.sig-name{font-family:'Dancing Script',cursive;font-size:32px;color:#1a1a2e}.sig-title{font-size:12px;font-weight:600;color:#333}.sig-org{font-size:11px;color:#666}.verify-box{margin-top:24px;padding:12px 16px;border:1px solid #D4AF37;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}.verify-box img{border:1px solid #ddd;border-radius:4px}</style></head><body>
+<div class="page">
+<div class="watermark">THE ENTREPRENEURSHIP NETWORK</div>
+<div class="header"><img src="/ten-logo.png" alt="TEN logo"><div class="org-name">The Entrepreneurship Network</div><div class="org-sub">Limitless Technologies LLP</div></div>
+<div class="ref-line"><span>Ref: TEN/OL/�</span><span>Date: ${lf}</span></div>
+<div class="title">Internship Offer Letter</div>
+<div class="addr"><strong>To,</strong>${name}<br>${college ? college+'<br>' : ''}</div>
+<p class="body-text">Dear <strong>${name}</strong>,</p>
+<p class="body-text">We are delighted and excited to extend this offer of internship to you at <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong>. After careful review of your application and qualifications, we are confident that you will be a valuable addition to our team.</p>
+<p class="body-text">You have been selected for the position of <strong>${role}</strong> Intern. We believe that our team is our biggest strength and we take pride in hiring only the best and the brightest minds.</p>
+<p class="body-text">Your internship is scheduled to commence on <strong>${jf||'�'}</strong>. During the course of your internship, you will be expected to adhere to the professional standards, code of conduct, and company policies.</p>
+<div class="terms"><h4>Terms &amp; Conditions</h4>
+<ol>
+<li>The candidate is duly informed that he/she will not be eligible for any fixed stipend over the course of his/her internship unless otherwise agreed upon in writing.</li>
+<li>The intern shall maintain complete confidentiality of all proprietary information and trade secrets.</li>
+<li>The intern shall not engage in any activity that may conflict with the interests of The Entrepreneurship Network during the tenure of this internship.</li>
+<li>Upon successful completion, the intern will receive a Certificate of Completion and other applicable documents.</li>
+</ol></div>
+<p class="body-text" style="margin-top:12px;text-indent:0"><strong>Congratulations! We wish you a productive and rewarding internship.</strong></p>
+<div class="sig-area"><div class="sig-block"><div class="sig-name">Kamlesh Gupta</div><div class="sig-line"></div><div class="sig-title">Kamlesh Gupta</div><div class="sig-org">Director</div><div class="sig-org">The Entrepreneurship Network</div></div></div>
+<div class="verify-box"><div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: ${verifyUrl}</div></div></div></div></body></html>`;
+    } else if (docType === 'loc') {
+        const sd = fmtDate(s.joiningDate || '');
+        const ed = fmtDate(new Date().toISOString().split('T')[0]);
+        const id_ = ed;
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;font-family:'EB Garamond',Georgia,serif}.cert{width:210mm;min-height:280mm;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 100%);margin:0 auto;padding:28px 34px;position:relative;border:3px solid #c9a227;display:flex;flex-direction:column;align-items:center}.cert::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,162,39,0.3)}.cert::after{content:"THE ENTREPRENEURSHIP NETWORK";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;color:rgba(201,162,39,0.04);font-weight:900;letter-spacing:16px;pointer-events:none;white-space:nowrap}.la{text-align:center;margin-bottom:8px}.la img{max-height:72px;margin-bottom:12px}.on{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c9a227;font-weight:700;margin-top:4px}.ctb{font-family:'Cinzel',serif;font-size:56px;font-weight:700;color:#fff;letter-spacing:3px;text-align:center;margin:8px 0}.cst{font-family:'Cinzel',serif;font-size:18px;color:#c9a227;letter-spacing:6px;text-align:center;margin-bottom:18px}.meta-bar{display:flex;justify-content:center;gap:30px;font-size:11px;color:#c9a227;margin-bottom:18px;padding:8px 16px;border:1px solid rgba(201,162,39,0.2);border-radius:4px;background:rgba(201,162,39,0.05);text-align:center;flex-wrap:wrap}.bt{font-size:14px;color:#e0e0e0;line-height:1.95;text-align:justify;width:100%;margin-bottom:14px}.bt strong{color:#f5c542}.details-box{width:100%;padding:16px 20px;border:1px solid rgba(201,162,39,0.25);border-radius:6px;background:rgba(201,162,39,0.04);margin-bottom:16px}.details-box h4{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:#c9a227;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;text-align:center}.details-box table{width:100%;border-collapse:collapse;font-size:12px;color:#e0e0e0}.details-box td{padding:7px 12px;border-bottom:1px solid rgba(201,162,39,0.12)}.details-box td:first-child{font-weight:600;color:#c9a227;width:180px}.terms-box{width:100%;padding:14px 18px;border:1px solid rgba(201,162,39,0.2);border-radius:6px;margin-bottom:16px}.terms-box h4{font-family:'Cinzel',serif;font-size:12px;color:#c9a227;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}.terms-box ol{margin-left:16px;font-size:11px;color:#ccc;line-height:2}.br{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding-top:14px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sa{text-align:right}.sn{font-family:'Dancing Script',cursive;font-size:34px;color:#f5c542;display:block}.sl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sd{font-size:12px;color:#e0e0e0;font-weight:600}.verify-box{width:100%;margin-top:20px;padding:12px 16px;border:1px solid rgba(201,162,39,0.3);border-radius:6px;background:rgba(201,162,39,0.05);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c9a227;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#f5c542;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#999;margin-top:2px}.verify-box .vlink a{color:#f5c542}.verify-box img{border:1px solid rgba(201,162,39,0.3);border-radius:4px}</style></head><body>
+<div class="cert"><div class="la"><img src="/ten-logo.png" alt="TEN logo"><div class="on">The Entrepreneurship Network</div></div>
+<div class="ctb">CERTIFICATE</div><div class="cst">OF COMPLETION</div>
+<div class="meta-bar"><span><strong>Doc No:</strong> TEN/CT/�</span><span><strong>Date of Issue:</strong> ${id_}</span><span><strong>Employee ID:</strong> ${empId}</span></div>
+<p class="bt">This is to certify that <strong>${name}</strong>, ${college ? 'a student of <strong>'+college+'</strong>,' : ''} has successfully completed the internship programme with <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong> as a <strong>${role}</strong> Intern.</p>
+<div class="details-box"><h4>Internship Details</h4>
+<table><tr><td>Full Name</td><td>${name}</td></tr>${college ? `<tr><td>College / University</td><td>${college}</td></tr>` : ''}<tr><td>Role / Designation</td><td>${role}</td></tr><tr><td>Start Date</td><td>${sd}</td></tr><tr><td>End Date</td><td>${ed}</td></tr></table></div>
+<p class="bt">During the internship tenure, ${name} demonstrated a strong work ethic, a proactive approach to problem-solving, and a genuine commitment to the objectives of the organisation.</p>
+<div class="terms-box"><h4>Declaration</h4><ol><li>This certificate is issued upon successful completion of the internship programme.</li><li>The intern has fulfilled all requirements and responsibilities assigned.</li><li>The conduct and performance have been satisfactory and professional.</li></ol></div>
+<div class="br"><div class="sc"><div>�Limitless</div><div>Technologies</div></div><div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div></div>
+<div class="verify-box"><div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: <a href="${verifyUrl}">${verifyUrl}</a></div></div></div></div></body></html>`;
+    } else if (docType === 'lor') {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'EB Garamond',Georgia,serif;background:#fff;color:#1a1a1a;font-size:14px;line-height:1.7}.page{width:210mm;min-height:297mm;margin:0 auto;padding:20mm 24mm 24mm;background:#fff;position:relative}.page::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.page::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:90px;color:rgba(201,162,39,0.04);font-weight:900;letter-spacing:16px;pointer-events:none;white-space:nowrap}.header{text-align:center;margin-bottom:28px;border-bottom:3px double #1a1a2e;padding-bottom:20px}.header img{max-height:80px;margin-bottom:10px}.org-name{font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#1a1a2e;margin-bottom:4px}.org-sub{font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase}.title{text-align:center;font-size:20px;font-weight:700;letter-spacing:2px;color:#8B0000;text-transform:uppercase;border:2px solid #c9a227;padding:10px;margin:14px 0 20px;background:rgba(245,197,66,0.06)}.meta-bar{display:flex;justify-content:space-between;font-size:12px;color:#444;margin:18px 0;padding:10px 14px;background:#fafafa;border:1px solid #e8e8e8;border-radius:4px}.subj{text-align:center;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:2px;text-decoration:underline;margin:14px 0 18px}.body-text{text-align:justify;font-size:14px;line-height:1.95;margin-bottom:16px;text-indent:30px}.body-text:first-of-type{text-indent:0}.qualities{margin:18px 0;padding:16px 20px;border:1px solid #e8e8e8;border-radius:6px;background:#fafafa}.qualities h4{font-size:13px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;color:#333}.qualities ul{margin-left:18px;font-size:13px;line-height:2;color:#444}.sig-area{display:flex;justify-content:space-between;margin-top:36px;gap:40px}.sig-block{text-align:center}.sig-line{border-bottom:1px solid #333;width:200px;margin:0 auto 6px}.sig-name{font-family:'Dancing Script',cursive;font-size:32px;color:#1a1a2e}.sig-title{font-size:12px;font-weight:600;color:#333}.sig-org{font-size:11px;color:#666}.verify-box{margin-top:24px;padding:12px 16px;border:1px solid #c9a227;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}.verify-box img{border:1px solid #ddd;border-radius:4px}</style></head><body>
+<div class="page">
+<div class="watermark">THE ENTREPRENEURSHIP NETWORK</div>
+<div class="header"><img src="/ten-logo.png" alt="TEN logo"><div class="org-name">The Entrepreneurship Network</div><div class="org-sub">Limitless Technologies LLP</div></div>
+<div class="title">Letter of Recommendation</div>
+<div class="meta-bar"><span><strong>Employee ID:</strong> ${empId}</span><span><strong>Document No:</strong> TEN/CT/�</span></div>
+<div class="subj">To Whom It May Concern</div>
+<p class="body-text"><strong>${name}</strong> worked at <strong>The Entrepreneurship Network</strong> as a <strong>${role}</strong> Intern. During that time, I developed a very high regard for them based on the outstanding contributions made throughout the internship.</p>
+<p class="body-text"><strong>${name}</strong> demonstrated excellent communication skills, professionalism, reliability, and a strong willingness to learn and contribute to the team.</p>
+<p class="body-text">In summary, I give <strong>${name}</strong> my strongest recommendation. Please do not hesitate to contact us at <strong>ten.hr.contact@gmail.com</strong> should you require additional information.</p>
+<p class="body-text" style="text-indent:0">Sincerely,</p>
+<div class="sig-area"><div class="sig-block"><div class="sig-name">Kamlesh Gupta</div><div class="sig-line"></div><div class="sig-title">Kamlesh Gupta</div><div class="sig-org">Director</div><div class="sig-org">The Entrepreneurship Network</div></div></div>
+<div class="verify-box"><div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: <a href="${verifyUrl}">${verifyUrl}</a></div></div></div></div></body></html>`;
+    } else {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111;font-family:'EB Garamond',Georgia,serif}.cert{width:297mm;height:200mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column}.bl{position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.br2{position:absolute;right:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.bl::before,.br2::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#c9a227,#f5c542,#c9a227)}.bl::before{left:7px}.br2::before{right:7px}.tr{position:absolute;top:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.btr{position:absolute;bottom:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.content{padding:16px 70px;text-align:center;width:100%}.content img{max-height:72px;margin-bottom:16px}.cs{font-family:'Dancing Script',cursive;font-size:50px;color:#1a1a1a;display:block}.cst{font-family:'Cinzel',serif;font-size:14px;font-weight:900;letter-spacing:6px;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px}.at{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#999;margin-bottom:3px}.stn{font-family:'Cinzel Decorative','Cinzel',serif;font-size:36px;font-weight:900;color:#1a1a1a;display:block;margin:4px 0 6px}.nu{border-bottom:2px solid #c9a227;width:60%;margin:0 auto 12px}.awtxt{font-size:13px;color:#444;line-height:1.7;max-width:520px;margin:0 auto 10px;text-align:center}.mr{font-size:12px;font-weight:700;color:#333;margin-bottom:14px;letter-spacing:1px}.br3{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding:0 8px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sga{text-align:right}.sgn{font-family:'Dancing Script',cursive;font-size:34px;color:#1a1a1a;display:block}.sgl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sgd{font-size:12px;color:#333;font-weight:600}.cid{font-size:10px;color:#999;letter-spacing:1px;margin-top:10px}.desc{margin-top:8px;padding:0 20px;font-size:12px;color:#555;line-height:1.7;text-align:justify;max-width:600px;margin-left:auto;margin-right:auto}.verify-box{margin-top:16px;padding:12px 16px;border:1px solid #c9a227;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:600px;margin-left:auto;margin-right:auto}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}.verify-box img{border:1px solid #ddd;border-radius:4px}</style></head><body>
+<div class="cert"><div class="bl"></div><div class="br2"></div><div class="tr"></div><div class="btr"></div>
+<div class="star-badge">⭐</div>
+<div class="content"><img src="/ten-logo.png" alt="TEN logo"><span class="cs">Certificate</span><div class="cst">of Star Performer</div>
+<div class="at">This is proudly awarded to:</div>
+<span class="stn">${name}</span><div class="nu"></div>
+<p class="awtxt">In recognition of your exceptional performance, unwavering dedication, and outstanding contributions during your internship at <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong>.</p>
+<div class="mr">Tenure: ${tenure} &nbsp;&nbsp;&nbsp; Employee ID: ${empId}</div>
+<p class="desc">This certificate is presented to acknowledge the exemplary effort, initiative, and enthusiasm demonstrated throughout the internship programme.</p>
+<div class="br3"><div class="sc"><div>�Limitless</div><div>Technologies</div></div><div class="sga"><span class="sgn">Kamlesh Gupta</span><div class="sgl"></div><div class="sgd">Kamlesh Gupta</div><div class="sgd">Director</div><div class="sgd">The Entrepreneurship Network</div></div></div></div>
+<div class="cid">Certificate ID: TEN/DOC/�</div>
+<div class="verify-box"><div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: <a href="${verifyUrl}">${verifyUrl}</a></div></div></div></div></body></html>`;
+    }
+
+    const frame = document.getElementById('reviewPreviewFrame');
+    frame.srcdoc = html;
+}
+async function sendReviewedDocs() {
+    const toSend = reviewStudents.filter(s => reviewIncluded.has(s._id));
+    if (!toSend.length) {
+        Swal.fire({ title:'No Students Included', text:'Please include at least one student to send documents.', icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    const noEmail = toSend.filter(s => !s.email);
+    if (noEmail.length) {
+        Swal.fire({ title:'Missing Emails', text:'These students have no email: ' + noEmail.map(s => (s.firstName||'') + ' ' + (s.lastName||'')).join(', '), icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    const docType = document.getElementById('reviewDocType').value;
+    const docLabels = { offer:'Offer Letter', loc:'LOC', lor:'LOR', star:'Star Performer Certificate' };
+    const confirmed = await Swal.fire({
+        title: 'Send ' + docLabels[docType],
+        html: `Send <b>${docLabels[docType]}</b> to <b>${toSend.length}</b> reviewed student(s)?<br><br>` +
+              toSend.map(s => `<div style="font-size:12px;color:#9a8a6a;">📧 ${s.email} — ${((s.firstName||'') + ' ' + (s.lastName||'')).trim()}</div>`).join(''),
+        icon: 'question', showCancelButton: true, confirmButtonText: '📧 Send to Reviewed',
+        confirmButtonColor: '#10b981', background: '#0c1220', color: '#f0eee8'
+    });
+    if (!confirmed.isConfirmed) return;
+    closeCertReview();
+    Swal.fire({
+        title: 'Sending Emails...', allowOutsideClick: false, showConfirmButton: false,
+        html: `<div id="emailProgressText">Sending 0 of ${toSend.length}...</div>`,
+        background: '#0c1220', color: '#f0eee8', didOpen: () => Swal.showLoading()
+    });
+    let sent = 0, failed = 0;
+    for (const student of toSend) {
+        try {
+            const r = await fetch('/hr/send-documents-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+                body: JSON.stringify({ employeeId: student.employeeId, docType })
+            });
+            const d = await r.json();
+            if (d.success) sent++; else failed++;
+        } catch(e) { failed++; }
+        const el = document.getElementById('emailProgressText');
+        if (el) el.textContent = 'Sending ' + (sent + failed) + ' of ' + toSend.length + '...';
+        await new Promise(r => setTimeout(r, 500));
+    }
+    Swal.fire({
+        title: 'Email Report',
+        html: `<b style="color:#10b981;">✅ Sent: ${sent}</b>${failed > 0 ? `<br><b style="color:#f43f5e;">❌ Failed: ${failed}</b>` : ''}`,
+        icon: sent > 0 ? 'success' : 'error', background: '#0c1220', color: '#f0eee8'
+    });
+    // Clear selections after sending
+    selectedStudentsForDocs = [];
+    updateMultiSelectSummary();
+}
+
 document.getElementById('studentPickerModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeStudentPicker();});
 
 /* ============ ATTENDANCE MONITOR ============ */
@@ -1401,79 +1926,200 @@ async function openAttHistory(encId, name){
 }
 
 /* OFFER LETTER */
-function generateOfferLetter(){
+async function generateOfferLetter(silent = false){
   const name=document.getElementById('ol-name').value.trim(),college=document.getElementById('ol-college').value.trim(),empId=document.getElementById('ol-empid').value.trim(),docNo=document.getElementById('ol-docno').value.trim()||'TEN/OL/—',role=document.getElementById('ol-role').value.trim(),jf=fmtDate(document.getElementById('ol-joining').value),lf=fmtDate(document.getElementById('ol-date').value);
-  if(!name||!role){Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const docId = generateUniqueDocId('offer', empId);
+  const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
+  const qrDataUrl = await generateQRDataUrl(verifyUrl);
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Offer Letter - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Times New Roman',serif;background:#fff;color:#000;font-size:14px;line-height:1.6}.page{width:210mm;min-height:297mm;margin:0 auto;padding:18mm 22mm;background:#fff;border:8px solid #000}.logo-area{text-align:center;margin-bottom:20px;border-bottom:2px solid #000;padding-bottom:14px}.ls{font-size:42px;display:block}.on{font-size:12px;font-weight:900;letter-spacing:3px;text-transform:uppercase}.dt{text-align:center;font-size:16px;font-weight:900;text-decoration:underline;margin:16px 0 20px}.meta p{font-size:13px;margin-bottom:2px}.sb{margin:14px 0}.sb strong{font-size:15px;display:block}.bt{text-align:justify;font-size:14px;line-height:1.85;margin-bottom:14px}.sa{margin-top:40px}.sn{font-family:'Dancing Script',cursive;font-size:40px;display:block;margin-bottom:2px}.sl{border-bottom:1px solid #000;width:210px;margin-bottom:6px}.sd{font-size:13px;font-weight:600}.np{background:#1a1a2e;padding:16px;text-align:center}@media print{.np{display:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
-<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Save as PDF → send to student email manually</span></div>
-<div class="page"><div class="logo-area"><span class="ls">∞</span><div class="on">The Entrepreneurship Network</div></div>
-<div class="dt">Internship Offer Letter with The Entrepreneurship Network</div>
-<div class="meta"><p><strong>Date:</strong> ${lf||'—'}</p><p><strong>Employee ID:</strong> ${empId||'—'}</p><p><strong>Document No.:</strong> ${docNo}</p></div>
-<div class="sb"><strong>${name}</strong><span>${college}</span></div>
-<p class="bt">Dear <strong>${name}</strong>,</p>
-<p class="bt">We are delighted &amp; excited to welcome you to "<strong>The Entrepreneurship Network</strong>" as a <strong>${role}</strong>, we believe that our team is our biggest strength and we take pride in hiring only the best and the brightest. We are confident that you would play a significant role in the overall success of the venture and wish you the most enjoyable, learning packed and truly meaningful internship experience with "<strong>The Entrepreneurship Network</strong>".</p>
-<p class="bt">The candidate is duly informed that he/she will not be eligible for any fixed stipend over the course of his/her internship. Your joining date is <strong>${jf||'—'}</strong>.</p>
-<p class="bt">We look forward to you joining with us. The Company Policies manual is attached below, please go through it thoroughly. Please do not hesitate to call us for any information you may need. Also, <strong>please sign the duplicate of this offer as your acceptance and forward the same to us on hr@entrepreneurshipnetwork.net.</strong></p>
-<p class="bt" style="margin-top:12px"><strong>Congratulations!</strong></p>
-<div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div></div></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Offer Letter - ${name}</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  @page{size:A4;margin:0} *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'EB Garamond',Georgia,serif;background:#f5f5f5;color:#1a1a1a;font-size:14px;line-height:1.7}
+  .np{background:#1a1a2e;padding:16px;text-align:center;position:fixed;top:0;left:0;right:0;z-index:10}
+  .page{width:210mm;min-height:297mm;margin:56px auto 0;padding:20mm 24mm 24mm;background:#fff;position:relative}
+  .page::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#1a1a2e,#0f3460,#D4AF37,#0f3460,#1a1a2e)}
+  .page::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#D4AF37,#c9a227,#D4AF37)}
+  .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:100px;color:rgba(212,175,55,0.04);font-weight:900;letter-spacing:20px;pointer-events:none;white-space:nowrap}
+  .header{text-align:center;margin-bottom:28px;border-bottom:3px double #1a1a2e;padding-bottom:20px}
+  .header img{max-height:80px;margin-bottom:10px}
+  .org-name{font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#1a1a2e;margin-bottom:4px}
+  .org-sub{font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase}
+  .ref-line{display:flex;justify-content:space-between;font-size:12px;color:#444;margin:18px 0;padding:10px 14px;background:#fafafa;border:1px solid #e8e8e8;border-radius:4px}
+  .ref-line span{font-weight:600}
+  .title{text-align:center;font-size:20px;font-weight:700;letter-spacing:3px;text-transform:uppercase;margin:24px 0;padding:12px;border:2px solid #1a1a2e;background:#f9f9f9}
+  .addr{margin:18px 0;font-size:13px;line-height:1.8}
+  .addr strong{display:block;margin-bottom:2px}
+  .body-text{text-align:justify;font-size:14px;line-height:1.9;margin-bottom:16px;text-indent:30px}
+  .body-text:first-of-type{text-indent:0}
+  .terms{margin:20px 0;padding:16px 20px;border:1px solid #ddd;border-radius:6px;background:#fdfdfd}
+  .terms h4{font-size:13px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;color:#333}
+  .terms ol{margin-left:18px;font-size:13px;line-height:2}
+  .terms ol li{margin-bottom:4px}
+  .sig-area{display:flex;justify-content:space-between;margin-top:40px;gap:40px}
+  .sig-block{text-align:center}
+  .sig-line{border-bottom:1px solid #333;width:200px;margin:0 auto 6px}
+  .sig-name{font-family:'Dancing Script',cursive;font-size:32px;color:#1a1a2e}
+  .sig-title{font-size:12px;font-weight:600;color:#333}
+  .sig-org{font-size:11px;color:#666}
+  .footer{margin-top:24px;padding-top:12px;border-top:2px solid #1a1a2e;display:flex;justify-content:space-between;align-items:flex-end;font-size:10px;color:#666}
+  .verify-box{margin-top:24px;padding:12px 16px;border:1px solid #D4AF37;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}
+  .verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}
+  .verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}
+  .verify-box img{border:1px solid #ddd;border-radius:4px}
+  @media print{.np{display:none}.page{margin:0;box-shadow:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#D4AF37;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'EB Garamond',serif">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px;font-family:'EB Garamond',serif">Save as PDF → send to student email</span></div>
+<div class="page">
+<div class="watermark">THE ENTREPRENEURSHIP NETWORK</div>
+<div class="header"><img src="/ten-logo.png" alt="TEN logo">
+<div class="org-name">The Entrepreneurship Network</div>
+<div class="org-sub">Limitless Technologies LLP</div></div>
+<div class="ref-line"><span>Ref: ${docNo}</span><span>Date: ${lf||'—'}</span></div>
+<div class="title">Internship Offer Letter</div>
+<div class="addr"><strong>To,</strong>${name}<br>${college ? college+'<br>' : ''}</div>
+<p class="body-text">Dear <strong>${name}</strong>,</p>
+<p class="body-text">We are delighted and excited to extend this offer of internship to you at <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong>. After careful review of your application and qualifications, we are confident that you will be a valuable addition to our team and will contribute meaningfully to our ongoing projects and initiatives.</p>
+<p class="body-text">You have been selected for the position of <strong>${role}</strong> Intern. We believe that our team is our biggest strength and we take pride in hiring only the best and the brightest minds. We are confident that you would play a significant role in the overall success of the venture and wish you the most enjoyable, learning-packed and truly meaningful internship experience with <strong>The Entrepreneurship Network</strong>.</p>
+<p class="body-text">Your internship is scheduled to commence on <strong>${jf||'—'}</strong>. During the course of your internship, you will be expected to adhere to the professional standards, code of conduct, and company policies as outlined in the Company Policies manual (attached herewith). You are expected to be punctual, dedicated, and proactive in your approach to the assigned tasks and responsibilities.</p>
+<div class="terms"><h4>Terms &amp; Conditions</h4>
+<ol>
+<li>The candidate is duly informed that he/she will not be eligible for any fixed stipend over the course of his/her internship unless otherwise agreed upon in writing.</li>
+<li>The intern shall maintain complete confidentiality of all proprietary information, trade secrets, and business strategies of The Entrepreneurship Network.</li>
+<li>The intern shall not engage in any activity, whether paid or unpaid, that may conflict with the interests of The Entrepreneurship Network during the tenure of this internship.</li>
+<li>Any intellectual property, including but not limited to code, designs, content, and inventions created during the internship period, shall remain the sole property of The Entrepreneurship Network.</li>
+<li>The internship may be terminated by either party with a written notice of seven (7) days. The Entrepreneurship Network reserves the right to terminate the internship immediately in case of misconduct or breach of policy.</li>
+<li>Upon successful completion of the internship, the intern will receive a Certificate of Completion, Letter of Recommendation, and other applicable documents as per company policy.</li>
+<li>The intern shall submit regular reports and updates as directed by the assigned mentor/supervisor and participate in all scheduled meetings and reviews.</li>
+</ol></div>
+<p class="body-text">We look forward to you joining us. Please do not hesitate to call us for any information you may need. Also, <strong>please sign the duplicate of this offer as your acceptance and forward the same to us on hr@entrepreneurshipnetwork.net.</strong></p>
+<p class="body-text" style="margin-top:12px;text-indent:0"><strong>Congratulations! We wish you a productive and rewarding internship.</strong></p>
+<div class="sig-area">
+<div class="sig-block"><div class="sig-name">Kamlesh Gupta</div><div class="sig-line"></div><div class="sig-title">Kamlesh Gupta</div><div class="sig-org">Director</div><div class="sig-org">The Entrepreneurship Network</div></div>
+<div class="sig-block"><div class="sig-name" style="font-size:24px;color:#666">Accepted By</div><div class="sig-line"></div><div class="sig-title">${name}</div><div class="sig-org">Date: _______________</div></div>
+</div>
+<div class="footer"><span>The Entrepreneurship Network — Limitless Technologies LLP</span><span>Page 1 of 1</span></div>
+<div class="verify-box">
+<div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: ${verifyUrl}</div></div>
+${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80" height="80" alt="QR"><div style="font-size:8px;color:#999;margin-top:2px">Scan to verify</div></div>` : ''}
+</div></div></body></html>`);
   w.document.close();
 }
 
 /* LOC */
-function generateLOC(){
+async function generateLOC(silent = false){
   const name=document.getElementById('loc-name').value.trim(),college=document.getElementById('loc-college').value.trim(),empId=document.getElementById('loc-empid').value.trim(),docNo=document.getElementById('loc-docno').value.trim()||'TEN/CT/—',role=document.getElementById('loc-role').value.trim(),course=document.getElementById('loc-course').value.trim()||'CSE',sd=fmtDate(document.getElementById('loc-start').value),ed=fmtDate(document.getElementById('loc-end').value),id_=fmtDate(document.getElementById('loc-issue').value);
-  if(!name||!role){Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const docId = generateUniqueDocId('loc', empId);
+  const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
+  const qrDataUrl = await generateQRDataUrl(verifyUrl);
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOC - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;font-family:'Times New Roman',serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:210mm;min-height:280mm;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 100%);margin:0 auto;padding:28px 34px;position:relative;border:3px solid #c9a227;display:flex;flex-direction:column;align-items:center}.cert::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,162,39,0.3)}.la{text-align:center;margin-bottom:8px}.ls{font-size:46px;color:#c9a227}.on{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c9a227;font-weight:700;margin-top:4px}.ctb{font-family:'Cinzel',serif;font-size:56px;font-weight:700;color:#fff;letter-spacing:3px;text-align:center;margin:8px 0}.cst{font-family:'Cinzel',serif;font-size:18px;color:#c9a227;letter-spacing:6px;text-align:center;margin-bottom:18px}.mb{text-align:left;width:100%;margin-bottom:14px}.mb p{font-size:12px;color:#c9a227;font-weight:700}.bt{font-size:13px;color:#e0e0e0;line-height:1.9;text-align:justify;width:100%;margin-bottom:12px}.bt strong{color:#f5c542}.br{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding-top:14px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sa{text-align:right}.sn{font-family:'Dancing Script',cursive;font-size:34px;color:#f5c542;display:block}.sl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sd{font-size:12px;color:#e0e0e0;font-weight:600}@media print{body{background:#fff}.np{display:none}.cert{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
-<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Browser Print → Save as PDF</span></div>
-<div class="cert"><div class="la"><div class="ls">∞</div><div class="on">The Entrepreneurship Network</div></div>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOC - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;font-family:'EB Garamond',Georgia,serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:210mm;min-height:280mm;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 100%);margin:0 auto;padding:28px 34px;position:relative;border:3px solid #c9a227;display:flex;flex-direction:column;align-items:center}.cert::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,162,39,0.3)}.cert::after{content:"THE ENTREPRENEURSHIP NETWORK";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;color:rgba(201,162,39,0.04);font-weight:900;letter-spacing:16px;pointer-events:none;white-space:nowrap}.la{text-align:center;margin-bottom:8px}.la img{max-height:72px;margin-bottom:12px}.ls{font-size:46px;color:#c9a227}.on{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c9a227;font-weight:700;margin-top:4px}.ctb{font-family:'Cinzel',serif;font-size:56px;font-weight:700;color:#fff;letter-spacing:3px;text-align:center;margin:8px 0}.cst{font-family:'Cinzel',serif;font-size:18px;color:#c9a227;letter-spacing:6px;text-align:center;margin-bottom:18px}.meta-bar{display:flex;justify-content:center;gap:30px;font-size:11px;color:#c9a227;margin-bottom:18px;padding:8px 16px;border:1px solid rgba(201,162,39,0.2);border-radius:4px;background:rgba(201,162,39,0.05);text-align:center;flex-wrap:wrap}.meta-bar span{white-space:nowrap}.bt{font-size:14px;color:#e0e0e0;line-height:1.95;text-align:justify;width:100%;margin-bottom:14px}.bt strong{color:#f5c542}.details-box{width:100%;padding:16px 20px;border:1px solid rgba(201,162,39,0.25);border-radius:6px;background:rgba(201,162,39,0.04);margin-bottom:16px}.details-box h4{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:#c9a227;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;text-align:center}.details-box table{width:100%;border-collapse:collapse;font-size:12px;color:#e0e0e0}.details-box td{padding:7px 12px;border-bottom:1px solid rgba(201,162,39,0.12)}.details-box td:first-child{font-weight:600;color:#c9a227;width:180px}.terms-box{width:100%;padding:14px 18px;border:1px solid rgba(201,162,39,0.2);border-radius:6px;margin-bottom:16px}.terms-box h4{font-family:'Cinzel',serif;font-size:12px;color:#c9a227;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}.terms-box ol{margin-left:16px;font-size:11px;color:#ccc;line-height:2}.br{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding-top:14px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sa{text-align:right}.sn{font-family:'Dancing Script',cursive;font-size:34px;color:#f5c542;display:block}.sl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sd{font-size:12px;color:#e0e0e0;font-weight:600}.verify-box{width:100%;margin-top:20px;padding:12px 16px;border:1px solid rgba(201,162,39,0.3);border-radius:6px;background:rgba(201,162,39,0.05);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c9a227;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#f5c542;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#999;margin-top:2px}.verify-box .vlink a{color:#f5c542}.verify-box img{border:1px solid rgba(201,162,39,0.3);border-radius:4px}@media print{body{background:#fff}.np{display:none}.cert{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'EB Garamond',serif">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px;font-family:'EB Garamond',serif">Save as PDF → send to student email</span></div>
+<div class="cert"><div class="la"><img src="/ten-logo.png" alt="TEN logo"><div class="on">The Entrepreneurship Network</div></div>
 <div class="ctb">CERTIFICATE</div><div class="cst">OF COMPLETION</div>
-<div class="mb"><p><strong>Employee ID:</strong> ${empId||'—'} &nbsp;&nbsp; <strong>Document No.:</strong> ${docNo} &nbsp;&nbsp; <strong>Date Of Issue:</strong> ${id_||'—'}</p></div>
-<p class="bt">This is to certify that <strong>${name}</strong> Completed <strong>${course}</strong> from <strong>${college||'—'}</strong> has Successfully Completed his internship tenure with <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong> from <strong>${sd||'—'}</strong> To <strong>${ed||'—'}</strong>. During the period, he worked as a <strong>${role}</strong>. During the course of his tenure, <strong>${name}</strong> showed considerable interest in fulfilling his roles and responsibilities and his conduct was professional throughout.</p>
-<p class="bt">We wish him all the best for his future endeavours.</p>
-<p class="bt">Best Regards,</p>
-<div class="br"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div><div class="sd">Limitless Technologies LLP</div></div></div></div></body></html>`);
+<div class="meta-bar"><span><strong>Doc No:</strong> ${docNo}</span><span><strong>Date of Issue:</strong> ${id_||'—'}</span><span><strong>Employee ID:</strong> ${empId||'—'}</span></div>
+<p class="bt">This is to certify that <strong>${name}</strong>, ${college ? 'a student of <strong>'+college+'</strong> pursuing <strong>'+course+'</strong>,' : ''} has successfully completed the internship programme with <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong> as a <strong>${role}</strong> Intern.</p>
+<div class="details-box"><h4>Internship Details</h4>
+<table>
+<tr><td>Full Name</td><td>${name}</td></tr>
+${college ? `<tr><td>College / University</td><td>${college}</td></tr>` : ''}
+<tr><td>Programme / Course</td><td>${course}</td></tr>
+<tr><td>Role / Designation</td><td>${role}</td></tr>
+<tr><td>Start Date</td><td>${sd||'—'}</td></tr>
+<tr><td>End Date</td><td>${ed||'—'}</td></tr>
+</table></div>
+<p class="bt">During the internship tenure from <strong>${sd||'—'}</strong> to <strong>${ed||'—'}</strong>, ${name} was actively involved in various projects and assignments related to the role. The intern demonstrated a strong work ethic, a proactive approach to problem-solving, and a genuine commitment to the objectives of the organisation.</p>
+<p class="bt">Throughout the duration of the programme, the intern exhibited professionalism, reliability, and an impressive ability to adapt and learn. The contributions made by ${name} were valuable to the team and reflected a thorough understanding of the responsibilities entrusted.</p>
+<p class="bt">We appreciate the dedication and effort put forth during this period and are confident that the experience gained will serve as a strong foundation for a successful professional career ahead.</p>
+<div class="terms-box"><h4>Declaration</h4>
+<ol>
+<li>This certificate is issued upon successful completion of the internship programme as specified above.</li>
+<li>The intern has fulfilled all the requirements and responsibilities assigned during the internship period.</li>
+<li>The conduct and performance of the intern during the entire tenure have been satisfactory and professional.</li>
+<li>This document is digitally verifiable via the unique Document ID and QR code provided below.</li>
+</ol></div>
+<p class="bt" style="text-indent:0">We wish <strong>${name}</strong> all the very best in future academic and professional endeavours.</p>
+<div class="br"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div><div class="sd">Limitless Technologies LLP</div></div></div>
+<div class="verify-box">
+<div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: <a href="${verifyUrl}">${verifyUrl}</a></div></div>
+${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80" height="80" alt="QR"><div style="font-size:8px;color:#c9a227;margin-top:2px">Scan to verify</div></div>` : ''}
+</div></div></body></html>`);
   w.document.close();
 }
 
 /* LOR */
-function generateLOR(){
-  const name=document.getElementById('lor-name').value.trim(),empId=document.getElementById('lor-empid').value.trim(),docNo=document.getElementById('lor-docno').value.trim()||'TEN/CT/—',role=document.getElementById('lor-role').value.trim(),dl=fmtDate(document.getElementById('lor-date').value),sd=fmtDate(document.getElementById('lor-start').value),ed=fmtDate(document.getElementById('lor-end').value),gv=document.getElementById('lor-gender').value;
-  if(!name||!role){Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+async function generateLOR(silent = false){
+  const name=document.getElementById('lor-name').value.trim(),empId=document.getElementById('lor-empid').value.trim(),docNo=document.getElementById('lor-docno').value.trim()||'TEN/CT/�',role=document.getElementById('lor-role').value.trim(),dl=fmtDate(document.getElementById('lor-date').value),sd=fmtDate(document.getElementById('lor-start').value),ed=fmtDate(document.getElementById('lor-end').value),gv=document.getElementById('lor-gender').value;
+  if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const docId = generateUniqueDocId('lor', empId);
+  const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
+  const qrDataUrl = await generateQRDataUrl(verifyUrl);
   const pr=gv==='him'?{sub:'he',obj:'him',adj:'Male'}:gv==='her'?{sub:'she',obj:'her',adj:'Female'}:{sub:'they',obj:'them',adj:'Individual'};
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOR - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Times New Roman',serif;background:#fff;color:#000;font-size:14px}.page{width:210mm;min-height:297mm;margin:0 auto;padding:16mm 22mm;background:#fff;border:6px solid #f5c542}.la{text-align:center;margin-bottom:16px;border-bottom:2px solid #f5c542;padding-bottom:12px}.ls{font-size:38px;color:#c9a227}.on{font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:900}.dt{text-align:center;font-size:17px;font-weight:900;letter-spacing:2px;color:#8B0000;text-transform:uppercase;border:2px solid #f5c542;padding:10px;margin:14px 0 20px;background:rgba(245,197,66,0.06)}.meta p{font-size:13px;margin-bottom:2px}.subj{text-align:center;font-size:15px;font-weight:900;text-decoration:underline;margin:14px 0 16px}.bt{text-align:justify;font-size:14px;line-height:1.9;margin-bottom:14px}.sa{margin-top:28px}.sn{font-family:'Dancing Script',cursive;font-size:36px;display:block;margin-bottom:2px}.sl{border-bottom:1px solid #000;width:190px;margin-bottom:6px}.sd{font-size:13px;font-weight:600}.ft{margin-top:24px;padding-top:10px;border-top:1px solid #f5c542;font-size:12px}.np{background:#1a1a2e;padding:16px;text-align:center}@media print{.np{display:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
-<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Browser Print → Save as PDF</span></div>
-<div class="page"><div class="la"><div class="ls">∞</div><div class="on">The Entrepreneurship Network</div></div>
-<div class="dt">Letter of Recommendation</div>
-<div class="meta"><p><strong>Date:</strong> ${dl||'—'}</p><p><strong>Employee ID:</strong> ${empId||'—'}</p><p><strong>Document No:</strong> ${docNo}</p></div>
-<div class="subj">To whom it may concern</div>
-<p class="bt"><strong>${name}</strong> worked in <strong>The Entrepreneurship Network</strong> as a <strong>${role}</strong> from <strong>${sd||'—'}</strong> to <strong>${ed||'—'}</strong>. During that time, I developed a very high regard for ${pr.obj} based on the outstanding contributions that ${pr.sub} made to our company throughout the internship.</p>
-<p class="bt"><strong>${name}</strong> in <strong>${role}</strong>, ${pr.sub} has excellent communication skills. In addition, ${pr.sub} is extremely organized, reliable and computer literate, ${pr.sub} can work independently and is able to follow through to ensure that the job gets done, ${pr.sub} is flexible and willing to work on any project that is assigned to ${pr.obj}.</p>
-<p class="bt">As you can tell by now, I am quite impressed with this outstanding young ${pr.adj} and give ${pr.obj} my strongest recommendation for roles that require intelligence, organization, communication skills, service and a positive attitude. <strong>${name}</strong> would be a tremendous asset to your Company and has my highest recommendation. Please feel free to contact us if you need additional information or perspective on <strong>ten.hr.contact@gmail.com</strong>.</p>
-<p class="bt">Sincerely,</p>
-<div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div>
-<div class="ft">📧 EMAIL ID: ten.hr.contact@gmail.com</div></div></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOR - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'EB Garamond',Georgia,serif;background:#fff;color:#1a1a1a;font-size:14px;line-height:1.7}.np{background:#1a1a2e;padding:16px;text-align:center;position:fixed;top:0;left:0;right:0;z-index:10}.page{width:210mm;min-height:297mm;margin:56px auto 0;padding:20mm 24mm 24mm;background:#fff;position:relative}.page::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.page::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:90px;color:rgba(201,162,39,0.04);font-weight:900;letter-spacing:16px;pointer-events:none;white-space:nowrap}.header{text-align:center;margin-bottom:28px;border-bottom:3px double #1a1a2e;padding-bottom:20px}.header img{max-height:80px;margin-bottom:10px}.org-name{font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#1a1a2e;margin-bottom:4px}.org-sub{font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase}.title{text-align:center;font-size:20px;font-weight:700;letter-spacing:2px;color:#8B0000;text-transform:uppercase;border:2px solid #c9a227;padding:10px;margin:14px 0 20px;background:rgba(245,197,66,0.06)}.meta-bar{display:flex;justify-content:space-between;font-size:12px;color:#444;margin:18px 0;padding:10px 14px;background:#fafafa;border:1px solid #e8e8e8;border-radius:4px}.subj{text-align:center;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:2px;text-decoration:underline;margin:14px 0 18px}.body-text{text-align:justify;font-size:14px;line-height:1.95;margin-bottom:16px;text-indent:30px}.body-text:first-of-type{text-indent:0}.qualities{margin:18px 0;padding:16px 20px;border:1px solid #e8e8e8;border-radius:6px;background:#fafafa}.qualities h4{font-size:13px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;color:#333}.qualities ul{margin-left:18px;font-size:13px;line-height:2;color:#444}.sig-area{display:flex;justify-content:space-between;margin-top:36px;gap:40px}.sig-block{text-align:center}.sig-line{border-bottom:1px solid #333;width:200px;margin:0 auto 6px}.sig-name{font-family:'Dancing Script',cursive;font-size:32px;color:#1a1a2e}.sig-title{font-size:12px;font-weight:600;color:#333}.sig-org{font-size:11px;color:#666}.footer{margin-top:24px;padding-top:12px;border-top:2px solid #c9a227;display:flex;justify-content:space-between;align-items:flex-end;font-size:10px;color:#666}.verify-box{margin-top:24px;padding:12px 16px;border:1px solid #c9a227;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}.verify-box img{border:1px solid #ddd;border-radius:4px}@media print{.np{display:none}.page{margin:0;box-shadow:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#D4AF37;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'EB Garamond',serif">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px;font-family:'EB Garamond',serif">Save as PDF → send to student email</span></div>
+<div class="page">
+<div class="watermark">THE ENTREPRENEURSHIP NETWORK</div>
+<div class="header"><img src="/ten-logo.png" alt="TEN logo">
+<div class="org-name">The Entrepreneurship Network</div>
+<div class="org-sub">Limitless Technologies LLP</div></div>
+<div class="title">Letter of Recommendation</div>
+<div class="meta-bar"><span><strong>Date:</strong> ${dl||'�'}</span><span><strong>Employee ID:</strong> ${empId||'�'}</span><span><strong>Document No:</strong> ${docNo}</span></div>
+<div class="subj">To Whom It May Concern</div>
+<p class="body-text">I am writing this letter to wholeheartedly recommend <strong>${name}</strong> for any professional position that ${pr.sub} may choose to pursue. During ${pr.obj} tenure at <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong> as a <strong>${role}</strong> Intern, I had the privilege of working closely with ${pr.obj} and was consistently impressed by ${pr.obj} professional capabilities and personal qualities.</p>
+<p class="body-text">From the very beginning of ${pr.obj} association with our organisation, ${name} demonstrated an exceptional level of dedication, initiative, and a genuine eagerness to learn and contribute. ${pr.sub.charAt(0).toUpperCase()+pr.sub.slice(1)} was entrusted with significant responsibilities and consistently exceeded expectations through ${pr.obj} thorough approach, attention to detail, and ability to deliver results under challenging conditions.</p>
+<div class="qualities"><h4>Key Strengths &amp; Competencies</h4>
+<ul>
+<li><strong>Professionalism:</strong> Maintained the highest standards of professional conduct and workplace ethics throughout the internship period.</li>
+<li><strong>Communication:</strong> Demonstrated excellent written and verbal communication skills, enabling effective collaboration across teams and stakeholders.</li>
+<li><strong>Problem-Solving:</strong> Exhibited a strong analytical mindset with the ability to identify challenges and propose practical, innovative solutions.</li>
+<li><strong>Adaptability:</strong> Showed remarkable flexibility in adjusting to new tasks, tools, and work environments while maintaining productivity.</li>
+<li><strong>Reliability:</strong> Consistently met deadlines and followed through on commitments, earning the trust and respect of peers and supervisors alike.</li>
+<li><strong>Leadership:</strong> Displayed initiative by taking ownership of projects and guiding fellow team members when required.</li>
+</ul></div>
+<p class="body-text">Throughout the internship period from <strong>${sd||'�'}</strong> to <strong>${ed||'�'}</strong>, ${name} was actively involved in key projects and made tangible contributions that positively impacted the team's performance. ${pr.sub.charAt(0).toUpperCase()+pr.sub.slice(1)} proved to be an invaluable team member whose work ethic and attitude were exemplary at all times.</p>
+<p class="body-text">In summary, I give <strong>${name}</strong> my strongest and most unreserved recommendation. ${pr.sub.charAt(0).toUpperCase()+pr.sub.slice(1)} would be a tremendous asset to any organisation, and I am confident that ${pr.sub} will continue to excel and make meaningful contributions in ${pr.obj} future professional endeavours.</p>
+<p class="body-text" style="text-indent:0">Please do not hesitate to contact us at <strong>ten.hr.contact@gmail.com</strong> should you require any additional information or perspective regarding ${name}'s candidacy.</p>
+<div class="sig-area">
+<div class="sig-block"><div class="sig-name">Kamlesh Gupta</div><div class="sig-line"></div><div class="sig-title">Kamlesh Gupta</div><div class="sig-org">Director</div><div class="sig-org">The Entrepreneurship Network</div></div>
+<div class="sig-block"><div class="sig-line" style="margin-top:60px"></div><div class="sig-title">Authorised Signatory</div><div class="sig-org">The Entrepreneurship Network</div></div>
+</div>
+<div class="footer"><span>📧 ten.hr.contact@gmail.com | The Entrepreneurship Network � Limitless Technologies LLP</span><span>Page 1 of 1</span></div>
+<div class="verify-box">
+<div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: <a href="${verifyUrl}">${verifyUrl}</a></div></div>
+${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80" height="80" alt="QR"><div style="font-size:8px;color:#999;margin-top:2px">Scan to verify</div></div>` : ''}
+</div></div></body></html>`);
   w.document.close();
 }
 
 /* STAR PERFORMER */
-function generateStarCert(){
-  const name=document.getElementById('star-name').value.trim(),empId=document.getElementById('star-empid').value.trim(),certId=document.getElementById('star-certid').value.trim()||'TEN/DOC/—',tenure=document.getElementById('star-tenure').value.trim();
-  if(!name){Swal.fire({title:'Missing Info',text:'Enter student name.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+async function generateStarCert(silent = false){
+  const name=document.getElementById('star-name').value.trim(),empId=document.getElementById('star-empid').value.trim(),certId=document.getElementById('star-certid').value.trim()||'TEN/DOC/�',tenure=document.getElementById('star-tenure').value.trim();
+  if(!name){if(!silent)Swal.fire({title:'Missing Info',text:'Enter student name.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  const docId = generateUniqueDocId('star', empId);
+  const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
+  const qrDataUrl = await generateQRDataUrl(verifyUrl);
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Star Performer - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111;font-family:'Times New Roman',serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:297mm;height:200mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column}.bl{position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.br2{position:absolute;right:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.bl::before,.br2::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#c9a227,#f5c542,#c9a227)}.bl::before{left:7px}.br2::before{right:7px}.tr{position:absolute;top:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.btr{position:absolute;bottom:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.content{padding:16px 70px;text-align:center;width:100%}.cs{font-family:'Dancing Script',cursive;font-size:50px;color:#1a1a1a;display:block}.cst{font-size:12px;font-weight:900;letter-spacing:6px;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px}.at{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#999;margin-bottom:3px}.stn{font-family:'Cinzel Decorative','Cinzel',serif;font-size:34px;font-weight:900;color:#1a1a1a;display:block;margin:4px 0 6px}.nu{border-bottom:2px solid #c9a227;width:60%;margin:0 auto 10px}.awtxt{font-size:13px;color:#444;line-height:1.6;max-width:480px;margin:0 auto 10px}.mr{font-size:12px;font-weight:700;color:#333;margin-bottom:14px}.br3{display:flex;justify-content:space-between;align-items:flex-end;width:100%;padding:0 16px}.sc{width:78px;height:78px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#c9a227;text-align:center}.sga{text-align:center}.sgn{font-family:'Dancing Script',cursive;font-size:30px;color:#000;display:block}.sgl{border-bottom:1px solid #000;width:150px;margin:2px auto 4px}.sgd{font-size:11px;font-weight:700;color:#333}.cid{position:absolute;bottom:10px;right:56px;font-size:10px;font-weight:700;color:#999;letter-spacing:1px}.star-badge{position:absolute;top:12px;right:60px;width:58px;height:58px;background:linear-gradient(135deg,#c9a227,#f5c542);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 18px rgba(201,162,39,0.5)}@media print{body{background:#fff}.np{display:none}.cert{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
-<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px">Browser Print → Save as PDF</span></div>
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Star Performer - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111;font-family:'EB Garamond',Georgia,serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:297mm;height:200mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column}.bl{position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.br2{position:absolute;right:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.bl::before,.br2::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#c9a227,#f5c542,#c9a227)}.bl::before{left:7px}.br2::before{right:7px}.tr{position:absolute;top:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.btr{position:absolute;bottom:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.content{padding:16px 70px;text-align:center;width:100%}.content img{max-height:72px;margin-bottom:16px}.cs{font-family:'Dancing Script',cursive;font-size:50px;color:#1a1a1a;display:block}.cst{font-family:'Cinzel',serif;font-size:14px;font-weight:900;letter-spacing:6px;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px}.at{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#999;margin-bottom:3px}.stn{font-family:'Cinzel Decorative','Cinzel',serif;font-size:36px;font-weight:900;color:#1a1a1a;display:block;margin:4px 0 6px}.nu{border-bottom:2px solid #c9a227;width:60%;margin:0 auto 12px}.awtxt{font-size:13px;color:#444;line-height:1.7;max-width:520px;margin:0 auto 10px;text-align:center}.mr{font-size:12px;font-weight:700;color:#333;margin-bottom:14px;letter-spacing:1px}.br3{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding:0 8px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sga{text-align:right}.sgn{font-family:'Dancing Script',cursive;font-size:34px;color:#1a1a1a;display:block}.sgl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sgd{font-size:12px;color:#333;font-weight:600}.cid{font-size:10px;color:#999;letter-spacing:1px;margin-top:10px}.desc{margin-top:8px;padding:0 20px;font-size:12px;color:#555;line-height:1.7;text-align:justify;max-width:600px;margin-left:auto;margin-right:auto}.verify-box{margin-top:16px;padding:12px 16px;border:1px solid #c9a227;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:600px;margin-left:auto;margin-right:auto}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}.verify-box img{border:1px solid #ddd;border-radius:4px}@media print{body{background:#fff}.np{display:none}.cert{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
+<div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'EB Garamond',serif">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px;font-family:'EB Garamond',serif">Save as PDF → send to student email</span></div>
 <div class="cert"><div class="bl"></div><div class="br2"></div><div class="tr"></div><div class="btr"></div>
 <div class="star-badge">⭐</div>
-<div class="content"><span class="cs">Certificate</span><div class="cst">of Star Performer</div>
-<div class="at">This is awarded to:</div>
+<div class="content"><img src="/ten-logo.png" alt="TEN logo"><span class="cs">Certificate</span><div class="cst">of Star Performer</div>
+<div class="at">This is proudly awarded to:</div>
 <span class="stn">${name}</span><div class="nu"></div>
-<p class="awtxt">to commend your excellent performance.<br>Thank you for your untiring efforts in delivering quality work.</p>
-<div class="mr">Tenure:- ${tenure||'—'} &nbsp;&nbsp;&nbsp; Employee Id:- ${empId||'—'}</div>
-<div class="br3"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sga"><span class="sgn">Kamlesh Gupta</span><div class="sgl"></div><div class="sgd">Kamlesh Gupta</div><div class="sgd">Director</div><div class="sgd">The Entrepreneurship Network</div></div></div></div>
-<div class="cid">Certificate ID: ${certId}</div></div></body></html>`);
+<p class="awtxt">In recognition of your exceptional performance, unwavering dedication, and outstanding contributions during your internship at <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong>. Your professionalism, creativity, and commitment to excellence have set a benchmark for quality work.</p>
+<div class="mr">Tenure: ${tenure||'�'} &nbsp;&nbsp;&nbsp; Employee ID: ${empId||'�'}</div>
+<p class="desc">This certificate is presented to acknowledge the exemplary effort, initiative, and enthusiasm demonstrated throughout the internship programme. ${name} has consistently shown a remarkable ability to deliver high-quality work, adapt to challenges with resilience, and contribute meaningfully to the team's objectives. The Entrepreneurship Network is proud to recognise this outstanding achievement.</p>
+<div class="br3"><div class="sc"><div>�Limitless</div><div>Technologies</div></div><div class="sga"><span class="sgn">Kamlesh Gupta</span><div class="sgl"></div><div class="sgd">Kamlesh Gupta</div><div class="sgd">Director</div><div class="sgd">The Entrepreneurship Network</div></div></div></div>
+<div class="cid">Certificate ID: ${certId}</div>
+<div class="verify-box">
+<div><div class="vlabel">Document Verification</div><div class="vid">${docId}</div><div class="vlink">Verify at: <a href="${verifyUrl}">${verifyUrl}</a></div></div>
+${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80" height="80" alt="QR"><div style="font-size:8px;color:#999;margin-top:2px">Scan to verify</div></div>` : ''}
+</div></div></body></html>`);
   w.document.close();
 }
 
