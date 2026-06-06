@@ -20,6 +20,9 @@ document.getElementById("studentForm")
         email:
         document.getElementById("email").value,
 
+        collegeName:
+        document.getElementById("collegeName").value,
+
         tenure:
         document.getElementById("tenure").value,
 

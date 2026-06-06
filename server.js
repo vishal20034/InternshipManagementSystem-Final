@@ -199,6 +199,30 @@ const submissionSchema = new mongoose.Schema({
 
 const Submission = mongoose.model("Submission", submissionSchema);
 
+function getStudentCollege(student){
+    return (student && (student.collegeName || student.college) || "").trim();
+}
+
+function collegeDisplay(student){
+    return getStudentCollege(student) || "Not Provided";
+}
+
+async function attachStudentDetailsToSubmissions(submissions){
+    const ids = [...new Set(submissions.map(s => s.employeeId).filter(Boolean))];
+    const students = ids.length ? await Student.find({ employeeId: { $in: ids } }) : [];
+    const byEmp = new Map(students.map(s => [s.employeeId, s]));
+    return submissions.map(sub => {
+        const obj = sub.toObject ? sub.toObject() : sub;
+        const student = byEmp.get(obj.employeeId);
+        return {
+            ...obj,
+            studentName: student ? (student.name || `${student.firstName || ""} ${student.lastName || ""}`).trim() : (obj.studentName || ""),
+            collegeName: student ? collegeDisplay(student) : "Not Provided",
+            college: student ? collegeDisplay(student) : "Not Provided"
+        };
+    });
+}
+
 // ================= TEST SCHEMAS =================
 
 const testQuestionSchema = new mongoose.Schema({
@@ -330,7 +354,8 @@ function welcomeEmailHtml({ name, employeeId, domain, email, password, joinedOn,
 
 app.post("/register", registerLimiter, async(req,res)=>{
 try{
-    const { firstName, lastName, domain, whatsapp, email, tenure, joiningDate, collegeName } = req.body;
+    const { firstName, lastName, domain, whatsapp, email, tenure, joiningDate } = req.body;
+    const collegeName = String(req.body.collegeName || req.body.college || "").trim();
     if(!email || !domain){
         return res.json({ success:false, message:"Email and domain are required" });
     }
@@ -367,6 +392,8 @@ try{
         firstName, lastName,
         name: (firstName||"") + " " + (lastName||""),
         domain, whatsapp, email: emailLc,
+        collegeName,
+        college: collegeName,
         tenure, joiningDate,
         employeeId, password,
         collegeName: collegeName || ""
@@ -1004,7 +1031,20 @@ try{
         return res.status(401).json({ message:"Unauthorized" });
     }
     const submissions = await Submission.find().sort({ submittedAt:-1 });
-    res.json({ success:true, submissions });
+    res.json({ success:true, submissions: await attachStudentDetailsToSubmissions(submissions) });
+}catch(error){ res.status(500).json({ message:"Error" }); }
+});
+
+app.get("/hr/submissions/filter", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const status = String(req.query.status || "").trim();
+    const query = status ? { status } : {};
+    const submissions = await Submission.find(query).sort({ submittedAt:-1 });
+    res.json({ success:true, submissions: await attachStudentDetailsToSubmissions(submissions) });
 }catch(error){ res.status(500).json({ message:"Error" }); }
 });
 
@@ -1080,7 +1120,16 @@ app.get("/students", async(req,res)=>{
 
 app.put("/students/:id", async(req,res)=>{
 try{
-    await Student.findByIdAndUpdate(req.params.id, req.body, { new:true });
+    const body = { ...req.body };
+    if(body.firstName !== undefined || body.lastName !== undefined){
+        body.name = `${body.firstName || ""} ${body.lastName || ""}`.trim();
+    }
+    if(body.collegeName !== undefined || body.college !== undefined){
+        const collegeName = String(body.collegeName || body.college || "").trim();
+        body.collegeName = collegeName;
+        body.college = collegeName;
+    }
+    await Student.findByIdAndUpdate(req.params.id, body, { new:true });
     res.json({ message:"Student Updated" });
 }catch(error){ res.status(500).json({ message:"Update Failed" }); }
 });
@@ -1124,7 +1173,8 @@ try{
             email: student.email || "",
             // Student schema in this project uses `whatsapp` for phone.
             phone: student.whatsapp || "",
-            college: student.collegeName || student.college || "",
+            college: getStudentCollege(student),
+            collegeName: getStudentCollege(student),
 
             employeeId: student.employeeId,
             domain: student.domain,
@@ -1561,7 +1611,9 @@ try{
         result.push({
             _id:s._id, employeeId:s.employeeId,
             name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
-            domain:s.domain, joiningDate:s.joiningDate, stats
+            domain:s.domain, joiningDate:s.joiningDate,
+            collegeName: collegeDisplay(s), college: collegeDisplay(s),
+            stats
         });
     }
     res.json({ success:true, students:result });
@@ -1693,6 +1745,7 @@ try{
             _id:s._id, employeeId:s.employeeId,
             name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
             domain:s.domain, joiningDate:s.joiningDate, tenure:s.tenure,
+            collegeName: collegeDisplay(s), college: collegeDisplay(s),
             submissions: submissions.map(x => ({ task:x.task, status:x.status, submittedAt:x.submittedAt })),
             stats,
             approvedByCoordinatorId: s.approvedByCoordinatorId,
@@ -1784,7 +1837,7 @@ try{
             _id:s._id, employeeId:s.employeeId,
             name:(s.name || ((s.firstName||"")+" "+(s.lastName||""))).trim(),
             domain:s.domain, joiningDate:s.joiningDate, tenure:s.tenure,
-            college:s.college || "",
+            collegeName: collegeDisplay(s), college: collegeDisplay(s),
             stats,
             coordinatorRemarks:s.coordinatorRemarks, hrRemarks:s.hrRemarks,
             hrApprovedAt:s.hrApprovedAt
