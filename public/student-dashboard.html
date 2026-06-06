@@ -1476,7 +1476,7 @@ button:active { transform: translateY(0); }
   <nav class="stu-sidebar-nav">
     <button class="stu-nav-btn active" data-view="stu-view-overview" onclick="switchStudentView('stu-view-overview')"><span class="nav-icon">📊</span> Overview</button>
     <button class="stu-nav-btn" data-view="stu-view-notice" onclick="switchStudentView('stu-view-notice')"><span class="nav-icon">📢</span> Announcements</button>
-    <button class="stu-nav-btn" data-view="stu-view-tasks" onclick="switchStudentView('stu-view-tasks')"><span class="nav-icon">📋</span> My Tasks</button>
+    <button class="stu-nav-btn" data-view="stu-view-domain-tasks" onclick="switchStudentView('stu-view-domain-tasks')"><span class="nav-icon">📋</span> My Tasks</button>
     <button class="stu-nav-btn" data-view="stu-view-coding" onclick="switchStudentView('stu-view-coding')"><span class="nav-icon">💻</span> Coding Problems</button>
     <button class="stu-nav-btn" data-view="stu-view-submissions" onclick="switchStudentView('stu-view-submissions')"><span class="nav-icon">📥</span> Submissions</button>
     <button class="stu-nav-btn" data-view="stu-view-attendance" onclick="switchStudentView('stu-view-attendance')"><span class="nav-icon">🪪</span> Attendance</button>
@@ -1574,6 +1574,11 @@ button:active { transform: translateY(0); }
         <div class="sec-card-icon">💻</div>
         <div class="sec-card-title">Coding Problems</div>
         <div class="sec-card-desc">Solve coding challenges</div>
+      </div>
+      <div class="sec-card" onclick="openSectionModal('stu-view-guidelines')">
+        <div class="sec-card-icon">📋</div>
+        <div class="sec-card-title">Guidelines</div>
+        <div class="sec-card-desc">Read internship rules and onboarding links</div>
       </div>
       <div class="sec-card" onclick="openSectionModal('stu-view-leaderboard')">
         <div class="sec-card-icon">🏆</div>
@@ -1724,7 +1729,7 @@ button:active { transform: translateY(0); }
   </div><!-- /stu-view-overview -->
 
   <!-- ══════ VIEW: GUIDELINES ══════ -->
-  <div class="stu-view" id="stu-view-guidelines" style="display:none;">
+  <div class="stu-view" id="stu-view-guidelines">
   <div style="background:rgba(14,20,40,0.95);border:1px solid rgba(212,175,55,0.18);border-radius:16px;padding:28px 32px;">
     <h3 style="font-size:17px;font-weight:800;color:#D4AF37;margin-bottom:8px;">📋 Internship Onboarding Guidelines</h3>
     <p style="font-size:13px;color:#9a8a6a;margin-bottom:18px;line-height:1.6;">All interns must follow these guidelines throughout the internship. Non-compliance may result in certificate cancellation or termination.</p>
