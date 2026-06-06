@@ -1458,7 +1458,7 @@ button:active { transform: translateY(0); }
 <!-- ── SIDEBAR NAVIGATION ── -->
 <div class="stu-sidebar">
   <div class="stu-sidebar-brand">
-    <div class="stu-sidebar-brand-icon">🎓</div>
+    <div class="stu-sidebar-brand-icon"><img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;" /></div>
     <div class="stu-sidebar-brand-text">
       <span class="brand-name">TEN</span>
       <span class="brand-sub">Student Portal</span>
@@ -3429,6 +3429,27 @@ async function generateCertificate() {
     const certId = 'TEN-CERT-' + empId.replace(/\//g,'-') + '-' + Date.now().toString(36).toUpperCase();
     const dateStr = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
 
+    const loadDataUrl = (url) => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error('Failed to load logo image'));
+      img.src = url;
+    });
+
+    let logoDataUrl = null;
+    try {
+      logoDataUrl = await loadDataUrl('/ten-logo.png');
+    } catch (err) {
+      console.warn('Could not load TEN logo for certificate:', err);
+    }
+
     doc.setFillColor(4, 7, 15);
     doc.rect(0, 0, W, H, 'F');
     doc.setDrawColor(212, 175, 55);
@@ -3442,21 +3463,27 @@ async function generateCertificate() {
     });
     doc.setFillColor(212, 175, 55);
     doc.rect(20, 20, W-40, 1.5, 'F');
+    if (logoDataUrl) {
+      const props = doc.getImageProperties(logoDataUrl);
+      const imgW = 32;
+      const imgH = (props.height / props.width) * imgW;
+      doc.addImage(logoDataUrl, 'PNG', W/2 - imgW/2, 22, imgW, imgH);
+    }
     doc.setFontSize(9);
     doc.setTextColor(212, 175, 55);
     doc.setFont('helvetica', 'bold');
-    doc.text('THE ENTREPRENEURSHIP NETWORK', W/2, 30, { align: 'center' });
+    doc.text('THE ENTREPRENEURSHIP NETWORK', W/2, 42, { align: 'center' });
     doc.setFontSize(28);
     doc.setTextColor(240, 230, 200);
-    doc.text('Certificate of Completion', W/2, 52, { align: 'center' });
+    doc.text('Certificate of Completion', W/2, 64, { align: 'center' });
     doc.setFontSize(10);
     doc.setTextColor(160, 140, 100);
     doc.setFont('helvetica', 'normal');
-    doc.text('This is to certify that', W/2, 65, { align: 'center' });
+    doc.text('This is to certify that', W/2, 77, { align: 'center' });
     doc.setFontSize(32);
     doc.setTextColor(212, 175, 55);
     doc.setFont('helvetica', 'bold');
-    doc.text(name, W/2, 82, { align: 'center' });
+    doc.text(name, W/2, 94, { align: 'center' });
     const nameWidth = doc.getTextWidth(name);
     doc.setDrawColor(212,175,55);
     doc.setLineWidth(0.5);
