@@ -519,7 +519,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
           <div id="multiSelectNames" style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:10px;"></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button onclick="bulkGenerateDocs()" style="padding:8px 14px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:8px;color:#0a0700;font-size:12px;font-weight:800;cursor:pointer;">📥 Generate All PDFs</button>
-            <button onclick="bulkEmailDocs()"    style="padding:8px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:#10b981;font-size:12px;font-weight:700;cursor:pointer;">📧 Email All</button>
+            <button onclick="reviewBeforeEmail()"    style="padding:8px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:8px;color:#10b981;font-size:12px;font-weight:700;cursor:pointer;">📧 Email All</button>
             <button onclick="clearAllSelections()" style="padding:8px 14px;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;">✕ Clear Selection</button>
           </div>
         </div>
@@ -888,7 +888,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       style="flex:1;min-width:180px;padding:12px 16px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:14px;font-weight:800;cursor:pointer;">
       📥 Generate PDFs for All Selected
     </button>
-    <button onclick="bulkEmailDocs()"
+    <button onclick="reviewBeforeEmail()"
       style="flex:1;min-width:180px;padding:12px 16px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:10px;color:#10b981;font-size:14px;font-weight:700;cursor:pointer;">
       📧 Email Docs to All Selected
     </button>
@@ -902,6 +902,58 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 
 <!-- TOAST -->
 <div class="hr-toast" id="hrToast"></div>
+
+<!-- CERTIFICATE REVIEW MODAL -->
+<div class="modal-overlay-hr" id="certReviewModal" style="z-index:9999;">
+  <div style="max-width:900px;width:95%;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border);background:var(--surface);">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:var(--gold);">📄 Review Certificates Before Sending</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="reviewProgress">Student 1 of 5</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="toggleReviewStudent()" id="reviewToggleBtn" style="padding:6px 14px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:var(--green);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ Include</button>
+        <button onclick="closeCertReview()" style="background:rgba(244,63,94,0.1);border:1px solid rgba(244,63,94,0.25);color:var(--red);border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">✕ Close</button>
+      </div>
+    </div>
+    <!-- Student info bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 24px;background:rgba(212,175,55,0.04);border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="reviewPrevStudent()" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:14px;cursor:pointer;">◀</button>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--text);" id="reviewStudentName">—</div>
+          <div style="font-size:11px;color:var(--muted);" id="reviewStudentInfo">—</div>
+        </div>
+        <button onclick="reviewNextStudent()" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:14px;cursor:pointer;">▶</button>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span style="font-size:11px;color:var(--muted);">Doc type:</span>
+        <select id="reviewDocType" onchange="renderReviewPreview()" style="padding:4px 8px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;font-size:12px;font-family:'Outfit',sans-serif;">
+          <option value="offer">Offer Letter</option>
+          <option value="loc">Letter of Completion</option>
+          <option value="lor">Letter of Recommendation</option>
+          <option value="star">Star Performer</option>
+        </select>
+      </div>
+    </div>
+    <!-- Preview iframe -->
+    <div style="flex:1;overflow:hidden;min-height:400px;background:#fff;">
+      <iframe id="reviewPreviewFrame" style="width:100%;height:100%;border:none;min-height:400px;"></iframe>
+    </div>
+    <!-- Footer -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface);flex-wrap:wrap;gap:10px;">
+      <div style="font-size:12px;color:var(--muted);">
+        <span id="reviewIncludedCount" style="color:var(--green);font-weight:700;">0</span> of <span id="reviewTotalCount">0</span> students included for email
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="reviewPrevStudent()" style="padding:8px 16px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer;">◀ Previous</button>
+        <button onclick="reviewNextStudent()" style="padding:8px 16px;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:13px;cursor:pointer;">Next ▶</button>
+        <button onclick="sendReviewedDocs()" style="padding:8px 20px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">📧 Send Reviewed Docs</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- SUBMISSION MODAL -->
 <div class="big-modal-overlay" id="submissionDetailModal">
@@ -1604,6 +1656,199 @@ async function bulkEmailDocs() {
         html:  `<b style="color:#10b981;">✅ Sent: ${sent}</b>${failed > 0 ? `<br><b style="color:#f43f5e;">❌ Failed: ${failed}</b>` : ''}`,
         icon: sent > 0 ? 'success' : 'error', background: '#0c1220', color: '#f0eee8'
     });
+}
+
+/* ============ CERTIFICATE REVIEW BEFORE EMAIL ============ */
+let reviewStudents = [];
+let reviewIndex = 0;
+let reviewIncluded = new Set();
+
+async function reviewBeforeEmail() {
+    if (!selectedStudentsForDocs.length) {
+        Swal.fire({ title:'No Students Selected', text:'Please select at least one student.', icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    reviewStudents = [...selectedStudentsForDocs];
+    reviewIndex = 0;
+    reviewIncluded = new Set(reviewStudents.map(s => s._id));
+
+    // Set doc type based on active tab
+    const activeTab = document.querySelector('.doc-tab.active')?.textContent?.trim() || '';
+    const sel = document.getElementById('reviewDocType');
+    if (activeTab.includes('LOC') || activeTab.includes('Completion'))          sel.value = 'loc';
+    else if (activeTab.includes('LOR') || activeTab.includes('Recommendation')) sel.value = 'lor';
+    else if (activeTab.includes('Star'))                                        sel.value = 'star';
+    else                                                                        sel.value = 'offer';
+
+    document.getElementById('reviewTotalCount').textContent = reviewStudents.length;
+    updateReviewCounts();
+    closeStudentPicker();
+    document.getElementById('certReviewModal').classList.add('open');
+    renderReviewPreview();
+}
+
+function closeCertReview() {
+    document.getElementById('certReviewModal').classList.remove('open');
+}
+
+function reviewPrevStudent() {
+    if (reviewIndex > 0) { reviewIndex--; renderReviewPreview(); }
+}
+
+function reviewNextStudent() {
+    if (reviewIndex < reviewStudents.length - 1) { reviewIndex++; renderReviewPreview(); }
+}
+
+function toggleReviewStudent() {
+    const s = reviewStudents[reviewIndex];
+    if (!s) return;
+    if (reviewIncluded.has(s._id)) reviewIncluded.delete(s._id);
+    else reviewIncluded.add(s._id);
+    updateReviewCounts();
+}
+
+function updateReviewCounts() {
+    document.getElementById('reviewIncludedCount').textContent = reviewIncluded.size;
+    document.getElementById('reviewProgress').textContent = `Student ${reviewIndex + 1} of ${reviewStudents.length}`;
+    const s = reviewStudents[reviewIndex];
+    if (s) {
+        document.getElementById('reviewStudentName').textContent = ((s.firstName||'') + ' ' + (s.lastName||'')).trim() || '—';
+        document.getElementById('reviewStudentInfo').textContent = `${s.employeeId||''} · ${s.domain||''} · ${s.email||''}`;
+    }
+    const btn = document.getElementById('reviewToggleBtn');
+    if (s && reviewIncluded.has(s._id)) {
+        btn.textContent = '✅ Include';
+        btn.style.background = 'rgba(16,185,129,0.1)';
+        btn.style.borderColor = 'rgba(16,185,129,0.3)';
+        btn.style.color = 'var(--green)';
+    } else {
+        btn.textContent = '❌ Exclude';
+        btn.style.background = 'rgba(244,63,94,0.08)';
+        btn.style.borderColor = 'rgba(244,63,94,0.2)';
+        btn.style.color = 'var(--red)';
+    }
+}
+
+function renderReviewPreview() {
+    const s = reviewStudents[reviewIndex];
+    if (!s) return;
+    updateReviewCounts();
+    const docType = document.getElementById('reviewDocType').value;
+    const name = ((s.firstName||'') + ' ' + (s.lastName||'')).trim();
+    const empId = s.employeeId || '';
+    const role = s.domain || '';
+    const college = s.collegeName || s.college || '';
+    const tenure = s.tenure || '';
+    const docId = generateUniqueDocId(docType, empId);
+    const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
+
+    let html = '';
+    if (docType === 'offer') {
+        const jf = fmtDate(s.joiningDate || '');
+        const lf = fmtDate(new Date().toISOString().split('T')[0]);
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Times New Roman',serif;background:#fff;color:#000;font-size:14px;line-height:1.6}.page{width:210mm;min-height:297mm;margin:0 auto;padding:18mm 22mm;background:#fff;border:8px solid #000}.logo-area{text-align:center;margin-bottom:20px;border-bottom:2px solid #000;padding-bottom:14px}.logo-area img{max-height:72px;margin-bottom:12px}.on{font-size:12px;font-weight:900;letter-spacing:3px;text-transform:uppercase}.dt{text-align:center;font-size:16px;font-weight:900;text-decoration:underline;margin:16px 0 20px}.meta p{font-size:13px;margin-bottom:2px}.sb{margin:14px 0}.sb strong{font-size:15px;display:block}.bt{text-align:justify;font-size:14px;line-height:1.85;margin-bottom:14px}.sa{margin-top:40px}.sn{font-family:'Dancing Script',cursive;font-size:40px;display:block;margin-bottom:2px}.sl{border-bottom:1px solid #000;width:210px;margin-bottom:6px}.sd{font-size:13px;font-weight:600}</style></head><body>
+<div class="page"><div class="logo-area"><img src="/ten-logo.png" alt="TEN logo"><div class="on">The Entrepreneurship Network</div></div>
+<div class="dt">Internship Offer Letter with The Entrepreneurship Network</div>
+<div class="meta"><p><strong>Date:</strong> ${lf}</p><p><strong>Employee ID:</strong> ${empId}</p></div>
+<div class="sb"><strong>${name}</strong><span>${college}</span></div>
+<p class="bt">Dear <strong>${name}</strong>,</p>
+<p class="bt">We are delighted &amp; excited to welcome you to "<strong>The Entrepreneurship Network</strong>" as a <strong>${role}</strong>, we believe that our team is our biggest strength and we take pride in hiring only the best and the brightest.</p>
+<p class="bt">Your joining date is <strong>${jf||'—'}</strong>.</p>
+<p class="bt" style="margin-top:12px"><strong>Congratulations!</strong></p>
+<div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div>
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid #ddd;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div><div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#999;text-transform:uppercase;margin-bottom:4px;">Document Verification</div><div style="font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:4px 8px;display:inline-block;">${docId}</div></div>
+</div></div></body></html>`;
+    } else if (docType === 'loc') {
+        const sd = fmtDate(s.joiningDate || '');
+        const id_ = fmtDate(new Date().toISOString().split('T')[0]);
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;font-family:'Times New Roman',serif}.cert{width:210mm;min-height:280mm;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 100%);margin:0 auto;padding:28px 34px;position:relative;border:3px solid #c9a227;display:flex;flex-direction:column;align-items:center}.cert::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,162,39,0.3)}.la{text-align:center;margin-bottom:8px}.la img{max-height:72px;margin-bottom:12px}.on{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c9a227;font-weight:700;margin-top:4px}.ctb{font-family:'Cinzel',serif;font-size:56px;font-weight:700;color:#fff;letter-spacing:3px;text-align:center;margin:8px 0}.cst{font-family:'Cinzel',serif;font-size:18px;color:#c9a227;letter-spacing:6px;text-align:center;margin-bottom:18px}.mb{text-align:left;width:100%;margin-bottom:14px}.mb p{font-size:12px;color:#c9a227;font-weight:700}.bt{font-size:13px;color:#e0e0e0;line-height:1.9;text-align:justify;width:100%;margin-bottom:12px}.bt strong{color:#f5c542}.br{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding-top:14px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sa{text-align:right}.sn{font-family:'Dancing Script',cursive;font-size:34px;color:#f5c542;display:block}.sl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sd{font-size:12px;color:#e0e0e0;font-weight:600}</style></head><body>
+<div class="cert"><div class="la"><img src="/ten-logo.png" alt="TEN logo"><div class="on">The Entrepreneurship Network</div></div>
+<div class="ctb">CERTIFICATE</div><div class="cst">OF COMPLETION</div>
+<div class="mb"><p><strong>Employee ID:</strong> ${empId} &nbsp;&nbsp; <strong>Date Of Issue:</strong> ${id_}</p></div>
+<p class="bt">This is to certify that <strong>${name}</strong> from <strong>${college||'—'}</strong> has Successfully Completed his internship tenure with <strong>The Entrepreneurship Network (Limitless Technologies LLP)</strong> from <strong>${sd||'—'}</strong>. During the period, he worked as a <strong>${role}</strong>.</p>
+<p class="bt">We wish him all the best for his future endeavours.</p>
+<p class="bt">Best Regards,</p>
+<div class="br"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div></div></div></body></html>`;
+    } else if (docType === 'lor') {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Times New Roman',serif;background:#fff;color:#000;font-size:14px}.page{width:210mm;min-height:297mm;margin:0 auto;padding:16mm 22mm;background:#fff;border:6px solid #f5c542}.la{text-align:center;margin-bottom:16px;border-bottom:2px solid #f5c542;padding-bottom:12px}.la img{max-height:72px;margin-bottom:12px}.on{font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:900}.dt{text-align:center;font-size:17px;font-weight:900;letter-spacing:2px;color:#8B0000;text-transform:uppercase;border:2px solid #f5c542;padding:10px;margin:14px 0 20px;background:rgba(245,197,66,0.06)}.bt{text-align:justify;font-size:14px;line-height:1.9;margin-bottom:14px}.sa{margin-top:28px}.sn{font-family:'Dancing Script',cursive;font-size:36px;display:block;margin-bottom:2px}.sl{border-bottom:1px solid #000;width:190px;margin-bottom:6px}.sd{font-size:13px;font-weight:600}.ft{margin-top:24px;padding-top:10px;border-top:1px solid #f5c542;font-size:12px}</style></head><body>
+<div class="page"><div class="la"><img src="/ten-logo.png" alt="TEN logo"><div class="on">The Entrepreneurship Network</div></div>
+<div class="dt">Letter of Recommendation</div>
+<div class="meta"><p><strong>Employee ID:</strong> ${empId}</p></div>
+<p class="bt"><strong>${name}</strong> worked in <strong>The Entrepreneurship Network</strong> as a <strong>${role}</strong>. During that time, I developed a very high regard for them based on the outstanding contributions made throughout the internship.</p>
+<p class="bt"><strong>${name}</strong> has excellent communication skills, is extremely organized, reliable and computer literate.</p>
+<p class="bt">Sincerely,</p>
+<div class="sa"><span class="sn">Kamlesh Gupta</span><div class="sl"></div><div class="sd">Kamlesh Gupta</div><div class="sd">Director</div><div class="sd">The Entrepreneurship Network</div></div>
+<div class="ft">EMAIL: ten.hr.contact@gmail.com</div>
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid #f5c542;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+  <div><div style="font-size:10px;font-weight:700;letter-spacing:1px;color:#999;text-transform:uppercase;margin-bottom:4px;">Document Verification</div><div style="font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:4px 8px;display:inline-block;">${docId}</div></div>
+</div></div></body></html>`;
+    } else {
+        html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111;font-family:'Times New Roman',serif}.cert{width:297mm;height:200mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column}.bl{position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.br2{position:absolute;right:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.bl::before,.br2::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#c9a227,#f5c542,#c9a227)}.bl::before{left:7px}.br2::before{right:7px}.tr{position:absolute;top:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.btr{position:absolute;bottom:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.content{padding:16px 70px;text-align:center;width:100%}.content img{max-height:72px;margin-bottom:16px}.cs{font-family:'Dancing Script',cursive;font-size:50px;color:#1a1a1a;display:block}.cst{font-size:12px;font-weight:900;letter-spacing:6px;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px}.at{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#999;margin-bottom:3px}.stn{font-family:'Cinzel Decorative','Cinzel',serif;font-size:34px;font-weight:900;color:#1a1a1a;display:block;margin:4px 0 6px}.nu{border-bottom:2px solid #c9a227;width:60%;margin:0 auto 10px}.awtxt{font-size:13px;color:#444;line-height:1.6;max-width:480px;margin:0 auto 10px}.mr{font-size:12px;font-weight:700;color:#333;margin-bottom:14px}.br3{display:flex;justify-content:space-between;align-items:flex-end;width:100%}.sc{width:70px;height:70px;border:2px solid #1a1a1a;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:8px;font-weight:700;text-align:center}.sga{text-align:right}.sgn{font-family:'Dancing Script',cursive;font-size:28px;color:#1a1a1a;display:block}.sgl{border-bottom:2px solid #1a1a1a;margin-bottom:4px}.sgd{font-size:11px;font-weight:600;color:#333}.cid{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-family:'Courier New',monospace;font-size:11px;color:#999}</style></head><body>
+<div class="cert"><div class="bl"></div><div class="br2"></div><div class="tr"></div><div class="btr"></div>
+<div class="content"><img src="/ten-logo.png" alt="TEN logo"><span class="cs">Certificate</span><div class="cst">of Star Performer</div>
+<div class="at">This is awarded to:</div>
+<span class="stn">${name}</span><div class="nu"></div>
+<p class="awtxt">to commend your excellent performance.<br>Thank you for your untiring efforts in delivering quality work.</p>
+<div class="mr">Tenure:- ${tenure} &nbsp;&nbsp;&nbsp; Employee Id:- ${empId}</div>
+<div class="br3"><div class="sc"><div>©Limitless</div><div>Technologies</div></div><div class="sga"><span class="sgn">Kamlesh Gupta</span><div class="sgl"></div><div class="sgd">Kamlesh Gupta</div><div class="sgd">Director</div><div class="sgd">The Entrepreneurship Network</div></div></div></div>
+<div class="cid">Certificate ID: ${docId}</div></div></body></html>`;
+    }
+
+    const frame = document.getElementById('reviewPreviewFrame');
+    frame.srcdoc = html;
+}
+
+async function sendReviewedDocs() {
+    const toSend = reviewStudents.filter(s => reviewIncluded.has(s._id));
+    if (!toSend.length) {
+        Swal.fire({ title:'No Students Included', text:'Please include at least one student to send documents.', icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    const noEmail = toSend.filter(s => !s.email);
+    if (noEmail.length) {
+        Swal.fire({ title:'Missing Emails', text:'These students have no email: ' + noEmail.map(s => (s.firstName||'') + ' ' + (s.lastName||'')).join(', '), icon:'warning', background:'#0c1220', color:'#f0eee8' });
+        return;
+    }
+    const docType = document.getElementById('reviewDocType').value;
+    const docLabels = { offer:'Offer Letter', loc:'LOC', lor:'LOR', star:'Star Performer Certificate' };
+    const confirmed = await Swal.fire({
+        title: 'Send ' + docLabels[docType],
+        html: `Send <b>${docLabels[docType]}</b> to <b>${toSend.length}</b> reviewed student(s)?<br><br>` +
+              toSend.map(s => `<div style="font-size:12px;color:#9a8a6a;">📧 ${s.email} — ${((s.firstName||'') + ' ' + (s.lastName||'')).trim()}</div>`).join(''),
+        icon: 'question', showCancelButton: true, confirmButtonText: '📧 Send to Reviewed',
+        confirmButtonColor: '#10b981', background: '#0c1220', color: '#f0eee8'
+    });
+    if (!confirmed.isConfirmed) return;
+    closeCertReview();
+    Swal.fire({
+        title: 'Sending Emails...', allowOutsideClick: false, showConfirmButton: false,
+        html: `<div id="emailProgressText">Sending 0 of ${toSend.length}...</div>`,
+        background: '#0c1220', color: '#f0eee8', didOpen: () => Swal.showLoading()
+    });
+    let sent = 0, failed = 0;
+    for (const student of toSend) {
+        try {
+            const r = await fetch('/hr/send-documents-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+                body: JSON.stringify({ employeeId: student.employeeId, docType })
+            });
+            const d = await r.json();
+            if (d.success) sent++; else failed++;
+        } catch(e) { failed++; }
+        const el = document.getElementById('emailProgressText');
+        if (el) el.textContent = 'Sending ' + (sent + failed) + ' of ' + toSend.length + '...';
+        await new Promise(r => setTimeout(r, 500));
+    }
+    Swal.fire({
+        title: 'Email Report',
+        html: `<b style="color:#10b981;">✅ Sent: ${sent}</b>${failed > 0 ? `<br><b style="color:#f43f5e;">❌ Failed: ${failed}</b>` : ''}`,
+        icon: sent > 0 ? 'success' : 'error', background: '#0c1220', color: '#f0eee8'
+    });
+    // Clear selections after sending
+    selectedStudentsForDocs = [];
+    updateMultiSelectSummary();
 }
 
 document.getElementById('studentPickerModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeStudentPicker();});
