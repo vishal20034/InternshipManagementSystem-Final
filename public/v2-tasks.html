@@ -457,7 +457,7 @@ let openWeeks     = new Set();
 // ── Helpers ──────────────────────────────────────
 function getStudent() {
   try {
-    const raw = localStorage.getItem('studentData') || sessionStorage.getItem('studentData');
+    const raw = localStorage.getItem('studentData') || sessionStorage.getItem('studentData') || localStorage.getItem('student') || sessionStorage.getItem('student');
     return raw ? JSON.parse(raw) : null;
   } catch { return null; }
 }
