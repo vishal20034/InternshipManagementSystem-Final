@@ -88,6 +88,15 @@ table{width:100%;border-collapse:collapse;}
 th{padding:12px 20px;text-align:left;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
 td{padding:14px 20px;font-size:14px;border-bottom:1px solid rgba(245,197,66,0.04);}
 tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02);}
+.ins-table thead th{background:var(--card2);}
+.ins-table tbody tr:hover td{background:var(--surface);}
+.ins-badge{display:inline-block;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;background:var(--surface);border:1px solid var(--border);color:var(--muted);}
+.ins-badge.gold{border-color:var(--gold);color:var(--gold);}
+.ins-badge.blue{border-color:var(--blue);color:var(--blue);}
+.ins-badge.purple{border-color:var(--purple);color:var(--purple);}
+.ins-badge.amber{border-color:var(--amber);color:var(--amber);}
+.ins-badge.green{border-color:var(--green);color:var(--green);}
+.ins-badge.orange{border-color:var(--orange);color:var(--orange);}
 .tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
 .tag-approved{background:rgba(16,185,129,0.12);color:var(--green);border:1px solid rgba(16,185,129,0.2);}
 .tag-pending{background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.2);}
@@ -348,6 +357,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
   <div class="sidebar-nav">
     <div class="nav-section-title">Overview</div>
     <button class="nav-btn active" onclick="showView('overview')" data-view="overview"><span class="icon">📊</span> Dashboard</button>
+    <button class="nav-btn" onclick="showView('insights')" data-view="insights"><span class="icon">📊</span> Insights</button>
     <div class="nav-divider"></div>
     <div class="nav-section-title">People</div>
     <button class="nav-btn" onclick="showView('students')" data-view="students"><span class="icon">🎓</span> All Students</button>
@@ -428,6 +438,65 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     </div>
     <div class="section-header"><div class="section-title">Recent Notifications Sent</div></div>
     <div class="notif-list" id="recentNotifs"></div>
+  </div>
+
+  <div class="view" id="view-insights">
+    <div class="doc-tabs">
+      <button class="doc-tab active" onclick="switchInsightsTab('monthly',this)">📈 Monthly Overview</button>
+      <button class="doc-tab" onclick="switchInsightsTab('documents',this)">📄 Document History</button>
+      <button class="doc-tab" onclick="switchInsightsTab('mail',this)">📧 Mail History</button>
+      <button class="doc-tab" onclick="switchInsightsTab('verify',this)">🔍 Verify Student</button>
+    </div>
+
+    <div class="doc-panel active" id="insights-monthly">
+      <div class="stats-grid" id="insightsStatsGrid">
+        <div class="stat-card" data-c="gold"><div class="stat-icon">👥</div><div class="stat-label">Total Interns</div><div class="stat-value" id="insTotalInterns">0</div><div class="stat-sub">All registered interns</div></div>
+        <div class="stat-card" data-c="green"><div class="stat-icon">✅</div><div class="stat-label">Active This Month</div><div class="stat-value" id="insActiveThisMonth">0</div><div class="stat-sub">Last 30 days</div></div>
+        <div class="stat-card" data-c="orange"><div class="stat-icon">💤</div><div class="stat-label">Inactive</div><div class="stat-value" id="insInactiveInterns">0</div><div class="stat-sub">No activity</div></div>
+        <div class="stat-card" data-c="blue"><div class="stat-icon">🆕</div><div class="stat-label">New Joins This Month</div><div class="stat-value" id="insNewJoinsThisMonth">0</div><div class="stat-sub">This calendar month</div></div>
+      </div>
+      <div class="chart-card chart-card-wide">
+        <div class="chart-card-title">📈 New Joins (Last 6 Months)</div>
+        <div class="chart-wrap chart-wrap-tall">
+          <canvas id="insightsJoinChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-panel" id="insights-documents">
+      <div class="table-wrap">
+        <div class="table-top">
+          <span style="font-size:15px;font-weight:700;">Document Send History</span>
+          <input class="search-input" id="insightsDocSearch" placeholder="Search by name or employee ID…" oninput="filterInsightsDocumentHistory()">
+        </div>
+        <div style="overflow-x:auto;"><table class="ins-table">
+          <thead><tr><th>Student Name</th><th>Employee ID</th><th>College</th><th>Document Type</th><th>Document Number</th><th>Sent On</th></tr></thead>
+          <tbody id="insightsDocHistoryTable"><tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="doc-panel" id="insights-mail">
+      <div class="table-wrap">
+        <div class="table-top">
+          <span style="font-size:15px;font-weight:700;">Automated Mail History</span>
+          <input class="search-input" id="insightsMailSearch" placeholder="Search by name…" oninput="filterInsightsMailHistory()">
+        </div>
+        <div style="overflow-x:auto;"><table class="ins-table">
+          <thead><tr><th>Student Name</th><th>Employee ID</th><th>Mail Type</th><th>Sent On</th></tr></thead>
+          <tbody id="insightsMailHistoryTable"><tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <div class="doc-panel" id="insights-verify">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+        <input class="search-input" id="insightsVerifyEmployeeId" placeholder="Employee ID" style="width:320px;max-width:100%;">
+        <button class="cert-gen-btn" onclick="insightsVerifyStudent()">Check Verification</button>
+      </div>
+      <div id="insightsVerifyBox" style="display:none;background:var(--card);border:1px solid var(--gold);border-radius:20px;padding:22px 24px;"></div>
+      <div id="insightsVerifyError" style="display:none;background:var(--card);border:1px solid var(--red);border-radius:20px;padding:16px 18px;color:var(--red);font-weight:600;"></div>
+    </div>
   </div>
 
   <!-- STUDENTS -->
@@ -1032,8 +1101,9 @@ function showView(v){
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
-  const t={overview:'<span>Dashboard</span> Overview',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals',promotions:'<span>Promotions</span>',leaderboard:'<span>Performance</span> Leaderboard'};
+  const t={overview:'<span>Dashboard</span> Overview',insights:'<span>Insights</span>',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals',promotions:'<span>Promotions</span>',leaderboard:'<span>Performance</span> Leaderboard'};
   document.getElementById('pageTitle').innerHTML=t[v]||v;
+  if(v==='insights') initInsights();
   if(v==='students') loadStudents();
   if(v==='tracker') loadTracker();
   if(v==='submissions') loadSubmissions();
@@ -1047,6 +1117,159 @@ function showView(v){
     if(window.TenExtras){
       TenExtras.injectHR({ mountId: "ten-extras-hr-mount" });
     }
+  }
+}
+
+let insightsDocHistoryRecords=[];
+let insightsMailHistoryRecords=[];
+
+function initInsights(){
+  loadInsightsMonthly();
+}
+
+function switchInsightsTab(tab,btn){
+  document.querySelectorAll('#view-insights .doc-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#view-insights .doc-panel').forEach(p=>p.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const map={monthly:'insights-monthly',documents:'insights-documents',mail:'insights-mail',verify:'insights-verify'};
+  document.getElementById(map[tab]).classList.add('active');
+  if(tab==='monthly') loadInsightsMonthly();
+  if(tab==='documents') loadInsightsDocumentHistory();
+  if(tab==='mail') loadInsightsMailHistory();
+}
+
+async function loadInsightsMonthly(){
+  try{
+    const r=await fetch('/api/hr/intern-stats',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    document.getElementById('insTotalInterns').textContent=d.totalInterns||0;
+    document.getElementById('insActiveThisMonth').textContent=d.activeThisMonth||0;
+    document.getElementById('insInactiveInterns').textContent=d.inactiveInterns||0;
+    document.getElementById('insNewJoinsThisMonth').textContent=d.newJoinsThisMonth||0;
+  }catch(e){}
+  try{
+    const r=await fetch('/api/hr/intern-stats/monthly',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    if(!window.Chart) return;
+    const gold=getComputedStyle(document.documentElement).getPropertyValue('--gold').trim();
+    const existing=Chart.getChart('insightsJoinChart');
+    if(existing) existing.destroy();
+    new Chart(document.getElementById('insightsJoinChart'), {
+      type: 'bar',
+      data: { labels: (d||[]).map(x=>x.month), datasets: [{ label: 'New Joins', data: (d||[]).map(x=>x.count||0), backgroundColor: gold, borderColor: gold, borderWidth: 1.5, borderRadius: 8 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } }
+    });
+  }catch(e){}
+}
+
+async function loadInsightsDocumentHistory(){
+  const tb=document.getElementById('insightsDocHistoryTable');
+  tb.innerHTML='<tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  try{
+    const r=await fetch('/api/hr/document-history?page=1',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    insightsDocHistoryRecords=d.records||[];
+    renderInsightsDocumentHistory(insightsDocHistoryRecords);
+  }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="es-icon">📄</div><p>Failed to load</p></div></td></tr>'; }
+}
+
+function renderInsightsDocumentHistory(list){
+  const tb=document.getElementById('insightsDocHistoryTable');
+  if(!list.length){tb.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="es-icon">📄</div><p>No records</p></div></td></tr>';return;}
+  tb.innerHTML=list.map(r=>{
+    const sent=r.sentAt?new Date(r.sentAt).toLocaleDateString('en-IN'):'—';
+    const type=(r.documentType||'').trim();
+    const bc=type==='Offer Letter'?'gold':type==='LOC'?'blue':type==='LOR'?'purple':type==='Star Performer'?'amber':'';
+    const typeHtml=type?`<span class="ins-badge ${bc}">${type}</span>`:'—';
+    return `<tr><td>${r.studentName||'—'}</td><td>${r.employeeId||'—'}</td><td>${r.college||'—'}</td><td>${typeHtml}</td><td>${r.documentNumber||'—'}</td><td>${sent}</td></tr>`;
+  }).join('');
+}
+
+function filterInsightsDocumentHistory(){
+  const q=(document.getElementById('insightsDocSearch').value||'').toLowerCase().trim();
+  if(!q){renderInsightsDocumentHistory(insightsDocHistoryRecords);return;}
+  renderInsightsDocumentHistory(insightsDocHistoryRecords.filter(r=>{
+    return ((r.studentName||'').toLowerCase().includes(q) || (r.employeeId||'').toLowerCase().includes(q));
+  }));
+}
+
+async function loadInsightsMailHistory(){
+  const tb=document.getElementById('insightsMailHistoryTable');
+  tb.innerHTML='<tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  try{
+    const r=await fetch('/api/hr/automail-history?page=1',{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    insightsMailHistoryRecords=d.records||[];
+    renderInsightsMailHistory(insightsMailHistoryRecords);
+  }catch(e){ tb.innerHTML='<tr><td colspan="4"><div class="empty-state"><div class="es-icon">📧</div><p>Failed to load</p></div></td></tr>'; }
+}
+
+function renderInsightsMailHistory(list){
+  const tb=document.getElementById('insightsMailHistoryTable');
+  if(!list.length){tb.innerHTML='<tr><td colspan="4"><div class="empty-state"><div class="es-icon">📧</div><p>No records</p></div></td></tr>';return;}
+  tb.innerHTML=list.map(r=>{
+    const sent=r.sentAt?new Date(r.sentAt).toLocaleDateString('en-IN'):'—';
+    const type=(r.mailType||'').trim();
+    const bc=type==='active-appreciation'?'green':type==='inactive-reengagement'?'orange':'';
+    const typeHtml=type?`<span class="ins-badge ${bc}">${type}</span>`:'—';
+    return `<tr><td>${r.studentName||'—'}</td><td>${r.employeeId||'—'}</td><td>${typeHtml}</td><td>${sent}</td></tr>`;
+  }).join('');
+}
+
+function filterInsightsMailHistory(){
+  const q=(document.getElementById('insightsMailSearch').value||'').toLowerCase().trim();
+  if(!q){renderInsightsMailHistory(insightsMailHistoryRecords);return;}
+  renderInsightsMailHistory(insightsMailHistoryRecords.filter(r=>{
+    return ((r.studentName||'').toLowerCase().includes(q));
+  }));
+}
+
+function formatInsightsDate(d){
+  const x=new Date(d);
+  if(isNaN(x.getTime())) return '—';
+  const dd=String(x.getDate()).padStart(2,'0');
+  const mm=String(x.getMonth()+1).padStart(2,'0');
+  const yy=x.getFullYear();
+  return dd+'-'+mm+'-'+yy;
+}
+
+async function insightsVerifyStudent(){
+  const empId=document.getElementById('insightsVerifyEmployeeId').value.trim();
+  const box=document.getElementById('insightsVerifyBox');
+  const err=document.getElementById('insightsVerifyError');
+  err.style.display='none';
+  box.style.display='none';
+  if(!empId){
+    err.textContent='No student found with this Employee ID';
+    err.style.display='block';
+    return;
+  }
+  box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  box.style.display='block';
+  try{
+    const r=await fetch('/api/hr/verify-check?employeeId='+encodeURIComponent(empId),{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    if(d && d.message && d.verified===false){
+      box.style.display='none';
+      err.textContent='No student found with this Employee ID';
+      err.style.display='block';
+      return;
+    }
+    const verified=d.verified===true;
+    const vt=verified?'<span style="color:var(--green);font-weight:800;">✅ Yes</span>':'<span style="color:var(--red);font-weight:800;">❌ No</span>';
+    const verifiedOn=d.verifiedAt?formatInsightsDate(d.verifiedAt):'—';
+    box.innerHTML=`<div style="display:grid;grid-template-columns:150px 1fr;gap:10px 18px;font-size:14px;">
+      <div style="color:var(--muted);font-weight:700;">Name:</div><div style="font-weight:700;">${d.studentName||'—'}</div>
+      <div style="color:var(--muted);font-weight:700;">College:</div><div>${d.college||'—'}</div>
+      <div style="color:var(--muted);font-weight:700;">Document Type:</div><div>${d.documentType||'—'}</div>
+      <div style="color:var(--muted);font-weight:700;">Document No:</div><div>${d.documentNumber||'—'}</div>
+      <div style="color:var(--muted);font-weight:700;">Verified:</div><div>${vt}</div>
+      <div style="color:var(--muted);font-weight:700;">Verified On:</div><div>${verifiedOn}</div>
+    </div>`;
+  }catch(e){
+    box.style.display='none';
+    err.textContent='No student found with this Employee ID';
+    err.style.display='block';
   }
 }
 
@@ -2721,4 +2944,3 @@ document.addEventListener('keydown', function(e) {
 </script>
 </body>
 </html>
-
