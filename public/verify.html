@@ -78,10 +78,10 @@ body{font-family:'Inter',sans-serif;background:var(--dark);color:var(--text);min
 
 <div class="search-section">
   <div class="search-card">
-    <h2>Enter Document ID</h2>
-    <p class="sub">Enter the unique Document ID printed on your certificate to verify its authenticity.</p>
+    <h2>Enter Document Number</h2>
+    <p class="sub">Enter the document number printed on your TEN certificate / offer letter / LOR to verify its authenticity.</p>
     <div class="search-form">
-      <input type="text" id="docIdInput" placeholder="e.g. TEN-OFFER-2025-ABC123" autofocus>
+      <input type="text" id="docIdInput" placeholder="e.g. TEN-OL-2026-4F2A9C" autofocus>
       <button onclick="verifyDocument()" id="verifyBtn">Verify</button>
     </div>
     <p class="search-hint">
@@ -132,7 +132,7 @@ async function verifyDocument() {
   resultsEl.style.display = 'none';
 
   try {
-    const res = await fetch('/api/verify-document/' + encodeURIComponent(docId));
+    const res = await fetch('/api/v2/verify/' + encodeURIComponent(docId));
     const data = await res.json();
 
     loadingEl.style.display = 'none';
@@ -166,9 +166,11 @@ async function verifyDocument() {
       return;
     }
 
-    const doc = data.document;
-    const student = data.student;
-    const typeName = {offer:'Offer Letter',loc:'Letter of Completion',lor:'Letter of Recommendation',star:'Star Performer Certificate'}[doc.docType] || doc.docType;
+    const doc = data.document || {};
+    const student = data.student || {};
+    const typeName =
+      data.document_type ||
+      ({ offer_letter: "Offer Letter", loc: "Letter of Completion", lor: "Letter of Recommendation", star: "Star Performer", expert_certificate: "Expert Certificate", nano_degree: "Nano Degree", fellowship: "Fellowship" }[doc.docType] || doc.docType || "Document");
 
     resultsCard.innerHTML = `
       <div class="result-header">
@@ -181,7 +183,7 @@ async function verifyDocument() {
       <div class="doc-details">
         <div class="detail-item detail-full">
           <div class="label">Document ID</div>
-          <div class="value mono">${escHtml(doc.documentId)}</div>
+          <div class="value mono">${escHtml(data.document_number || doc.documentId || docId)}</div>
         </div>
         <div class="detail-item">
           <div class="label">Document Type</div>
@@ -189,23 +191,23 @@ async function verifyDocument() {
         </div>
         <div class="detail-item">
           <div class="label">Employee ID</div>
-          <div class="value mono">${escHtml(doc.employeeId || '—')}</div>
+          <div class="value mono">${escHtml(data.employee_id || doc.employeeId || student.employeeId || '—')}</div>
         </div>
         <div class="detail-item">
           <div class="label">Student Name</div>
-          <div class="value">${escHtml(student ? ((student.firstName||'') + ' ' + (student.lastName||'')).trim() : '—')}</div>
+          <div class="value">${escHtml(data.student_name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim() || '—')}</div>
         </div>
         <div class="detail-item">
           <div class="label">Domain / Role</div>
-          <div class="value">${escHtml(doc.domain || student?.domain || '—')}</div>
+          <div class="value">${escHtml(data.domain || doc.domain || student.domain || '—')}</div>
         </div>
         <div class="detail-item">
-          <div class="label">Date Generated</div>
-          <div class="value">${doc.generatedAt ? new Date(doc.generatedAt).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—'}</div>
+          <div class="label">Issued On</div>
+          <div class="value">${(data.issued_date || doc.generatedAt) ? new Date(data.issued_date || doc.generatedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</div>
         </div>
         <div class="detail-item">
           <div class="label">Issued By</div>
-          <div class="value">${escHtml(doc.generatedBy || 'System')}</div>
+          <div class="value">${escHtml(data.issued_by || doc.generatedBy || 'The Entrepreneurship Network (TEN)')}</div>
         </div>
       </div>
       <div class="verification-badge verified">
