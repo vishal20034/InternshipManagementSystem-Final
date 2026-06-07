@@ -78,7 +78,17 @@ const studentsSchema = new mongoose.Schema({
         of: Date,
         default: {}
     },
-    certificateEligibilityEmailSent: { type: Boolean, default: false }
+    certificateEligibilityEmailSent: { type: Boolean, default: false },
+
+    // ===== Auto document email tracking =====
+    documentsAutoSent:    { type: Boolean, default: false },
+    documentsAutoSentAt:  { type: Date },
+    autoDocUniqueId:      { type: String, default: "" },
+
+    // ===== Document verification =====
+    documentVerified:     { type: Boolean, default: false },
+    documentVerifiedAt:   { type: Date },
+    documentNumber:       { type: String, default: "" }
 }, {
     timestamps: true
 });

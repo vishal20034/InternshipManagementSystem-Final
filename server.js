@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const path = require("path");
@@ -34,7 +33,8 @@ const ALL_DOMAINS = [
     "DevOps with AWS","Python Development","Java Development","Web Development",
     "MERN Stack Development","Artificial Intelligence","Data Science",
     "Cyber Security","Software Engineering","Flutter Development",
-    "HR Management"
+    "HR Management",
+    "Venture Capital","Vibe Coding","Space Research","Business Analyst","HR"
 ];
 
 // Shared credential maps (legacy hardcoded accounts).
@@ -57,14 +57,20 @@ const COORDINATORS = {
     "software_admin":     { password:"Software@2026",   domain:"Software Engineering" },
     "flutter_admin":      { password:"Flutter@2026",    domain:"Flutter Development" },
     // Requirement 5 — HR Management treated like any other domain
-    "hrmgmt_admin":       { password:"HRMgmt@2026",     domain:"HR Management" }
+    "hrmgmt_admin":       { password:"HRMgmt@2026",     domain:"HR Management" },
+    // New domains added
+    "venturecapital_admin":  { password: "VC@TEN2026",        domain: "Venture Capital" },
+    "vibecoding_admin":      { password: "Vibe@TEN2026",       domain: "Vibe Coding" },
+    "spaceresearch_admin":   { password: "Space@TEN2026",      domain: "Space Research" },
+    "businessanalyst_admin": { password: "BA@TEN2026",         domain: "Business Analyst" },
+    "hr_domain_admin":       { password: "HRDomain@TEN2026",   domain: "HR" }
 };
 
 const app = express();
 
 // ===== Production config =====
 const PORT = process.env.PORT || 5000;
-const BASE_URL = process.env.BASE_URL || "http://15.207.123.212";
+const BASE_URL = process.env.BASE_URL || "https://virtualinternships.entrepreneurshipnetwork.net";
 
 // Ensure uploads directory exists (multer writes to it)
 const uploadsAbs = path.join(__dirname, "uploads");
@@ -148,6 +154,157 @@ transporter.verify((error)=>{
     if(error){ console.log(error); }
     else{ console.log("Email Server Ready"); }
 });
+
+// ======= AUTO DOCUMENT EMAIL HELPERS =======
+function tenureToDays(tenure) {
+    if (!tenure) return 30;
+    const t = tenure.toLowerCase();
+    if (t.includes("45")) return 45;
+    if (t.includes("6"))  return 180;
+    if (t.includes("3"))  return 90;
+    return 30;
+}
+
+function getInternshipEndDate(joiningDate, tenure) {
+    if (!joiningDate) return null;
+    const start = new Date(joiningDate);
+    if (isNaN(start.getTime())) return null;
+    const end = new Date(start);
+    end.setDate(end.getDate() + tenureToDays(tenure));
+    return end;
+}
+
+async function sendAutoDocumentsToStudent(student, docType) {
+    try {
+        const name       = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+        const empId      = student.employeeId || '—';
+        const domain     = student.domain || '—';
+        const college    = student.collegeName || student.college || '—';
+        const email      = student.email;
+        const tenure     = student.tenure || '1 Month';
+        const joining    = student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
+        const endDate    = getInternshipEndDate(student.joiningDate, student.tenure);
+        const endStr     = endDate ? endDate.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
+        const issuedDate = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+        const uniqueDocId = 'TEN-' + empId.replace(/\//g,'-') + '-' + Date.now().toString(36).toUpperCase();
+        const verifyUrl   = BASE_URL + '/verify-document?id=' + uniqueDocId;
+
+        const docTypeLabels = { offer:'Offer Letter', loc:'Letter of Completion', lor:'Letter of Recommendation', star:'Star Performer Certificate', all:'Internship Documents' };
+        const docTypeLabel  = docTypeLabels[docType] || 'Internship Documents';
+
+        await Student.findByIdAndUpdate(student._id, {
+            documentsAutoSent:   true,
+            documentsAutoSentAt: new Date(),
+            autoDocUniqueId:     uniqueDocId
+        });
+
+        const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+            body{font-family:'Times New Roman',serif;background:#f5f5f5;margin:0;padding:20px}
+            .wrap{max-width:680px;margin:0 auto;background:#fff;border:2px solid #D4AF37;border-radius:8px;overflow:hidden}
+            .hdr{background:linear-gradient(135deg,#1a1a2e,#0f3460);padding:32px;text-align:center}
+            .hdr .inf{font-size:48px;color:#D4AF37}.hdr h1{color:#D4AF37;font-size:18px;letter-spacing:3px;text-transform:uppercase;margin:8px 0 4px}
+            .hdr p{color:#a08040;font-size:12px;margin:0}.bd{padding:32px 36px}
+            .bd h2{color:#1a1a2e;font-size:22px;margin-bottom:8px}.bd p{font-size:14px;line-height:1.8;color:#333}
+            .dc{background:#fffbf0;border:1px solid #D4AF37;border-radius:8px;padding:18px 22px;margin:16px 0}
+            .dc h3{color:#b8860b;font-size:15px;margin:0 0 6px}.dc p{margin:0;font-size:13px;color:#555}
+            .vb{background:#f0f8ff;border:1px solid #4a90d9;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:center}
+            .vb p{font-size:13px;color:#333;margin:0 0 8px}.vb a{color:#1a5fb4;font-weight:700;word-break:break-all}
+            .did{font-family:'Courier New',monospace;font-size:13px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:6px 12px;display:inline-block;color:#333;margin:8px 0}
+            .ft{background:#1a1a2e;padding:20px;text-align:center}.ft p{color:#a08040;font-size:11px;margin:0}
+            table.inf{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+            table.inf td{padding:7px 10px;border-bottom:1px solid #f0e8d0}
+            table.inf td:first-child{font-weight:700;color:#b8860b;width:40%}
+        </style></head><body>
+        <div class="wrap">
+          <div class="hdr"><div class="inf">∞</div><h1>The Entrepreneurship Network</h1><p>Internship Completion — Official Documents</p></div>
+          <div class="bd">
+            <h2>Dear ${name},</h2>
+            <p>Congratulations on completing your internship with <strong>The Entrepreneurship Network</strong>! Your internship period of <strong>${tenure}</strong> has now concluded.</p>
+            <table class="inf">
+              <tr><td>Employee ID</td><td>${empId}</td></tr>
+              <tr><td>Domain</td><td>${domain}</td></tr>
+              <tr><td>College / University</td><td>${college}</td></tr>
+              <tr><td>Internship Period</td><td>${joining} — ${endStr}</td></tr>
+              <tr><td>Duration</td><td>${tenure}</td></tr>
+              <tr><td>Date of Issue</td><td>${issuedDate}</td></tr>
+            </table>
+            <div class="dc"><h3>📄 Offer Letter</h3><p>Your official internship offer letter from The Entrepreneurship Network.</p></div>
+            <div class="dc"><h3>🎓 Letter of Completion (LOC)</h3><p>Certifies successful completion of your ${domain} internship tenure.</p></div>
+            <div class="dc"><h3>📝 Letter of Recommendation (LOR)</h3><p>Official recommendation letter from the Director, The Entrepreneurship Network.</p></div>
+            <div class="vb">
+              <p><strong>🔐 Document Verification</strong></p>
+              <p>Your unique Document ID:</p>
+              <div class="did">${uniqueDocId}</div>
+              <p>Verify authenticity at:</p>
+              <a href="${verifyUrl}">${verifyUrl}</a>
+            </div>
+            <p>Log in to your student portal at <a href="${BASE_URL}">${BASE_URL}</a> to download your full PDF documents.</p>
+            <p>For queries: <a href="mailto:hr@entrepreneurshipnetwork.net">hr@entrepreneurshipnetwork.net</a></p>
+            <p>Best Regards,<br><strong>HR Department</strong><br>The Entrepreneurship Network</p>
+          </div>
+          <div class="ft"><p>© The Entrepreneurship Network — Limitless Technologies LLP</p><p style="margin-top:4px">Document ID: ${uniqueDocId}</p></div>
+        </div></body></html>`;
+
+        await transporter.sendMail({
+            from:    '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+            to:      email,
+            subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
+            html:    emailHtml
+        });
+        console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
+
+        // Save to DocumentHistory
+        try {
+            await DocumentHistory.create({
+                studentName:    name,
+                studentEmail:   email,
+                employeeId:     empId,
+                college:        college,
+                documentType:   docTypeLabel,
+                documentNumber: uniqueDocId,
+                sentBy:         'HR'
+            });
+        } catch(histErr) {
+            console.error('[DOC-HISTORY] Save failed:', histErr.message);
+        }
+
+        // Mark student as verified with document number
+        try {
+            await Student.findByIdAndUpdate(student._id, {
+                documentVerified:   true,
+                documentVerifiedAt: new Date(),
+                documentNumber:     uniqueDocId
+            });
+        } catch(verifyErr) {
+            console.error('[VERIFY-UPDATE] Failed:', verifyErr.message);
+        }
+    } catch(err) {
+        console.error('[AUTO-DOCS] Error:', err.message);
+    }
+}
+
+async function runAutoDocumentCheck() {
+    try {
+        const students = await Student.find({ documentsAutoSent: { $ne: true } });
+        const now = new Date();
+        let count = 0;
+        for (const student of students) {
+            if (!student.joiningDate || !student.tenure || !student.email) continue;
+            const endDate = getInternshipEndDate(student.joiningDate, student.tenure);
+            if (endDate && now >= endDate) {
+                await sendAutoDocumentsToStudent(student, 'all');
+                count++;
+                await new Promise(r => setTimeout(r, 2000));
+            }
+        }
+        if (count > 0) console.log('[AUTO-DOCS] Sent to ' + count + ' students.');
+    } catch(err) {
+        console.error('[AUTO-DOCS] Scheduler error:', err.message);
+    }
+}
+setTimeout(runAutoDocumentCheck, 30000);
+setInterval(runAutoDocumentCheck, 6 * 60 * 60 * 1000);
+// ======= END AUTO DOCUMENT EMAIL =======
 
 // ================= MONGODB =================
 
@@ -240,6 +397,30 @@ const testResultSchema = new mongoose.Schema({
 
 const TestResult = mongoose.model("TestResult", testResultSchema);
 
+// ================= DOCUMENT HISTORY MODEL =================
+const docHistSchema = new mongoose.Schema({
+    studentName:    { type: String, default: '' },
+    studentEmail:   { type: String, default: '' },
+    employeeId:     { type: String, default: '' },
+    college:        { type: String, default: '' },
+    documentType:   { type: String, default: '' },
+    documentNumber: { type: String, default: '' },
+    sentAt:         { type: Date, default: Date.now },
+    sentBy:         { type: String, default: 'HR' }
+});
+const DocumentHistory = mongoose.model('DocumentHistory', docHistSchema);
+
+// ================= AUTO MAIL LOG MODEL =================
+const autoMailLogSchema = new mongoose.Schema({
+    studentName:  { type: String, default: '' },
+    studentEmail: { type: String, default: '' },
+    employeeId:   { type: String, default: '' },
+    mailType:     { type: String, default: '' },
+    sentAt:       { type: Date, default: Date.now }
+});
+const AutoMailLog = mongoose.model('AutoMailLog', autoMailLogSchema);
+
+
 // ================= ROUTES =================
 
 app.get("/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","dashboard.html")); });
@@ -262,7 +443,12 @@ async function generateEmployeeId(domain){
         "Cyber Security":           "CYBER",
         "Software Engineering":     "SDE",
         "Flutter Development":      "FLUTTER",
-        "HR Management":            "HRMGMT"
+        "HR Management":            "HRMGMT",
+        "Venture Capital":           "VC",
+        "Vibe Coding":               "VIBE",
+        "Space Research":            "SPACE",
+        "Business Analyst":          "BA",
+        "HR":                        "HR"
     };
     const shortCode = domainShortCodes[domain] || domain.toUpperCase();
     const totalStudents = await Student.countDocuments();
@@ -383,7 +569,8 @@ try{
         collegeName,
         college: collegeName,
         tenure, joiningDate,
-        employeeId, password
+        employeeId, password,
+        collegeName: collegeName || ""
     });
     await newStudent.save();
 
@@ -425,6 +612,8 @@ try{
     const { employeeId, password } = req.body;
     const student = await Student.findOne({ employeeId, password });
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
+    // Update lastActiveDate on every login
+    await Student.findByIdAndUpdate(student._id, { lastActiveDate: new Date() });
     res.json({ success:true, student });
 }catch(error){ res.status(500).json({ success:false, message:"Server Error" }); }
 });
@@ -446,6 +635,7 @@ try{
         const t = student.tenure.toLowerCase();
         if(t.includes("6")){ internshipDuration = "6 Months"; }
         else if(t.includes("3")){ internshipDuration = "3 Months"; }
+        else if(t.includes("45")){ internshipDuration = "45 Days"; }
         else { internshipDuration = "1 Month"; }
     }
 
@@ -467,6 +657,8 @@ try{
     });
 
     await submission.save();
+    // Update lastActiveDate on task submission
+    if (student) await Student.findByIdAndUpdate(student._id, { lastActiveDate: new Date() });
     // Milestones + badges (first-task)
     await setMilestone(employeeId, "firstTaskSubmitted");
     await recomputeBadgesFor(employeeId);
@@ -943,6 +1135,139 @@ try{
     const students = await Student.find().sort({ createdAt:-1 });
     res.json({ success:true, students });
 }catch(error){ res.status(500).json({ message:"Error fetching students" }); }
+});
+
+// ================= HR - SEND DOCUMENTS NOW =================
+
+app.post('/hr/send-documents-now', async(req, res) => {
+    try {
+        const auth = req.headers.authorization;
+        if(!auth || !auth.startsWith("Bearer hr_")){
+            return res.status(401).json({ success:false, message:"Unauthorized" });
+        }
+        const { employeeId, docType } = req.body;
+        if (!employeeId) return res.json({ success: false, message: 'employeeId required' });
+        const student = await Student.findOne({ employeeId });
+        if (!student)       return res.json({ success: false, message: 'Student not found' });
+        if (!student.email) return res.json({ success: false, message: 'Student has no email' });
+        student.documentsAutoSent = false;
+        await student.save();
+        await sendAutoDocumentsToStudent(student, docType || 'all');
+        res.json({ success: true, message: 'Documents sent to ' + student.email });
+    } catch(err) {
+        console.error('[MANUAL-DOCS]', err);
+        res.json({ success: false, message: err.message });
+    }
+});
+
+// ================= HR - DOCUMENT HISTORY API =================
+
+app.get('/api/hr/document-history', async (req, res) => {
+    try {
+        const page  = parseInt(req.query.page) || 1;
+        const limit = 50;
+        const skip  = (page - 1) * limit;
+        const [records, total] = await Promise.all([
+            DocumentHistory.find({}).sort({ sentAt: -1 }).skip(skip).limit(limit).lean(),
+            DocumentHistory.countDocuments()
+        ]);
+        res.json({ success: true, records, total, page });
+    } catch(err) {
+        console.error('[DOC-HISTORY-API]', err.message);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ================= HR - VERIFY CHECK API =================
+
+app.get('/api/hr/verify-check', async (req, res) => {
+    try {
+        const { employeeId } = req.query;
+        if (!employeeId) return res.status(400).json({ error: 'employeeId required' });
+        const s = await Student.findOne({ employeeId }).select(
+            'firstName lastName name employeeId collegeName college documentVerified documentVerifiedAt documentNumber autoDocUniqueId domain'
+        ).lean();
+        if (!s) return res.json({ verified: false, message: 'Student not found' });
+        const studentName = s.name || ((s.firstName || '') + ' ' + (s.lastName || '')).trim() || '—';
+        const docNum = s.documentNumber || s.autoDocUniqueId || '—';
+        res.json({
+            verified:       s.documentVerified || false,
+            studentName,
+            college:        s.collegeName || s.college || '—',
+            domain:         s.domain || '—',
+            documentType:   'Internship Documents',
+            documentNumber: docNum,
+            verifiedAt:     s.documentVerifiedAt || null
+        });
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ================= HR - AUTO MAIL HISTORY API =================
+
+app.get('/api/hr/automail-history', async (req, res) => {
+    try {
+        const page  = parseInt(req.query.page) || 1;
+        const limit = 50;
+        const skip  = (page - 1) * limit;
+        const [records, total] = await Promise.all([
+            AutoMailLog.find({}).sort({ sentAt: -1 }).skip(skip).limit(limit).lean(),
+            AutoMailLog.countDocuments()
+        ]);
+        res.json({ success: true, records, total, page });
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ================= HR - INTERN STATS API =================
+
+app.get('/api/hr/intern-stats', async (req, res) => {
+    try {
+        const now        = new Date();
+        const d30        = new Date(now - 30 * 24 * 60 * 60 * 1000);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const [total, activeThisMonth, newJoinsThisMonth] = await Promise.all([
+            Student.countDocuments(),
+            Student.countDocuments({ lastActiveDate: { $gte: d30 } }),
+            Student.countDocuments({ joiningDate: { $gte: monthStart } })
+        ]);
+        res.json({
+            totalInterns: total,
+            activeThisMonth,
+            inactiveInterns: total - activeThisMonth,
+            newJoinsThisMonth
+        });
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ================= HR - INTERN LIST (for clickable stat cards) =================
+
+app.get('/api/hr/intern-list', async (req, res) => {
+    try {
+        const now        = new Date();
+        const d30        = new Date(now - 30 * 24 * 60 * 60 * 1000);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const type       = req.query.type;
+        let query        = {};
+        if (type === 'active')   query = { lastActiveDate: { $gte: d30 } };
+        if (type === 'inactive') query = { $or: [{ lastActiveDate: { $lt: d30 } }, { lastActiveDate: null }] };
+        if (type === 'newJoins') query = { joiningDate: { $gte: monthStart } };
+        const students = await Student.find(query)
+            .select('firstName lastName name employeeId domain collegeName college lastActiveDate joiningDate')
+            .sort({ joiningDate: -1 }).limit(200).lean();
+        res.json({ students: students.map(s => ({
+            name:      s.name || ((s.firstName || '') + ' ' + (s.lastName || '')).trim(),
+            employeeId: s.employeeId,
+            domain:    s.domain,
+            college:   s.collegeName || s.college
+        }))});
+    } catch(err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // ================= HR - GET STUDENTS BY DOMAIN =================
@@ -2868,7 +3193,9 @@ try{
         name: (target.firstName||"") + " " + (target.lastName||""),
         firstName: target.firstName, lastName: target.lastName,
         employeeId: target.employeeId, email: target.email,
-        domain: target.domain, tenure: target.tenure, joiningDate: target.joiningDate
+        domain: target.domain, tenure: target.tenure, joiningDate: target.joiningDate,
+        college: getStudentCollege(target),
+        collegeName: getStudentCollege(target)
     }});
 }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
@@ -3715,6 +4042,77 @@ app.get("/coordinator/coding-submissions/:domain", async(req,res)=>{
         const list = await CodingSubmission.find({ domain }).sort({ submittedAt:-1 }).limit(200);
         res.json({ success:true, submissions:list });
     } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ================= PUBLIC DOCUMENT VERIFICATION =================
+
+app.get('/verify-document', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'verify.html'));
+});
+
+app.get('/verify', (req, res) => {
+    res.redirect('/verify-document' + (req.query.id ? '?id=' + req.query.id : ''));
+});
+
+app.get('/api/verify-document/:id', async (req, res) => {
+    try {
+        const docId = decodeURIComponent(req.params.id).trim();
+        if (!docId) return res.status(400).json({ error: 'Document ID is required' });
+
+        const Student = require('./models/Student');
+
+        // Try to find by autoDocUniqueId first
+        let student = await Student.findOne({ autoDocUniqueId: docId }).select('firstName lastName employeeId domain collegeName college email');
+
+        // If not found by autoDocUniqueId, try to parse the ID and find by employeeId
+        if (!student) {
+            const parts = docId.split('-');
+            if (parts.length >= 3 && parts[0] === 'TEN') {
+                // Extract employeeId from format TEN-{empId}-{timestamp}
+                // empId may contain hyphens, so take everything between first and last segments
+                const empIdParts = parts.slice(1, parts.length - 1);
+                const empId = empIdParts.join('/');
+                student = await Student.findOne({ employeeId: empId }).select('firstName lastName employeeId domain collegeName college email');
+            }
+        }
+
+        if (!student) {
+            return res.status(404).json({ error: 'Document not found', docId });
+        }
+
+        // Determine doc type from the ID
+        let docType = 'unknown';
+        const lowerId = docId.toLowerCase();
+        if (lowerId.includes('offer')) docType = 'offer';
+        else if (lowerId.includes('loc') || lowerId.includes('completion')) docType = 'loc';
+        else if (lowerId.includes('lor')) docType = 'lor';
+        else if (lowerId.includes('star')) docType = 'star';
+
+        const isExactMatch = student.autoDocUniqueId === docId;
+
+        return res.json({
+            verified: true,
+            exactMatch: isExactMatch,
+            document: {
+                documentId: docId,
+                docType: docType,
+                employeeId: student.employeeId || '',
+                domain: student.domain || '',
+                generatedAt: student.documentsAutoSentAt || null,
+                generatedBy: 'System (Auto-generated)',
+            },
+            student: {
+                firstName: student.firstName || '',
+                lastName: student.lastName || '',
+                employeeId: student.employeeId || '',
+                domain: student.domain || '',
+                college: student.collegeName || student.college || '',
+            }
+        });
+    } catch (err) {
+        console.error('[VERIFY] Error:', err.message);
+        return res.status(500).json({ error: 'Server error during verification' });
+    }
 });
 
 // ================= SERVER =================
