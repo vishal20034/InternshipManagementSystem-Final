@@ -36,6 +36,11 @@ async function tryUnlockNextWeekNoCoins(student, approvedTaskDoc) {
 }
 
 // NEW FEATURE: Quiz System
+async function getBankCountForTask(taskId) {
+    return QuizQuestion.countDocuments({ task_id: taskId });
+}
+
+// NEW FEATURE: Quiz System
 function getQuizSettingsForWeek(weekNumber) {
     const w = parseInt(weekNumber) || 1;
     if (w <= 3)  return { questionCount: 10, durationMinutes: 15, passPercent: 0.60 };
@@ -68,18 +73,73 @@ function resetLockIfExpired(progress) {
 
 // NEW FEATURE: Quiz System
 async function getQuizStatus(studentId, taskId) {
-    const progress = await getProgressForTask(studentId, taskId);
+    const [task, progress] = await Promise.all([
+        DomainTask.findById(taskId).lean(),
+        getProgressForTask(studentId, taskId)
+    ]);
+    if (!task) return { error: "Task not found" };
     if (!progress) return { error: "Task not assigned" };
 
     resetLockIfExpired(progress);
     if (progress.isModified()) await progress.save();
 
+    const bank_count = await getBankCountForTask(task._id);
+    const bank_ready = bank_count >= 30;
+
     return {
         attempts_used: progress.quiz_attempts || 0,
         locked_until: progress.quiz_locked_until || null,
         quiz_passed: !!progress.quiz_passed,
-        best_score: progress.quiz_best_score || 0
+        best_score: progress.quiz_best_score || 0,
+        bank_ready,
+        bank_count
     };
+}
+
+// NEW FEATURE: Quiz System
+async function completeTaskViaFallback(student, taskId) {
+    const task = await DomainTask.findById(taskId).lean();
+    if (!task) return { error: "Task not found" };
+
+    const progress = await getProgressForTask(student._id, taskId);
+    if (!progress) return { error: "Task not assigned" };
+
+    if (progress.status === "locked") return { error: "Task locked" };
+
+    const bankCount = await getBankCountForTask(task._id);
+    if (bankCount >= 30) return { quiz_ready: true };
+
+    if ((progress.videoWatchedPercent || 0) < 80) return { error: "Video progress below 80%" };
+
+    if (progress.quiz_passed || progress.status === "approved") {
+        return { completed: true, coins_awarded: 0, next_week_unlocked: false, already_completed: true };
+    }
+
+    let coinsAwarded = 0;
+    let nextWeekUnlocked = false;
+
+    progress.quiz_passed = true;
+    progress.quiz_pass_score = 0;
+    progress.status = "approved";
+    progress.approvedAt = new Date();
+    progress.approvedBy = null;
+
+    progress.quiz_current_question_ids = [];
+    progress.quiz_current_expires_at = null;
+
+    const coinReward = task.coinReward || 0;
+    if (coinReward > 0 && !progress.coinsAwarded) {
+        progress.coinsAwarded = coinReward;
+        const coinRes = await coinService.awardCoins(student._id, "TASK_APPROVED", coinReward);
+        coinsAwarded = coinRes.awarded;
+    }
+
+    const unlock = await tryUnlockNextWeekNoCoins(student, task);
+    nextWeekUnlocked = !!unlock.unlocked;
+
+    await progress.save();
+
+    return { completed: true, coins_awarded: coinsAwarded, next_week_unlocked: nextWeekUnlocked, already_completed: false };
 }
 
 // NEW FEATURE: Quiz System
@@ -131,9 +191,9 @@ async function getQuestionsForTask(student, taskId) {
         };
     }
 
-    const bankCount = await QuizQuestion.countDocuments({ task_id: task._id });
+    const bankCount = await getBankCountForTask(task._id);
     if (bankCount < 30) {
-        return { error: "Question bank missing (need at least 30 questions for this task)" };
+        return { fallback: true, bank_count: bankCount };
     }
 
     const match = { task_id: task._id };
@@ -293,5 +353,6 @@ module.exports = {
     getPassingScore,
     getQuizStatus,
     getQuestionsForTask,
-    submitQuiz
+    submitQuiz,
+    completeTaskViaFallback
 };
