@@ -50,6 +50,7 @@ const studentsSchema = new mongoose.Schema({
     currentStreak:        { type: Number, default: 0 },
     bestStreak:           { type: Number, default: 0 },
     lastAttendanceDate:   { type: Date },
+    lastActiveDate:       { type: Date },
 
     // ===== Internship progress timeline (Feature 11) =====
     // Each milestone stores the Date when it was reached, or stays undefined
@@ -83,7 +84,10 @@ const studentsSchema = new mongoose.Schema({
     // ===== Auto document email tracking =====
     documentsAutoSent:    { type: Boolean, default: false },
     documentsAutoSentAt:  { type: Date },
-    autoDocUniqueId:      { type: String, default: "" }
+    autoDocUniqueId:      { type: String, default: "" },
+    documentVerified:     { type: Boolean, default: false },
+    documentVerifiedAt:   { type: Date },
+    documentNumber:       { type: String, default: "" }
 }, {
     timestamps: true
 });

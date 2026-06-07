@@ -22,24 +22,26 @@ const Promotion = require("./models/Promotion");
 const BadgeAward = require("./models/BadgeAward");
 const BlockList = require("./models/BlockList");
 
-const DocumentHistory = mongoose.model("DocumentHistory", new mongoose.Schema({
-    studentName: String,
-    studentEmail: String,
-    employeeId: String,
-    college: String,
-    documentType: String,
-    documentNumber: String,
-    sentAt: { type: Date, default: Date.now },
-    sentBy: String
-}));
+const docHistSchema = new mongoose.Schema({
+  studentName:    String,
+  studentEmail:   String,
+  employeeId:     String,
+  college:        String,
+  documentType:   String,
+  documentNumber: String,
+  sentAt:         { type: Date, default: Date.now },
+  sentBy:         String
+});
+const DocumentHistory = mongoose.model('DocumentHistory', docHistSchema);
 
-const AutoMailLog = mongoose.model("AutoMailLog", new mongoose.Schema({
-    studentName: String,
-    studentEmail: String,
-    employeeId: String,
-    mailType: String,
-    sentAt: { type: Date, default: Date.now }
-}));
+const autoMailLogSchema = new mongoose.Schema({
+  studentName:  String,
+  studentEmail: String,
+  employeeId:   String,
+  mailType:     String,
+  sentAt:       { type: Date, default: Date.now }
+});
+const AutoMailLog = mongoose.model('AutoMailLog', autoMailLogSchema);
 
 const bcrypt = require("bcrypt");
 const helmet = require("helmet");
@@ -259,7 +261,10 @@ async function sendAutoDocumentsToStudent(student, docType) {
         await Student.findByIdAndUpdate(student._id, {
             documentsAutoSent:   true,
             documentsAutoSentAt: new Date(),
-            autoDocUniqueId:     uniqueDocId
+            autoDocUniqueId:     uniqueDocId,
+            documentVerified:    true,
+            documentVerifiedAt:  new Date(),
+            documentNumber:      uniqueDocId
         });
 
         const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
@@ -314,6 +319,15 @@ async function sendAutoDocumentsToStudent(student, docType) {
             to:      email,
             subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
             html:    emailHtml
+        });
+        await DocumentHistory.create({
+          studentName:    name,
+          studentEmail:   email,
+          employeeId:     empId,
+          college:        college,
+          documentType:   docTypeLabel,
+          documentNumber: uniqueDocId,
+          sentBy:         'HR System'
         });
         console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
     } catch(err) {
@@ -626,6 +640,7 @@ try{
     const { employeeId, password } = req.body;
     const student = await Student.findOne({ employeeId, password });
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
+    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
     res.json({ success:true, student });
 }catch(error){ res.status(500).json({ success:false, message:"Server Error" }); }
 });
@@ -669,6 +684,7 @@ try{
     });
 
     await submission.save();
+    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
     // Milestones + badges (first-task)
     await setMilestone(employeeId, "firstTaskSubmitted");
     await recomputeBadgesFor(employeeId);
@@ -802,6 +818,7 @@ try{
 
     submission.monthlyAttendance = ma;
     await submission.save();
+    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
 
     let totalDays = 20;
     let requiredDays = 15;
@@ -1163,7 +1180,6 @@ app.post('/hr/send-documents-now', async(req, res) => {
         student.documentsAutoSent = false;
         await student.save();
         await sendAutoDocumentsToStudent(student, docType || 'all');
-        await DocumentHistory.create({ ...req.body, documentType: (docType==='loc'?'LOC':docType==='lor'?'LOR':docType==='star'?'Star Performer':'Offer Letter'), sentBy: req.user?.email || 'HR' });
         res.json({ success: true, message: 'Documents sent to ' + student.email });
     } catch(err) {
         console.error('[MANUAL-DOCS]', err);
@@ -1195,21 +1211,19 @@ try{
     if(!auth || !auth.startsWith("Bearer hr_")){
         return res.status(401).json({ message:"Unauthorized" });
     }
-    const employeeId = String(req.query.employeeId || "").trim();
-    const student = employeeId ? await Student.findOne({ employeeId }) : null;
-    if(!student){
-        return res.json({ verified: false, message: "Student not found" });
-    }
-    const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
-    const college = student.collegeName || student.college || "";
-    const lastHistory = await DocumentHistory.findOne({ employeeId }).sort({ sentAt: -1 });
+    const { employeeId } = req.query;
+    if (!employeeId) return res.status(400).json({ error: 'employeeId required' });
+    const s = await Student.findOne({ employeeId }).select(
+      'firstName lastName employeeId collegeName college documentVerified documentVerifiedAt documentNumber autoDocUniqueId domain'
+    );
+    if (!s) return res.json({ verified: false, message: 'Student not found' });
     res.json({
-        verified: !!(student.autoDocUniqueId || student.documentsAutoSent),
-        studentName,
-        college,
-        documentType: lastHistory ? (lastHistory.documentType || "") : "",
-        documentNumber: lastHistory ? (lastHistory.documentNumber || "") : (student.autoDocUniqueId || ""),
-        verifiedAt: student.documentsAutoSentAt || null
+        verified: s.documentVerified || false,
+        studentName: (s.firstName||'') + ' ' + (s.lastName||''),
+        college:     s.collegeName || s.college || '—',
+        documentType: 'Internship Documents',
+        documentNumber: s.documentNumber || s.autoDocUniqueId || '—',
+        verifiedAt:  s.documentVerifiedAt || null
     });
 }catch(error){
     console.log(error);
@@ -1303,6 +1317,49 @@ try{
     console.log(error);
     res.status(500).json([]);
 }
+});
+
+app.get('/api/hr/intern-list', async (req, res) => {
+  try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const type = req.query.type;
+    const now = new Date();
+    const d30 = new Date(now - 30*24*60*60*1000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    let query = {};
+    if (type === 'active')    query = { lastActiveDate: { $gte: d30 } };
+    if (type === 'inactive')  query = { $or: [{ lastActiveDate: { $lt: d30 } }, { lastActiveDate: null }, { lastActiveDate: { $exists: false } }] };
+    let students = await Student.find(query)
+      .select('firstName lastName employeeId domain collegeName college lastActiveDate joiningDate joinDate')
+      .sort({ joiningDate: -1 }).limit(400);
+    if (type === 'newJoins'){
+      students = students.filter(s => {
+        const jd = s.joinDate || s.joiningDate;
+        if(!jd) return false;
+        const dt = new Date(jd);
+        if(isNaN(dt.getTime())) return false;
+        return dt >= monthStart;
+      }).sort((a,b)=>{
+        const ad = new Date(a.joinDate || a.joiningDate || 0).getTime();
+        const bd = new Date(b.joinDate || b.joiningDate || 0).getTime();
+        return bd - ad;
+      }).slice(0,200);
+    } else {
+      students = students.slice(0,200);
+    }
+    res.json({ students: students.map(s => ({
+      name: (s.firstName||'') + ' ' + (s.lastName||''),
+      employeeId: s.employeeId,
+      domain: s.domain,
+      college: s.collegeName || s.college
+    }))});
+  }catch(e){
+    console.log(e);
+    res.status(500).json({ students: [] });
+  }
 });
 
 // ================= HR - GET STUDENTS BY DOMAIN =================
@@ -1511,6 +1568,7 @@ try{
         }
     }
 
+    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
     res.json({
         success:true,
         student:{
@@ -1845,6 +1903,7 @@ try{
         date: now, dateKey, status:"Present", markedBy:"self"
     });
     await att.save();
+    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
     // Streak + milestones + badges (Features 6, 7, 11)
     await bumpStreakAndMilestones(student);
     await checkCertificateEligibility(employeeId);
