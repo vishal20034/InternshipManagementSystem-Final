@@ -12,6 +12,9 @@ const fs = require("fs");
 
 const Student = require("./models/Student");
 if(!Student.schema.path("lastActiveDate")) Student.schema.add({ lastActiveDate: { type: Date } });
+if(!Student.schema.path("documentVerified")) Student.schema.add({ documentVerified: { type: Boolean } });
+if(!Student.schema.path("documentVerifiedAt")) Student.schema.add({ documentVerifiedAt: { type: Date } });
+if(!Student.schema.path("documentNumber")) Student.schema.add({ documentNumber: { type: String } });
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
 const Attendance = require("./models/Attendance");
@@ -187,27 +190,39 @@ async function runActivityMailer(){
         fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
         for(const student of students){
             try{
-                const email = student.email;
-                if(!email) continue;
+                const studentEmail = student.email;
+                if(!studentEmail) continue;
                 const lastActive = student.lastActiveDate ? new Date(student.lastActiveDate) : null;
                 const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
                 const employeeId = student.employeeId || "";
                 if(lastActive && lastActive >= sevenDaysAgo){
+                    const mailType = "active-appreciation";
                     await transporter.sendMail({
                         from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                        to: email,
+                        to: studentEmail,
                         subject: "Keep it up! You're doing great 🌟",
                         html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`
                     });
-                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
+                    await AutoMailLog.create({
+                        studentName:  studentName,
+                        studentEmail: studentEmail,
+                        employeeId:   employeeId,
+                        mailType:     mailType
+                    });
                 } else if(!lastActive || lastActive < fourteenDaysAgo){
+                    const mailType = "inactive-reengagement";
                     await transporter.sendMail({
                         from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                        to: email,
+                        to: studentEmail,
                         subject: "We miss you! Come back and keep growing 💪",
                         html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`
                     });
-                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
+                    await AutoMailLog.create({
+                        studentName:  studentName,
+                        studentEmail: studentEmail,
+                        employeeId:   employeeId,
+                        mailType:     mailType
+                    });
                 }
             }catch(error){
                 console.log(error);
@@ -259,7 +274,10 @@ async function sendAutoDocumentsToStudent(student, docType) {
         await Student.findByIdAndUpdate(student._id, {
             documentsAutoSent:   true,
             documentsAutoSentAt: new Date(),
-            autoDocUniqueId:     uniqueDocId
+            autoDocUniqueId:     uniqueDocId,
+            documentVerified:    true,
+            documentVerifiedAt:  new Date(),
+            documentNumber:      uniqueDocId
         });
 
         const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
@@ -314,6 +332,15 @@ async function sendAutoDocumentsToStudent(student, docType) {
             to:      email,
             subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
             html:    emailHtml
+        });
+        await DocumentHistory.create({
+            studentName:    name,
+            studentEmail:   email,
+            employeeId:     empId,
+            college:        college,
+            documentType:   docTypeLabel,
+            documentNumber: uniqueDocId,
+            sentBy:         'HR System'
         });
         console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
     } catch(err) {
@@ -626,6 +653,7 @@ try{
     const { employeeId, password } = req.body;
     const student = await Student.findOne({ employeeId, password });
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
+    await Student.findOneAndUpdate({ employeeId: employeeId }, { lastActiveDate: new Date() });
     res.json({ success:true, student });
 }catch(error){ res.status(500).json({ success:false, message:"Server Error" }); }
 });
@@ -672,6 +700,7 @@ try{
     // Milestones + badges (first-task)
     await setMilestone(employeeId, "firstTaskSubmitted");
     await recomputeBadgesFor(employeeId);
+    await Student.findOneAndUpdate({ employeeId: employeeId }, { lastActiveDate: new Date() });
     res.json({ success:true, message:"Task Submitted Successfully" });
 }catch(error){
     console.log(error);
@@ -1163,7 +1192,6 @@ app.post('/hr/send-documents-now', async(req, res) => {
         student.documentsAutoSent = false;
         await student.save();
         await sendAutoDocumentsToStudent(student, docType || 'all');
-        await DocumentHistory.create({ ...req.body, documentType: (docType==='loc'?'LOC':docType==='lor'?'LOR':docType==='star'?'Star Performer':'Offer Letter'), sentBy: req.user?.email || 'HR' });
         res.json({ success: true, message: 'Documents sent to ' + student.email });
     } catch(err) {
         console.error('[MANUAL-DOCS]', err);
@@ -1195,21 +1223,20 @@ try{
     if(!auth || !auth.startsWith("Bearer hr_")){
         return res.status(401).json({ message:"Unauthorized" });
     }
-    const employeeId = String(req.query.employeeId || "").trim();
-    const student = employeeId ? await Student.findOne({ employeeId }) : null;
-    if(!student){
-        return res.json({ verified: false, message: "Student not found" });
-    }
-    const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
-    const college = student.collegeName || student.college || "";
-    const lastHistory = await DocumentHistory.findOne({ employeeId }).sort({ sentAt: -1 });
+    const { employeeId } = req.query;
+    if (!employeeId) return res.status(400).json({ error: 'employeeId required' });
+    const Student = require('./models/Student');
+    const s = await Student.findOne({ employeeId }).select(
+        'firstName lastName employeeId collegeName college documentVerified documentVerifiedAt documentNumber autoDocUniqueId domain'
+    );
+    if (!s) return res.json({ verified: false, message: 'Student not found' });
     res.json({
-        verified: !!(student.autoDocUniqueId || student.documentsAutoSent),
-        studentName,
-        college,
-        documentType: lastHistory ? (lastHistory.documentType || "") : "",
-        documentNumber: lastHistory ? (lastHistory.documentNumber || "") : (student.autoDocUniqueId || ""),
-        verifiedAt: student.documentsAutoSentAt || null
+        verified: s.documentVerified || false,
+        studentName: (s.firstName||'') + ' ' + (s.lastName||''),
+        college:     s.collegeName || s.college || '—',
+        documentType: 'Internship Documents',
+        documentNumber: s.documentNumber || s.autoDocUniqueId || '—',
+        verifiedAt:  s.documentVerifiedAt || null
     });
 }catch(error){
     console.log(error);
@@ -1849,6 +1876,7 @@ try{
     await bumpStreakAndMilestones(student);
     await checkCertificateEligibility(employeeId);
     await recomputeBadgesFor(employeeId);
+    await Student.findOneAndUpdate({ employeeId: employeeId }, { lastActiveDate: new Date() });
     res.json({ success:true, message:"Attendance marked for today", attendance:att });
 }catch(e){
     if(e.code === 11000) return res.json({ success:false, alreadyMarked:true, message:"Already marked for today" });
