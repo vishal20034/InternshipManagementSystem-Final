@@ -5,6 +5,7 @@ const studentCertificateSchema = new mongoose.Schema({
     studentId:       { type: mongoose.Schema.Types.ObjectId, ref: "Student", required: true },
     certificateType: { type: String, enum: ["expert", "nano_degree", "fellowship"], required: true },
     certificateId:   { type: String, unique: true, sparse: true },
+    documentNumber:  { type: String, unique: true, sparse: true },
     domain:          { type: String, default: null },
     issuedAt:        { type: Date, default: null },
     pdfUrl:          { type: String, default: null },
