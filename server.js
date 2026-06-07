@@ -11,6 +11,7 @@ const nodemailer = require("nodemailer");
 const fs = require("fs");
 
 const Student = require("./models/Student");
+if(!Student.schema.path("lastActiveDate")) Student.schema.add({ lastActiveDate: { type: Date } });
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
 const Attendance = require("./models/Attendance");
@@ -21,10 +22,30 @@ const Promotion = require("./models/Promotion");
 const BadgeAward = require("./models/BadgeAward");
 const BlockList = require("./models/BlockList");
 
+const DocumentHistory = mongoose.model("DocumentHistory", new mongoose.Schema({
+    studentName: String,
+    studentEmail: String,
+    employeeId: String,
+    college: String,
+    documentType: String,
+    documentNumber: String,
+    sentAt: { type: Date, default: Date.now },
+    sentBy: String
+}));
+
+const AutoMailLog = mongoose.model("AutoMailLog", new mongoose.Schema({
+    studentName: String,
+    studentEmail: String,
+    employeeId: String,
+    mailType: String,
+    sentAt: { type: Date, default: Date.now }
+}));
+
 const bcrypt = require("bcrypt");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const QRCode = require("qrcode");
+const cron = require("node-cron");
 const http = require("http");
 const { Server: SocketIOServer } = require("socket.io");
 
@@ -155,6 +176,48 @@ transporter.verify((error)=>{
     if(error){ console.log(error); }
     else{ console.log("Email Server Ready"); }
 });
+
+async function runActivityMailer(){
+    try{
+        const students = await Student.find();
+        const now = new Date();
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const fourteenDaysAgo = new Date(now);
+        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+        for(const student of students){
+            try{
+                const email = student.email;
+                if(!email) continue;
+                const lastActive = student.lastActiveDate ? new Date(student.lastActiveDate) : null;
+                const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
+                const employeeId = student.employeeId || "";
+                if(lastActive && lastActive >= sevenDaysAgo){
+                    await transporter.sendMail({
+                        from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+                        to: email,
+                        subject: "Keep it up! You're doing great 🌟",
+                        html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`
+                    });
+                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
+                } else if(!lastActive || lastActive < fourteenDaysAgo){
+                    await transporter.sendMail({
+                        from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+                        to: email,
+                        subject: "We miss you! Come back and keep growing 💪",
+                        html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`
+                    });
+                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
+                }
+            }catch(error){
+                console.log(error);
+            }
+        }
+    }catch(error){
+        console.log(error);
+    }
+}
+cron.schedule('0 9 * * 1', runActivityMailer);
 
 // ======= AUTO DOCUMENT EMAIL HELPERS =======
 function tenureToDays(tenure) {
@@ -1100,11 +1163,146 @@ app.post('/hr/send-documents-now', async(req, res) => {
         student.documentsAutoSent = false;
         await student.save();
         await sendAutoDocumentsToStudent(student, docType || 'all');
+        await DocumentHistory.create({ ...req.body, documentType: (docType==='loc'?'LOC':docType==='lor'?'LOR':docType==='star'?'Star Performer':'Offer Letter'), sentBy: req.user?.email || 'HR' });
         res.json({ success: true, message: 'Documents sent to ' + student.email });
     } catch(err) {
         console.error('[MANUAL-DOCS]', err);
         res.json({ success: false, message: err.message });
     }
+});
+
+app.get("/api/hr/document-history", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const page = Math.max(1, parseInt(req.query.page || "1", 10) || 1);
+    const limit = 50;
+    const skip = (page - 1) * limit;
+    const total = await DocumentHistory.countDocuments();
+    const records = await DocumentHistory.find().sort({ sentAt: -1 }).skip(skip).limit(limit);
+    res.json({ records, total, page });
+}catch(error){
+    console.log(error);
+    res.status(500).json({ records:[], total:0, page:1 });
+}
+});
+
+app.get("/api/hr/verify-check", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const employeeId = String(req.query.employeeId || "").trim();
+    const student = employeeId ? await Student.findOne({ employeeId }) : null;
+    if(!student){
+        return res.json({ verified: false, message: "Student not found" });
+    }
+    const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
+    const college = student.collegeName || student.college || "";
+    const lastHistory = await DocumentHistory.findOne({ employeeId }).sort({ sentAt: -1 });
+    res.json({
+        verified: !!(student.autoDocUniqueId || student.documentsAutoSent),
+        studentName,
+        college,
+        documentType: lastHistory ? (lastHistory.documentType || "") : "",
+        documentNumber: lastHistory ? (lastHistory.documentNumber || "") : (student.autoDocUniqueId || ""),
+        verifiedAt: student.documentsAutoSentAt || null
+    });
+}catch(error){
+    console.log(error);
+    res.json({ verified: false, message: "Student not found" });
+}
+});
+
+app.get("/api/hr/automail-history", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const page = Math.max(1, parseInt(req.query.page || "1", 10) || 1);
+    const limit = 50;
+    const skip = (page - 1) * limit;
+    const total = await AutoMailLog.countDocuments();
+    const records = await AutoMailLog.find().sort({ sentAt: -1 }).skip(skip).limit(limit);
+    res.json({ records, total, page });
+}catch(error){
+    console.log(error);
+    res.status(500).json({ records:[], total:0, page:1 });
+}
+});
+
+app.get("/api/hr/intern-stats", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const now = new Date();
+    const cutoff30 = new Date(now);
+    cutoff30.setDate(cutoff30.getDate() - 30);
+    const totalInterns = await Student.countDocuments();
+    const activeThisMonth = await Student.countDocuments({ lastActiveDate: { $gte: cutoff30 } });
+    const inactiveInterns = await Student.countDocuments({ $or: [
+        { lastActiveDate: { $exists: false } },
+        { lastActiveDate: null },
+        { lastActiveDate: { $lt: cutoff30 } }
+    ]});
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const joins = await Student.find().select("joiningDate joinDate");
+    let newJoinsThisMonth = 0;
+    for(const s of joins){
+        const jd = s.joinDate || s.joiningDate;
+        if(!jd) continue;
+        const dt = new Date(jd);
+        if(isNaN(dt.getTime())) continue;
+        if(dt >= monthStart && dt < monthEnd) newJoinsThisMonth++;
+    }
+    res.json({ totalInterns, activeThisMonth, inactiveInterns, newJoinsThisMonth });
+}catch(error){
+    console.log(error);
+    res.status(500).json({ totalInterns:0, activeThisMonth:0, inactiveInterns:0, newJoinsThisMonth:0 });
+}
+});
+
+app.get("/api/hr/intern-stats/monthly", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const now = new Date();
+    const months = [];
+    const keyMap = new Map();
+    for(let i=5;i>=0;i--){
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = d.getMonth();
+        const key = y + "-" + String(m + 1).padStart(2, "0");
+        const month = d.toLocaleString("en-US", { month: "short" });
+        const obj = { key, month, count: 0 };
+        months.push(obj);
+        keyMap.set(key, obj);
+    }
+    const students = await Student.find().select("joiningDate joinDate");
+    for(const s of students){
+        const jd = s.joinDate || s.joiningDate;
+        if(!jd) continue;
+        const dt = new Date(jd);
+        if(isNaN(dt.getTime())) continue;
+        const key = dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0");
+        const hit = keyMap.get(key);
+        if(hit) hit.count++;
+    }
+    res.json(months.map(x => ({ month: x.month, count: x.count })));
+}catch(error){
+    console.log(error);
+    res.status(500).json([]);
+}
 });
 
 // ================= HR - GET STUDENTS BY DOMAIN =================
