@@ -36,8 +36,21 @@ router.get("/:taskId/questions", requireStudent, async (req, res) => {
     try {
         const data = await quizEngine.getQuestionsForTask(req.student, req.params.taskId);
         if (data.error === "already_passed") return res.json({ success: true, already_passed: true });
+        if (data.fallback) return res.json({ success: true, fallback: true, bank_count: data.bank_count || 0 });
         if (data.error) return res.status(400).json({ success: false, message: data.error, locked_until: data.locked_until });
         res.json({ success: true, ...data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// NEW FEATURE: Quiz System
+router.post("/:taskId/fallback-complete", requireStudent, async (req, res) => {
+    try {
+        const result = await quizEngine.completeTaskViaFallback(req.student, req.params.taskId);
+        if (result.quiz_ready) return res.json({ success: true, quiz_ready: true });
+        if (result.error) return res.status(400).json({ success: false, message: result.error });
+        res.json({ success: true, ...result });
     } catch (err) {
         res.status(500).json({ success: false, message: "Server error" });
     }
@@ -58,4 +71,3 @@ router.post("/:taskId/submit", requireStudent, async (req, res) => {
 });
 
 module.exports = router;
-

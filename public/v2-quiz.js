@@ -381,6 +381,17 @@
   // NEW FEATURE: Quiz System
   async function startQuizFlow(taskId) {
     ensureQuizOverlay();
+    const st = await apiFetch(`/quiz/${taskId}/status`, { method: 'GET' });
+    const bankReady = st && st.success ? !!st.bank_ready : false;
+
+    if (!bankReady) {
+      const done = await completeFallbackIfNeeded(taskId, { silent: false });
+      if (done && done.quiz_ready) {
+        await startQuizFlow(taskId);
+      }
+      return;
+    }
+
     openOverlay();
 
     const card = document.getElementById('tenQuizCard');
@@ -417,8 +428,13 @@
     const qRes = await apiFetch(`/quiz/${taskId}/questions`, { method: 'GET' });
     if (!qRes.success) {
       stopCameraProctoring(cameraStream);
-      Swal.fire({ icon:'error', title:'Quiz unavailable', text:qRes.message || 'Could not load quiz.', background:'#0e1428', color:'#F0EEE8', confirmButtonColor:'#D4AF37' });
       closeOverlay();
+      return;
+    }
+    if (qRes.fallback) {
+      stopCameraProctoring(cameraStream);
+      closeOverlay();
+      try { await completeFallbackIfNeeded(taskId, { silent: false }); } catch(_) {}
       return;
     }
     if (qRes.locked) {
@@ -580,12 +596,53 @@
     if (!quizBtn) return;
     const locked = quizBtn.getAttribute('data-locked') === '1';
     const passed = quizBtn.getAttribute('data-passed') === '1';
+    const bankReady = quizBtn.getAttribute('data-bank-ready') === '1';
+    const fallbackDone = quizBtn.getAttribute('data-fallback-done') === '1';
     if (locked || passed) return;
 
     if (pct >= 80) {
-      quizBtn.disabled = false;
-      quizBtn.textContent = 'Start Quiz';
+      if (!bankReady) {
+        if (!fallbackDone) {
+          quizBtn.setAttribute('data-fallback-done', '1');
+          try { completeFallbackIfNeeded(taskId, { silent: true }); } catch(_) {}
+        }
+        quizBtn.disabled = true;
+        quizBtn.textContent = 'Completed';
+      } else {
+        quizBtn.disabled = false;
+        quizBtn.textContent = 'Start Quiz';
+      }
     }
+  }
+
+  // NEW FEATURE: Quiz System
+  async function completeFallbackIfNeeded(taskId, opts) {
+    const container = document.getElementById(`quiz-${taskId}`);
+    const payload = { employeeId: (studentData && studentData.employeeId) || '' };
+    const res = await apiFetch(`/quiz/${taskId}/fallback-complete`, { method: 'POST', body: JSON.stringify(payload) });
+
+    if (res && res.success && res.quiz_ready) {
+      return { quiz_ready: true };
+    }
+
+    if (!res || !res.success) return { error: true };
+
+    if (container) {
+      container.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+          <div style="width:20px;height:20px;border-radius:6px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);display:flex;align-items:center;justify-content:center;color:#22c55e;font-weight:900">✓</div>
+          <div style="color:#c7f9d4;font-weight:800">Great work! This task has been completed.</div>
+        </div>
+      `;
+    }
+
+    if (!opts || !opts.silent) {
+      try { if (typeof window.loadTasks === 'function') window.loadTasks(); } catch(_) {}
+    } else {
+      try { if (typeof window.loadTasks === 'function') window.loadTasks(); } catch(_) {}
+    }
+
+    return res;
   }
 
   // NEW FEATURE: Quiz System
@@ -597,11 +654,12 @@
     const lockedUntil = st && st.success ? st.locked_until : null;
     const passed = st && st.success ? !!st.quiz_passed : (task.status === 'approved');
     const attempts = st && st.success ? (st.attempts_used || 0) : 0;
+    const bankReady = st && st.success ? !!st.bank_ready : false;
 
     const btnId = `tenQuizBtn-${task._id}`;
     const locked = !!lockedUntil;
     const watchedPct = task.videoWatchedPercent || 0;
-    const enabled = watchedPct >= 80 && !locked && !passed;
+    const enabled = watchedPct >= 80 && !locked && !passed && bankReady;
 
     const lockMsg = locked
       ? `<div style="margin-top:8px;color:var(--text-muted);font-size:12px;line-height:1.35">
@@ -614,13 +672,13 @@
       : '';
 
     const hint = (!passed && !locked && watchedPct < 80)
-      ? `<div style="margin-top:8px;color:var(--text-muted);font-size:12px">Watch at least 80% of the video to unlock the quiz.</div>`
+      ? `<div style="margin-top:8px;color:var(--text-muted);font-size:12px">${bankReady ? 'Watch at least 80% of the video to unlock the quiz.' : 'Watch at least 80% of the video to complete this task (quiz will activate automatically once ready).'}</div>`
       : '';
 
     container.innerHTML = `
       <div class="actions-row">
-        <button class="btn btn-primary btn-sm" id="${btnId}" data-ten-quiz-btn="${task._id}" data-locked="${locked ? '1' : '0'}" data-passed="${passed ? '1' : '0'}" ${enabled ? '' : 'disabled'}>
-          ${passed ? 'Quiz Passed' : (locked ? 'Quiz Locked' : (watchedPct >= 80 ? 'Start Quiz' : 'Start Quiz (Locked)'))}
+        <button class="btn btn-primary btn-sm" id="${btnId}" data-ten-quiz-btn="${task._id}" data-locked="${locked ? '1' : '0'}" data-passed="${passed ? '1' : '0'}" data-bank-ready="${bankReady ? '1' : '0'}" data-fallback-done="0" ${enabled ? '' : 'disabled'}>
+          ${passed ? 'Completed' : (locked ? 'Quiz Locked' : (watchedPct >= 80 ? (bankReady ? 'Start Quiz' : 'Completed') : (bankReady ? 'Start Quiz (Locked)' : 'Complete Video')))}
         </button>
       </div>
       ${hint}
@@ -630,6 +688,13 @@
 
     const btn = document.getElementById(btnId);
     if (!btn || passed || locked) return;
+
+    if (!bankReady && watchedPct >= 80) {
+      btn.setAttribute('data-fallback-done', '1');
+      btn.disabled = true;
+      try { await completeFallbackIfNeeded(task._id, { silent: false }); } catch(_) {}
+      return;
+    }
 
     btn.addEventListener('click', async () => {
       if (btn.disabled) return;
@@ -666,4 +731,3 @@
     initAfterRender
   };
 })();
-
