@@ -8,6 +8,7 @@ const path                = require("path");
 const fs                  = require("fs");
 const Student             = require("../../models/Student");
 const StudentCertificate  = require("../../models/new/StudentCertificate");
+const DocumentHistory     = require("../../models/DocumentHistory");
 const PsychologyTrigger   = require("../../models/new/PsychologyTrigger");
 const StudentTaskProgress = require("../../models/new/StudentTaskProgress");
 const paymentConfig       = require("../../config/payment");
@@ -282,6 +283,28 @@ router.post("/certificates/generate-pdf/:type", requireStudent, async (req, res)
         certRecord.paymentStatus  = paymentConfig.PAYMENT_ENABLED ? "paid" : "pending";
         certRecord.verificationUrl = `${process.env.BASE_URL || ""}/cert-verify.html?id=${certRecord.certificateId}`;
         await certRecord.save();
+
+        try {
+            const studentName =
+                (student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email || "").trim();
+            const college = (student.collegeName || student.college || "Not provided").trim();
+            const docTypeMap = { expert: "Expert Certificate", nano_degree: "Nano Degree", fellowship: "Fellowship" };
+            const docKeyMap = { expert: "expert_certificate", nano_degree: "nano_degree", fellowship: "fellowship" };
+            await DocumentHistory.create({
+                studentId: student._id,
+                studentName,
+                studentEmail: student.email || "",
+                employeeId: student.employeeId || "",
+                college,
+                domain: student.domain || certRecord.domain || "",
+                documentType: docTypeMap[type] || "Certificate",
+                documentKey: docKeyMap[type] || "certificate",
+                documentNumber: certRecord.certificateId,
+                sentAt: certRecord.issuedAt || new Date(),
+                sentBy: "System",
+                sentToEmail: student.email || ""
+            });
+        } catch (_) {}
 
         res.json({ success: true, pdfUrl, certificateId: certRecord.certificateId, verificationUrl: certRecord.verificationUrl });
     } catch (err) {

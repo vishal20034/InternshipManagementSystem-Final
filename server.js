@@ -16,6 +16,9 @@ if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDat
 // NEW FEATURE: V2 student portal fields — added early so findOne() recognises them
 if(!Student.schema.path("v2Onboarded"))    Student.schema.add({ v2Onboarded:    { type: Boolean, default: false } });
 if(!Student.schema.path("v2DurationType")) Student.schema.add({ v2DurationType: { type: String,  default: null  } });
+const DocumentHistory = require("./models/DocumentHistory");
+const MailHistory = require("./models/MailHistory");
+const { generateDocumentNumber, normalizeDocumentNumber } = require("./utils/documentNumber");
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
 const Attendance = require("./models/Attendance");
@@ -115,6 +118,7 @@ const BASE_URL = process.env.BASE_URL || "https://virtualinternships.entrepreneu
 const uploadsAbs = path.join(__dirname, "uploads");
 try { fs.mkdirSync(uploadsAbs, { recursive: true }); } catch(_) {}
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
@@ -210,20 +214,60 @@ async function runActivityMailer(){
                 const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
                 const employeeId = student.employeeId || "";
                 if(lastActive && lastActive >= sevenDaysAgo){
-                    await transporter.sendMail({
-                        from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                        to: email,
-                        subject: "Keep it up! You're doing great 🌟",
-                        html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`
-                    });
+                    let mailStatus = "sent";
+                    let mailError = "";
+                    try {
+                        await transporter.sendMail({
+                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+                            to: email,
+                            subject: "Keep it up! You're doing great 🌟",
+                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`
+                        });
+                    } catch (err) {
+                        mailStatus = "failed";
+                        mailError = err && err.message ? String(err.message) : "";
+                    } finally {
+                        try {
+                            await MailHistory.create({
+                                recipientEmail: email,
+                                recipientName: studentName || "Intern",
+                                studentId: student._id,
+                                subject: "Keep it up! You're doing great 🌟",
+                                mailType: "active-appreciation",
+                                sentAt: new Date(),
+                                status: mailStatus,
+                                errorMessage: mailError
+                            });
+                        } catch (_) {}
+                    }
                     await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
                 } else if(!lastActive || lastActive < fourteenDaysAgo){
-                    await transporter.sendMail({
-                        from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                        to: email,
-                        subject: "We miss you! Come back and keep growing 💪",
-                        html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`
-                    });
+                    let mailStatus = "sent";
+                    let mailError = "";
+                    try {
+                        await transporter.sendMail({
+                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+                            to: email,
+                            subject: "We miss you! Come back and keep growing 💪",
+                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`
+                        });
+                    } catch (err) {
+                        mailStatus = "failed";
+                        mailError = err && err.message ? String(err.message) : "";
+                    } finally {
+                        try {
+                            await MailHistory.create({
+                                recipientEmail: email,
+                                recipientName: studentName || "Intern",
+                                studentId: student._id,
+                                subject: "We miss you! Come back and keep growing 💪",
+                                mailType: "inactive-reengagement",
+                                sentAt: new Date(),
+                                status: mailStatus,
+                                errorMessage: mailError
+                            });
+                        } catch (_) {}
+                    }
                     await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
                 }
             }catch(error){
@@ -267,7 +311,8 @@ async function sendAutoDocumentsToStudent(student, docType) {
         const endDate    = getInternshipEndDate(student.joiningDate, student.tenure);
         const endStr     = endDate ? endDate.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
         const issuedDate = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
-        const uniqueDocId = 'TEN-' + empId.replace(/\//g,'-') + '-' + Date.now().toString(36).toUpperCase();
+        const docKeyMap = { offer: "offer_letter", loc: "loc", lor: "lor", star: "star", all: "internship_documents" };
+        const uniqueDocId = normalizeDocumentNumber(generateDocumentNumber(docKeyMap[docType] || "doc"));
         const verifyUrl   = BASE_URL + '/verify-document?id=' + uniqueDocId;
 
         const docTypeLabels = { offer:'Offer Letter', loc:'Letter of Completion', lor:'Letter of Recommendation', star:'Star Performer Certificate', all:'Internship Documents' };
@@ -356,6 +401,19 @@ async function sendAutoDocumentsToStudent(student, docType) {
           sentBy:          'HR System',
           created_at:      new Date()
         });
+
+        try {
+            await MailHistory.create({
+                recipientEmail: email,
+                recipientName: name,
+                studentId: student._id,
+                subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
+                mailType: docKeyMap[docType] || "internship_documents",
+                sentAt: new Date(),
+                status: mailStatus,
+                errorMessage: mailError
+            });
+        } catch (_) {}
         console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
     } catch(err) {
         console.error('[AUTO-DOCS] Error:', err.message);
@@ -645,13 +703,33 @@ try{
                 name: newStudent.name.trim(), employeeId, domain, email: emailLc, password,
                 joinedOn, host
             });
-            await transporter.sendMail({
-                from:"TEN Internship Portal <ten.internshipportal@gmail.com>",
-                to: emailLc,
-                subject:`🎉 Welcome to The Entrepreneurship Network, ${newStudent.name.trim()}!`,
-                html,
-                text: `Hello ${firstName||""}, your Internship Registration is Successful.\n\nEmployee ID: ${employeeId}\nPassword: ${password}\nDomain: ${domain}\n\nLogin: ${host || ""}/login.html`
-            });
+            let mailStatus = "sent";
+            let mailError = "";
+            try {
+                await transporter.sendMail({
+                    from:"TEN Internship Portal <ten.internshipportal@gmail.com>",
+                    to: emailLc,
+                    subject:`🎉 Welcome to The Entrepreneurship Network, ${newStudent.name.trim()}!`,
+                    html,
+                    text: `Hello ${firstName||""}, your Internship Registration is Successful.\n\nEmployee ID: ${employeeId}\nPassword: ${password}\nDomain: ${domain}\n\nLogin: ${host || ""}/login.html`
+                });
+            } catch (err) {
+                mailStatus = "failed";
+                mailError = err && err.message ? String(err.message) : "";
+            } finally {
+                try {
+                    await MailHistory.create({
+                        recipientEmail: emailLc,
+                        recipientName: newStudent.name.trim(),
+                        studentId: newStudent._id,
+                        subject: `🎉 Welcome to The Entrepreneurship Network, ${newStudent.name.trim()}!`,
+                        mailType: "welcome",
+                        sentAt: new Date(),
+                        status: mailStatus,
+                        errorMessage: mailError
+                    });
+                } catch (_) {}
+            }
         }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
     }
 
@@ -2757,9 +2835,32 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
             to, subject, html,
             text: `Hello ${name}, you have been promoted to ${toRoleLabel}. Temporary password: ${tempPassword}. Complete registration at ${loginUrl} within 48 hours.`
         });
+        try {
+            await MailHistory.create({
+                recipientEmail: to,
+                recipientName: name,
+                studentId: null,
+                subject,
+                mailType: "promotion",
+                sentAt: new Date(),
+                status: "sent"
+            });
+        } catch (_) {}
         return { ok: true };
     } catch(e){
         console.log("Promotion email failed:", e.message);
+        try {
+            await MailHistory.create({
+                recipientEmail: to,
+                recipientName: name,
+                studentId: null,
+                subject,
+                mailType: "promotion",
+                sentAt: new Date(),
+                status: "failed",
+                errorMessage: e && e.message ? String(e.message) : ""
+            });
+        } catch (_) {}
         return { ok: false, error: e.message };
     }
 }
@@ -3332,13 +3433,33 @@ app.post("/auth/forgot-password", async(req,res)=>{
                     name: user.name || user.firstName || user.email || "user",
                     role, host, token
                 });
-                await transporter.sendMail({
-                    from:"TEN HR <ten.internshipportal@gmail.com>",
-                    to: user.email,
-                    subject:"🔐 Password Reset Request — TEN",
-                    html,
-                    text: `A password reset was requested. Open this link to reset (expires in 1 hour):\n\n${host}/reset-password.html?token=${token}&role=${role}`
-                });
+                let mailStatus = "sent";
+                let mailError = "";
+                try {
+                    await transporter.sendMail({
+                        from:"TEN HR <ten.internshipportal@gmail.com>",
+                        to: user.email,
+                        subject:"🔐 Password Reset Request — TEN",
+                        html,
+                        text: `A password reset was requested. Open this link to reset (expires in 1 hour):\n\n${host}/reset-password.html?token=${token}&role=${role}`
+                    });
+                } catch (err) {
+                    mailStatus = "failed";
+                    mailError = err && err.message ? String(err.message) : "";
+                } finally {
+                    try {
+                        await MailHistory.create({
+                            recipientEmail: user.email,
+                            recipientName: user.name || user.firstName || user.email || "user",
+                            studentId: role === "student" ? user._id : null,
+                            subject: "🔐 Password Reset Request — TEN",
+                            mailType: "password_reset",
+                            sentAt: new Date(),
+                            status: mailStatus,
+                            errorMessage: mailError
+                        });
+                    } catch (_) {}
+                }
             }catch(e){ console.log("forgot-password mail error:", e && e.message); }
         }
         res.json({ success:true, message:"If that account exists, a reset link has been sent to its email." });
@@ -4287,63 +4408,94 @@ app.get('/verify', (req, res) => {
 
 app.get('/api/verify-document/:id', async (req, res) => {
     try {
-        const docId = decodeURIComponent(req.params.id).trim();
+        const docId = normalizeDocumentNumber(decodeURIComponent(req.params.id));
         if (!docId) return res.status(400).json({ error: 'Document ID is required' });
 
-        const Student = require('./models/Student');
+        let record = await DocumentHistory.findOne({ documentNumber: docId }).lean();
+        if (!record) {
+            record = await DocumentHistory.findOne({ documentNumber: { $regex: "^" + docId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } }).lean();
+        }
+        if (record) {
+            const student = record.studentId
+                ? await Student.findById(record.studentId).select("firstName lastName name employeeId domain collegeName college").lean()
+                : null;
+            const studentName =
+                (record.studentName || student?.name || `${student?.firstName || ""} ${student?.lastName || ""}`.trim() || "").trim();
+            const employeeId = record.employeeId || student?.employeeId || "";
+            const domain = record.domain || student?.domain || "";
+            const college = record.college || student?.collegeName || student?.college || "";
+            const issuedDate = record.sentAt || record.createdAt || null;
 
-        // Try to find by autoDocUniqueId first
-        let student = await Student.findOne({ autoDocUniqueId: docId }).select('firstName lastName employeeId domain collegeName college email');
-
-        // If not found by autoDocUniqueId, try to parse the ID and find by employeeId
-        if (!student) {
-            const parts = docId.split('-');
-            if (parts.length >= 3 && parts[0] === 'TEN') {
-                // Extract employeeId from format TEN-{empId}-{timestamp}
-                // empId may contain hyphens, so take everything between first and last segments
-                const empIdParts = parts.slice(1, parts.length - 1);
-                const empId = empIdParts.join('/');
-                student = await Student.findOne({ employeeId: empId }).select('firstName lastName employeeId domain collegeName college email');
-            }
+            return res.json({
+                verified: true,
+                document_number: record.documentNumber,
+                student_name: studentName,
+                employee_id: employeeId,
+                document_type: record.documentType || record.documentKey || "",
+                domain: domain || "N/A",
+                college: college || "N/A",
+                issued_date: issuedDate,
+                issued_by: "The Entrepreneurship Network (TEN)",
+                document: {
+                    documentId: record.documentNumber,
+                    docType: record.documentKey || "document",
+                    employeeId,
+                    domain,
+                    generatedAt: issuedDate,
+                    generatedBy: record.sentBy || "TEN"
+                },
+                student: {
+                    firstName: student?.firstName || "",
+                    lastName: student?.lastName || "",
+                    employeeId,
+                    domain,
+                    college
+                }
+            });
         }
 
+        const StudentModel = require('./models/Student');
+
+        let student = await StudentModel.findOne({ autoDocUniqueId: docId }).select('firstName lastName employeeId domain collegeName college email documentsAutoSentAt autoDocUniqueId').lean();
         if (!student) {
             return res.status(404).json({ error: 'Document not found', docId });
         }
 
-        // Determine doc type from the ID
-        let docType = 'unknown';
-        const lowerId = docId.toLowerCase();
-        if (lowerId.includes('offer')) docType = 'offer';
-        else if (lowerId.includes('loc') || lowerId.includes('completion')) docType = 'loc';
-        else if (lowerId.includes('lor')) docType = 'lor';
-        else if (lowerId.includes('star')) docType = 'star';
-
-        const isExactMatch = student.autoDocUniqueId === docId;
-
         return res.json({
             verified: true,
-            exactMatch: isExactMatch,
+            exactMatch: student.autoDocUniqueId === docId,
+            document_number: docId,
+            student_name: (student.firstName || '') + ' ' + (student.lastName || ''),
+            employee_id: student.employeeId || '',
+            document_type: 'Internship Documents',
+            domain: student.domain || 'N/A',
+            college: student.collegeName || student.college || 'N/A',
+            issued_date: student.documentsAutoSentAt || null,
+            issued_by: "The Entrepreneurship Network (TEN)",
             document: {
                 documentId: docId,
-                docType: docType,
+                docType: 'internship_documents',
                 employeeId: student.employeeId || '',
                 domain: student.domain || '',
                 generatedAt: student.documentsAutoSentAt || null,
-                generatedBy: 'System (Auto-generated)',
+                generatedBy: 'System (Auto-generated)'
             },
             student: {
                 firstName: student.firstName || '',
                 lastName: student.lastName || '',
                 employeeId: student.employeeId || '',
                 domain: student.domain || '',
-                college: student.collegeName || student.college || '',
+                college: student.collegeName || student.college || ''
             }
         });
     } catch (err) {
         console.error('[VERIFY] Error:', err.message);
         return res.status(500).json({ error: 'Server error during verification' });
     }
+});
+
+app.get('/api/v2/verify/:documentNumber', async (req, res) => {
+    res.redirect(302, "/api/verify-document/" + encodeURIComponent(req.params.documentNumber || ""));
 });
 
 // ================= V2 STUDENT PORTAL ROUTES =================
@@ -4382,6 +4534,14 @@ try {
     console.log("[V2] Certificate routes mounted at /api/v2");
 } catch(e) {
     console.error("[V2] Failed to mount certificate routes:", e.message);
+}
+
+try {
+    const v2HR = require("./routes/v2/hr");
+    app.use("/api/v2/hr", v2HR);
+    console.log("[V2] HR routes mounted at /api/v2/hr");
+} catch(e) {
+    console.error("[V2] Failed to mount HR routes:", e.message);
 }
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters

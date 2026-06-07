@@ -482,7 +482,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <div class="table-wrap">
         <div class="table-top">
           <span style="font-size:15px;font-weight:700;">Automated Mail History</span>
-          <input class="search-input" id="insightsMailSearch" placeholder="Search by name…" oninput="filterInsightsMailHistory()">
+          <input class="search-input" id="insightsMailSearch" placeholder="Search by name, ID, or mail type…" oninput="filterInsightsMailHistory()">
         </div>
         <div style="overflow-x:auto;"><table class="ins-table">
           <thead><tr><th>Student Name</th><th>Employee ID</th><th>Mail Type</th><th>Sent On</th></tr></thead>
@@ -492,6 +492,11 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     </div>
 
     <div class="doc-panel" id="insights-verify">
+      <div style="margin-bottom:12px;font-size:13px;color:var(--muted);">Enter a document number (e.g. <span style="font-family:'JetBrains Mono',monospace;color:var(--gold)">TEN/LOC/…</span>) or an Employee ID to look up verification status.</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+        <input class="search-input" id="insightsVerifyDocNumber" placeholder="Document Number (TEN/…)" style="width:280px;max-width:100%;">
+        <button class="cert-gen-btn" onclick="insightsVerifyByDoc()">🔍 Verify by Doc#</button>
+      </div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
         <input class="search-input" id="insightsVerifyEmployeeId" placeholder="Enter Document Number" style="width:320px;max-width:100%;">
         <button class="cert-gen-btn" onclick="insightsVerifyStudent()">Verify</button>
@@ -529,8 +534,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <button class="tracker-filter-btn f-active" onclick="filterTracker('active',this)">🔵 Active</button>
     </div>
     <div class="table-wrap"><div style="overflow-x:auto;"><table>
-      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>College Name</th><th>Tenure</th><th>End Date</th><th>Status</th><th>Days Left/Since</th><th>Actions</th></tr></thead>
-      <tbody id="trackerTable"><tr><td colspan="10"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+      <thead><tr><th>#</th><th>Name</th><th>Employee ID</th><th>Domain</th><th>College Name</th><th>Tenure</th><th>End Date</th><th>Status</th><th>Days Left/Since</th><th>Tasks</th><th>Progress</th><th>🪙 Coins</th><th>Actions</th></tr></thead>
+      <tbody id="trackerTable"><tr><td colspan="13"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
     </table></div></div>
   </div>
 
@@ -1176,7 +1181,7 @@ function showView(v){
   if(v==='submissions') loadSubmissions();
   if(v==='domains') loadDomains();
   if(v==='notif-history') loadNotifHistory();
-  if(v==='documents'){loadStudentsForPicker();setDefaultDates();}
+  if(v==='documents'){loadStudentsForPicker();setDefaultDates();setTimeout(loadPendingDocsBadge,500);}
   if(v==='attendance-monitor') loadAttendanceMonitor();
   if(v==='certificates') loadCertPending();
   if(v==='promotions') loadPromoCandidatesStudents();
@@ -1331,7 +1336,11 @@ function filterInsightsMailHistory(){
   const q=(document.getElementById('insightsMailSearch').value||'').toLowerCase().trim();
   if(!q){renderInsightsMailHistory(insightsMailHistoryRecords);return;}
   renderInsightsMailHistory(insightsMailHistoryRecords.filter(r=>{
-    return ((r.studentName||'').toLowerCase().includes(q));
+    return (
+      (r.studentName||'').toLowerCase().includes(q) ||
+      (r.employeeId||'').toLowerCase().includes(q) ||
+      (r.mailType||'').toLowerCase().includes(q)
+    );
   }));
 }
 
@@ -1342,6 +1351,48 @@ function formatInsightsDate(d){
   const mm=String(x.getMonth()+1).padStart(2,'0');
   const yy=x.getFullYear();
   return dd+'-'+mm+'-'+yy;
+}
+
+function _showVerifyResult(d, box, err, notFoundMsg){
+  if(!d || d.verified===false){
+    box.style.display='none';
+    err.textContent = d && (d.message||d.error) ? (d.message||d.error) : notFoundMsg;
+    err.style.display='block';
+    return;
+  }
+  const verified=d.verified===true;
+  const vt=verified?'<span style="color:var(--green);font-weight:800;">✅ Yes</span>':'<span style="color:var(--red);font-weight:800;">❌ No</span>';
+  const verifiedOn=d.verifiedAt||d.issued_date?formatInsightsDate(d.verifiedAt||d.issued_date):'—';
+  const nameVal=d.studentName||d.student_name||'—';
+  const collegeVal=d.college||'—';
+  const docTypeVal=d.documentType||d.document_type||'Internship Documents';
+  const docNumVal=d.documentNumber||d.document_number||'—';
+  const empIdVal=d.employeeId||d.employee_id||'—';
+  box.innerHTML=`<div style="display:grid;grid-template-columns:160px 1fr;gap:10px 18px;font-size:14px;">
+    <div style="color:var(--muted);font-weight:700;">Name:</div><div style="font-weight:700;">${nameVal}</div>
+    <div style="color:var(--muted);font-weight:700;">Employee ID:</div><div style="font-family:'JetBrains Mono',monospace;color:var(--gold);">${empIdVal}</div>
+    <div style="color:var(--muted);font-weight:700;">College:</div><div>${collegeVal}</div>
+    <div style="color:var(--muted);font-weight:700;">Document Type:</div><div>${docTypeVal}</div>
+    <div style="color:var(--muted);font-weight:700;">Document No:</div><div style="font-family:'JetBrains Mono',monospace;color:var(--gold);">${docNumVal}</div>
+    <div style="color:var(--muted);font-weight:700;">Verified:</div><div>${vt}</div>
+    <div style="color:var(--muted);font-weight:700;">Date:</div><div>${verifiedOn}</div>
+  </div>`;
+  box.style.display='block';
+}
+
+async function insightsVerifyByDoc(){
+  const docNum=document.getElementById('insightsVerifyDocNumber').value.trim();
+  const box=document.getElementById('insightsVerifyBox');
+  const err=document.getElementById('insightsVerifyError');
+  box.innerHTML=''; box.style.display='none'; err.style.display='none';
+  if(!docNum){ err.textContent='Please enter a document number.'; err.style.display='block'; return; }
+  box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  box.style.display='block';
+  try{
+    const r=await fetch('/api/hr/verify-by-docnumber?documentNumber='+encodeURIComponent(docNum),{headers:{Authorization:hrToken}});
+    const d=await r.json();
+    _showVerifyResult(d, box, err, 'Document not found. Check the number and try again.');
+  }catch(e){ box.style.display='none'; err.textContent='Server error. Try again.'; err.style.display='block'; }
 }
 
 async function insightsVerifyStudent(){
@@ -1582,16 +1633,29 @@ function getStudentStatus(endDate){
 async function loadTracker(force=false){
   if(allTrackerStudents.length&&!force){updateTrackerStats(allTrackerStudents);renderTracker(allTrackerStudents);return;}
   try{
-    const r=await fetch('/hr/students',{headers:{Authorization:hrToken}});
-    const d=await r.json();
-    allTrackerStudents=(d.students||[]).map(s=>{
+    const [r1,r2]=await Promise.all([
+      fetch('/hr/students',{headers:{Authorization:hrToken}}),
+      fetch('/api/v2/hr/internship-tracker',{headers:{Authorization:hrToken}})
+    ]);
+    const [d1,d2]=await Promise.all([r1.json(),r2.json()]);
+    const students=d1.students||[];
+    const trackerRows=(d2.students||[]);
+    const trackerMap=new Map(trackerRows.map(t=>[String(t.student_id),t]));
+    allTrackerStudents=students.map(s=>{
       const endDate=parseTenureEndDate(s.tenure,s.joiningDate);
       const{status,daysLeft}=getStudentStatus(endDate);
-      return{...s,endDate,status,daysLeft};
+      const v2=trackerMap.get(String(s._id))||{};
+      return{...s,endDate,status,daysLeft,
+        tasks_completed:v2.tasks_completed||0,
+        total_tasks:v2.total_tasks||0,
+        progress_percent:v2.progress_percent||0,
+        coins:v2.coins||0,
+        current_week:v2.current_week||0
+      };
     });
     if(!allStudents.length)allStudents=allTrackerStudents.map(s=>({...s}));
     updateTrackerStats(allTrackerStudents);renderTracker(allTrackerStudents);
-  }catch(e){}
+  }catch(e){ console.error('[Tracker] load error',e); }
 }
 function updateTrackerStats(students){
   const c=students.filter(s=>s.status==='completed').length;
@@ -1612,14 +1676,20 @@ function filterTracker(filter,btn){
 function renderTracker(students){
   const filtered=trackerFilter==='all'?students:students.filter(s=>s.status===trackerFilter);
   const tb=document.getElementById('trackerTable');
-  if(!filtered.length){tb.innerHTML='<tr><td colspan="10"><div class="empty-state"><div class="es-icon">⏱️</div><p>No students match this filter</p></div></td></tr>';return;}
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="13"><div class="empty-state"><div class="es-icon">⏱️</div><p>No students match this filter</p></div></td></tr>';return;}
   tb.innerHTML=filtered.map((s,i)=>{
     const sc=s.status==='completed'?'tag-completed':s.status==='expiring'?'tag-expiring':s.status==='active'?'tag-active':'';
     const sl=s.status==='completed'?'✅ Completed':s.status==='expiring'?'⚠️ Expiring Soon':s.status==='active'?'🔵 Active':'❓ Unknown';
     const dp=s.status==='completed'?`<span class="days-pill completed">${s.daysLeft}d ago</span>`:s.status==='expiring'?`<span class="days-pill expiring">${s.daysLeft}d left</span>`:s.status==='active'?`<span class="days-pill active">${s.daysLeft}d left</span>`:`<span class="days-pill unknown">—</span>`;
     const es=s.endDate?s.endDate.toLocaleDateString('en-IN'):'—';
     const safeN=`${s.firstName||''} ${s.lastName||''}`.trim().replace(/'/g,"\\'");
-    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;color:var(--muted)">${collegeText(s)}</td><td style="font-size:13px;color:var(--muted)">${s.tenure||'—'}</td><td style="font-size:13px">${es}</td><td><span class="tag ${sc}">${sl}</span></td><td>${dp}</td><td><div class="action-btns"><button class="btn-doc-hr" onclick="quickGenCerts('${s._id}')">📄 Certs</button><button class="btn-view-hr" onclick="openSidePanel('${s._id}')">👁 View</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑</button></div></td></tr>`;
+    const tc=s.tasks_completed||0; const tt=s.total_tasks||0;
+    const tasksTd=tt?`${tc}/${tt}`:'<span style="color:var(--muted);font-size:11px">—</span>';
+    const pct=s.progress_percent||0;
+    const pctColor=pct>=75?'var(--green)':pct>=40?'var(--amber)':'var(--red)';
+    const progressTd=tt?`<div style="display:flex;align-items:center;gap:6px;"><div style="height:5px;width:50px;background:rgba(255,255,255,0.07);border-radius:99px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pctColor};border-radius:99px;"></div></div><span style="font-size:12px;font-weight:700;color:${pctColor};">${pct}%</span></div>`:'<span style="color:var(--muted);font-size:11px">—</span>';
+    const coinsTd=s.coins?`<span style="color:var(--gold);font-weight:700;">🪙 ${s.coins}</span>`:'<span style="color:var(--muted);font-size:11px">0</span>';
+    return`<tr><td style="color:var(--muted);font-size:12px">${i+1}</td><td style="font-weight:600">${s.firstName||''} ${s.lastName||''}</td><td style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--gold)">${s.employeeId||''}</td><td><span class="tag tag-pending" style="font-size:11px">${s.domain||'—'}</span></td><td style="font-size:13px;color:var(--muted)">${collegeText(s)}</td><td style="font-size:13px;color:var(--muted)">${s.tenure||'—'}</td><td style="font-size:13px">${es}</td><td><span class="tag ${sc}">${sl}</span></td><td>${dp}</td><td style="font-size:13px;font-weight:600">${tasksTd}</td><td>${progressTd}</td><td>${coinsTd}</td><td><div class="action-btns"><button class="btn-doc-hr" onclick="quickGenCerts('${s._id}')">📄 Certs</button><button class="btn-view-hr" onclick="openSidePanel('${s._id}')">👁 View</button><button class="btn-del-hr" onclick="confirmDelStudent('${s._id}','${safeN}')">🗑</button></div></td></tr>`;
   }).join('');
 }
 function quickGenCerts(id){
@@ -3261,16 +3331,6 @@ async function rejectPendingDoc(studentId) {
       hrToast('❌ ' + d.message, 'error');
     }
   } catch(e) { hrToast('❌ Network error', 'error'); }
-}
-
-// Auto-load pending docs when documents view is opened
-const _origShowView = showView;
-function showView(v) {
-  _origShowView(v);
-  if (v === 'documents') {
-    // Prime badge count in background
-    setTimeout(loadPendingDocsBadge, 500);
-  }
 }
 
 async function loadPendingDocsBadge() {
