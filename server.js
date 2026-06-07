@@ -4222,6 +4222,16 @@ try {
     console.error("[V2] Failed to mount student portal routes:", e.message);
 }
 
+// NEW FEATURE: Quiz System
+// NEW FEATURE: Mount /api/v2/quiz routes (Task Journey only)
+try {
+    const v2QuizRouter = require("./routes/v2/quiz");
+    app.use("/api/v2/quiz", v2QuizRouter);
+    console.log("[V2] Quiz routes mounted at /api/v2/quiz");
+} catch(e) {
+    console.error("[V2] Failed to mount quiz routes:", e.message);
+}
+
 // ================= SERVER =================
 
 // (PORT already declared earlier)

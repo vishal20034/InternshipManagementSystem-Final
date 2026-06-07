@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TEN — My Tasks</title>
 <link rel="stylesheet" href="ten-theme.css">
+<!-- NEW FEATURE: Quiz System -->
+<link rel="stylesheet" href="v2-quiz.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
@@ -627,6 +629,8 @@ async function loadTasks() {
     if (firstOpenWeek) openWeeks.add(firstOpenWeek.week);
 
     renderWeeks(data.weeks);
+    // NEW FEATURE: Quiz System
+    try { if (window.TENQuiz) window.TENQuiz.initAfterRender(data.weeks); } catch(_) {}
   } catch (err) {
     document.getElementById('taskList').innerHTML =
       `<div class="empty-state"><div class="icon">⚠️</div><p>${err.message || 'Could not load tasks.'}</p></div>`;
@@ -706,25 +710,10 @@ function renderTask(task, weekNum) {
       </div>
     </div>` : '';
 
-  // Submission form — shown for available/in_progress/rejected
-  const showForm = ['available','in_progress','rejected'].includes(task.status);
-  const formHtml = showForm ? `
-    <div class="task-actions" id="form-${task._id}">
-      <input type="url" class="task-input" id="url-${task._id}"
-        placeholder="Submission link (GitHub, Drive, etc.)"
-        value="${task.submissionUrl || ''}" />
-      <textarea class="task-input" id="notes-${task._id}" rows="2"
-        placeholder="Notes or comments (optional)">${task.submissionNotes || ''}</textarea>
-      <div class="actions-row">
-        <button class="btn btn-primary btn-sm" onclick="submitTask('${task._id}','${task.progressId}', ${weekNum})">
-          📤 Submit Task
-        </button>
-        ${task.status === 'available' ? `
-        <button class="btn btn-gold btn-sm" onclick="startTask('${task._id}')">
-          ▶ Start
-        </button>` : ''}
-      </div>
-    </div>` : '';
+  // NEW FEATURE: Quiz System
+  const quizHtml = task.status === 'locked' ? '' : `
+    <div class="task-actions" id="quiz-${task._id}"></div>
+  `;
 
   // Feedback box
   let feedbackHtml = '';
@@ -735,8 +724,9 @@ function renderTask(task, weekNum) {
     feedbackHtml = `<div class="feedback-box rejected">❌ Rejected: ${task.coordinatorFeedback}<br><em style="font-size:12px;opacity:0.8">You can resubmit after reviewing the feedback.</em></div>`;
   }
   if (task.status === 'submitted') {
-    feedbackHtml = `<div class="feedback-box" style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);color:#c4b5fd">
-      ⏳ Submitted ${timeAgo(task.submittedAt)} — waiting for coordinator review.
+    // NEW FEATURE: Quiz System
+    feedbackHtml = `<div class="feedback-box" style="background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.20);color:#f5e7c0">
+      ✅ Coordinator review removed for Task Journey. Pass the quiz to complete this task.
     </div>`;
   }
 
@@ -757,7 +747,7 @@ function renderTask(task, weekNum) {
       </div>
       ${videoHtml}
       ${feedbackHtml}
-      ${formHtml}
+      ${quizHtml}
     </div>`;
 }
 
@@ -855,5 +845,7 @@ function closeCoinDrawer() {
 // ── Boot ─────────────────────────────────────────
 init();
 </script>
+<!-- NEW FEATURE: Quiz System -->
+<script src="v2-quiz.js"></script>
 </body>
 </html>
