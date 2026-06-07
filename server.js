@@ -94,6 +94,7 @@ const BASE_URL = process.env.BASE_URL || "https://virtualinternships.entrepreneu
 const uploadsAbs = path.join(__dirname, "uploads");
 try { fs.mkdirSync(uploadsAbs, { recursive: true }); } catch(_) {}
 
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 app.use(express.static("public"));
@@ -1366,6 +1367,22 @@ try{
 }catch(error){
     console.log(error);
     res.json({ verified: false, message: "Student not found" });
+}
+});
+
+app.get("/api/hr/verify-by-docnumber", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const { documentNumber } = req.query;
+    if (!documentNumber) return res.status(400).json({ verified: false, message: 'documentNumber required' });
+    const out = await verifyByDocumentNumber(documentNumber);
+    res.json(out);
+}catch(error){
+    console.log(error);
+    res.status(500).json({ verified: false, message: "Server error during verification" });
 }
 });
 
