@@ -26,14 +26,21 @@ const BadgeAward = require("./models/BadgeAward");
 const BlockList = require("./models/BlockList");
 
 const docHistSchema = new mongoose.Schema({
-  studentName:    String,
-  studentEmail:   String,
-  employeeId:     String,
-  college:        String,
-  documentType:   String,
-  documentNumber: String,
+  student_id:     { type: mongoose.Schema.Types.ObjectId, ref: "Student", default: null },
+  student_name:   { type: String, default: "" },
+  studentName:    { type: String, default: "" },
+  studentEmail:   { type: String, default: "" },
+  employeeId:     { type: String, default: "" },
+  college:        { type: String, default: "Not provided" },
+  document_type:  { type: String, default: "" },
+  documentType:   { type: String, default: "" },
+  document_number:{ type: String, unique: true, sparse: true },
+  documentNumber: { type: String, default: "" },
+  domain:         { type: String, default: "" },
+  sent_to_email:  { type: String, default: "" },
+  pdf_url:        { type: String, default: "" },
   sentAt:         { type: Date, default: Date.now },
-  sentBy:         String
+  sentBy:         { type: String, default: "" }
 });
 const DocumentHistory = mongoose.model('DocumentHistory', docHistSchema);
 
@@ -243,31 +250,79 @@ function getInternshipEndDate(joiningDate, tenure) {
     return end;
 }
 
+function generateDocumentNumber(type) {
+    const prefix = {
+        offer_letter: "TEN-OL",
+        lor: "TEN-LOR",
+        expert: "TEN-EXP",
+        nano_degree: "TEN-ND",
+        fellowship: "TEN-FEL",
+        loc: "TEN-CT",
+        star: "TEN-SP"
+    };
+    const year = new Date().getFullYear();
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${prefix[type] || "TEN-DOC"}-${year}-${random}`;
+}
+
+async function generateUniqueDocumentNumber(type) {
+    for (let i = 0; i < 10; i++) {
+        const num = generateDocumentNumber(type).trim().toUpperCase();
+        const exists = await DocumentHistory.findOne({ $or: [{ document_number: num }, { documentNumber: num }] }).select("_id").lean();
+        if (!exists) return num;
+    }
+    return generateDocumentNumber(type).trim().toUpperCase();
+}
+
 async function sendAutoDocumentsToStudent(student, docType) {
     try {
-        const name       = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+        const fullName   = ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+        const name       = fullName || student.fullName || student.name || student.email || 'Student';
         const empId      = student.employeeId || '—';
         const domain     = student.domain || '—';
-        const college    = student.collegeName || student.college || '—';
+        const college    = student.collegeName || student.college || 'Not provided';
         const email      = student.email;
         const tenure     = student.tenure || '1 Month';
         const joining    = student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
         const endDate    = getInternshipEndDate(student.joiningDate, student.tenure);
         const endStr     = endDate ? endDate.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
         const issuedDate = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
-        const uniqueDocId = 'TEN-' + empId.replace(/\//g,'-') + '-' + Date.now().toString(36).toUpperCase();
-        const verifyUrl   = BASE_URL + '/verify-document?id=' + uniqueDocId;
+        const docTypeKeyMap = {
+            offer: "offer_letter",
+            lor: "lor",
+            expert: "expert",
+            nano_degree: "nano_degree",
+            fellowship: "fellowship",
+            loc: "loc",
+            star: "star"
+        };
+        const selectedKeys = docType === "all"
+            ? ["offer", "loc", "lor", "star"]
+            : [docType];
 
-        const docTypeLabels = { offer:'Offer Letter', loc:'Letter of Completion', lor:'Letter of Recommendation', star:'Star Performer Certificate', all:'Internship Documents' };
-        const docTypeLabel  = docTypeLabels[docType] || 'Internship Documents';
+        const numbers = {};
+        for (const k of selectedKeys) {
+            numbers[k] = await generateUniqueDocumentNumber(docTypeKeyMap[k] || k);
+        }
+        const primaryDocNumber = numbers.offer || numbers[docType] || Object.values(numbers)[0] || await generateUniqueDocumentNumber("offer_letter");
+        const verifyUrl   = BASE_URL + '/verify-document?id=' + primaryDocNumber;
+
+        const docTypeLabels = {
+            offer: "Offer Letter",
+            loc: "LOC",
+            lor: "LOR",
+            star: "Star Performer",
+            all: "Internship Documents"
+        };
+        const docTypeLabel  = docTypeLabels[docType] || "Internship Documents";
 
         await Student.findByIdAndUpdate(student._id, {
             documentsAutoSent:   true,
             documentsAutoSentAt: new Date(),
-            autoDocUniqueId:     uniqueDocId,
+            autoDocUniqueId:     primaryDocNumber,
             documentVerified:    true,
             documentVerifiedAt:  new Date(),
-            documentNumber:      uniqueDocId
+            documentNumber:      primaryDocNumber
         });
 
         const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
@@ -305,8 +360,8 @@ async function sendAutoDocumentsToStudent(student, docType) {
             <div class="dc"><h3>📝 Letter of Recommendation (LOR)</h3><p>Official recommendation letter from the Director, The Entrepreneurship Network.</p></div>
             <div class="vb">
               <p><strong>🔐 Document Verification</strong></p>
-              <p>Your unique Document ID:</p>
-              <div class="did">${uniqueDocId}</div>
+              <p>Your Document Number:</p>
+              <div class="did">${primaryDocNumber}</div>
               <p>Verify authenticity at:</p>
               <a href="${verifyUrl}">${verifyUrl}</a>
             </div>
@@ -314,7 +369,7 @@ async function sendAutoDocumentsToStudent(student, docType) {
             <p>For queries: <a href="mailto:hr@entrepreneurshipnetwork.net">hr@entrepreneurshipnetwork.net</a></p>
             <p>Best Regards,<br><strong>HR Department</strong><br>The Entrepreneurship Network</p>
           </div>
-          <div class="ft"><p>© The Entrepreneurship Network — Limitless Technologies LLP</p><p style="margin-top:4px">Document ID: ${uniqueDocId}</p></div>
+          <div class="ft"><p>© The Entrepreneurship Network — Limitless Technologies LLP</p><p style="margin-top:4px">Document Number: ${primaryDocNumber}</p></div>
         </div></body></html>`;
 
         await transporter.sendMail({
@@ -323,16 +378,27 @@ async function sendAutoDocumentsToStudent(student, docType) {
             subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
             html:    emailHtml
         });
-        await DocumentHistory.create({
-          studentName:    name,
-          studentEmail:   email,
-          employeeId:     empId,
-          college:        college,
-          documentType:   docTypeLabel,
-          documentNumber: uniqueDocId,
-          sentBy:         'HR System'
-        });
-        console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
+        for (const k of selectedKeys) {
+            const key = docTypeKeyMap[k] || k;
+            const label = docTypeLabels[k] || docTypeLabel;
+            const docNumber = numbers[k] || primaryDocNumber;
+            await DocumentHistory.create({
+                student_id:     student._id,
+                student_name:   name,
+                studentName:    name,
+                studentEmail:   email,
+                employeeId:     empId,
+                college:        college || "Not provided",
+                document_type:  key,
+                documentType:   label,
+                document_number: docNumber,
+                documentNumber: docNumber,
+                domain:         student.domain || "",
+                sent_to_email:  email,
+                sentBy:         "HR System"
+            });
+        }
+        console.log('[AUTO-DOCS] Emailed to ' + email + ' | Document Number: ' + primaryDocNumber);
     } catch(err) {
         console.error('[AUTO-DOCS] Error:', err.message);
     }
@@ -1200,11 +1266,84 @@ try{
     const limit = 50;
     const skip = (page - 1) * limit;
     const total = await DocumentHistory.countDocuments();
-    const records = await DocumentHistory.find().sort({ sentAt: -1 }).skip(skip).limit(limit);
+    const raw = await DocumentHistory.find().sort({ sentAt: -1 }).skip(skip).limit(limit).lean();
+    const records = (raw || []).map(r => ({
+        ...r,
+        studentName: (r.studentName || r.student_name || "").trim() || "Not provided",
+        college: (r.college || "").trim() || "Not provided",
+        documentNumber: (r.documentNumber || r.document_number || "").trim() || "",
+        documentType: (r.documentType || r.document_type || "").trim() || "",
+        sent_to_email: r.sent_to_email || r.studentEmail || "",
+        studentEmail: r.studentEmail || r.sent_to_email || ""
+    }));
     res.json({ records, total, page });
 }catch(error){
     console.log(error);
     res.status(500).json({ records:[], total:0, page:1 });
+}
+});
+
+app.post("/api/hr/document-history/log", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ success:false, message:"Unauthorized" });
+    }
+
+    const employeeId = (req.body && req.body.employeeId) ? String(req.body.employeeId).trim() : "";
+    const documentTypeKey = (req.body && (req.body.document_type || req.body.documentTypeKey || req.body.type)) ? String(req.body.document_type || req.body.documentTypeKey || req.body.type).trim() : "";
+    const pdfUrl = (req.body && (req.body.pdf_url || req.body.pdfUrl)) ? String(req.body.pdf_url || req.body.pdfUrl).trim() : "";
+
+    if(!employeeId || !documentTypeKey) {
+        return res.status(400).json({ success:false, message:"employeeId and document_type required" });
+    }
+
+    const student = await Student.findOne({ employeeId }).lean();
+    if(!student) return res.status(404).json({ success:false, message:"Student not found" });
+
+    const fullName = ((student.firstName||"") + " " + (student.lastName||"")).trim();
+    const name = fullName || student.fullName || student.name || student.email || "Student";
+    const college = (student.collegeName || student.college || "").trim() || "Not provided";
+    const domain = (student.domain || "").trim() || "";
+    const email = (student.email || "").trim() || "";
+
+    const labelMap = {
+        offer_letter: "Offer Letter",
+        lor: "LOR",
+        loc: "LOC",
+        star: "Star Performer",
+        expert_certificate: "Expert Certificate",
+        nano_degree: "Nano Degree",
+        fellowship: "Fellowship",
+        expert: "Expert Certificate"
+    };
+
+    const typeKey = documentTypeKey.toLowerCase();
+    const docNumberType = typeKey === "expert_certificate" ? "expert" : typeKey;
+    const docNumber = await generateUniqueDocumentNumber(docNumberType);
+    const label = labelMap[typeKey] || documentTypeKey;
+
+    const rec = await DocumentHistory.create({
+        student_id: student._id,
+        student_name: name,
+        studentName: name,
+        studentEmail: email,
+        employeeId: student.employeeId || employeeId,
+        college,
+        document_type: typeKey,
+        documentType: label,
+        document_number: docNumber,
+        documentNumber: docNumber,
+        domain,
+        sent_to_email: email,
+        pdf_url: pdfUrl,
+        sentBy: "HR Portal"
+    });
+
+    res.json({ success:true, document_number: docNumber, documentNumber: docNumber, recordId: rec._id });
+}catch(e){
+    console.log(e);
+    res.status(500).json({ success:false, message:"Server error" });
 }
 });
 
@@ -1214,19 +1353,50 @@ try{
     if(!auth || !auth.startsWith("Bearer hr_")){
         return res.status(401).json({ message:"Unauthorized" });
     }
-    const { employeeId } = req.query;
-    if (!employeeId) return res.status(400).json({ error: 'employeeId required' });
+    const employeeId = (req.query.employeeId || "").toString().trim();
+    const documentNumber = (req.query.documentNumber || req.query.document_number || "").toString().trim().toUpperCase();
+
+    if (!employeeId && !documentNumber) {
+        return res.status(400).json({ error: "employeeId or documentNumber required" });
+    }
+
+    if (documentNumber) {
+        const record = await DocumentHistory.findOne({
+            $or: [{ document_number: documentNumber }, { documentNumber: documentNumber }]
+        }).sort({ sentAt: -1 }).lean();
+
+        if (!record) return res.json({ verified: false, message: "Document not found" });
+
+        return res.json({
+            verified: true,
+            studentName: (record.studentName || record.student_name || "").trim() || "Not provided",
+            college: (record.college || "").trim() || "Not provided",
+            documentType: (record.documentType || record.document_type || "").trim() || "N/A",
+            documentNumber: (record.documentNumber || record.document_number || "").trim() || documentNumber,
+            domain: (record.domain || "").trim() || "N/A",
+            verifiedAt: record.sentAt || null
+        });
+    }
+
     const s = await Student.findOne({ employeeId }).select(
-      'firstName lastName employeeId collegeName college documentVerified documentVerifiedAt documentNumber autoDocUniqueId domain'
+      "firstName lastName employeeId collegeName college documentVerified documentVerifiedAt documentNumber autoDocUniqueId domain email"
     );
-    if (!s) return res.json({ verified: false, message: 'Student not found' });
+    if (!s) return res.json({ verified: false, message: "Student not found" });
+
+    const fallbackDoc = (s.documentNumber || s.autoDocUniqueId || "").toString().trim().toUpperCase();
+    let record = null;
+    if (fallbackDoc) {
+        record = await DocumentHistory.findOne({ $or: [{ document_number: fallbackDoc }, { documentNumber: fallbackDoc }] }).sort({ sentAt: -1 }).lean();
+    }
+
     res.json({
-        verified: s.documentVerified || false,
-        studentName: (s.firstName||'') + ' ' + (s.lastName||''),
-        college:     s.collegeName || s.college || '—',
-        documentType: 'Internship Documents',
-        documentNumber: s.documentNumber || s.autoDocUniqueId || '—',
-        verifiedAt:  s.documentVerifiedAt || null
+        verified: (record ? true : (s.documentVerified || false)),
+        studentName: ((s.firstName||"") + " " + (s.lastName||"")).trim() || s.email || "Not provided",
+        college: (s.collegeName || s.college || "").trim() || "Not provided",
+        documentType: (record ? ((record.documentType || record.document_type || "").trim()) : "Internship Documents") || "Internship Documents",
+        documentNumber: (record ? ((record.documentNumber || record.document_number || "").trim()) : fallbackDoc) || "—",
+        domain: (record ? ((record.domain || "").trim()) : (s.domain || "")) || "N/A",
+        verifiedAt: (record ? record.sentAt : (s.documentVerifiedAt || null)) || null
     });
 }catch(error){
     console.log(error);
