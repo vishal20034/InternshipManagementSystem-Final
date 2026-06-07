@@ -11,6 +11,9 @@ const nodemailer      = require("nodemailer");
 const Student         = require("../../models/Student");
 const StudentDocument = require("../../models/new/StudentDocument");
 const { generateOfferLetterPDF } = require("../../services/v2/offerLetterService");
+const DocumentHistory = require("../../models/DocumentHistory");
+const MailHistory = require("../../models/MailHistory");
+const { generateDocumentNumber, normalizeDocumentNumber } = require("../../utils/documentNumber");
 
 // ── Multer storage for documents ──
 const uploadsDir = path.join(__dirname, "../../uploads/documents");
@@ -183,7 +186,29 @@ router.post("/documents/submit", requireStudent, async (req, res) => {
                 subject: `[TEN] New Document Submission — ${req.student.name} (${req.student.employeeId})`,
                 html:    `<p>Student <strong>${req.student.name}</strong> (${req.student.employeeId}) has submitted their documents for review.</p><p>Please log in to the HR portal → Generate Documents → Pending to review.</p>`
             });
-        } catch (_) {}
+            await MailHistory.create({
+                recipientEmail: process.env.EMAIL_US || "",
+                recipientName: "HR",
+                studentId: req.student._id,
+                subject: `[TEN] New Document Submission — ${req.student.name} (${req.student.employeeId})`,
+                mailType: "document_submission",
+                sentAt: new Date(),
+                status: "sent"
+            });
+        } catch (err) {
+            try {
+                await MailHistory.create({
+                    recipientEmail: process.env.EMAIL_US || "",
+                    recipientName: "HR",
+                    studentId: req.student._id,
+                    subject: `[TEN] New Document Submission — ${req.student.name} (${req.student.employeeId})`,
+                    mailType: "document_submission",
+                    sentAt: new Date(),
+                    status: "failed",
+                    errorMessage: err && err.message ? String(err.message) : ""
+                });
+            } catch (_) {}
+        }
 
         res.json({ success: true, status: "pending", message: "Documents submitted for HR review" });
     } catch (err) {
@@ -201,8 +226,10 @@ router.post("/documents/submit", requireStudent, async (req, res) => {
 router.get("/admin/documents/pending", requireHR, async (req, res) => {
     try {
         const docs = await StudentDocument.find({
-            uploadStatus: { $in: ["pending", "under_review"] }
-        }).sort({ uploadedAt: 1 });
+            uploadStatus: "pending",
+            addressProofUrl: { $ne: null },
+            marksheetUrl: { $ne: null }
+        }).sort({ uploadedAt: -1 });
 
         const result = await Promise.all(docs.map(async (doc) => {
             const student = await Student.findById(doc.studentId).select("name email employeeId domain tenure joiningDate").lean();
@@ -215,6 +242,8 @@ router.get("/admin/documents/pending", requireHR, async (req, res) => {
                 employeeId:     student.employeeId,
                 domain:         student.domain,
                 tenure:         student.tenure,
+                duration:       student.tenure,
+                college:        student.collegeName || student.college || "Not provided",
                 joiningDate:    student.joiningDate,
                 uploadStatus:   doc.uploadStatus,
                 uploadedAt:     doc.uploadedAt,
@@ -249,6 +278,8 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                 const docRec  = await StudentDocument.findOne({ studentId: sid });
                 if (!student || !docRec) { results.push({ studentId: sid, success: false, error: "Not found" }); continue; }
 
+                const docNumber = normalizeDocumentNumber(generateDocumentNumber("offer_letter"));
+
                 // Calculate dates
                 const joining = student.joiningDate ? new Date(student.joiningDate) : new Date();
                 const tenureDays = student.tenure === "45 Days" ? 45 : student.tenure === "1 Month" ? 30 : student.tenure === "3 Months" ? 90 : student.tenure === "6 Months" ? 180 : 45;
@@ -265,7 +296,7 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                     startDate:      fmt(joining),
                     endDate:        fmt(endDate),
                     dateIssued:     fmt(new Date()),
-                    documentNumber: `TEN/OL/${Date.now().toString().slice(-6)}`
+                    documentNumber: docNumber
                 }, pdfPath);
 
                 // Update status
@@ -273,9 +304,12 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                 docRec.reviewedAt       = new Date();
                 docRec.offerLetterUrl   = `/uploads/offer-letters/${path.basename(pdfPath)}`;
                 docRec.offerLetterSentAt = new Date();
+                docRec.offerLetterDocumentNumber = docNumber;
                 await docRec.save();
 
                 // Email offer letter to student
+                let mailStatus = "sent";
+                let mailError = "";
                 try {
                     const transporter = createTransporter();
                     await transporter.sendMail({
@@ -287,9 +321,50 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                     });
                 } catch (mailErr) {
                     console.error("[DOCS] email error for", student.email, mailErr.message);
+                    mailStatus = "failed";
+                    mailError = mailErr && mailErr.message ? String(mailErr.message) : "";
                 }
 
-                results.push({ studentId: sid, success: true, studentName: student.name, offerLetterUrl: docRec.offerLetterUrl });
+                const studentName =
+                    (student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email || "").trim();
+                const college = (student.collegeName || student.college || "Not provided").trim();
+
+                await DocumentHistory.create({
+                    studentId: student._id,
+                    studentName,
+                    studentEmail: student.email || "",
+                    employeeId: student.employeeId || "",
+                    college,
+                    domain: student.domain || "",
+                    documentType: "Offer Letter",
+                    documentKey: "offer_letter",
+                    documentNumber: docNumber,
+                    sentAt: new Date(),
+                    sentBy: "HR Portal",
+                    sentToEmail: student.email || ""
+                });
+
+                try {
+                    await MailHistory.create({
+                        recipientEmail: student.email || "",
+                        recipientName: studentName,
+                        studentId: student._id,
+                        subject: "Your Internship Offer Letter — The Entrepreneurship Network",
+                        mailType: "offer_letter",
+                        sentAt: new Date(),
+                        status: mailStatus,
+                        errorMessage: mailError
+                    });
+                } catch (_) {}
+
+                results.push({
+                    studentId: sid,
+                    success: true,
+                    studentName,
+                    offerLetterUrl: docRec.offerLetterUrl,
+                    documentNumber: docNumber,
+                    emailStatus: mailStatus
+                });
             } catch (err) {
                 results.push({ studentId: sid, success: false, error: err.message });
             }
