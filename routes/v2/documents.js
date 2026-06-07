@@ -8,9 +8,11 @@ const multer          = require("multer");
 const path            = require("path");
 const fs              = require("fs");
 const nodemailer      = require("nodemailer");
+const mongoose        = require("mongoose");
 const Student         = require("../../models/Student");
 const StudentDocument = require("../../models/new/StudentDocument");
 const { generateOfferLetterPDF } = require("../../services/v2/offerLetterService");
+const { generateDocumentNumber } = require("../../services/documentNumber");
 
 // ── Multer storage for documents ──
 const uploadsDir = path.join(__dirname, "../../uploads/documents");
@@ -249,6 +251,8 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                 const docRec  = await StudentDocument.findOne({ studentId: sid });
                 if (!student || !docRec) { results.push({ studentId: sid, success: false, error: "Not found" }); continue; }
 
+                const docNo = generateDocumentNumber("offer_letter");
+
                 // Calculate dates
                 const joining = student.joiningDate ? new Date(student.joiningDate) : new Date();
                 const tenureDays = student.tenure === "45 Days" ? 45 : student.tenure === "1 Month" ? 30 : student.tenure === "3 Months" ? 90 : student.tenure === "6 Months" ? 180 : 45;
@@ -265,7 +269,7 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                     startDate:      fmt(joining),
                     endDate:        fmt(endDate),
                     dateIssued:     fmt(new Date()),
-                    documentNumber: `TEN/OL/${Date.now().toString().slice(-6)}`
+                    documentNumber: docNo
                 }, pdfPath);
 
                 // Update status
@@ -274,6 +278,33 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                 docRec.offerLetterUrl   = `/uploads/offer-letters/${path.basename(pdfPath)}`;
                 docRec.offerLetterSentAt = new Date();
                 await docRec.save();
+
+                try {
+                    const DocumentHistory = mongoose.model("DocumentHistory");
+                    const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim() || student.email || "").trim();
+                    const college = (student.collegeName || student.college || "").trim() || "Not provided";
+                    await DocumentHistory.create({
+                        studentId:       student._id,
+                        student_id:      student._id,
+                        studentName:     studentName,
+                        student_name:    studentName,
+                        studentEmail:    student.email || "",
+                        sent_to_email:   student.email || "",
+                        employeeId:      student.employeeId || "",
+                        college:         college,
+                        documentType:    "Offer Letter",
+                        document_type:   "Offer Letter",
+                        documentNumber:  docNo,
+                        document_number: docNo,
+                        domain:          student.domain || "",
+                        pdfUrl:          docRec.offerLetterUrl || "",
+                        pdf_url:         docRec.offerLetterUrl || "",
+                        sentAt:          new Date(),
+                        sent_on:         new Date(),
+                        sentBy:          "HR System",
+                        created_at:      new Date()
+                    });
+                } catch (_) {}
 
                 // Email offer letter to student
                 try {

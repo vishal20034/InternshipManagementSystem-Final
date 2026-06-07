@@ -9,6 +9,7 @@ const mongoose = require("mongoose");
 const multer = require("multer");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
+const { generateDocumentNumber, normalizeDocumentNumber, docTypeKeyFromLabel } = require("./services/documentNumber");
 
 const Student = require("./models/Student");
 if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDate:    { type: Date } });
@@ -26,14 +27,25 @@ const BadgeAward = require("./models/BadgeAward");
 const BlockList = require("./models/BlockList");
 
 const docHistSchema = new mongoose.Schema({
-  studentName:    String,
-  studentEmail:   String,
-  employeeId:     String,
-  college:        String,
-  documentType:   String,
-  documentNumber: String,
+  studentId:      { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+  student_id:     { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+  studentName:    { type: String, default: "" },
+  student_name:   { type: String, default: "" },
+  studentEmail:   { type: String, default: "" },
+  sent_to_email:  { type: String, default: "" },
+  employeeId:     { type: String, default: "" },
+  college:        { type: String, default: "Not provided" },
+  documentType:   { type: String, default: "" },
+  document_type:  { type: String, default: "" },
+  documentNumber: { type: String, unique: true, sparse: true },
+  document_number:{ type: String, unique: true, sparse: true },
+  domain:         { type: String, default: "" },
+  pdfUrl:         { type: String, default: "" },
+  pdf_url:        { type: String, default: "" },
   sentAt:         { type: Date, default: Date.now },
-  sentBy:         String
+  sent_on:        { type: Date },
+  sentBy:         { type: String, default: "" },
+  created_at:     { type: Date, default: Date.now }
 });
 const DocumentHistory = mongoose.model('DocumentHistory', docHistSchema);
 
@@ -245,10 +257,10 @@ function getInternshipEndDate(joiningDate, tenure) {
 
 async function sendAutoDocumentsToStudent(student, docType) {
     try {
-        const name       = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+        const name       = (student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim() || student.email || "").trim();
         const empId      = student.employeeId || '—';
         const domain     = student.domain || '—';
-        const college    = student.collegeName || student.college || '—';
+        const college    = (student.collegeName || student.college || "").trim() || 'Not provided';
         const email      = student.email;
         const tenure     = student.tenure || '1 Month';
         const joining    = student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
@@ -323,14 +335,26 @@ async function sendAutoDocumentsToStudent(student, docType) {
             subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
             html:    emailHtml
         });
+        const typeKey = docTypeKeyFromLabel(docTypeLabel);
+        const docNo = typeKey ? generateDocumentNumber(typeKey) : "";
         await DocumentHistory.create({
-          studentName:    name,
-          studentEmail:   email,
-          employeeId:     empId,
-          college:        college,
-          documentType:   docTypeLabel,
-          documentNumber: uniqueDocId,
-          sentBy:         'HR System'
+          studentId:       student._id,
+          student_id:      student._id,
+          studentName:     name,
+          student_name:    name,
+          studentEmail:    email,
+          sent_to_email:   email,
+          employeeId:      empId,
+          college:         college,
+          documentType:    docTypeLabel,
+          document_type:   docTypeLabel,
+          documentNumber:  docNo || uniqueDocId,
+          document_number: docNo || undefined,
+          domain:          domain === "—" ? "" : domain,
+          sentAt:          new Date(),
+          sent_on:         new Date(),
+          sentBy:          'HR System',
+          created_at:      new Date()
         });
         console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
     } catch(err) {
@@ -1200,11 +1224,87 @@ try{
     const limit = 50;
     const skip = (page - 1) * limit;
     const total = await DocumentHistory.countDocuments();
-    const records = await DocumentHistory.find().sort({ sentAt: -1 }).skip(skip).limit(limit);
-    res.json({ records, total, page });
+    const records = await DocumentHistory.find().sort({ sentAt: -1 }).skip(skip).limit(limit).lean();
+    const normalized = (records || []).map(r => {
+        const studentName = (String(r.studentName || r.student_name || "")).trim();
+        const collegeRaw = (String(r.college || "")).trim();
+        const college = !collegeRaw || collegeRaw === "—" ? "Not provided" : collegeRaw;
+        const documentType = (String(r.documentType || r.document_type || "")).trim();
+        const documentNumber = normalizeDocumentNumber(r.document_number || r.documentNumber || "");
+        return {
+            ...r,
+            studentName: studentName,
+            college: college,
+            documentType: documentType,
+            documentNumber: documentNumber,
+            sentAt: r.sentAt || r.sent_on || r.created_at || null
+        };
+    });
+    res.json({ records: normalized, total, page });
 }catch(error){
     console.log(error);
     res.status(500).json({ records:[], total:0, page:1 });
+}
+});
+
+app.post("/api/hr/document-history/create", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ success:false, message:"Unauthorized" });
+    }
+    const employeeId = String((req.body && req.body.employeeId) || "").trim();
+    const incomingType = String((req.body && (req.body.documentType || req.body.document_type)) || "").trim();
+    const sentToEmail = String((req.body && (req.body.sent_to_email || req.body.sentToEmail)) || "").trim();
+    const pdfUrl = String((req.body && (req.body.pdf_url || req.body.pdfUrl)) || "").trim();
+    if(!employeeId) return res.status(400).json({ success:false, message:"employeeId required" });
+    if(!incomingType) return res.status(400).json({ success:false, message:"documentType required" });
+
+    const student = await Student.findOne({ employeeId }).select("name firstName lastName email employeeId collegeName college domain").lean();
+    if(!student) return res.status(404).json({ success:false, message:"Student not found" });
+
+    const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim() || student.email || "").trim();
+    const college = (student.collegeName || student.college || "").trim() || "Not provided";
+    const domain = String(student.domain || "").trim();
+
+    const typeKey = docTypeKeyFromLabel(incomingType) || incomingType.toLowerCase();
+    const docNo = generateDocumentNumber(typeKey) || generateDocumentNumber("offer_letter");
+    const now = new Date();
+
+    const record = await DocumentHistory.create({
+        studentId:       student._id,
+        student_id:      student._id,
+        studentName:     studentName,
+        student_name:    studentName,
+        studentEmail:    student.email || "",
+        sent_to_email:   sentToEmail || student.email || "",
+        employeeId:      student.employeeId || employeeId,
+        college:         college,
+        documentType:    incomingType,
+        document_type:   incomingType,
+        documentNumber:  docNo,
+        document_number: docNo,
+        domain:          domain,
+        pdfUrl:          pdfUrl,
+        pdf_url:         pdfUrl,
+        sentAt:          now,
+        sent_on:         now,
+        sentBy:          "HR Portal",
+        created_at:      now
+    });
+
+    res.json({
+        success: true,
+        documentNumber: record.document_number || record.documentNumber,
+        studentName: record.student_name || record.studentName,
+        college: record.college,
+        domain: record.domain || "",
+        documentType: record.document_type || record.documentType,
+        sentOn: record.sent_on || record.sentAt || record.created_at
+    });
+}catch(error){
+    console.log(error);
+    res.status(500).json({ success:false, message:"Server error" });
 }
 });
 
@@ -1232,6 +1332,40 @@ try{
     console.log(error);
     res.json({ verified: false, message: "Student not found" });
 }
+});
+
+app.get("/api/verify/:documentNumber", async(req, res) => {
+    try {
+        const documentNumber = normalizeDocumentNumber(req.params.documentNumber);
+        if (!documentNumber) return res.status(400).json({ verified: false, message: "Document number required" });
+
+        const record = await DocumentHistory.findOne({
+            $or: [
+                { document_number: documentNumber },
+                { documentNumber:  documentNumber }
+            ]
+        }).lean();
+
+        if (!record) {
+            return res.json({
+                verified: false,
+                message: "Document not found in our records"
+            });
+        }
+
+        return res.json({
+            verified: true,
+            document_number: normalizeDocumentNumber(record.document_number || record.documentNumber),
+            student_name: (String(record.student_name || record.studentName || "")).trim(),
+            document_type: String(record.document_type || record.documentType || "").trim(),
+            issued_date: record.sent_on || record.sentAt || record.created_at || null,
+            domain: String(record.domain || "").trim() || "N/A",
+            organization: "The Entrepreneurship Network (TEN)"
+        });
+    } catch (err) {
+        console.error("[VERIFY-DOCNO] Error:", err.message);
+        return res.status(500).json({ verified: false, message: "Server error during verification" });
+    }
 });
 
 app.get("/api/hr/automail-history", async(req,res)=>{
