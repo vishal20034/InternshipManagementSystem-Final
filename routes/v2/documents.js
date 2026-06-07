@@ -40,6 +40,24 @@ const docUpload = multer({
     }
 });
 
+function multerUpload(fieldName) {
+    return (req, res, next) => {
+        docUpload.single(fieldName)(req, res, (err) => {
+            if (!err) return next();
+            if (err.code === "LIMIT_FILE_SIZE") {
+                return res.status(400).json({
+                    success: false,
+                    message: "File too large. Maximum allowed size is 5MB."
+                });
+            }
+            return res.status(400).json({
+                success: false,
+                message: err.message || "File upload error. Please try again."
+            });
+        });
+    };
+}
+
 // ── Auth middleware (student) ──
 async function requireStudent(req, res, next) {
     try {
@@ -78,6 +96,32 @@ function createTransporter() {
     });
 }
 
+async function autoSubmitIfComplete(doc, student) {
+    if (
+        doc.addressProofUrl &&
+        doc.marksheetUrl &&
+        !["pending", "under_review", "approved"].includes(doc.uploadStatus)
+    ) {
+        doc.uploadStatus = "pending";
+        doc.uploadedAt = new Date();
+        doc.rejectionReason = null;
+        await doc.save();
+
+        try {
+            const transporter = createTransporter();
+            await transporter.sendMail({
+                from: process.env.EMAIL_US,
+                to: process.env.EMAIL_US,
+                subject: `[TEN] New Document Submission — ${student.name} (${student.employeeId})`,
+                html: `<p>Student <strong>${student.name}</strong> (${student.employeeId}) has submitted documents for review.</p><p>HR Portal → Generate Documents → Pending</p>`
+            });
+        } catch (_) {}
+
+        return true;
+    }
+    return false;
+}
+
 // ════════════════════════════════
 // STUDENT ROUTES
 // ════════════════════════════════
@@ -110,7 +154,7 @@ router.get("/documents/my-status", requireStudent, async (req, res) => {
 router.post("/documents/upload-address-proof", requireStudent, (req, res, next) => {
     req.docType = "address_proof";
     next();
-}, docUpload.single("file"), async (req, res) => {
+}, multerUpload("file"), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
         let doc = await StudentDocument.findOne({ studentId: req.student._id });
@@ -122,10 +166,13 @@ router.post("/documents/upload-address-proof", requireStudent, (req, res, next) 
         doc.addressProofUrl = req.file.path;
         if (doc.uploadStatus === "rejected") doc.uploadStatus = "not_uploaded";
         await doc.save();
+        const autoSubmitted = await autoSubmitIfComplete(doc, req.student);
         res.json({
             success: true,
-            message: "Address proof uploaded successfully",
-            fileUrl: `/uploads/documents/${req.file.filename}`
+            message: "File uploaded successfully",
+            fileUrl: `/uploads/documents/${req.file.filename}`,
+            autoSubmitted,
+            uploadStatus: doc.uploadStatus
         });
     } catch (err) {
         console.error("[DOCS] upload-address-proof error:", err.message);
@@ -138,7 +185,7 @@ router.post("/documents/upload-address-proof", requireStudent, (req, res, next) 
 router.post("/documents/upload-marksheet", requireStudent, (req, res, next) => {
     req.docType = "marksheet";
     next();
-}, docUpload.single("file"), async (req, res) => {
+}, multerUpload("file"), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
         let doc = await StudentDocument.findOne({ studentId: req.student._id });
@@ -150,10 +197,13 @@ router.post("/documents/upload-marksheet", requireStudent, (req, res, next) => {
         doc.marksheetUrl = req.file.path;
         if (doc.uploadStatus === "rejected") doc.uploadStatus = "not_uploaded";
         await doc.save();
+        const autoSubmitted = await autoSubmitIfComplete(doc, req.student);
         res.json({
             success: true,
-            message: "Marksheet uploaded successfully",
-            fileUrl: `/uploads/documents/${req.file.filename}`
+            message: "File uploaded successfully",
+            fileUrl: `/uploads/documents/${req.file.filename}`,
+            autoSubmitted,
+            uploadStatus: doc.uploadStatus
         });
     } catch (err) {
         console.error("[DOCS] upload-marksheet error:", err.message);
@@ -226,7 +276,7 @@ router.post("/documents/submit", requireStudent, async (req, res) => {
 router.get("/admin/documents/pending", requireHR, async (req, res) => {
     try {
         const docs = await StudentDocument.find({
-            uploadStatus: "pending",
+            uploadStatus: { $in: ["pending", "under_review"] },
             addressProofUrl: { $ne: null },
             marksheetUrl: { $ne: null }
         }).sort({ uploadedAt: -1 });

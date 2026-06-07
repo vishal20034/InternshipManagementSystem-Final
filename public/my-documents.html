@@ -64,6 +64,8 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 .upload-progress{margin-top:10px;display:none;}
 .upload-bar-wrap{height:4px;background:rgba(255,255,255,0.06);border-radius:99px;overflow:hidden;}
 .upload-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:99px;width:0;transition:width 0.4s ease;}
+.upload-zone.locked{opacity:0.7;cursor:not-allowed;}
+.upload-zone.locked:hover{border-color:var(--border-strong);background:var(--card);}
 
 /* Submit section */
 .submit-section{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
@@ -129,15 +131,6 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
 
   </div>
 
-  <!-- Submit Section -->
-  <div class="submit-section" id="submitSection" style="display:none;">
-    <div class="submit-info">
-      <strong>Both documents uploaded.</strong> Click Submit to send them for HR review.
-      <br>You can re-upload until HR starts reviewing.
-    </div>
-    <button class="submit-btn" id="submitBtn" onclick="submitDocuments()">📤 Submit for Review</button>
-  </div>
-
 </div>
 
 <script>
@@ -173,11 +166,7 @@ async function loadStatus() {
 
     // Lock if not allowed to re-upload
     locked = ['pending', 'under_review', 'approved'].includes(d.status);
-    if (locked) {
-      document.querySelectorAll('.zone-btn').forEach(b => { b.disabled = true; b.style.opacity = '0.4'; b.style.cursor = 'not-allowed'; });
-      document.getElementById('submitSection').style.display = 'none';
-    }
-    updateSubmitBtn();
+    if (locked) lockZones();
   } catch(e) { console.error(e); }
 }
 
@@ -216,6 +205,23 @@ function handleFileSelect(type, input) {
   if (input.files[0]) uploadFile(type, input.files[0]);
 }
 
+function lockZones() {
+  locked = true;
+  ['address', 'marksheet'].forEach(type => {
+    const zone = document.getElementById('zone-' + type);
+    zone.classList.add('locked');
+    const btn = zone.querySelector('.zone-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = '0.4';
+      btn.style.cursor = 'not-allowed';
+    }
+    const input = document.getElementById('file-' + type);
+    if (input) input.disabled = true;
+  });
+  document.querySelectorAll('.remove-file').forEach(b => b.remove());
+}
+
 async function uploadFile(type, file) {
   // Validate size
   if (file.size > 5 * 1024 * 1024) {
@@ -232,20 +238,50 @@ async function uploadFile(type, file) {
 
   try {
     const r = await fetch(endpoint, { method: 'POST', headers: { 'x-employee-id': EMP_ID }, body: formData });
-    const d = await r.json();
+    let d;
+    try {
+      d = await r.json();
+    } catch (_) {
+      d = { success: false, message: `Server error (HTTP ${r.status}). Please try again.` };
+    }
     document.getElementById('progress-' + type).style.display = 'none';
     document.getElementById('bar-' + type).style.width = '0';
     if (d.success) {
       uploaded[type] = true;
       document.getElementById('zone-' + type).classList.add('has-file');
       showFilePreview(type, file.name, file.size);
-      updateSubmitBtn();
+      if (d.autoSubmitted || d.uploadStatus === 'pending') {
+        currentStatus = 'pending';
+        showBanner('pending', '✅ Documents submitted — HR will review them shortly');
+        lockZones();
+        Swal.fire({
+          icon: 'success',
+          title: '✅ Documents Submitted!',
+          text: 'Both documents uploaded and sent to HR for review.',
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37'
+        });
+      } else {
+        const otherLabel = type === 'address' ? 'College Marksheet' : 'Address Proof';
+        Swal.fire({
+          icon: 'success',
+          title: 'Uploaded!',
+          text: `Now upload your ${otherLabel} to complete submission.`,
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37',
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: false
+        });
+      }
     } else {
       Swal.fire({ icon: 'error', title: 'Upload failed', text: d.message, background: '#0e1428', color: '#F0EEE8' });
     }
   } catch(e) {
     document.getElementById('progress-' + type).style.display = 'none';
-    Swal.fire({ icon: 'error', title: 'Upload failed', text: 'Network error. Please try again.', background: '#0e1428', color: '#F0EEE8' });
+    Swal.fire({ icon: 'error', title: 'Upload failed', text: 'Could not reach the server. Check your connection and try again.', background: '#0e1428', color: '#F0EEE8' });
   }
 }
 
@@ -281,50 +317,6 @@ function removeFile(type) {
   document.getElementById('preview-' + type).style.display = 'none';
   document.getElementById('preview-' + type).innerHTML = '';
   document.getElementById('file-' + type).value = '';
-  updateSubmitBtn();
-}
-
-function updateSubmitBtn() {
-  const bothUploaded = uploaded.address && uploaded.marksheet;
-  const canSubmit    = bothUploaded && !locked && currentStatus !== 'approved';
-  const section = document.getElementById('submitSection');
-  const btn     = document.getElementById('submitBtn');
-  if (bothUploaded && !locked && currentStatus !== 'approved') {
-    section.style.display = 'flex';
-    btn.classList.add('ready');
-  } else if (bothUploaded) {
-    section.style.display = locked ? 'none' : 'flex';
-  } else {
-    section.style.display = 'none';
-  }
-}
-
-async function submitDocuments() {
-  const btn = document.getElementById('submitBtn');
-  btn.innerHTML = '<span class="spinner"></span>Submitting...';
-  btn.classList.remove('ready');
-  try {
-    const r = await fetch('/api/v2/documents/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-employee-id': EMP_ID },
-      body: JSON.stringify({ employeeId: EMP_ID })
-    });
-    const d = await r.json();
-    if (d.success) {
-      currentStatus = 'pending';
-      locked = true;
-      showBanner('pending', STATUS_CONFIG['pending'].desc);
-      document.getElementById('submitSection').style.display = 'none';
-      Swal.fire({ icon: 'success', title: 'Submitted!', text: 'Your documents are now under HR review.', background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#D4AF37' });
-    } else {
-      btn.innerHTML = '📤 Submit for Review';
-      btn.classList.add('ready');
-      Swal.fire({ icon: 'error', title: 'Submit failed', text: d.message, background: '#0e1428', color: '#F0EEE8' });
-    }
-  } catch(e) {
-    btn.innerHTML = '📤 Submit for Review';
-    btn.classList.add('ready');
-  }
 }
 
 // Init
