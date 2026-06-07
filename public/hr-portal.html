@@ -561,6 +561,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <button class="doc-tab" onclick="switchDocTab('loc',this)">🎓 LOC (Completion)</button>
       <button class="doc-tab" onclick="switchDocTab('lor',this)">📝 LOR (Recommendation)</button>
       <button class="doc-tab" onclick="switchDocTab('star',this)">⭐ Star Performer</button>
+      <button class="doc-tab" onclick="switchDocTab('pending-docs',this);loadPendingDocs();" style="background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.25);color:#f59e0b;" id="pendingDocTab">📋 Pending Documents <span id="pendingDocBadge" style="display:none;background:#f59e0b;color:#0a0600;border-radius:99px;font-size:10px;font-weight:800;padding:1px 6px;margin-left:4px;"></span></button>
     </div>
     <!-- OFFER -->
     <div class="doc-panel active" id="doc-offer">
@@ -662,6 +663,62 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         </div>
         <button class="doc-btn" onclick="generateStarCert()">📥 Generate &amp; Download PDF</button>
         <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
+      </div>
+    </div>
+
+    <!-- NEW FEATURE: Pending Documents Panel -->
+    <div class="doc-panel" id="doc-pending-docs">
+      <div class="doc-form-card">
+        <div class="section-header" style="margin-bottom:16px;">
+          <div class="section-title">📋 Student Document Review</div>
+          <span class="section-badge" style="background:rgba(245,158,11,0.1);color:#f59e0b;border-color:rgba(245,158,11,0.2);">Post-Registration Upload Review</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Students who registered and uploaded their Address Proof + Marksheet appear here for review. Once approved, Offer Letters are auto-generated and emailed.</p>
+
+        <!-- Filter row -->
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <button onclick="loadPendingDocs()" style="padding:8px 16px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:8px;color:#f59e0b;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">🔄 Refresh</button>
+          <div id="pendingDocCount" style="padding:8px 16px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;font-size:13px;color:var(--muted);"></div>
+        </div>
+
+        <!-- Loading/empty state -->
+        <div id="pendingDocLoading" style="text-align:center;padding:40px;color:var(--muted);">
+          <div class="spinner" style="margin:0 auto 12px;"></div>
+          Loading pending documents...
+        </div>
+        <div id="pendingDocEmpty" style="display:none;text-align:center;padding:40px;color:var(--muted);">
+          <div style="font-size:40px;margin-bottom:12px;">✅</div>
+          <div>No pending documents. All submissions have been reviewed!</div>
+        </div>
+
+        <!-- Table -->
+        <div id="pendingDocTable" style="display:none;">
+          <!-- Bulk action bar -->
+          <div id="bulkOfferBar" style="display:none;margin-bottom:14px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span style="font-size:13px;color:var(--gold);font-weight:700;"><span id="bulkOfferCount">0</span> selected</span>
+            <button onclick="bulkGenerateOfferLetters()" style="padding:9px 18px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:8px;color:#0a0600;font-size:13px;font-weight:800;cursor:pointer;font-family:'Outfit',sans-serif;">📥 Generate &amp; Email Offer Letters</button>
+            <button onclick="clearPendingDocSelections()" style="padding:9px 14px;background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:8px;color:var(--red);font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">✕ Clear</button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead>
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                  <th style="padding:10px 12px;text-align:left;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">
+                    <input type="checkbox" id="selectAllPending" onchange="toggleAllPendingDocs(this)" style="cursor:pointer;">
+                  </th>
+                  <th style="padding:10px 12px;text-align:left;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Student</th>
+                  <th style="padding:10px 12px;text-align:left;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Domain</th>
+                  <th style="padding:10px 12px;text-align:left;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Documents</th>
+                  <th style="padding:10px 12px;text-align:left;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Submitted</th>
+                  <th style="padding:10px 12px;text-align:left;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="pendingDocTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -2981,6 +3038,204 @@ function closeHRProfileModal() {
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && document.getElementById('hrProfileModal').style.display === 'flex') closeHRProfileModal();
 });
+
+// ══════════════════════════════════════════════════
+// NEW FEATURE: Pending Documents Panel JS
+// ══════════════════════════════════════════════════
+let pendingDocSelections = new Set();
+let pendingDocData = [];
+
+async function loadPendingDocs() {
+  document.getElementById('pendingDocLoading').style.display = 'block';
+  document.getElementById('pendingDocEmpty').style.display   = 'none';
+  document.getElementById('pendingDocTable').style.display   = 'none';
+  pendingDocSelections.clear();
+  updateBulkOfferBar();
+
+  try {
+    const r = await fetch('/api/v2/admin/documents/pending', {
+      headers: { Authorization: hrToken }
+    });
+    const d = await r.json();
+    document.getElementById('pendingDocLoading').style.display = 'none';
+
+    if (!d.success || !d.documents || d.documents.length === 0) {
+      document.getElementById('pendingDocEmpty').style.display = 'block';
+      document.getElementById('pendingDocCount').textContent = '0 submissions';
+      updatePendingBadge(0);
+      return;
+    }
+
+    pendingDocData = d.documents;
+    document.getElementById('pendingDocCount').textContent = `${d.count} submission${d.count !== 1 ? 's' : ''} pending review`;
+    updatePendingBadge(d.count);
+    renderPendingDocTable(d.documents);
+    document.getElementById('pendingDocTable').style.display = 'block';
+  } catch(e) {
+    document.getElementById('pendingDocLoading').style.display = 'none';
+    document.getElementById('pendingDocEmpty').style.display = 'block';
+    document.getElementById('pendingDocEmpty').innerHTML = '<div style="font-size:36px;margin-bottom:10px;">⚠️</div><div>Failed to load. Check console.</div>';
+    console.error('[PendingDocs]', e);
+  }
+}
+
+function updatePendingBadge(count) {
+  const badge = document.getElementById('pendingDocBadge');
+  if (badge) {
+    if (count > 0) { badge.style.display = 'inline'; badge.textContent = count; }
+    else { badge.style.display = 'none'; }
+  }
+}
+
+function renderPendingDocTable(docs) {
+  const tbody = document.getElementById('pendingDocTbody');
+  if (!tbody) return;
+  tbody.innerHTML = docs.map(doc => {
+    const submDate = doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+    const statusTag = doc.uploadStatus === 'pending'
+      ? '<span class="tag tag-pending">⏳ Pending</span>'
+      : '<span class="tag tag-active">🔍 Under Review</span>';
+    const docLinks = [
+      doc.addressProofUrl ? `<a href="${doc.addressProofUrl}" target="_blank" style="color:var(--gold);font-size:12px;display:block;">📄 Address Proof</a>` : '',
+      doc.marksheetUrl    ? `<a href="${doc.marksheetUrl}"    target="_blank" style="color:var(--gold);font-size:12px;display:block;margin-top:4px;">📄 Marksheet</a>` : ''
+    ].join('');
+    return `
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.04);" id="pdrow-${doc.studentId}">
+      <td style="padding:12px;">
+        <input type="checkbox" data-sid="${doc.studentId}" onchange="togglePendingDocRow(this)" style="cursor:pointer;">
+      </td>
+      <td style="padding:12px;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);">${doc.studentName || '—'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:monospace;">${doc.employeeId || '—'}</div>
+        <div style="font-size:11px;color:var(--muted);">${doc.studentEmail || '—'}</div>
+      </td>
+      <td style="padding:12px;font-size:12px;color:var(--muted);">${doc.domain || '—'}<br><span style="font-size:11px;">${doc.tenure || '—'}</span></td>
+      <td style="padding:12px;">${docLinks || '<span style="color:var(--muted);font-size:12px;">—</span>'}</td>
+      <td style="padding:12px;">${statusTag}<br><span style="font-size:11px;color:var(--muted);margin-top:4px;display:block;">${submDate}</span></td>
+      <td style="padding:12px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button onclick="approveSingleOfferLetter('${doc.studentId}')" class="btn-edit-hr" title="Generate & email offer letter">📥 Offer Letter</button>
+          <button onclick="rejectPendingDoc('${doc.studentId}')" class="btn-del-hr" title="Reject and request re-upload">✕ Reject</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function togglePendingDocRow(checkbox) {
+  const sid = checkbox.dataset.sid;
+  if (checkbox.checked) pendingDocSelections.add(sid);
+  else pendingDocSelections.delete(sid);
+  updateBulkOfferBar();
+}
+
+function toggleAllPendingDocs(masterCb) {
+  document.querySelectorAll('#pendingDocTbody input[type="checkbox"]').forEach(cb => {
+    cb.checked = masterCb.checked;
+    const sid = cb.dataset.sid;
+    if (masterCb.checked) pendingDocSelections.add(sid);
+    else pendingDocSelections.delete(sid);
+  });
+  updateBulkOfferBar();
+}
+
+function updateBulkOfferBar() {
+  const bar = document.getElementById('bulkOfferBar');
+  const cnt = document.getElementById('bulkOfferCount');
+  if (!bar || !cnt) return;
+  if (pendingDocSelections.size > 0) {
+    bar.style.display = 'flex';
+    cnt.textContent = pendingDocSelections.size;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearPendingDocSelections() {
+  pendingDocSelections.clear();
+  document.querySelectorAll('#pendingDocTbody input[type="checkbox"]').forEach(cb => cb.checked = false);
+  const masterCb = document.getElementById('selectAllPending');
+  if (masterCb) masterCb.checked = false;
+  updateBulkOfferBar();
+}
+
+async function approveSingleOfferLetter(studentId) {
+  if (!confirm('Generate and email the Offer Letter for this student?')) return;
+  await generateOfferLettersForIds([studentId]);
+}
+
+async function bulkGenerateOfferLetters() {
+  const ids = Array.from(pendingDocSelections);
+  if (ids.length === 0) return;
+  if (!confirm(`Generate and email Offer Letters for ${ids.length} student(s)? This will also mark their documents as approved.`)) return;
+  await generateOfferLettersForIds(ids);
+}
+
+async function generateOfferLettersForIds(studentIds) {
+  const btn = document.querySelector('#bulkOfferBar button');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating...'; }
+  try {
+    const r = await fetch('/api/v2/admin/documents/generate-offer-letters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+      body: JSON.stringify({ studentIds })
+    });
+    const d = await r.json();
+    if (d.success) {
+      const succeeded = d.results.filter(x => x.success).length;
+      hrToast(`✅ Generated ${succeeded} of ${studentIds.length} offer letter(s) and sent via email`, 'success');
+      clearPendingDocSelections();
+      setTimeout(loadPendingDocs, 1500);
+    } else {
+      hrToast('❌ Failed: ' + d.message, 'error');
+    }
+  } catch(e) {
+    hrToast('❌ Network error', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📥 Generate & Email Offer Letters'; }
+  }
+}
+
+async function rejectPendingDoc(studentId) {
+  const reason = prompt('Rejection reason (will be sent to student):',
+    'Documents do not meet requirements. Please re-upload clearer images.');
+  if (reason === null) return;
+  try {
+    const r = await fetch(`/api/v2/admin/documents/reject/${studentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+      body: JSON.stringify({ rejectionReason: reason })
+    });
+    const d = await r.json();
+    if (d.success) {
+      hrToast('✅ Student notified of rejection', 'success');
+      document.getElementById('pdrow-' + studentId)?.remove();
+    } else {
+      hrToast('❌ ' + d.message, 'error');
+    }
+  } catch(e) { hrToast('❌ Network error', 'error'); }
+}
+
+// Auto-load pending docs when documents view is opened
+const _origShowView = showView;
+function showView(v) {
+  _origShowView(v);
+  if (v === 'documents') {
+    // Prime badge count in background
+    setTimeout(loadPendingDocsBadge, 500);
+  }
+}
+
+async function loadPendingDocsBadge() {
+  try {
+    const r = await fetch('/api/v2/admin/documents/pending', { headers: { Authorization: hrToken } });
+    const d = await r.json();
+    if (d.success) updatePendingBadge(d.count || 0);
+  } catch(_) {}
+}
+
+// Load badge on page init
+setTimeout(loadPendingDocsBadge, 2000);
 </script>
 <script src="ten-motion.js"></script>
 </body>

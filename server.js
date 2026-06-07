@@ -4232,6 +4232,30 @@ try {
     console.error("[V2] Failed to mount quiz routes:", e.message);
 }
 
+// NEW FEATURE: Document Upload + Offer Letter routes
+try {
+    const v2Documents = require("./routes/v2/documents");
+    app.use("/api/v2", v2Documents);
+    console.log("[V2] Document routes mounted at /api/v2");
+} catch(e) {
+    console.error("[V2] Failed to mount document routes:", e.message);
+}
+
+// NEW FEATURE: Certificate + Psychology Trigger routes
+try {
+    const v2Certificates = require("./routes/v2/certificates");
+    app.use("/api/v2", v2Certificates);
+    console.log("[V2] Certificate routes mounted at /api/v2");
+} catch(e) {
+    console.error("[V2] Failed to mount certificate routes:", e.message);
+}
+
+// NEW FEATURE: Serve uploaded certificates, documents, and offer letters
+const expressModule = require("express");
+app.use("/uploads/certificates", expressModule.static("uploads/certificates"));
+app.use("/uploads/documents",    expressModule.static("uploads/documents"));
+app.use("/uploads/offer-letters", expressModule.static("uploads/offer-letters"));
+
 // ================= SERVER =================
 
 // (PORT already declared earlier)

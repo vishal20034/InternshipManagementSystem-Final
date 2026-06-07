@@ -1493,6 +1493,9 @@ button:active { transform: translateY(0); }
     <button class="stu-nav-btn" data-view="stu-view-test" onclick="switchStudentView('stu-view-test')"><span class="nav-icon">📝</span> Take Test</button>
     <button class="stu-nav-btn" data-view="stu-view-guidelines" onclick="switchStudentView('stu-view-guidelines')"><span class="nav-icon">📋</span> Guidelines</button>
     <button class="stu-nav-btn" data-view="stu-view-leaderboard" onclick="switchStudentView('stu-view-leaderboard')"><span class="nav-icon">🏆</span> Leaderboard &amp; Badges</button>
+    <!-- NEW FEATURE: Document Upload + Certificates nav links -->
+    <button class="stu-nav-btn" onclick="window.location.href='my-documents.html'" style="background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(245,158,11,0.02));border:1px solid rgba(245,158,11,0.18);"><span class="nav-icon">📋</span> My Documents <span style="font-size:10px;background:rgba(245,158,11,0.2);color:#f59e0b;padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:800;">NEW</span></button>
+    <button class="stu-nav-btn" onclick="window.location.href='my-certificates.html'" style="background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(139,92,246,0.02));border:1px solid rgba(139,92,246,0.18);"><span class="nav-icon">🏅</span> My Certificates <span style="font-size:10px;background:rgba(139,92,246,0.2);color:#c4b5fd;padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:800;">NEW</span></button>
   </nav>
   <div class="theme-toggle-wrap" style="padding:12px 20px;border-top:1px solid rgba(212,175,55,0.08);">
     <span style="font-size:12px;color:#6a7a94;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:block;">Theme</span>
@@ -1505,6 +1508,17 @@ button:active { transform: translateY(0); }
 </div>
 
 <div class="page-wrapper">
+
+  <!-- NEW FEATURE: Persistent Document Upload Banner -->
+  <div id="docUploadBanner" style="display:none;background:linear-gradient(90deg,rgba(245,158,11,0.12),rgba(245,158,11,0.06));border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:14px 20px;margin-bottom:18px;display:none;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span style="font-size:22px;">📋</span>
+    <div style="flex:1;">
+      <div style="font-size:13px;font-weight:700;color:#f59e0b;" id="docBannerTitle">Upload Your Documents</div>
+      <div style="font-size:12px;color:rgba(245,158,11,0.7);margin-top:2px;" id="docBannerDesc">Submit your Address Proof &amp; Marksheet to receive your Offer Letter</div>
+    </div>
+    <a href="my-documents.html" style="padding:9px 18px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.35);border-radius:10px;color:#f59e0b;font-size:13px;font-weight:700;text-decoration:none;flex-shrink:0;" id="docBannerBtn">Upload Now →</a>
+    <button onclick="document.getElementById('docUploadBanner').style.display='none'" style="background:none;border:none;color:rgba(245,158,11,0.5);cursor:pointer;font-size:18px;padding:4px;line-height:1;">×</button>
+  </div>
 
   <!-- ── Notification Panel ── -->
   <div class="notif-overlay" id="notifOverlay" onclick="closeNotifPanel()"></div>
@@ -1600,6 +1614,18 @@ button:active { transform: translateY(0); }
         <div class="sec-card-icon">🪙</div>
         <div class="sec-card-title" style="color:#D4AF37;">Task Journey <span style="font-size:10px;background:rgba(212,175,55,0.2);color:#D4AF37;padding:1px 7px;border-radius:4px;margin-left:4px;font-weight:800;vertical-align:middle;">NEW</span></div>
         <div class="sec-card-desc">Weekly tasks, coins &amp; sequential unlocks</div>
+      </div>
+      <!-- NEW FEATURE: My Documents card -->
+      <div class="sec-card" onclick="window.location.href='my-documents.html'" style="border-color:rgba(245,158,11,0.25);background:linear-gradient(135deg,rgba(245,158,11,0.06),rgba(245,158,11,0.02));">
+        <div class="sec-card-icon">📋</div>
+        <div class="sec-card-title" style="color:#f59e0b;">My Documents <span style="font-size:10px;background:rgba(245,158,11,0.2);color:#f59e0b;padding:1px 7px;border-radius:4px;margin-left:4px;font-weight:800;vertical-align:middle;">NEW</span></div>
+        <div class="sec-card-desc">Upload address proof &amp; marksheet to get your Offer Letter</div>
+      </div>
+      <!-- NEW FEATURE: My Certificates card -->
+      <div class="sec-card" onclick="window.location.href='my-certificates.html'" style="border-color:rgba(139,92,246,0.25);background:linear-gradient(135deg,rgba(139,92,246,0.06),rgba(139,92,246,0.02));">
+        <div class="sec-card-icon">🏅</div>
+        <div class="sec-card-title" style="color:#c4b5fd;">My Certificates <span style="font-size:10px;background:rgba(139,92,246,0.2);color:#c4b5fd;padding:1px 7px;border-radius:4px;margin-left:4px;font-weight:800;vertical-align:middle;">NEW</span></div>
+        <div class="sec-card-desc">Expert, Nano Degree &amp; Fellowship certificates</div>
       </div>
     </div>
   </div>
@@ -2167,6 +2193,41 @@ if(tenTagEl) tenTagEl.innerText = "TEN — The Entrepreneurship Network";
 
 let currentTask = "";
 let latestSubmissions = [];
+
+// NEW FEATURE: Load document upload banner
+async function loadDocUploadBanner() {
+  if (!employeeId) return;
+  try {
+    const r = await fetch('/api/v2/documents/my-status', { headers: { 'x-employee-id': employeeId } });
+    const d = await r.json();
+    if (!d.success) return;
+    const banner  = document.getElementById('docUploadBanner');
+    const title   = document.getElementById('docBannerTitle');
+    const desc    = document.getElementById('docBannerDesc');
+    const btn     = document.getElementById('docBannerBtn');
+    if (!banner) return;
+    if (d.status === 'not_uploaded' || d.status === 'rejected') {
+      banner.style.display = 'flex';
+      if (d.status === 'rejected') {
+        title.textContent = '❌ Documents Rejected — Please Re-upload';
+        desc.textContent  = d.rejectionReason || 'Your documents need to be re-uploaded.';
+        btn.textContent   = 'Re-upload →';
+      }
+    } else if (d.status === 'pending' || d.status === 'under_review') {
+      banner.style.display = 'flex';
+      banner.style.background = 'linear-gradient(90deg,rgba(59,130,246,0.12),rgba(59,130,246,0.06))';
+      banner.style.borderColor = 'rgba(59,130,246,0.25)';
+      title.style.color = '#60a5fa';
+      desc.style.color  = 'rgba(96,165,250,0.7)';
+      title.textContent = '🔍 Documents Under Review';
+      desc.textContent  = 'HR is reviewing your documents. Offer Letter will be emailed once approved.';
+      btn.textContent   = 'View Status →';
+      btn.style.color   = '#60a5fa';
+      btn.style.borderColor = 'rgba(59,130,246,0.35)';
+    }
+  } catch(_) {}
+}
+setTimeout(loadDocUploadBanner, 1200);
 
 // Hardcoded domain tasks (always shown under "Your Domain Tasks")
 const tasksByDomain = {

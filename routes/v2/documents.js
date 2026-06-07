@@ -1,0 +1,340 @@
+// NEW FEATURE: Document Upload + Offer Letter Routes
+// All routes under /api/v2/documents/ and /api/v2/admin/documents/
+"use strict";
+
+const express         = require("express");
+const router          = express.Router();
+const multer          = require("multer");
+const path            = require("path");
+const fs              = require("fs");
+const nodemailer      = require("nodemailer");
+const Student         = require("../../models/Student");
+const StudentDocument = require("../../models/new/StudentDocument");
+const { generateOfferLetterPDF } = require("../../services/v2/offerLetterService");
+
+// ── Multer storage for documents ──
+const uploadsDir = path.join(__dirname, "../../uploads/documents");
+try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch (_) {}
+
+const docStorage = multer.diskStorage({
+    destination: (_, __, cb) => cb(null, uploadsDir),
+    filename: (req, file, cb) => {
+        const studentId = req.student?._id?.toString() || "unknown";
+        const ext       = path.extname(file.originalname).toLowerCase();
+        const type      = req.docType || "file";
+        cb(null, `${studentId}_${type}${ext}`);
+    }
+});
+
+const docUpload = multer({
+    storage: docStorage,
+    limits:  { fileSize: 5 * 1024 * 1024 }, // 5MB
+    fileFilter: (_, file, cb) => {
+        const allowed = [".jpg", ".jpeg", ".png", ".pdf"];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (allowed.includes(ext)) return cb(null, true);
+        cb(new Error("Only JPG, PNG, PDF files are allowed"));
+    }
+});
+
+// ── Auth middleware (student) ──
+async function requireStudent(req, res, next) {
+    try {
+        const employeeId = req.headers["x-employee-id"] || req.body.employeeId || req.query.employeeId;
+        if (!employeeId) return res.status(401).json({ success: false, message: "Authentication required" });
+        const student = await Student.findOne({ employeeId: String(employeeId) });
+        if (!student) return res.status(401).json({ success: false, message: "Student not found" });
+        req.student = student;
+        next();
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Auth error" });
+    }
+}
+
+// ── Auth middleware (HR) ──
+// Accepts the same "Bearer hr_XXX" token the existing HR portal sends
+async function requireHR(req, res, next) {
+    try {
+        const auth = req.headers["authorization"] || req.headers["Authorization"] || "";
+        // Accept the existing HR portal token format (same validation as existing /hr/* routes)
+        if (auth && auth.startsWith("Bearer hr_")) {
+            req.hrUser = { token: auth };
+            return next();
+        }
+        return res.status(401).json({ success: false, message: "HR authentication required — please log in to the HR portal" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "HR auth error" });
+    }
+}
+
+// ── Mailer helper ──
+function createTransporter() {
+    return nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: process.env.EMAIL_US, pass: process.env.EMAIL_PASS }
+    });
+}
+
+// ════════════════════════════════
+// STUDENT ROUTES
+// ════════════════════════════════
+
+// GET /api/v2/documents/my-status
+// Returns current document status for logged-in student
+router.get("/documents/my-status", requireStudent, async (req, res) => {
+    try {
+        let doc = await StudentDocument.findOne({ studentId: req.student._id });
+        if (!doc) {
+            doc = await StudentDocument.create({ studentId: req.student._id });
+        }
+        res.json({
+            success: true,
+            status: doc.uploadStatus,
+            addressProofUrl: doc.addressProofUrl ? `/uploads/documents/${path.basename(doc.addressProofUrl)}` : null,
+            marksheetUrl: doc.marksheetUrl ? `/uploads/documents/${path.basename(doc.marksheetUrl)}` : null,
+            rejectionReason: doc.rejectionReason,
+            offerLetterUrl: doc.offerLetterUrl,
+            uploadedAt: doc.uploadedAt
+        });
+    } catch (err) {
+        console.error("[DOCS] my-status error:", err.message);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// POST /api/v2/documents/upload-address-proof
+// Multipart upload for address proof
+router.post("/documents/upload-address-proof", requireStudent, (req, res, next) => {
+    req.docType = "address_proof";
+    next();
+}, docUpload.single("file"), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+        let doc = await StudentDocument.findOne({ studentId: req.student._id });
+        if (!doc) doc = new StudentDocument({ studentId: req.student._id });
+        // Remove old file if exists
+        if (doc.addressProofUrl && fs.existsSync(doc.addressProofUrl)) {
+            try { fs.unlinkSync(doc.addressProofUrl); } catch (_) {}
+        }
+        doc.addressProofUrl = req.file.path;
+        if (doc.uploadStatus === "rejected") doc.uploadStatus = "not_uploaded";
+        await doc.save();
+        res.json({
+            success: true,
+            message: "Address proof uploaded successfully",
+            fileUrl: `/uploads/documents/${req.file.filename}`
+        });
+    } catch (err) {
+        console.error("[DOCS] upload-address-proof error:", err.message);
+        res.status(500).json({ success: false, message: "Upload failed" });
+    }
+});
+
+// POST /api/v2/documents/upload-marksheet
+// Multipart upload for marksheet
+router.post("/documents/upload-marksheet", requireStudent, (req, res, next) => {
+    req.docType = "marksheet";
+    next();
+}, docUpload.single("file"), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+        let doc = await StudentDocument.findOne({ studentId: req.student._id });
+        if (!doc) doc = new StudentDocument({ studentId: req.student._id });
+        // Remove old file if exists
+        if (doc.marksheetUrl && fs.existsSync(doc.marksheetUrl)) {
+            try { fs.unlinkSync(doc.marksheetUrl); } catch (_) {}
+        }
+        doc.marksheetUrl = req.file.path;
+        if (doc.uploadStatus === "rejected") doc.uploadStatus = "not_uploaded";
+        await doc.save();
+        res.json({
+            success: true,
+            message: "Marksheet uploaded successfully",
+            fileUrl: `/uploads/documents/${req.file.filename}`
+        });
+    } catch (err) {
+        console.error("[DOCS] upload-marksheet error:", err.message);
+        res.status(500).json({ success: false, message: "Upload failed" });
+    }
+});
+
+// POST /api/v2/documents/submit
+// Marks status as 'pending', triggers HR notification
+router.post("/documents/submit", requireStudent, async (req, res) => {
+    try {
+        const doc = await StudentDocument.findOne({ studentId: req.student._id });
+        if (!doc || !doc.addressProofUrl || !doc.marksheetUrl) {
+            return res.status(400).json({ success: false, message: "Please upload both documents first" });
+        }
+        if (doc.uploadStatus === "pending" || doc.uploadStatus === "under_review" || doc.uploadStatus === "approved") {
+            return res.json({ success: true, status: doc.uploadStatus, message: "Already submitted" });
+        }
+        doc.uploadStatus = "pending";
+        doc.uploadedAt   = new Date();
+        doc.rejectionReason = null;
+        await doc.save();
+
+        // Notify HR via email (best-effort)
+        try {
+            const transporter = createTransporter();
+            await transporter.sendMail({
+                from:    process.env.EMAIL_US,
+                to:      process.env.EMAIL_US,
+                subject: `[TEN] New Document Submission — ${req.student.name} (${req.student.employeeId})`,
+                html:    `<p>Student <strong>${req.student.name}</strong> (${req.student.employeeId}) has submitted their documents for review.</p><p>Please log in to the HR portal → Generate Documents → Pending to review.</p>`
+            });
+        } catch (_) {}
+
+        res.json({ success: true, status: "pending", message: "Documents submitted for HR review" });
+    } catch (err) {
+        console.error("[DOCS] submit error:", err.message);
+        res.status(500).json({ success: false, message: "Submit failed" });
+    }
+});
+
+// ════════════════════════════════
+// HR ADMIN ROUTES
+// ════════════════════════════════
+
+// GET /api/v2/admin/documents/pending
+// HR sees all students with pending/under_review documents
+router.get("/admin/documents/pending", requireHR, async (req, res) => {
+    try {
+        const docs = await StudentDocument.find({
+            uploadStatus: { $in: ["pending", "under_review"] }
+        }).sort({ uploadedAt: 1 });
+
+        const result = await Promise.all(docs.map(async (doc) => {
+            const student = await Student.findById(doc.studentId).select("name email employeeId domain tenure joiningDate").lean();
+            if (!student) return null;
+            return {
+                studentId:      doc.studentId,
+                documentId:     doc._id,
+                studentName:    student.name,
+                studentEmail:   student.email,
+                employeeId:     student.employeeId,
+                domain:         student.domain,
+                tenure:         student.tenure,
+                joiningDate:    student.joiningDate,
+                uploadStatus:   doc.uploadStatus,
+                uploadedAt:     doc.uploadedAt,
+                addressProofUrl: doc.addressProofUrl ? `/uploads/documents/${path.basename(doc.addressProofUrl)}` : null,
+                marksheetUrl:    doc.marksheetUrl    ? `/uploads/documents/${path.basename(doc.marksheetUrl)}`    : null
+            };
+        }));
+
+        res.json({ success: true, count: result.filter(Boolean).length, documents: result.filter(Boolean) });
+    } catch (err) {
+        console.error("[DOCS] pending error:", err.message);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// POST /api/v2/admin/documents/generate-offer-letters
+// Bulk: HR selects students, generates + emails offer letters
+router.post("/admin/documents/generate-offer-letters", requireHR, async (req, res) => {
+    try {
+        const { studentIds } = req.body;
+        if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+            return res.status(400).json({ success: false, message: "No students selected" });
+        }
+
+        const results = [];
+        const offerDir = path.join(__dirname, "../../uploads/offer-letters");
+        try { fs.mkdirSync(offerDir, { recursive: true }); } catch (_) {}
+
+        for (const sid of studentIds) {
+            try {
+                const student = await Student.findById(sid);
+                const docRec  = await StudentDocument.findOne({ studentId: sid });
+                if (!student || !docRec) { results.push({ studentId: sid, success: false, error: "Not found" }); continue; }
+
+                // Calculate dates
+                const joining = student.joiningDate ? new Date(student.joiningDate) : new Date();
+                const tenureDays = student.tenure === "45 Days" ? 45 : student.tenure === "1 Month" ? 30 : student.tenure === "3 Months" ? 90 : student.tenure === "6 Months" ? 180 : 45;
+                const endDate   = new Date(joining.getTime() + tenureDays * 24 * 3600 * 1000);
+                const fmt = d => d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+
+                const pdfPath = path.join(offerDir, `${student.employeeId || sid}_offer_letter.pdf`);
+                await generateOfferLetterPDF({
+                    studentName:    student.name,
+                    collegeName:    student.collegeName || student.college || "",
+                    employeeId:     student.employeeId,
+                    domain:         student.domain,
+                    durationText:   student.tenure,
+                    startDate:      fmt(joining),
+                    endDate:        fmt(endDate),
+                    dateIssued:     fmt(new Date()),
+                    documentNumber: `TEN/OL/${Date.now().toString().slice(-6)}`
+                }, pdfPath);
+
+                // Update status
+                docRec.uploadStatus     = "approved";
+                docRec.reviewedAt       = new Date();
+                docRec.offerLetterUrl   = `/uploads/offer-letters/${path.basename(pdfPath)}`;
+                docRec.offerLetterSentAt = new Date();
+                await docRec.save();
+
+                // Email offer letter to student
+                try {
+                    const transporter = createTransporter();
+                    await transporter.sendMail({
+                        from:    process.env.EMAIL_US,
+                        to:      student.email,
+                        subject: `Your Internship Offer Letter — The Entrepreneurship Network`,
+                        html:    `<p>Dear ${student.name},</p><p>Congratulations! Please find your Internship Offer Letter attached to this email.</p><p>Welcome to TEN! Log in to your student portal to track your progress.</p><p>Best regards,<br>HR Team<br>The Entrepreneurship Network</p>`,
+                        attachments: [{ filename: "TEN_Offer_Letter.pdf", path: pdfPath }]
+                    });
+                } catch (mailErr) {
+                    console.error("[DOCS] email error for", student.email, mailErr.message);
+                }
+
+                results.push({ studentId: sid, success: true, studentName: student.name, offerLetterUrl: docRec.offerLetterUrl });
+            } catch (err) {
+                results.push({ studentId: sid, success: false, error: err.message });
+            }
+        }
+
+        const succeeded = results.filter(r => r.success).length;
+        res.json({ success: true, message: `Generated ${succeeded} of ${studentIds.length} offer letters`, results });
+    } catch (err) {
+        console.error("[DOCS] generate-offer-letters error:", err.message);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// PATCH /api/v2/admin/documents/reject/:studentId
+// HR rejects documents with a reason
+router.patch("/admin/documents/reject/:studentId", requireHR, async (req, res) => {
+    try {
+        const { rejectionReason } = req.body;
+        const doc = await StudentDocument.findOne({ studentId: req.params.studentId });
+        if (!doc) return res.status(404).json({ success: false, message: "Document record not found" });
+
+        doc.uploadStatus    = "rejected";
+        doc.rejectionReason = rejectionReason || "Documents did not meet the requirements. Please re-upload.";
+        doc.reviewedAt      = new Date();
+        await doc.save();
+
+        // Notify student
+        try {
+            const student = await Student.findById(req.params.studentId).select("email name");
+            if (student) {
+                const transporter = createTransporter();
+                await transporter.sendMail({
+                    from:    process.env.EMAIL_US,
+                    to:      student.email,
+                    subject: `[TEN] Document Review Update`,
+                    html:    `<p>Dear ${student.name},</p><p>Your submitted documents have been reviewed and require re-submission.</p><p><strong>Reason:</strong> ${doc.rejectionReason}</p><p>Please log in to your student portal and re-upload your documents.</p>`
+                });
+            }
+        } catch (_) {}
+
+        res.json({ success: true, message: "Documents rejected", rejectionReason: doc.rejectionReason });
+    } catch (err) {
+        console.error("[DOCS] reject error:", err.message);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+module.exports = router;
