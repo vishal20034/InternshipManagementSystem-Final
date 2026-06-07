@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TEN — Intern Registration</title>
 <link rel="stylesheet" href="ten-theme.css">
+<link rel="stylesheet" href="ten-motion.css">
 <style>
 
 body {
@@ -306,7 +307,7 @@ body {
 <div class="reg-wrap">
 
   <!-- ── Left Panel ── -->
-  <div class="reg-left">
+  <div class="reg-left ten-slide-left">
 
     <div>
       <div class="brand-block">
@@ -355,10 +356,10 @@ body {
   </div>
 
   <!-- ── Right Form ── -->
-  <div class="reg-right">
+  <div class="reg-right ten-slide-right">
 
     <div class="form-header">
-      <h2>Intern Registration</h2>
+      <h2 class="ten-shimmer">Intern Registration</h2>
       <p>Create your account to access the TEN internship platform</p>
     </div>
 
@@ -495,5 +496,6 @@ form.addEventListener("submit", async (e) => {
 });
 </script>
 
+<script src="ten-motion.js"></script>
 </body>
 </html>

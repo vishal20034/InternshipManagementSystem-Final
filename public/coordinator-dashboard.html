@@ -11,6 +11,7 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>TEN — Coordinator Dashboard</title>
 <link rel="stylesheet" href="ten-theme.css">
+<link rel="stylesheet" href="ten-motion.css">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
@@ -844,7 +845,7 @@ body::before {
 
   <!-- ══════ SECTION CARD GRID ══════ -->
   <div id="coordCardGrid">
-    <h1 class="section-cards-heading">Coordinator Panel</h1>
+    <h1 class="section-cards-heading ten-shimmer">Coordinator Panel</h1>
     <p class="section-cards-sub">Select a section to manage</p>
     <div class="section-card-grid">
       <div class="sec-card" onclick="openCoordModal('submissions')">
@@ -3265,5 +3266,6 @@ function acknowledgeCoordInstructions() {
 // ===== END COORDINATOR ONBOARDING POPUP =====
 </script>
 
+<script src="ten-motion.js"></script>
 </body>
 </html>

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TEN — Student Login</title>
 <link rel="stylesheet" href="ten-theme.css">
+<link rel="stylesheet" href="ten-motion.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
 
@@ -200,18 +201,18 @@ html, body {
 <div class="login-wrap">
 
   <div class="brand-header">
-    <div class="brand-logo-ring">
+    <div class="brand-logo-ring ten-float">
       <img src="ten-logo.png" alt="TEN Logo" style="width:48px;height:48px;object-fit:contain;display:block;filter:drop-shadow(0 0 8px rgba(212,175,55,0.4));" />
     </div>
     <div class="brand-name">TEN</div>
     <div class="brand-full">The Entrepreneurship Network</div>
   </div>
 
-  <div class="login-card">
-    <div class="card-title">Student Login</div>
-    <p class="card-sub">Cloud · DevOps · AI · Cyber Security · Web Dev & more</p>
+  <div class="login-card ten-animated-border">
+    <div class="card-title ten-fade-up ten-d1">Student Login</div>
+    <p class="card-sub ten-fade-up ten-d2">Cloud · DevOps · AI · Cyber Security · Web Dev & more</p>
 
-    <form id="loginForm">
+    <form id="loginForm" class="ten-fade-up ten-d3">
       <div class="field-group">
         <label class="field-label">Employee ID</label>
         <input class="field-input" type="text" id="employeeId" placeholder="Enter your Employee ID" required>
@@ -303,5 +304,6 @@ form.addEventListener("submit", async (e) => {
 });
 </script>
 
+<script src="ten-motion.js"></script>
 </body>
 </html>

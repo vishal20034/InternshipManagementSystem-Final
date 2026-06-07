@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Mark Attendance — TEN</title>
+<link rel="stylesheet" href="ten-motion.css">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{ --gold:#f5c542; --gold-dim:#c9a227; --bg:#04070f; --card:#0c1220; --border:rgba(245,197,66,.22); --text:#f0eee8; --muted:#9aa4bf; --green:#10b981; --red:#f43f5e; --blue:#3b82f6; }
@@ -39,11 +40,11 @@ h1{ font-size:20px; font-weight:800; margin-bottom:6px; }
 <div class="bg-grid"></div>
 <div class="wrap">
   <div class="brand">
-    <div class="brand-logo">📋</div>
+    <div class="brand-logo ten-glow-pulse ten-float">📋</div>
     <div class="brand-title"><span>TEN</span> Attendance</div>
     <div class="brand-sub">Coordinator-verified scan</div>
   </div>
-  <div class="card">
+  <div class="card ten-qr-radar">
     <div id="domainHeader"></div>
     <h1 id="title">Mark Your Attendance</h1>
     <p class="sub" id="subtitle">Scan verified by coordinator. Enter your credentials to record today's class attendance.</p>
@@ -105,5 +106,6 @@ async function markIt(){
 
 document.addEventListener("keydown", e => { if(e.key === "Enter") markIt(); });
 </script>
+<script src="ten-motion.js"></script>
 </body>
 </html>

@@ -11,6 +11,7 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>HR Portal — TEN Internship</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Dancing+Script:wght@700&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ten-motion.css">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -401,7 +402,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
 <main class="main">
   <div class="topbar">
     <button class="hamburger-btn" onclick="toggleSidebar()">&#9776;</button>
-    <div class="page-title" id="pageTitle"><span>Dashboard</span> Overview</div>
+    <div class="page-title ten-shimmer" id="pageTitle"><span>Dashboard</span> Overview</div>
     <div class="topbar-right">
       <div class="date-badge" id="dateBadge"></div>
       <button onclick="openHRProfileModal()" title="My Profile"
@@ -2942,5 +2943,6 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && document.getElementById('hrProfileModal').style.display === 'flex') closeHRProfileModal();
 });
 </script>
+<script src="ten-motion.js"></script>
 </body>
 </html>

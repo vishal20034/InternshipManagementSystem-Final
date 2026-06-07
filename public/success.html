@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TEN — Registration Successful</title>
 <link rel="stylesheet" href="ten-theme.css">
+<link rel="stylesheet" href="ten-motion.css">
 <style>
 
 html, body {
@@ -127,7 +128,7 @@ h1 {
 <div class="ten-orb ten-orb-2"></div>
 
 <div class="success-wrap">
-  <div class="success-card">
+  <div class="success-card ten-scale-in">
 
     <div class="brand-tag">
       <svg width="14" height="12" viewBox="0 0 14 12" fill="none">
@@ -137,7 +138,7 @@ h1 {
       TEN
     </div>
 
-    <div class="success-icon">✓</div>
+    <div class="success-icon ten-glow-pulse">✓</div>
 
     <h1>Registration Successful!</h1>
 
@@ -160,7 +161,20 @@ setTimeout(() => {
   sessionStorage.removeItem("redirectAfterSuccess");
   window.location.href = redirect;
 }, 1500);
+(function confetti(){
+  for(let i=0;i<60;i++){
+    const d=document.createElement('div');
+    d.style.cssText=`position:fixed;top:-10px;left:${Math.random()*100}vw;
+      width:${4+Math.random()*6}px;height:${4+Math.random()*6}px;
+      background:hsl(${Math.random()*60+30},80%,60%);border-radius:${Math.random()>0.5?'50%':'2px'};
+      animation:ten-particleRise ${2+Math.random()*3}s ${Math.random()*2}s linear forwards;
+      transform:rotate(${Math.random()*360}deg);z-index:9999;pointer-events:none;`;
+    document.body.appendChild(d);
+    setTimeout(()=>d.remove(),6000);
+  }
+})();
 </script>
 
+<script src="ten-motion.js"></script>
 </body>
 </html>

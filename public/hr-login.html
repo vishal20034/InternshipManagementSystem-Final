@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TEN — HR Portal</title>
 <link rel="stylesheet" href="ten-theme.css">
+<link rel="stylesheet" href="ten-motion.css">
 <style>
 
 html, body { height: 100%; overflow: hidden; }
@@ -181,16 +182,16 @@ input::placeholder { color: #2a2018; }
 <div class="hr-wrap">
 
   <div class="logo-section">
-    <div class="logo-badge">
+    <div class="logo-badge ten-float">
       <img src="ten-logo.png" alt="TEN Logo" style="width:48px;height:48px;object-fit:contain;display:block;filter:drop-shadow(0 0 8px rgba(212,175,55,0.4));" />
     </div>
     <div class="logo-title"><span>TEN</span> HR Portal</div>
     <div class="logo-sub">Human Resources Management</div>
   </div>
 
-  <div class="hr-card">
-    <div class="card-title">HR Sign In</div>
-    <p class="card-sub">Access the HR management and reporting dashboard</p>
+  <div class="hr-card ten-animated-border">
+    <div class="card-title ten-fade-up ten-d1">HR Sign In</div>
+    <p class="card-sub ten-fade-up ten-d2">Access the HR management and reporting dashboard</p>
 
     <div class="form-group">
       <label>HR Email</label>
@@ -201,7 +202,7 @@ input::placeholder { color: #2a2018; }
       <input type="password" id="password" placeholder="Enter password">
     </div>
 
-    <button class="submit-btn" onclick="doLogin()">Sign In to HR Portal</button>
+    <button class="submit-btn ten-fade-up ten-d3" onclick="doLogin()">Sign In to HR Portal</button>
     <div class="error-msg" id="errMsg">Invalid credentials. Please try again.</div>
 
     <div style="text-align:center; margin-top:18px; font-size:13px;">
@@ -257,5 +258,6 @@ async function doLogin() {
 document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 </script>
 
+<script src="ten-motion.js"></script>
 </body>
 </html>

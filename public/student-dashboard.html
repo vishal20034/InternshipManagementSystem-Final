@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <title>TEN — Student Dashboard</title>
 <link rel="stylesheet" href="ten-theme.css">
-<link rel="stylesheet" href="ten-theme.css">
+<link rel="stylesheet" href="ten-motion.css">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -1519,7 +1519,7 @@ button:active { transform: translateY(0); }
   <!-- ── TOPBAR ── -->
   <div class="stu-topbar">
     <button class="hamburger-btn" onclick="toggleSidebar()">☰</button>
-    <div class="stu-topbar-title">My Dashboard</div>
+    <div class="stu-topbar-title ten-shimmer">My Dashboard</div>
     <div class="stu-topbar-actions">
       <button class="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications">
         🔔
@@ -3898,6 +3898,7 @@ function acknowledgeInstructions() {
 // ===== END ONBOARDING POPUP =====
 </script>
 
+<script src="ten-motion.js"></script>
 </body>
 </html>
 
