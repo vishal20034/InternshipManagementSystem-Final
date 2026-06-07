@@ -88,7 +88,8 @@ const studentsSchema = new mongoose.Schema({
     // ===== Document verification =====
     documentVerified:     { type: Boolean, default: false },
     documentVerifiedAt:   { type: Date },
-    documentNumber:       { type: String, default: "" }
+    documentNumber:       { type: String, default: "" },
+    lastActiveDate:       { type: Date }
 }, {
     timestamps: true
 });
