@@ -480,6 +480,8 @@ form.addEventListener("submit", async (e) => {
 
     if (data.success) {
       sessionStorage.setItem("redirectAfterSuccess", "groups.html");
+      sessionStorage.setItem("reg_employeeId", data.employeeId || "");
+      sessionStorage.setItem("reg_password", data.password || "");
       window.location.href = "success.html";
     } else if (data.already) {
       document.getElementById("registerForm").style.display = "none";

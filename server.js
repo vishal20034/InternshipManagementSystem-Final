@@ -710,7 +710,7 @@ try{
         }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
     }
 
-    res.json({ success:true, employeeId, secondDomain: !isFirstRegistration });
+    res.json({ success:true, employeeId, password, secondDomain: !isFirstRegistration });
 
 }catch(error){ console.log(error); res.status(500).json({ success:false, message:"Server Error" }); }
 });

@@ -24,55 +24,21 @@ html, body {
   animation: ten-fadeUp 0.5s ease both;
 }
 
-.success-card {
+.cred-card {
   background: var(--ten-card);
   border: 1px solid var(--ten-border);
   border-radius: var(--ten-r-xl);
-  padding: 60px 72px;
+  padding: 54px 56px;
   box-shadow: var(--ten-shadow-lg), var(--ten-glow-gold);
   position: relative;
   overflow: hidden;
-  max-width: 520px;
+  width: min(560px, calc(100vw - 48px));
 }
-.success-card::before {
+.cred-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; height: 2px;
   background: linear-gradient(90deg, transparent, var(--ten-gold), transparent);
-}
-
-.success-icon {
-  width: 80px; height: 80px;
-  background: var(--ten-gold-bg);
-  border: 1px solid var(--ten-border-strong);
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 38px;
-  margin-bottom: 24px;
-  animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
-  animation-delay: 0.2s;
-}
-@keyframes pop {
-  from { transform: scale(0); opacity: 0; }
-  to   { transform: scale(1); opacity: 1; }
-}
-
-h1 {
-  font-family: var(--ten-font-display);
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--ten-text);
-  margin-bottom: 12px;
-}
-
-.success-sub {
-  font-size: 14px;
-  color: var(--ten-text-sub);
-  line-height: 1.75;
-  margin-bottom: 32px;
 }
 
 .brand-tag {
@@ -88,35 +54,135 @@ h1 {
   letter-spacing: 2px;
   color: var(--ten-gold);
   text-transform: uppercase;
-  margin-bottom: 24px;
+  margin-bottom: 22px;
 }
 
-/* Progress bar */
-.progress-wrap {
-  height: 3px;
-  background: rgba(255,255,255,0.06);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-top: 12px;
+.success-icon {
+  width: 80px; height: 80px;
+  background: var(--ten-gold-bg);
+  border: 1px solid var(--ten-border-strong);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  margin-bottom: 18px;
+  animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  animation-delay: 0.2s;
 }
-.progress-bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--ten-gold), var(--ten-gold-light));
-  border-radius: 3px;
-  animation: fill-bar 1.5s linear forwards;
-}
-@keyframes fill-bar {
-  from { width: 0%; }
-  to   { width: 100%; }
+@keyframes pop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
 }
 
-.redirect-note {
-  margin-top: 16px;
-  font-size: 12px;
+h1 {
+  font-family: var(--ten-font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--ten-text);
+  margin-bottom: 10px;
+}
+
+.success-sub {
+  font-size: 13px;
+  color: var(--ten-text-sub);
+  line-height: 1.8;
+  margin-bottom: 26px;
+}
+
+.cred-list {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+
+.cred-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 14px;
+  border: 1px solid var(--ten-border);
+  border-radius: var(--ten-r-lg);
+  background: rgba(255,255,255,0.02);
+}
+
+.cred-label {
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
   color: var(--ten-text-muted);
+  font-weight: 800;
+}
+
+.cred-value {
   font-family: var(--ten-font-mono);
-  letter-spacing: 0.5px;
+  color: var(--ten-text);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-btn {
+  padding: 10px 14px;
+  border-radius: var(--ten-r-lg);
+  border: 1px solid var(--ten-border-strong);
+  background: rgba(255,255,255,0.03);
+  color: var(--ten-text-sub);
+  font-family: var(--ten-font-display);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+.copy-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--ten-gold);
+  background: rgba(212,175,55,0.08);
+  color: var(--ten-gold);
+}
+.copy-btn:disabled {
+  opacity: 0.75;
+  cursor: default;
+  transform: none;
+}
+
+.cred-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--ten-border);
+  border-radius: var(--ten-r-lg);
+  background: rgba(212,175,55,0.06);
+  color: var(--ten-text-sub);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.continue-btn {
+  width: 100%;
+  margin-top: 20px;
+  padding: 15px 16px;
+  border: none;
+  border-radius: var(--ten-r-lg);
+  background: linear-gradient(135deg, var(--ten-gold), rgba(212,175,55,0.6));
+  color: #0a0700;
+  font-family: var(--ten-font-display);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.continue-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(212,175,55,0.35);
+}
+
+@media (max-width: 560px) {
+  .cred-card { padding: 42px 18px; }
+  .cred-row { grid-template-columns: 1fr; }
+  .copy-btn { width: 100%; }
 }
 
 </style>
@@ -128,8 +194,7 @@ h1 {
 <div class="ten-orb ten-orb-2"></div>
 
 <div class="success-wrap">
-  <div class="success-card ten-scale-in">
-
+  <div class="cred-card ten-scale-in">
     <div class="brand-tag">
       <svg width="14" height="12" viewBox="0 0 14 12" fill="none">
         <path d="M1 5C1 3.34 2.34 2 4 2C5.66 2 7 3.34 7 5C7 6.66 5.66 8 4 8C2.34 8 1 6.66 1 5Z" stroke="#D4AF37" stroke-width="1.5" fill="none"/>
@@ -139,28 +204,81 @@ h1 {
     </div>
 
     <div class="success-icon ten-glow-pulse">✓</div>
-
     <h1>Registration Successful!</h1>
+    <p class="success-sub">Your account is ready. Save these credentials before continuing.</p>
 
-    <p class="success-sub">
-      Welcome to TEN Internship Portal.<br>
-      Check your email for your <strong style="color: var(--ten-gold);">Employee ID & Password</strong>.
-    </p>
-
-    <div class="progress-wrap">
-      <div class="progress-bar"></div>
+    <div class="cred-list ten-fadeUp">
+      <div class="cred-row">
+        <div class="cred-label">Employee ID</div>
+        <div class="cred-value" id="credEmployeeId">—</div>
+        <button class="copy-btn" id="copyEmployeeId" type="button">Copy</button>
+      </div>
+      <div class="cred-row">
+        <div class="cred-label">Password</div>
+        <div class="cred-value" id="credPassword">—</div>
+        <button class="copy-btn" id="copyPassword" type="button">Copy</button>
+      </div>
     </div>
-    <div class="redirect-note">Redirecting to your domain groups...</div>
 
+    <div class="cred-note">
+      These credentials were also sent to your email. Screenshot them before continuing.
+    </div>
+
+    <button class="continue-btn" id="continueBtn" type="button">Continue to Groups</button>
   </div>
 </div>
 
 <script>
-setTimeout(() => {
+function _fallbackCopy(text) {
+  const t = document.createElement("textarea");
+  t.value = text;
+  t.style.position = "fixed";
+  t.style.left = "-9999px";
+  t.style.top = "0";
+  document.body.appendChild(t);
+  t.focus();
+  t.select();
+  try { document.execCommand("copy"); } catch (_) {}
+  t.remove();
+}
+
+async function copyValue(btn, value) {
+  if (!value) return;
+  const original = btn.textContent;
+  btn.textContent = "Copied!";
+  btn.disabled = true;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(value);
+    } else {
+      _fallbackCopy(value);
+    }
+  } catch (_) {
+    _fallbackCopy(value);
+  } finally {
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 900);
+  }
+}
+
+const employeeId = sessionStorage.getItem("reg_employeeId") || "";
+const password = sessionStorage.getItem("reg_password") || "";
+document.getElementById("credEmployeeId").textContent = employeeId || "—";
+document.getElementById("credPassword").textContent = password || "—";
+
+document.getElementById("copyEmployeeId").addEventListener("click", () => copyValue(document.getElementById("copyEmployeeId"), employeeId));
+document.getElementById("copyPassword").addEventListener("click", () => copyValue(document.getElementById("copyPassword"), password));
+
+document.getElementById("continueBtn").addEventListener("click", () => {
+  sessionStorage.removeItem("reg_employeeId");
+  sessionStorage.removeItem("reg_password");
   const redirect = sessionStorage.getItem("redirectAfterSuccess") || "groups.html";
   sessionStorage.removeItem("redirectAfterSuccess");
   window.location.href = redirect;
-}, 1500);
+});
+
 (function confetti(){
   for(let i=0;i<60;i++){
     const d=document.createElement('div');
