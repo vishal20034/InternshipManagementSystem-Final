@@ -14,7 +14,20 @@ const studentTaskProgressSchema = new mongoose.Schema({
     coordinatorFeedback: { type: String, default: null },
     coinsAwarded:        { type: Number, default: 0 },
     videoWatchedPercent: { type: Number, default: 0 },
-    skipVideoLogged:     { type: Boolean, default: false }
+    skipVideoLogged:     { type: Boolean, default: false },
+
+    // NEW FEATURE: Quiz System
+    quiz_attempts:        { type: Number, default: 0 },
+    quiz_last_attempt_at: { type: Date, default: null },
+    quiz_locked_until:    { type: Date, default: null },
+    quiz_passed:          { type: Boolean, default: false },
+    quiz_best_score:      { type: Number, default: 0 },
+    quiz_pass_score:      { type: Number, default: 0 },
+
+    // NEW FEATURE: Quiz System (attempt session + anti-refresh + "no same set twice in a row")
+    quiz_current_question_ids: { type: [mongoose.Schema.Types.ObjectId], default: [] },
+    quiz_current_expires_at:   { type: Date, default: null },
+    quiz_last_question_ids:    { type: [mongoose.Schema.Types.ObjectId], default: [] }
 }, { timestamps: true });
 
 studentTaskProgressSchema.index({ studentId: 1, taskId: 1 }, { unique: true });

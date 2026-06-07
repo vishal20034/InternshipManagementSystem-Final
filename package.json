@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "node seeds/domainTasks.seed.js",
-    "seed:fresh": "node seeds/dropAndReseed.js"
+    "seed:fresh": "node seeds/dropAndReseed.js",
+    "seed:quiz": "node seeds/quizQuestions.seed.js"
   },
   "keywords": [],
   "author": "",
