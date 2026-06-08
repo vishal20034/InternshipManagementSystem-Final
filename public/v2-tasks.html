@@ -1211,7 +1211,7 @@ function updateDjpPreview() {
 
 async function submitDailyJobPosting() {
   if (isDjpDoneToday()) {
-    Swal.fire({ icon:'info', title:'Already submitted!', text:'You have already submitted today's job posting. Come back tomorrow!', background:'#0e1428', color:'#F0EEE8', confirmButtonColor:'#D4AF37' });
+    Swal.fire({ icon:'info', title:'Already submitted!', text:"You have already submitted today's job posting. Come back tomorrow!", background:'#0e1428', color:'#F0EEE8', confirmButtonColor:'#D4AF37' });
     return;
   }
   var platforms = Array.from(document.querySelectorAll('.djp-check:checked')).map(c => c.dataset.platform);
