@@ -1745,7 +1745,12 @@ try{
             internshipEnd: computedEndDate ? computedEndDate.toISOString() : null,
             endDate: computedEndDate ? computedEndDate.toISOString() : null,
 
-            linkedDomains: student.linkedDomains || []
+            linkedDomains: student.linkedDomains || [],
+
+            // FEATURE 1 — one-time popup flags
+            onboardingPopupSeen: student.onboardingPopupSeen || false,
+            joinerTypeSelected:  student.joinerTypeSelected  || false,
+            joinerType:          student.joinerType           || null
         }
     });
 }catch(error){

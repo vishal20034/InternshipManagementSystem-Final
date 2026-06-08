@@ -264,11 +264,28 @@ form.addEventListener("submit", async (e) => {
 
     if (data.success) {
       localStorage.setItem("employeeId", data.student.employeeId);
-        localStorage.setItem("student", JSON.stringify({
+      // FEATURE 2 — Persistent auto-login: store full student object
+      const studentObj = {
         name: data.student.name || data.student.fullName || data.student.username || data.student.employeeId,
         employeeId: data.student.employeeId,
-        domain: data.student.domain
-      }));
+        domain: data.student.domain,
+        firstName: data.student.firstName || "",
+        lastName:  data.student.lastName  || "",
+        email:     data.student.email     || "",
+        tenure:    data.student.tenure    || "",
+        joiningDate: data.student.joiningDate || "",
+        internshipEnd: data.student.internshipEnd || "",
+        endDate:   data.student.endDate   || "",
+        collegeName: data.student.collegeName || "",
+        linkedDomains: data.student.linkedDomains || [],
+        onboardingPopupSeen: data.student.onboardingPopupSeen || false,
+        joinerTypeSelected:  data.student.joinerTypeSelected  || false,
+        joinerType:          data.student.joinerType           || null
+      };
+      localStorage.setItem("student", JSON.stringify(studentObj));
+      // ten_token / ten_employee_id — used by auto-login check on dashboard and v2-tasks
+      localStorage.setItem("ten_token",       data.student.employeeId);
+      localStorage.setItem("ten_employee_id", data.student.employeeId);
 
       Swal.fire({
         icon: "success",

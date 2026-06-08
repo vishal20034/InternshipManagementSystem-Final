@@ -17,7 +17,6 @@ const studentsSchema = new mongoose.Schema({
         default: "intern123"
     },
 
-    // ===== Certificate approval workflow (two-step: Coordinator -> HR) =====
     certificateApprovedByCoordinator: { type: Boolean, default: false },
     coordinatorApprovedAt:            { type: Date },
     approvedByCoordinatorId:          { type: String, default: "" },
@@ -31,30 +30,20 @@ const studentsSchema = new mongoose.Schema({
     hrRejected:                       { type: Boolean, default: false },
     hrRejectionReason:                { type: String, default: "" },
 
-    // ===== Multi-domain registration (Feature 1) =====
-    // Each Student doc represents one (email, domain) pair.
-    // linkedDomains lists every (email, domain) the same person is registered
-    // in. Updated on second-domain registration; both records carry the same
-    // list so the UI can render a "My Domains" switcher.
     linkedDomains: [{
         domain:     { type: String, required: true },
         studentId:  { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
         employeeId: { type: String, required: true }
     }],
 
-    // ===== Forgot password (Feature 9) =====
     passwordResetToken:   { type: String, default: null, index: true },
     passwordResetExpiry:  { type: Date,   default: null },
 
-    // ===== Streak counter (Feature 7) =====
     currentStreak:        { type: Number, default: 0 },
     bestStreak:           { type: Number, default: 0 },
     lastAttendanceDate:   { type: Date },
     lastActiveDate:       { type: Date },
 
-    // ===== Internship progress timeline (Feature 11) =====
-    // Each milestone stores the Date when it was reached, or stays undefined
-    // until the corresponding event happens. Updated by the relevant routes.
     milestones: {
         firstAttendance:        { type: Date },
         firstTaskSubmitted:     { type: Date },
@@ -68,12 +57,6 @@ const studentsSchema = new mongoose.Schema({
         internshipCompleted:    { type: Date }
     },
 
-    // ===== F9 — automated email reminder tracking =====
-    // Each key tracks when (or whether) a reminder was last sent so the cron
-    // doesn't spam the same student. The two well-known keys are:
-    //   - attendanceWarning3d   (Date | null) — last sent for >=3-day gap
-    //   - lowAttendance         (Date | null) — last sent when combined < 60%
-    //   - internshipEnding7d    (Date | null) — once when 7d before end date
     reminderEmailsSent: {
         type: Map,
         of: Date,
@@ -81,13 +64,23 @@ const studentsSchema = new mongoose.Schema({
     },
     certificateEligibilityEmailSent: { type: Boolean, default: false },
 
-    // ===== Auto document email tracking =====
     documentsAutoSent:    { type: Boolean, default: false },
     documentsAutoSentAt:  { type: Date },
     autoDocUniqueId:      { type: String, default: "" },
     documentVerified:     { type: Boolean, default: false },
     documentVerifiedAt:   { type: Date },
-    documentNumber:       { type: String, default: "" }
+    documentNumber:       { type: String, default: "" },
+
+    // FEATURE 1 — Onboarding popup shown only once
+    onboardingPopupSeen:  { type: Boolean, default: false },
+
+    // FEATURE 1 — Joiner type popup shown only once
+    joinerTypeSelected:   { type: Boolean, default: false },
+    joinerType:           { type: String, enum: ['new', 'whatsapp', null], default: null },
+
+    // v2 portal fields
+    v2Onboarded:          { type: Boolean, default: false },
+    v2DurationType:       { type: String, default: null }
 }, {
     timestamps: true
 });

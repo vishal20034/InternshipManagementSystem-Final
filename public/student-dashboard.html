@@ -1498,6 +1498,8 @@ button:active { transform: translateY(0); }
     <a class="stu-nav-btn" href="https://discord.gg/GYnZFbDE7" target="_blank" rel="noopener" style="background:linear-gradient(135deg,rgba(88,101,242,0.12),rgba(88,101,242,0.04));border:1px solid rgba(88,101,242,0.25);text-decoration:none;display:flex;align-items:center;gap:8px;"><span class="nav-icon">💬</span> Discord Community</a>
     <button class="stu-nav-btn" onclick="window.location.href='my-certificates.html'" style="background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(139,92,246,0.02));border:1px solid rgba(139,92,246,0.18);"><span class="nav-icon">🏅</span> My Certificates <span style="font-size:10px;background:rgba(139,92,246,0.2);color:#c4b5fd;padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:800;">NEW</span></button>
     <button class="stu-nav-btn" onclick="window.location.href='payment.html'" style="background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(16,185,129,0.02));border:1px solid rgba(16,185,129,0.2);"><span class="nav-icon">💳</span> Make Payment <span style="font-size:10px;background:rgba(16,185,129,0.2);color:#10b981;padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:800;">NEW</span></button>
+    <!-- FEATURE 2 — Logout button -->
+    <button class="stu-nav-btn" onclick="tenLogout()" style="background:rgba(244,63,94,0.06);border:1px solid rgba(244,63,94,0.18);margin-top:8px;"><span class="nav-icon">🚪</span> Logout</button>
   </nav>
   <div class="theme-toggle-wrap" style="padding:12px 20px;border-top:1px solid rgba(212,175,55,0.08);">
     <span style="font-size:12px;color:#6a7a94;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;display:block;">Theme</span>
@@ -1905,12 +1907,22 @@ button:active { transform: translateY(0); }
   <!-- ══════ VIEW: CODING PROBLEMS ══════ -->
   <div class="stu-view" id="stu-view-coding">
   <!-- ── F5: CODING PROBLEMS BOX ── -->
-  <div class="tasks-box" id="codingProblemsSection" style="display:none;margin-bottom:16px;">
+  <div class="tasks-box" id="codingProblemsSection" style="margin-bottom:16px;">
     <div class="section-title">
       <h2>💻 Coding Problems</h2>
       <span class="badge">FROM COORDINATOR</span>
     </div>
-    <div id="codingProblemsList"></div>
+    <div id="codingProblemsList">
+      <!-- FEATURE 4 — Empty state shown when no problems are assigned -->
+      <div id="codingEmptyState" style="text-align:center;padding:52px 24px;color:#6a7a94;">
+        <div style="font-size:52px;margin-bottom:16px;">💻</div>
+        <h3 style="font-size:16px;font-weight:700;color:#9aa4bf;margin-bottom:8px;">No Coding Problems Yet</h3>
+        <p style="font-size:13px;color:#6a7a94;line-height:1.6;max-width:360px;margin:0 auto 20px;">Your coordinator hasn't assigned any coding problems yet. Check back soon — problems appear here once your coordinator uploads them.</p>
+        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.18);border-radius:10px;padding:10px 18px;font-size:12px;color:#D4AF37;">
+          <span>🪙</span> Solving problems earns bonus coins!
+        </div>
+      </div>
+    </div>
   </div>
   </div><!-- /stu-view-coding -->
 
@@ -4001,21 +4013,28 @@ document.addEventListener('keydown', function(e) {
 </div>
 
 <script>
-// ===== NEW JOINER TYPE LOGIC =====
+// ===== FEATURE 1 — JOINER TYPE LOGIC (DB-backed, shows ONCE ONLY) =====
 var _pendingJoinerType = null;
 
 function showJoinerTypeModalIfNeeded() {
-  var stu = JSON.parse(localStorage.getItem('student') || '{}');
-  var empId = stu.employeeId || stu.employee_id || localStorage.getItem('employeeId') || '';
-  if (!empId) return;
-  var key = 'tenJoinerType_' + empId;
-  if (!localStorage.getItem(key)) {
+  try {
+    var stu = JSON.parse(localStorage.getItem('student') || '{}');
+    var empId = stu.employeeId || stu.employee_id || localStorage.getItem('employeeId') || '';
+    if (!empId) return;
+    // Check DB flag first (set on login), then fallback to localStorage
+    if (stu.joinerTypeSelected === true) {
+      applyJoinerTypeUI(stu.joinerType || localStorage.getItem('tenJoinerType_' + empId));
+      return;
+    }
+    var legacyKey = 'tenJoinerType_' + empId;
+    if (localStorage.getItem(legacyKey)) {
+      applyJoinerTypeUI(localStorage.getItem(legacyKey));
+      return;
+    }
     var modal = document.getElementById('joinerTypeModal');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-  } else {
-    applyJoinerTypeUI(localStorage.getItem(key));
-  }
+  } catch(e) {}
 }
 
 function confirmJoinerType(type) {
@@ -4036,17 +4055,27 @@ function closeJoinerConfirm() {
 function finalizeJoinerType() {
   var stu = JSON.parse(localStorage.getItem('student') || '{}');
   var empId = stu.employeeId || stu.employee_id || localStorage.getItem('employeeId') || 'unknown';
+  // Save to localStorage (legacy key)
   localStorage.setItem('tenJoinerType_' + empId, _pendingJoinerType);
+  // Update cached student object
+  stu.joinerTypeSelected = true;
+  stu.joinerType = _pendingJoinerType;
+  localStorage.setItem('student', JSON.stringify(stu));
   document.getElementById('joinerConfirmModal').style.display = 'none';
   document.getElementById('joinerTypeModal').style.display = 'none';
   document.body.style.overflow = '';
   applyJoinerTypeUI(_pendingJoinerType);
+  // Persist to DB (fire-and-forget)
+  fetch('/api/v2/student/set-joiner-type', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
+    body: JSON.stringify({ joinerType: _pendingJoinerType })
+  }).catch(function(){});
 }
 
 function applyJoinerTypeUI(type) {
-  // Show Google Form only for whatsapp joiners
   var formBox = document.getElementById('googleFormAttendanceBox');
-  if (formBox) formBox.style.display = type === 'whatsapp' ? 'block' : 'none';
+  if (formBox) formBox.style.display = (type === 'whatsapp') ? 'block' : 'none';
 }
 
 (function() {
@@ -4146,22 +4175,40 @@ function applyJoinerTypeUI(type) {
 <!-- ===== END ONBOARDING INSTRUCTION MODAL ===== -->
 
 <script>
-// ===== FIRST-LOGIN ONBOARDING POPUP =====
+// ===== FEATURE 1 — FIRST-LOGIN ONBOARDING POPUP (DB-backed, shows ONCE ONLY) =====
 function showInstructionModalIfNeeded(employeeId) {
-  var key = 'tenInstructionsSeen_' + employeeId;
-  if (!localStorage.getItem(key)) {
+  try {
+    var stu = JSON.parse(localStorage.getItem('student') || '{}');
+    // Check DB flag first (set on login), then fallback to localStorage key
+    if (stu.onboardingPopupSeen === true) return;
+    var legacyKey = 'tenInstructionsSeen_' + employeeId;
+    if (localStorage.getItem(legacyKey)) return;
     document.getElementById('instructionModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
-  }
+  } catch(e) {}
 }
+
 function acknowledgeInstructions() {
   var empId = (typeof student !== 'undefined' && student && student.employeeId)
     ? student.employeeId
     : (localStorage.getItem('employeeId') || 'unknown');
+  // Save legacy localStorage key
   localStorage.setItem('tenInstructionsSeen_' + empId, 'true');
+  // Update the cached student object so it won't show again this session
+  try {
+    var stu = JSON.parse(localStorage.getItem('student') || '{}');
+    stu.onboardingPopupSeen = true;
+    localStorage.setItem('student', JSON.stringify(stu));
+  } catch(e) {}
   document.getElementById('instructionModal').style.display = 'none';
   document.body.style.overflow = '';
+  // Persist to DB (fire-and-forget)
+  fetch('/api/v2/student/mark-onboarding-seen', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-employee-id': empId }
+  }).catch(function(){});
 }
+
 (function() {
   try {
     var stu = JSON.parse(localStorage.getItem('student') || '{}');
@@ -4169,6 +4216,40 @@ function acknowledgeInstructions() {
   } catch(e) {}
 })();
 // ===== END ONBOARDING POPUP =====
+</script>
+
+<script>
+// ===== FEATURE 2 — Auto-login check + Logout =====
+(function() {
+  try {
+    var stu = JSON.parse(localStorage.getItem('student') || '{}');
+    var empId = stu.employeeId || localStorage.getItem('employeeId') || localStorage.getItem('ten_employee_id') || '';
+    if (!empId) {
+      window.location.href = 'login.html';
+    }
+  } catch(e) {
+    window.location.href = 'login.html';
+  }
+})();
+
+function tenLogout() {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'question', title: 'Logout?', text: 'Are you sure you want to logout?',
+      showCancelButton: true, confirmButtonText: 'Logout', cancelButtonText: 'Cancel',
+      background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#f43f5e', cancelButtonColor: '#374151'
+    }).then(function(r) { if (r.isConfirmed) _doLogout(); });
+  } else { _doLogout(); }
+}
+
+function _doLogout() {
+  localStorage.removeItem('student');
+  localStorage.removeItem('employeeId');
+  localStorage.removeItem('ten_token');
+  localStorage.removeItem('ten_employee_id');
+  window.location.href = 'login.html';
+}
+// ===== END AUTO-LOGIN / LOGOUT =====
 </script>
 
 <script src="ten-motion.js"></script>

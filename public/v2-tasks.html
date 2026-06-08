@@ -367,6 +367,8 @@ body::after {
     🪙 <span id="navCoinCount">—</span>
   </button>
   <a href="student-dashboard.html" class="nav-back">← Dashboard</a>
+  <!-- FEATURE 2 — Logout -->
+  <button onclick="tenV2Logout()" style="background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.2);border-radius:8px;padding:8px 14px;color:#f43f5e;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-left:8px;">🚪 Logout</button>
 </nav>
 
 <!-- ── Onboarding overlay (shown if not onboarded) ── -->
@@ -433,6 +435,22 @@ body::after {
         </div>
         <p style="font-size:13px;color:#9a8a6a;line-height:1.7;margin-bottom:14px;">Share the TEN hiring drive message across your social media platforms every day. This helps TEN grow and you earn coins! Post on as many platforms as possible.</p>
         
+        <!-- FEATURE 3 — Quick Share Job Buttons -->
+        <div id="djpQuickShare" style="margin-bottom:16px;">
+          <p style="font-size:12px;color:#9a8a6a;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">⚡ Quick Share — Copy message &amp; open platform:</p>
+          <div style="background:rgba(212,175,55,0.05);border:1px solid rgba(212,175,55,0.15);border-radius:10px;padding:12px 16px;margin-bottom:10px;font-size:12px;color:#c8baa0;line-height:1.7;" id="djpShareText">
+            🚀 <b>TEN is Hiring Interns!</b><br>The Entrepreneurship Network is looking for passionate students for our internship program.<br>📌 Domains: Web Dev, AI, Data Science, HR, MERN, DevOps, Flutter &amp; more<br>🎓 Get real-world experience + certificate + performance-based pay<br>👉 Apply here: <a href="https://forms.gle/TENinternship" target="_blank" rel="noopener" style="color:#D4AF37;">forms.gle/TENinternship</a><br>#TEN #Internship #Hiring #Students
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+            <button onclick="djpCopyAndOpen('linkedin')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(10,102,194,0.12);border:1px solid rgba(10,102,194,0.3);border-radius:8px;color:#7eb3e8;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💼 LinkedIn</button>
+            <button onclick="djpCopyAndOpen('facebook')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(24,119,242,0.12);border:1px solid rgba(24,119,242,0.3);border-radius:8px;color:#7eb8f0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📘 Facebook</button>
+            <button onclick="djpCopyAndOpen('whatsapp')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);border-radius:8px;color:#5de89a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💬 WhatsApp</button>
+            <button onclick="djpCopyAndOpen('instagram')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(225,48,108,0.12);border:1px solid rgba(225,48,108,0.3);border-radius:8px;color:#f07aa5;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📸 Instagram</button>
+            <button onclick="djpCopyAndOpen('telegram')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(0,136,204,0.12);border:1px solid rgba(0,136,204,0.3);border-radius:8px;color:#60c5f0;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✈️ Telegram</button>
+            <button onclick="djpCopyText()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:8px;color:#D4AF37;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📋 Copy Text</button>
+          </div>
+        </div>
+
         <!-- Platforms checklist -->
         <div id="djpChecklist" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:16px;">
           <label style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:#c8baa0;">
@@ -494,6 +512,34 @@ body::after {
     </div>
   </div>
 
+  <!-- FEATURE 8 — How to Earn Coins Guide + ₹ Value -->
+  <div id="coinEarningGuide" style="background:linear-gradient(135deg,rgba(212,175,55,0.06),rgba(212,175,55,0.02));border:1px solid rgba(212,175,55,0.2);border-radius:16px;padding:20px 24px;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:22px;">🪙</span>
+        <div>
+          <h3 style="font-size:15px;font-weight:800;color:#D4AF37;margin:0;">How to Earn Coins</h3>
+          <p style="font-size:11px;color:#9a8a6a;margin:2px 0 0;">100 Coins = ₹50 &nbsp;|&nbsp; 1 Coin = ₹0.50</p>
+        </div>
+      </div>
+      <div style="background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:10px;padding:8px 16px;text-align:center;">
+        <div style="font-size:11px;color:#9a8a6a;text-transform:uppercase;letter-spacing:1px;">Your Balance</div>
+        <div style="font-size:18px;font-weight:800;color:#D4AF37;"><span id="guideCoins">—</span> coins</div>
+        <div style="font-size:12px;color:#10b981;font-weight:700;">≈ ₹<span id="guideRupees">0.00</span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 20–100</span> per task (by difficulty)</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 50</span> quiz passed (first attempt)</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 5–15</span> daily job posting</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 5</span> daily attendance</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 50</span> 7-day attendance streak</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 30</span> complete a full week</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 500</span> complete entire course!</div>
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.12);border-radius:8px;padding:10px 12px;font-size:12px;color:#c8baa0;"><span style="color:#D4AF37;font-weight:700;">🪙 5</span> per video watched</div>
+    </div>
+  </div>
+
   <!-- Task list by week -->
   <div id="taskList">
     <div class="loading-wrap">
@@ -514,6 +560,9 @@ body::after {
   <div class="coin-total">
     <div class="amount" id="drawerCoinTotal">0</div>
     <div class="label">Total Coins Earned</div>
+    <!-- FEATURE 8 — ₹ value in drawer -->
+    <div id="drawerRupeeValue" style="font-size:14px;color:#10b981;font-weight:700;margin-top:4px;">≈ ₹0.00</div>
+    <div style="font-size:11px;color:#6a7a94;margin-top:2px;">100 coins = ₹50 &nbsp;·&nbsp; 1 coin = ₹0.50</div>
   </div>
   <div class="coin-history-list" id="coinHistoryList">
     <div style="text-align:center;color:var(--text-muted);padding:40px 0;font-size:14px">No coins yet. Complete tasks to earn coins!</div>
@@ -623,11 +672,23 @@ async function init() {
 
 function updateStats(data) {
   const stats = data.taskStats || {};
-  document.getElementById('statCoins').textContent    = data.totalCoins ?? 0;
-  document.getElementById('navCoinCount').textContent = (data.totalCoins ?? 0) + ' coins';
+  const coins = data.totalCoins ?? 0;
+  const rupees = (coins * 0.5).toFixed(2);
+  document.getElementById('statCoins').textContent    = coins;
+  document.getElementById('navCoinCount').textContent = coins + ' 🪙';
   document.getElementById('statApproved').textContent  = stats.approved    ?? 0;
   document.getElementById('statAvailable').textContent = (stats.available  ?? 0) + (stats.in_progress ?? 0);
   document.getElementById('statSubmitted').textContent = stats.submitted   ?? 0;
+  // FEATURE 8 — Update ₹ display in earning guide
+  const guideCoins = document.getElementById('guideCoins');
+  const guideRupees = document.getElementById('guideRupees');
+  if (guideCoins) guideCoins.textContent = coins;
+  if (guideRupees) guideRupees.textContent = rupees;
+  // Update coin drawer total with ₹ value
+  const drawerTotal = document.getElementById('drawerCoinTotal');
+  if (drawerTotal) drawerTotal.textContent = coins;
+  const drawerRupee = document.getElementById('drawerRupeeValue');
+  if (drawerRupee) drawerRupee.textContent = '≈ ₹' + rupees;
 }
 
 // ── Onboarding ───────────────────────────────────
@@ -770,8 +831,13 @@ function toggleWeek(weekNum, headerEl) {
 // ── Render a single task card ─────────────────────
 function renderTask(task, weekNum) {
   const ytId = extractYouTubeId(task.videoUrl);
+
+  // FEATURE 5 — Check if video was already watched (80%+ gate)
+  const videoWatchedKey = `v2_video_watched_${task._id}`;
+  const alreadyWatched  = task.videoWatchedPercent >= 80 || !!localStorage.getItem(videoWatchedKey);
+
   const videoHtml = ytId ? `
-    <div class="task-video">
+    <div class="task-video" id="video-wrap-${task._id}">
       <div class="video-container">
         <iframe src="https://www.youtube.com/embed/${ytId}?enablejsapi=1" allowfullscreen
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -780,6 +846,17 @@ function renderTask(task, weekNum) {
       </div>
       <div class="video-progress-bar">
         <div class="video-progress-fill" id="vpf-${task._id}" style="width:${task.videoWatchedPercent}%"></div>
+      </div>
+      <!-- FEATURE 5 — Watch gate button -->
+      <div id="video-gate-${task._id}" style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        ${alreadyWatched
+          ? `<span style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:6px 14px;font-size:12px;color:#10b981;font-weight:700;">✅ Video watched — Quiz unlocked</span>`
+          : `<button onclick="markVideoWatched('${task._id}')" style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:7px 14px;font-size:12px;color:#D4AF37;font-weight:700;cursor:pointer;font-family:inherit;">▶ I've watched 80%+ of this video (+5 🪙)</button>`
+        }
+      </div>
+      <!-- FEATURE 7 — Broken video report -->
+      <div style="margin-top:6px;">
+        <button onclick="reportBrokenVideo('${task._id}','${task.domain || (studentData && studentData.domain) || ''}',${weekNum},'${(task.taskTitle||'').replace(/'/g,"\\'")}','${task.videoUrl||''}')" style="background:transparent;border:none;color:#6a7a94;font-size:11px;cursor:pointer;font-family:inherit;padding:2px 0;text-decoration:underline;">🚨 Video not loading? Report broken video</button>
       </div>
     </div>` : '';
 
@@ -892,7 +969,11 @@ async function openCoinDrawer() {
   document.getElementById('drawerBackdrop').classList.add('show');
   try {
     const data = await apiFetch('/coins/history');
-    document.getElementById('drawerCoinTotal').textContent = data.totalCoins ?? 0;
+    const coins = data.totalCoins ?? 0;
+    const rupees = (coins * 0.5).toFixed(2);
+    document.getElementById('drawerCoinTotal').textContent = coins;
+    const drawerRupee = document.getElementById('drawerRupeeValue');
+    if (drawerRupee) drawerRupee.textContent = '≈ ₹' + rupees;
     const list = document.getElementById('coinHistoryList');
     if (!data.history || !data.history.length) {
       list.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 0;font-size:14px">No coin history yet.</div>';
@@ -905,10 +986,138 @@ async function openCoinDrawer() {
           <div class="action">${h.action}</div>
           <span class="time">${timeAgo(h.timestamp)}</span>
         </div>
-        <div class="amount">+${h.coins}</div>
+        <div class="amount">+${h.coins} <span style="font-size:10px;color:#10b981;">(₹${(h.coins*0.5).toFixed(2)})</span></div>
       </div>`).join('');
   } catch { /* silent */ }
 }
+
+// FEATURE 3 — Quick Share functions
+const DJP_SHARE_MSG = `🚀 TEN is Hiring Interns!
+The Entrepreneurship Network is looking for passionate students for our internship program.
+📌 Domains: Web Dev, AI, Data Science, HR, MERN, DevOps, Flutter & more
+🎓 Get real-world experience + certificate + performance-based pay
+👉 Apply here: https://forms.gle/TENinternship
+#TEN #Internship #Hiring #Students`;
+
+const DJP_PLATFORM_URLS = {
+  linkedin:  'https://www.linkedin.com/feed/',
+  facebook:  'https://www.facebook.com/',
+  whatsapp:  'https://web.whatsapp.com/',
+  instagram: 'https://www.instagram.com/',
+  telegram:  'https://web.telegram.org/'
+};
+
+function djpCopyText() {
+  try {
+    navigator.clipboard.writeText(DJP_SHARE_MSG).then(() => {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({ icon:'success', title:'Copied!', text:'Post message copied to clipboard. Now paste it on your platform.', timer:2000, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8', confirmButtonColor:'#D4AF37' });
+      }
+    });
+  } catch(e) { alert('Copy failed. Please copy the text manually.'); }
+}
+
+function djpCopyAndOpen(platform) {
+  try {
+    navigator.clipboard.writeText(DJP_SHARE_MSG).then(() => {
+      const url = DJP_PLATFORM_URLS[platform] || 'https://google.com';
+      window.open(url, '_blank');
+      // Auto-check the corresponding checkbox
+      const checkbox = document.querySelector(`.djp-check[data-platform="${platform.charAt(0).toUpperCase() + platform.slice(1)}"]`);
+      if (checkbox && !checkbox.checked) { checkbox.checked = true; if (typeof updateDjpPreview === 'function') updateDjpPreview(); }
+    });
+  } catch(e) {
+    window.open(DJP_PLATFORM_URLS[platform] || '#', '_blank');
+  }
+}
+
+// FEATURE 5 — Mark video as watched (80%+ gate)
+async function markVideoWatched(taskId) {
+  localStorage.setItem(`v2_video_watched_${taskId}`, '1');
+  const gateEl = document.getElementById(`video-gate-${taskId}`);
+  if (gateEl) {
+    gateEl.innerHTML = `<span style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:6px 14px;font-size:12px;color:#10b981;font-weight:700;">✅ Video watched — Quiz unlocked (+5 🪙)</span>`;
+  }
+  // Update progress bar
+  const fill = document.getElementById(`vpf-${taskId}`);
+  if (fill) fill.style.width = '80%';
+  // Call API
+  try {
+    await apiFetch(`/tasks/${taskId}/video-progress`, {
+      method: 'PATCH',
+      body: JSON.stringify({ percent: 80, employeeId: studentData?.employeeId })
+    });
+    // Update coin badge
+    const status = await apiFetch('/student/status');
+    updateStats(status);
+  } catch(e) { /* silent */ }
+  // Unlock quiz if it exists
+  if (window.TENQuiz && window.TENQuiz.unlockForTask) window.TENQuiz.unlockForTask(taskId);
+}
+
+// FEATURE 7 — Report broken video and auto-replace
+async function reportBrokenVideo(taskId, domain, weekNum, taskTitle, currentUrl) {
+  const btn = event && event.target;
+  if (btn) { btn.textContent = '⏳ Finding replacement...'; btn.disabled = true; }
+  try {
+    const empId = studentData?.employeeId || localStorage.getItem('employeeId') || '';
+    const res = await fetch('/api/v2/student/report-broken-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
+      body: JSON.stringify({ taskId, domain, weekNumber: weekNum, taskTitle })
+    });
+    const data = await res.json();
+    if (data.success && data.replaced && data.newVideoUrl) {
+      // Replace iframe with new video
+      const iframe = document.getElementById(`yt-${taskId}`);
+      if (iframe) {
+        const newYtId = data.newVideoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+        if (newYtId) {
+          iframe.src = `https://www.youtube.com/embed/${newYtId[1]}?enablejsapi=1`;
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({ icon:'success', title:'Video Replaced! 🎬', text:'A working replacement video has been loaded.', timer:2500, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8' });
+          }
+        }
+      }
+    } else if (data.searchUrl) {
+      window.open(data.searchUrl, '_blank');
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({ icon:'info', title:'No Auto-Replacement Found', text:'Opening a YouTube search for your topic.', timer:2000, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8' });
+      }
+    }
+  } catch(e) {
+    if (btn) { btn.textContent = '🚨 Video not loading? Report broken video'; btn.disabled = false; }
+  }
+}
+
+// FEATURE 2 — Logout
+function tenV2Logout() {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'question', title: 'Logout?', text: 'Are you sure you want to logout?',
+      showCancelButton: true, confirmButtonText: 'Logout', cancelButtonText: 'Cancel',
+      background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#f43f5e', cancelButtonColor: '#374151'
+    }).then(r => {
+      if (r.isConfirmed) {
+        localStorage.removeItem('student'); localStorage.removeItem('employeeId');
+        localStorage.removeItem('ten_token'); localStorage.removeItem('ten_employee_id');
+        window.location.href = 'login.html';
+      }
+    });
+  } else {
+    localStorage.removeItem('student'); localStorage.removeItem('employeeId');
+    window.location.href = 'login.html';
+  }
+}
+
+// FEATURE 2 — Auto-login re-validation
+(function() {
+  try {
+    const stu = JSON.parse(localStorage.getItem('student') || '{}');
+    const empId = stu.employeeId || localStorage.getItem('employeeId') || localStorage.getItem('ten_employee_id') || '';
+    if (!empId) { window.location.href = 'login.html'; }
+  } catch(e) { window.location.href = 'login.html'; }
+})();
 
 function closeCoinDrawer() {
   document.getElementById('coinDrawer').classList.remove('open');
