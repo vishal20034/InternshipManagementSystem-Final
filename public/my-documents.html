@@ -454,6 +454,7 @@ async function submitDocuments() {
       // Vanish upload grid and submit section after submit
       document.getElementById('uploadGrid').style.display = 'none';
       document.getElementById('submitSection').style.display = 'none';
+
       // Show a pending confirmation card in their place
       const uploadTab = document.getElementById('tab-upload');
       let pendingCard = document.getElementById('postSubmitCard');
@@ -461,7 +462,7 @@ async function submitDocuments() {
         pendingCard = document.createElement('div');
         pendingCard.id = 'postSubmitCard';
         pendingCard.style.cssText = 'background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:16px;padding:32px;text-align:center;margin-top:16px;';
-        pendingCard.innerHTML = '<div style="font-size:48px;margin-bottom:16px;">⏳</div><div style="font-size:18px;font-weight:800;color:#f59e0b;margin-bottom:8px;">Documents Submitted!</div><div style="font-size:13px;color:#9a8a6a;line-height:1.7;">Your Address Proof and Marksheet are now with HR for review.<br>You will receive an email once your Offer Letter is ready.<br><br><strong style="color:#f59e0b;">Note:</strong> If HR doesn't act within 24 hours, your Offer Letter will be auto-generated.</div><div style="margin-top:20px;"><button onclick="switchTab('docs')" style="padding:12px 28px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">📄 View My Documents →</button></div>';
+        pendingCard.innerHTML = '<div style="font-size:48px;margin-bottom:16px;">⏳</div><div style="font-size:18px;font-weight:800;color:#f59e0b;margin-bottom:8px;">Documents Submitted!</div><div style="font-size:13px;color:#9a8a6a;line-height:1.7;">Your Address Proof and Marksheet are now with HR for review.<br>You will receive an email once your Offer Letter is ready.<br><br><strong style="color:#f59e0b;">Note:</strong> If HR does not act within 24 hours, your Offer Letter will be auto-generated.</div><div style="margin-top:20px;"><button onclick="switchTab(\'docs\')" style="padding:12px 28px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">📄 View My Documents →</button></div>';
         uploadTab.appendChild(pendingCard);
       }
       pendingCard.style.display = 'block';
