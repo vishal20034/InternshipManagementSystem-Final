@@ -8,6 +8,7 @@ const domainTaskSchema = new mongoose.Schema({
     taskTitle:       { type: String, required: true },
     taskDescription: { type: String, required: true },
     videoUrl:        { type: String, default: null },
+    fallbackVideoUrl:{ type: String, default: null },
     coinReward:      { type: Number, default: 10 },
     difficultyLevel: { type: String, enum: ["easy", "medium", "hard", "expert"], default: "easy" }
 }, { timestamps: true });

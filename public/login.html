@@ -264,11 +264,20 @@ form.addEventListener("submit", async (e) => {
 
     if (data.success) {
       localStorage.setItem("employeeId", data.student.employeeId);
-        localStorage.setItem("student", JSON.stringify({
+      localStorage.setItem("ten_employee_id", data.student.employeeId);
+      if (data.token) {
+        localStorage.setItem("ten_token", data.token);
+      }
+      localStorage.setItem("student", JSON.stringify({
         name: data.student.name || data.student.fullName || data.student.username || data.student.employeeId,
         employeeId: data.student.employeeId,
-        domain: data.student.domain
+        domain: data.student.domain,
+        tenure: data.student.tenure,
+        onboardingPopupSeen: !!data.student.onboardingPopupSeen,
+        joinerTypeSelected: !!data.student.joinerTypeSelected,
+        joinerType: data.student.joinerType || null
       }));
+      localStorage.setItem("studentData", JSON.stringify(data.student));
 
       Swal.fire({
         icon: "success",

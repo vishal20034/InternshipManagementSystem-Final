@@ -1,23 +1,38 @@
 // NEW FEATURE: Student Portal V2 API Routes
 "use strict";
 
-const express      = require("express");
-const router       = express.Router();
-const Student      = require("../../models/Student");
-
-// NEW FEATURE: Dynamically add V2 fields to the Student schema if not present
-const mongoose = require("mongoose");
-if (!Student.schema.path("v2Onboarded"))    Student.schema.add({ v2Onboarded:    { type: Boolean, default: false } });
-if (!Student.schema.path("v2DurationType")) Student.schema.add({ v2DurationType: { type: String,  default: null  } });
+const express = require("express");
+const router = express.Router();
+const Student = require("../../models/Student");
 const StudentTaskProgress = require("../../models/new/StudentTaskProgress");
-const DomainTask   = require("../../models/new/DomainTask");
-const taskEngine   = require("../../services/v2/taskEngine");
-const coinService  = require("../../services/v2/coinService");
+const DomainTask = require("../../models/new/DomainTask");
+const taskEngine = require("../../services/v2/taskEngine");
+const coinService = require("../../services/v2/coinService");
+const quizEngine = require("../../services/v2/quizEngine");
+const { getEmployeeIdFromRequest, issueStudentToken } = require("../../services/v2/auth");
 
-// NEW FEATURE: Auth middleware — validate student by employeeId header/body
+const FALLBACK_VIDEOS = {
+    "Python Development": { 1: "https://www.youtube.com/watch?v=rfscVS0vtbw", 2: "https://www.youtube.com/watch?v=t8pPdKYpowI", 3: "https://www.youtube.com/watch?v=W8KRzm-HUcc" },
+    "Java Development": { 1: "https://www.youtube.com/watch?v=eIrMbAQSU34", 2: "https://www.youtube.com/watch?v=GoXwIVyNvX0", 3: "https://www.youtube.com/watch?v=IttZfFoMnAI" },
+    "DevOps with AWS": { 1: "https://www.youtube.com/watch?v=ROjZy1WbCIA", 2: "https://www.youtube.com/watch?v=6YZvp2GwT0A", 3: "https://www.youtube.com/watch?v=fqMOX6JJhGo" },
+    "Web Development": { 1: "https://www.youtube.com/watch?v=mU6anWqZJcc", 2: "https://www.youtube.com/watch?v=G3e-cpL7ofc", 3: "https://www.youtube.com/watch?v=916GWv2Qs08" },
+    "MERN Stack Development": { 1: "https://www.youtube.com/watch?v=7CqJlxBYj-M", 2: "https://www.youtube.com/watch?v=SqcY0GlETPk", 3: "https://www.youtube.com/watch?v=-0exw-9YJBo" },
+    "Artificial Intelligence": { 1: "https://www.youtube.com/watch?v=aircAruvnKk", 2: "https://www.youtube.com/watch?v=JMUxmLyrhSk", 3: "https://www.youtube.com/watch?v=tpCFfeUEGs8" },
+    "Data Science": { 1: "https://www.youtube.com/watch?v=ua-CiDNNj30", 2: "https://www.youtube.com/watch?v=vmEHCJofslg", 3: "https://www.youtube.com/watch?v=LHBE6Q9XlzI" },
+    "Cyber Security": { 1: "https://www.youtube.com/watch?v=inWWhr5tnEA", 2: "https://www.youtube.com/watch?v=3Kq1MIfTWCE", 3: "https://www.youtube.com/watch?v=U_P23SqJaDc" },
+    "Software Engineering": { 1: "https://www.youtube.com/watch?v=QHE5g9YQm7A", 2: "https://www.youtube.com/watch?v=qnaxm0Ye4eQ", 3: "https://www.youtube.com/watch?v=3R9SpICe5y0" },
+    "Flutter Development": { 1: "https://www.youtube.com/watch?v=VPvVD8t02U8", 2: "https://www.youtube.com/watch?v=1gDhl4leEzA", 3: "https://www.youtube.com/watch?v=x0uinJvhNxI" },
+    "HR Management": { 1: "https://www.youtube.com/watch?v=8fS6U2bSUGY", 2: "https://www.youtube.com/watch?v=VdN0Jr5Jb2Y", 3: "https://www.youtube.com/watch?v=ndh0E0gV2ko" },
+    "Business Analyst": { 1: "https://www.youtube.com/watch?v=QoAOzMTLP5s", 2: "https://www.youtube.com/watch?v=Ib_8WG9T0Kk", 3: "https://www.youtube.com/watch?v=vmEHCJofslg" },
+    "Venture Capital": { 1: "https://www.youtube.com/watch?v=gRaXB5hNuX4", 2: "https://www.youtube.com/watch?v=bCGkSFwbFXc", 3: "https://www.youtube.com/watch?v=ZCFkWDdmXG8" },
+    "Vibe Coding": { 1: "https://www.youtube.com/watch?v=zOjov-2OZ0E", 2: "https://www.youtube.com/watch?v=Ke90Tje7VS0", 3: "https://www.youtube.com/watch?v=F2JCjVSZlG0" },
+    "Space Research": { 1: "https://www.youtube.com/watch?v=21X5lGlDOfg", 2: "https://www.youtube.com/watch?v=wwMDvPCGeE0", 3: "https://www.youtube.com/watch?v=44cv416bKP4" },
+    "HR": { 1: "https://www.youtube.com/watch?v=8fS6U2bSUGY", 2: "https://www.youtube.com/watch?v=VdN0Jr5Jb2Y", 3: "https://www.youtube.com/watch?v=ndh0E0gV2ko" }
+};
+
 async function requireStudent(req, res, next) {
     try {
-        const employeeId = req.headers["x-employee-id"] || req.body.employeeId || req.query.employeeId;
+        const employeeId = getEmployeeIdFromRequest(req);
         if (!employeeId) return res.status(401).json({ success: false, message: "Authentication required" });
         const student = await Student.findOne({ employeeId: String(employeeId) });
         if (!student) return res.status(401).json({ success: false, message: "Student not found" });
@@ -26,6 +41,75 @@ async function requireStudent(req, res, next) {
     } catch (err) {
         res.status(500).json({ success: false, message: "Auth error" });
     }
+}
+
+function resolveFallbackVideo(domain, weekNumber) {
+    const safeWeek = Math.max(1, parseInt(weekNumber, 10) || 1);
+    const domainMap = FALLBACK_VIDEOS[domain] || FALLBACK_VIDEOS.HR || {};
+    if (domainMap[safeWeek]) return domainMap[safeWeek];
+    for (let w = safeWeek; w >= 1; w -= 1) {
+        if (domainMap[w]) return domainMap[w];
+    }
+    return domainMap[1] || null;
+}
+
+function buildYouTubeSearchUrl(domain, taskTitle) {
+    const q = encodeURIComponent(`${domain} ${taskTitle || "tutorial"} tutorial`);
+    return `https://www.youtube.com/results?search_query=${q}`;
+}
+
+function getEndDate(student) {
+    if (!student.joiningDate) return null;
+    const joined = new Date(student.joiningDate);
+    if (Number.isNaN(joined.getTime())) return null;
+    const tenure = String(student.tenure || "").toLowerCase();
+    const days = tenure.includes("45") ? 45 : tenure.includes("6") ? 180 : tenure.includes("3") ? 90 : 30;
+    joined.setDate(joined.getDate() + days);
+    return joined.toISOString();
+}
+
+async function buildStudentPayload(student) {
+    const [progressStats, sampleProgress, coinData] = await Promise.all([
+        StudentTaskProgress.aggregate([
+            { $match: { studentId: student._id } },
+            { $group: { _id: "$status", count: { $sum: 1 } } }
+        ]),
+        StudentTaskProgress.findOne({ studentId: student._id }).populate("taskId", "durationType").lean(),
+        coinService.getBalance(student._id)
+    ]);
+
+    const stats = {};
+    for (const row of progressStats) stats[row._id] = row.count;
+    const durationType = (sampleProgress?.taskId?.durationType) || student.v2DurationType || taskEngine.tenureToDurationType(student.tenure);
+
+    return {
+        employeeId: student.employeeId,
+        name: [student.firstName, student.lastName].filter(Boolean).join(" ").trim() || student.name || student.employeeId,
+        firstName: student.firstName || "",
+        lastName: student.lastName || "",
+        domain: student.domain,
+        tenure: student.tenure || "",
+        joiningDate: student.joiningDate || null,
+        internshipEnd: getEndDate(student),
+        email: student.email || "",
+        phone: student.whatsapp || "",
+        college: student.collegeName || student.college || "",
+        linkedDomains: student.linkedDomains || [],
+        onboardingPopupSeen: !!student.onboardingPopupSeen,
+        joinerTypeSelected: !!student.joinerTypeSelected,
+        joinerType: student.joinerType || null,
+        v2Onboarded: !!sampleProgress || !!student.v2Onboarded,
+        durationType,
+        totalCoins: coinData.totalCoins,
+        rupeeValue: coinData.rupeeValue,
+        taskStats: {
+            locked: stats.locked || 0,
+            available: stats.available || 0,
+            in_progress: stats.in_progress || 0,
+            submitted: stats.submitted || 0,
+            approved: stats.approved || 0
+        }
+    };
 }
 
 // ────────────────────────────────────────────────
@@ -42,26 +126,31 @@ router.post("/student/onboard", requireStudent, async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid duration type" });
         }
 
-        // Save v2 settings on the student (use updateOne to ensure dynamic fields are persisted)
+        const firstOnboard = !student.v2Onboarded;
         await Student.updateOne(
             { _id: student._id },
             { $set: { v2Onboarded: true, v2DurationType: durationType } }
         );
-        student.v2Onboarded    = true;
+        student.v2Onboarded = true;
         student.v2DurationType = durationType;
 
-        // Assign tasks (idempotent)
         const result = await taskEngine.assignTasksForStudent(student);
-
-        // Welcome bonus (only on first onboard)
-        const coinResult = await coinService.awardCoins(student._id, "ONBOARD_BONUS");
+        let coinResult = { awarded: 0, totalCoins: 0 };
+        if (firstOnboard && !student.coinMilestones?.onboardingCompleted) {
+            coinResult = await coinService.awardCoins(student._id, "ONBOARD_BONUS", null, { actionKey: "onboarding_completed" });
+            await Student.updateOne({ _id: student._id }, { $set: { "coinMilestones.onboardingCompleted": true } });
+        } else {
+            coinResult = await coinService.getBalance(student._id);
+            coinResult.awarded = 0;
+        }
 
         res.json({
             success: true,
             message: "Onboarding complete",
             tasksAssigned: result.total || 0,
-            coinsAwarded:  coinResult.awarded,
-            totalCoins:    coinResult.totalCoins
+            coinsAwarded: coinResult.awarded,
+            totalCoins: coinResult.totalCoins,
+            rupeeValue: coinResult.rupeeValue
         });
     } catch (err) {
         console.error("[V2] onboard error:", err.message);
@@ -75,38 +164,42 @@ router.post("/student/onboard", requireStudent, async (req, res) => {
 // ────────────────────────────────────────────────
 router.get("/student/status", requireStudent, async (req, res) => {
     try {
-        const student = req.student;
+        const payload = await buildStudentPayload(req.student);
+        res.json({ success: true, ...payload });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
 
-        // NEW FEATURE: Derive onboard state from task-progress entries (bypasses Mongoose schema-field read issues)
-        const [progressStats, sampleProgress, coinData] = await Promise.all([
-            StudentTaskProgress.aggregate([
-                { $match: { studentId: student._id } },
-                { $group: { _id: "$status", count: { $sum: 1 } } }
-            ]),
-            StudentTaskProgress.findOne({ studentId: student._id }).populate("taskId", "durationType").lean(),
-            coinService.getBalance(student._id)
-        ]);
+router.get("/student/me", requireStudent, async (req, res) => {
+    try {
+        const payload = await buildStudentPayload(req.student);
+        res.json({ success: true, token: issueStudentToken(req.student), student: payload });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
 
-        const v2Onboarded  = !!sampleProgress;
-        const durationType = (sampleProgress?.taskId?.durationType) || taskEngine.tenureToDurationType(student.tenure);
+router.post("/student/mark-onboarding-seen", requireStudent, async (req, res) => {
+    try {
+        await Student.updateOne({ _id: req.student._id }, { $set: { onboardingPopupSeen: true } });
+        res.json({ success: true, onboardingPopupSeen: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
 
-        const stats = {};
-        for (const s of progressStats) stats[s._id] = s.count;
-
-        res.json({
-            success:       true,
-            v2Onboarded,
-            domain:        student.domain,
-            durationType,
-            totalCoins:    coinData.totalCoins,
-            taskStats: {
-                locked:      stats.locked      || 0,
-                available:   stats.available   || 0,
-                in_progress: stats.in_progress || 0,
-                submitted:   stats.submitted   || 0,
-                approved:    stats.approved    || 0
-            }
-        });
+router.post("/student/set-joiner-type", requireStudent, async (req, res) => {
+    try {
+        const joinerType = req.body && req.body.joinerType;
+        if (!["new", "whatsapp"].includes(joinerType)) {
+            return res.status(400).json({ success: false, message: "Invalid joiner type" });
+        }
+        await Student.updateOne(
+            { _id: req.student._id },
+            { $set: { joinerTypeSelected: true, joinerType } }
+        );
+        res.json({ success: true, joinerTypeSelected: true, joinerType });
     } catch (err) {
         res.status(500).json({ success: false, message: "Server error" });
     }
@@ -120,15 +213,14 @@ router.get("/tasks/my-tasks", requireStudent, async (req, res) => {
     try {
         const student = req.student;
 
-        // Auto-assign if not yet done
         if (!student.v2Onboarded) {
             await taskEngine.assignTasksForStudent(student);
         }
 
         const data = await taskEngine.getStudentTasks(student);
-        const { totalCoins } = await coinService.getBalance(student._id);
+        const { totalCoins, rupeeValue } = await coinService.getBalance(student._id);
 
-        res.json({ success: true, ...data, totalCoins });
+        res.json({ success: true, ...data, totalCoins, rupeeValue });
     } catch (err) {
         console.error("[V2] my-tasks error:", err.message);
         res.status(500).json({ success: false, message: "Server error" });
@@ -187,6 +279,11 @@ router.post("/tasks/:taskId/submit", requireStudent, async (req, res) => {
         if (!progress.startedAt) progress.startedAt = new Date();
         await progress.save();
 
+        if (!student.coinMilestones?.firstTaskSubmitted) {
+            await coinService.awardCoins(student._id, "FIRST_TASK_SUBMITTED", null, { actionKey: "first_task_submitted" });
+            await Student.updateOne({ _id: student._id }, { $set: { "coinMilestones.firstTaskSubmitted": true } });
+        }
+
         res.json({ success: true, message: "Task submitted successfully", status: "submitted" });
     } catch (err) {
         console.error("[V2] submit error:", err.message);
@@ -200,25 +297,111 @@ router.post("/tasks/:taskId/submit", requireStudent, async (req, res) => {
 // ────────────────────────────────────────────────
 router.patch("/tasks/:taskId/video-progress", requireStudent, async (req, res) => {
     try {
-        const student = req.student;
-        const taskId  = req.params.taskId;
+        const taskId = req.params.taskId;
         const percent = Math.min(100, Math.max(0, parseInt(req.body.percent) || 0));
 
-        const progress = await StudentTaskProgress.findOne({ studentId: student._id, taskId });
+        const progress = await StudentTaskProgress.findOne({ studentId: req.student._id, taskId });
         if (!progress) return res.status(404).json({ success: false, message: "Task not assigned" });
 
-        const wasWatched = progress.videoWatchedPercent >= 90;
         progress.videoWatchedPercent = Math.max(progress.videoWatchedPercent, percent);
-
-        // Award video-watched coins on first 90% completion
-        let coinsAwarded = 0;
-        if (!wasWatched && progress.videoWatchedPercent >= 90) {
-            const result = await coinService.awardCoins(student._id, "VIDEO_WATCHED");
-            coinsAwarded = result.awarded;
-        }
+        if (!progress.quiz_unlocked_at && progress.videoWatchedPercent >= 80) progress.quiz_unlocked_at = new Date();
 
         await progress.save();
-        res.json({ success: true, videoWatchedPercent: progress.videoWatchedPercent, coinsAwarded });
+        res.json({
+            success: true,
+            videoWatchedPercent: progress.videoWatchedPercent,
+            quizUnlocked: progress.videoWatchedPercent >= 80
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+router.post("/student/generate-quiz", requireStudent, async (req, res) => {
+    try {
+        const { taskId, weekNumber, durationType } = req.body || {};
+        const result = await quizEngine.generateQuizForStudent(req.student, {
+            taskId,
+            weekNumber,
+            durationType: durationType || req.student.v2DurationType
+        });
+        if (result.error) return res.status(400).json({ success: false, message: result.error });
+        res.json({ success: true, ...result });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+router.post("/student/report-broken-video", requireStudent, async (req, res) => {
+    try {
+        const { taskId, domain, weekNumber, taskTitle } = req.body || {};
+        if (!taskId) return res.status(400).json({ success: false, message: "taskId required" });
+        const task = await DomainTask.findById(taskId);
+        if (!task) return res.status(404).json({ success: false, message: "Task not found" });
+
+        const fallbackVideoUrl = resolveFallbackVideo(domain || task.domain, weekNumber || task.weekNumber);
+        await StudentTaskProgress.updateOne(
+            { studentId: req.student._id, taskId: task._id },
+            { $set: { brokenVideoReportedAt: new Date() } }
+        );
+
+        if (!fallbackVideoUrl) {
+            return res.json({
+                success: true,
+                fallbackVideoUrl: null,
+                searchUrl: buildYouTubeSearchUrl(domain || task.domain, taskTitle || task.taskTitle)
+            });
+        }
+
+        task.fallbackVideoUrl = fallbackVideoUrl;
+        task.videoUrl = fallbackVideoUrl;
+        await task.save();
+
+        res.json({ success: true, fallbackVideoUrl, searchUrl: null });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+router.post("/student/daily-job-post", requireStudent, async (req, res) => {
+    try {
+        const platforms = Array.isArray(req.body?.platforms) ? req.body.platforms.filter(Boolean) : [];
+        const formFilled = !!req.body?.formFilled;
+        const date = String(req.body?.date || new Date().toISOString().slice(0, 10));
+        if (!platforms.length) {
+            return res.status(400).json({ success: false, message: "Select at least one platform" });
+        }
+
+        const baseReward = await coinService.awardCoins(
+            req.student._id,
+            "DAILY_JOB_POSTING",
+            { platforms: platforms.length },
+            {
+                actionKey: `daily_job_post_${date}`,
+                meta: { date, platforms }
+            }
+        );
+
+        let bonusReward = { awarded: 0 };
+        if (formFilled) {
+            bonusReward = await coinService.awardCoins(
+                req.student._id,
+                "DAILY_JOB_FORM_BONUS",
+                null,
+                {
+                    actionKey: `daily_job_post_form_${date}`,
+                    meta: { date, formFilled: true }
+                }
+            );
+        }
+
+        const balance = await coinService.getBalance(req.student._id);
+        res.json({
+            success: true,
+            coinsAwarded: (baseReward.awarded || 0) + (bonusReward.awarded || 0),
+            totalCoins: balance.totalCoins,
+            rupeeValue: balance.rupeeValue
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: "Server error" });
     }
@@ -345,7 +528,7 @@ router.get("/coins/balance", requireStudent, async (req, res) => {
 router.get("/coins/history", requireStudent, async (req, res) => {
     try {
         const data = await coinService.getBalance(req.student._id);
-        res.json({ success: true, history: data.coinsHistory, totalCoins: data.totalCoins });
+        res.json({ success: true, history: data.coinsHistory, totalCoins: data.totalCoins, rupeeValue: data.rupeeValue });
     } catch (err) {
         res.status(500).json({ success: false, message: "Server error" });
     }
@@ -357,7 +540,6 @@ router.get("/coins/history", requireStudent, async (req, res) => {
 // ────────────────────────────────────────────────
 router.get("/leaderboard", async (req, res) => {
     try {
-        const { StudentCoin } = require("../../models/new/StudentCoin");
         const top = await require("../../models/new/StudentCoin").find()
             .sort({ totalCoins: -1 })
             .limit(20)
@@ -368,7 +550,8 @@ router.get("/leaderboard", async (req, res) => {
             rank:       i + 1,
             name:       entry.studentId ? `${entry.studentId.firstName} ${entry.studentId.lastName}`.trim() : "Anonymous",
             domain:     entry.studentId?.domain || "",
-            totalCoins: entry.totalCoins
+            totalCoins: entry.totalCoins,
+            rupeeValue: coinService.toRupeeValue(entry.totalCoins)
         }));
 
         res.json({ success: true, leaderboard: board });

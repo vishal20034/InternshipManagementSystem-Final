@@ -5,11 +5,12 @@ const express = require("express");
 const router = express.Router();
 const Student = require("../../models/Student");
 const quizEngine = require("../../services/v2/quizEngine");
+const { getEmployeeIdFromRequest } = require("../../services/v2/auth");
 
 // NEW FEATURE: Quiz System (auth mirror for V2)
 async function requireStudent(req, res, next) {
     try {
-        const employeeId = req.headers["x-employee-id"] || req.body.employeeId || req.query.employeeId;
+        const employeeId = getEmployeeIdFromRequest(req);
         if (!employeeId) return res.status(401).json({ success: false, message: "Authentication required" });
         const student = await Student.findOne({ employeeId: String(employeeId) });
         if (!student) return res.status(401).json({ success: false, message: "Student not found" });

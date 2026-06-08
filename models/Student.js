@@ -87,7 +87,24 @@ const studentsSchema = new mongoose.Schema({
     autoDocUniqueId:      { type: String, default: "" },
     documentVerified:     { type: Boolean, default: false },
     documentVerifiedAt:   { type: Date },
-    documentNumber:       { type: String, default: "" }
+    documentNumber:       { type: String, default: "" },
+
+    // ===== Student portal persistence =====
+    v2Onboarded:          { type: Boolean, default: false },
+    v2DurationType:       { type: String, default: null },
+    onboardingPopupSeen:  { type: Boolean, default: false },
+    joinerTypeSelected:   { type: Boolean, default: false },
+    joinerType:           { type: String, enum: ["new", "whatsapp", null], default: null },
+    lastLoginAt:          { type: Date, default: null },
+    loginStreakCount:     { type: Number, default: 0 },
+    lastLoginDate:        { type: Date, default: null },
+    coinMilestones: {
+        onboardingCompleted: { type: Boolean, default: false },
+        firstTaskSubmitted:  { type: Boolean, default: false },
+        courseCompleted:     { type: Boolean, default: false },
+        loginStreak7:        { type: Boolean, default: false },
+        loginStreak30:       { type: Boolean, default: false }
+    }
 }, {
     timestamps: true
 });

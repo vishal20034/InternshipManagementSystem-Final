@@ -4,6 +4,7 @@
 const DomainTask           = require("../../models/new/DomainTask");
 const StudentTaskProgress  = require("../../models/new/StudentTaskProgress");
 const coinService          = require("./coinService");
+const Student             = require("../../models/Student");
 
 // NEW FEATURE: Map legacy tenure strings to durationType enum values
 function tenureToDurationType(tenure) {
@@ -85,10 +86,34 @@ async function tryUnlockNextWeek(student, approvedTaskId) {
 
     // Award week-completion bonus
     if (res.modifiedCount > 0) {
-        await coinService.awardCoins(student._id, "WEEK_COMPLETE", currentWeek);
+        await coinService.awardCoins(student._id, "WEEK_COMPLETE", currentWeek, { actionKey: `week_complete_${currentWeek}` });
     }
 
     return { unlocked: res.modifiedCount, weekCompleted: currentWeek };
+}
+
+async function maybeAwardCourseCompletion(student, task) {
+    if (!task) return { awarded: 0 };
+    const allTaskIds = await DomainTask.find({
+        domain: task.domain,
+        durationType: task.durationType
+    }).distinct("_id");
+
+    const approvedCount = await StudentTaskProgress.countDocuments({
+        studentId: student._id,
+        taskId: { $in: allTaskIds },
+        status: "approved"
+    });
+
+    if (!allTaskIds.length || approvedCount < allTaskIds.length) {
+        return { awarded: 0 };
+    }
+
+    const reward = await coinService.awardCoins(student._id, "COURSE_COMPLETE", null, { actionKey: `course_complete_${task.domain}_${task.durationType}` });
+    if (reward.awarded > 0) {
+        await Student.updateOne({ _id: student._id }, { $set: { "coinMilestones.courseCompleted": true } });
+    }
+    return reward;
 }
 
 /**
@@ -115,13 +140,16 @@ async function approveTask(student, progressId, coordinatorId, feedback) {
     await progress.save();
 
     // Award task coins
-    await coinService.awardCoins(student._id, "TASK_APPROVED", coinReward);
-
-    // First-task bonus
-    if (isFirst) await coinService.awardCoins(student._id, "TASK_FIRST");
+    await coinService.awardCoins(
+        student._id,
+        "TASK_APPROVED",
+        { difficulty: task?.difficultyLevel || "medium" },
+        { actionKey: `task_approved_${progress.taskId._id || progress.taskId}` }
+    );
 
     // Try to unlock next week
     const unlock = await tryUnlockNextWeek(student, progress.taskId._id || progress.taskId);
+    await maybeAwardCourseCompletion(student, task);
 
     return { approved: true, coinsAwarded: coinReward, unlock };
 }
@@ -178,4 +206,4 @@ async function getStudentTasks(student) {
     return { weeks, domain, durationType };
 }
 
-module.exports = { assignTasksForStudent, tryUnlockNextWeek, approveTask, getStudentTasks, tenureToDurationType };
+module.exports = { assignTasksForStudent, tryUnlockNextWeek, approveTask, getStudentTasks, tenureToDurationType, maybeAwardCourseCompletion };

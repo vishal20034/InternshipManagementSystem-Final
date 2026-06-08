@@ -1707,6 +1707,8 @@ try{
     const { employeeId, password } = req.body;
     const student = await Student.findOne({ employeeId, password });
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
+    const { issueStudentToken } = require("./services/v2/auth");
+    const coinService = require("./services/v2/coinService");
 
     // Internship end date (used by student dashboard profile modal)
     // tenure values in this app are "1 Month" | "3 Months" | "6 Months".
@@ -1722,9 +1724,40 @@ try{
         }
     }
 
-    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+    const lastLoginKey = student.lastLoginDate ? new Date(student.lastLoginDate).toISOString().slice(0, 10) : null;
+    let loginStreakCount = student.loginStreakCount || 0;
+    if (lastLoginKey !== todayKey) {
+        const yesterday = new Date(now);
+        yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+        const yesterdayKey = yesterday.toISOString().slice(0, 10);
+        loginStreakCount = lastLoginKey === yesterdayKey ? loginStreakCount + 1 : 1;
+    }
+
+    const updates = {
+        lastActiveDate: now,
+        lastLoginAt: now,
+        lastLoginDate: now,
+        loginStreakCount
+    };
+    await Student.findOneAndUpdate({ employeeId }, { $set: updates });
+
+    if (lastLoginKey !== todayKey) {
+        if (loginStreakCount >= 7 && !student.coinMilestones?.loginStreak7) {
+            await coinService.awardCoins(student._id, "LOGIN_STREAK_7", null, { actionKey: "login_streak_7" });
+            await Student.updateOne({ _id: student._id }, { $set: { "coinMilestones.loginStreak7": true } });
+        }
+        if (loginStreakCount >= 30 && !student.coinMilestones?.loginStreak30) {
+            await coinService.awardCoins(student._id, "LOGIN_STREAK_30", null, { actionKey: "login_streak_30" });
+            await Student.updateOne({ _id: student._id }, { $set: { "coinMilestones.loginStreak30": true } });
+        }
+    }
+
+    const token = issueStudentToken(student);
     res.json({
         success:true,
+        token,
         student:{
             name: student.firstName + " " + student.lastName,
             firstName: student.firstName, lastName: student.lastName,
@@ -1745,7 +1778,13 @@ try{
             internshipEnd: computedEndDate ? computedEndDate.toISOString() : null,
             endDate: computedEndDate ? computedEndDate.toISOString() : null,
 
-            linkedDomains: student.linkedDomains || []
+            linkedDomains: student.linkedDomains || [],
+            onboardingPopupSeen: !!student.onboardingPopupSeen,
+            joinerTypeSelected: !!student.joinerTypeSelected,
+            joinerType: student.joinerType || null,
+            v2Onboarded: !!student.v2Onboarded,
+            v2DurationType: student.v2DurationType || null,
+            loginStreakCount
         }
     });
 }catch(error){

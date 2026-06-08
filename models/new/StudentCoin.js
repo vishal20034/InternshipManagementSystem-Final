@@ -3,7 +3,9 @@ const mongoose = require("mongoose");
 
 const coinHistoryEntrySchema = new mongoose.Schema({
     action:    { type: String, required: true },
+    actionKey: { type: String, default: null },
     coins:     { type: Number, required: true },
+    meta:      { type: mongoose.Schema.Types.Mixed, default: null },
     timestamp: { type: Date, default: Date.now }
 }, { _id: false });
 
