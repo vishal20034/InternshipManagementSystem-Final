@@ -438,8 +438,22 @@ body::after {
         <!-- FEATURE 3 — Quick Share Job Buttons -->
         <div id="djpQuickShare" style="margin-bottom:16px;">
           <p style="font-size:12px;color:#9a8a6a;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:1px;">⚡ Quick Share — Copy message &amp; open platform:</p>
-          <div style="background:rgba(212,175,55,0.05);border:1px solid rgba(212,175,55,0.15);border-radius:10px;padding:12px 16px;margin-bottom:10px;font-size:12px;color:#c8baa0;line-height:1.7;" id="djpShareText">
-            🚀 <b>TEN is Hiring Interns!</b><br>The Entrepreneurship Network is looking for passionate students for our internship program.<br>📌 Domains: Web Dev, AI, Data Science, HR, MERN, DevOps, Flutter &amp; more<br>🎓 Get real-world experience + certificate + performance-based pay<br>👉 Apply here: <a href="https://forms.gle/TENinternship" target="_blank" rel="noopener" style="color:#D4AF37;">forms.gle/TENinternship</a><br>#TEN #Internship #Hiring #Students
+          <div style="background:rgba(212,175,55,0.05);border:1px solid rgba(212,175,55,0.2);border-radius:12px;padding:16px 18px;margin-bottom:10px;font-size:13px;color:#c8baa0;line-height:1.9;position:relative;" id="djpShareText">
+            <div style="position:absolute;top:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:12px 12px 0 0;"></div>
+            🚀 <b style="color:#D4AF37;font-size:14px;">TEN is Hiring Interns — Join The Entrepreneurship Network!</b><br><br>
+            📣 Are you a student looking to gain <b style="color:#f0e6c8;">real-world experience</b>, build your portfolio, and earn <b style="color:#f0e6c8;">performance-based pay</b>? TEN's Internship Program is your launchpad into the tech industry!<br><br>
+            🎯 <b style="color:#f0e6c8;">What you get:</b><br>
+            ✅ Hands-on project experience in your chosen domain<br>
+            ✅ Industry-recognised Certificate of Completion<br>
+            ✅ Performance-based stipend (coin reward system — ₹0.50/coin)<br>
+            ✅ Mentorship from experienced professionals<br>
+            ✅ LinkedIn recommendations &amp; real portfolio projects<br><br>
+            💼 <b style="color:#f0e6c8;">Open Domains:</b> Web Dev · MERN Stack · Python · AI/ML · Data Science · DevOps &amp; AWS · Cyber Security · Flutter · Java · UI/UX · HR &amp; Management<br><br>
+            📅 <b style="color:#f0e6c8;">Duration:</b> 1 Month / 3 Months (Flexible) &nbsp;|&nbsp; 🌐 <b style="color:#f0e6c8;">100% Remote</b><br>
+            💰 <b style="color:#f0e6c8;">Stipend:</b> Performance-based pay starting from Day 1<br><br>
+            👉 <b style="color:#f0e6c8;">Apply Now (FREE):</b> <a href="https://forms.gle/TENinternship" target="_blank" rel="noopener" style="color:#D4AF37;text-decoration:none;font-weight:800;">forms.gle/TENinternship</a><br><br>
+            📲 <i style="color:#9a8a6a;">Tag a friend who deserves this opportunity! ⬇️</i><br>
+            <span style="color:#6a7a94;font-size:11px;">#TEN #Internship #HiringNow #TechInternship #FreeInternship #Students2024 #WorkFromHome #RemoteInternship #TheEntrepreneurshipNetwork</span>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
             <button onclick="djpCopyAndOpen('linkedin')" style="display:flex;align-items:center;gap:6px;padding:8px 14px;background:rgba(10,102,194,0.12);border:1px solid rgba(10,102,194,0.3);border-radius:8px;color:#7eb3e8;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💼 LinkedIn</button>
@@ -480,6 +494,16 @@ body::after {
           <label style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:#c8baa0;">
             <input type="checkbox" class="djp-check" data-platform="Telegram Groups" style="cursor:pointer;accent-color:#D4AF37;"> ✈️ Telegram Groups
           </label>
+        </div>
+
+        <!-- Other platform — custom URL opener -->
+        <div style="background:rgba(255,255,255,0.02);border:1px dashed rgba(212,175,55,0.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+          <p style="font-size:12px;color:#9a8a6a;margin-bottom:8px;font-weight:600;">🔗 Other Platform? Paste your app link below and click Open:</p>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <input id="djpCustomUrl" type="url" placeholder="e.g. https://twitter.com or any app link…" style="flex:1;min-width:180px;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#f0e6c8;font-size:13px;font-family:inherit;outline:none;" oninput="document.getElementById('djpCustomOpenBtn').disabled=!this.value.trim();" />
+            <button id="djpCustomOpenBtn" onclick="djpOpenCustomUrl()" disabled style="padding:9px 18px;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:8px;color:#D4AF37;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">🚀 Open &amp; Mark</button>
+          </div>
+          <div id="djpCustomPlatformList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
         </div>
         
         <!-- Tracking form link -->
@@ -856,7 +880,7 @@ function renderTask(task, weekNum) {
       </div>
       <!-- FEATURE 7 — Broken video report -->
       <div style="margin-top:6px;">
-        <button onclick="reportBrokenVideo('${task._id}','${task.domain || (studentData && studentData.domain) || ''}',${weekNum},'${(task.taskTitle||'').replace(/'/g,"\\'")}','${task.videoUrl||''}')" style="background:transparent;border:none;color:#6a7a94;font-size:11px;cursor:pointer;font-family:inherit;padding:2px 0;text-decoration:underline;">🚨 Video not loading? Report broken video</button>
+        <button onclick="reportBrokenVideo(this,'${task._id}','${task.domain || (studentData && studentData.domain) || ''}',${weekNum},'${(task.taskTitle||'').replace(/'/g,"\\'")}','${task.videoUrl||''}')" style="background:transparent;border:none;color:#6a7a94;font-size:11px;cursor:pointer;font-family:inherit;padding:2px 0;text-decoration:underline;">🚨 Video not loading? Report broken video</button>
       </div>
     </div>` : '';
 
@@ -992,12 +1016,26 @@ async function openCoinDrawer() {
 }
 
 // FEATURE 3 — Quick Share functions
-const DJP_SHARE_MSG = `🚀 TEN is Hiring Interns!
-The Entrepreneurship Network is looking for passionate students for our internship program.
-📌 Domains: Web Dev, AI, Data Science, HR, MERN, DevOps, Flutter & more
-🎓 Get real-world experience + certificate + performance-based pay
-👉 Apply here: https://forms.gle/TENinternship
-#TEN #Internship #Hiring #Students`;
+const DJP_SHARE_MSG = `🚀 TEN is Hiring Interns — Join The Entrepreneurship Network!
+
+📣 Are you a student looking to gain real-world experience, build your portfolio, and earn performance-based pay? TEN's Internship Program is your launchpad into the tech industry!
+
+🎯 What you get:
+✅ Hands-on project experience in your chosen domain
+✅ Industry-recognised Certificate of Completion
+✅ Performance-based stipend (coin reward system — ₹0.50/coin)
+✅ Mentorship from experienced professionals
+✅ LinkedIn recommendations & real portfolio projects
+
+💼 Open Domains: Web Dev · MERN Stack · Python · AI/ML · Data Science · DevOps & AWS · Cyber Security · Flutter · Java · UI/UX · HR & Management
+
+📅 Duration: 1 Month / 3 Months (Flexible) | 🌐 100% Remote
+💰 Stipend: Performance-based pay starting from Day 1
+
+👉 Apply Now (FREE): https://forms.gle/TENinternship
+
+📲 Tag a friend who deserves this opportunity! ⬇️
+#TEN #Internship #HiringNow #TechInternship #FreeInternship #Students2024 #WorkFromHome #RemoteInternship #TheEntrepreneurshipNetwork`;
 
 const DJP_PLATFORM_URLS = {
   linkedin:  'https://www.linkedin.com/feed/',
@@ -1022,13 +1060,45 @@ function djpCopyAndOpen(platform) {
     navigator.clipboard.writeText(DJP_SHARE_MSG).then(() => {
       const url = DJP_PLATFORM_URLS[platform] || 'https://google.com';
       window.open(url, '_blank');
-      // Auto-check the corresponding checkbox
       const checkbox = document.querySelector(`.djp-check[data-platform="${platform.charAt(0).toUpperCase() + platform.slice(1)}"]`);
       if (checkbox && !checkbox.checked) { checkbox.checked = true; if (typeof updateDjpPreview === 'function') updateDjpPreview(); }
     });
   } catch(e) {
     window.open(DJP_PLATFORM_URLS[platform] || '#', '_blank');
   }
+}
+
+// "Other platform" custom URL opener
+const _djpCustomPlatforms = [];
+function djpOpenCustomUrl() {
+  const input = document.getElementById('djpCustomUrl');
+  const listEl = document.getElementById('djpCustomPlatformList');
+  let url = (input.value || '').trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  // Copy message to clipboard first, then open
+  try {
+    navigator.clipboard.writeText(DJP_SHARE_MSG).catch(() => {});
+  } catch(e) {}
+  window.open(url, '_blank');
+
+  // Extract a friendly label from the URL
+  let label = url;
+  try { label = new URL(url).hostname.replace('www.',''); } catch(e) {}
+
+  // Track it (avoid duplicates)
+  if (!_djpCustomPlatforms.includes(label)) {
+    _djpCustomPlatforms.push(label);
+    const tag = document.createElement('span');
+    tag.style.cssText = 'background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:6px;padding:3px 10px;font-size:11px;color:#D4AF37;font-weight:700;';
+    tag.textContent = '✅ ' + label;
+    listEl.appendChild(tag);
+    if (typeof updateDjpPreview === 'function') updateDjpPreview();
+  }
+
+  input.value = '';
+  document.getElementById('djpCustomOpenBtn').disabled = true;
 }
 
 // FEATURE 5 — Mark video as watched (80%+ gate)
@@ -1056,37 +1126,59 @@ async function markVideoWatched(taskId) {
 }
 
 // FEATURE 7 — Report broken video and auto-replace
-async function reportBrokenVideo(taskId, domain, weekNum, taskTitle, currentUrl) {
-  const btn = event && event.target;
-  if (btn) { btn.textContent = '⏳ Finding replacement...'; btn.disabled = true; }
+async function reportBrokenVideo(btn, taskId, domain, weekNum, taskTitle, currentUrl) {
+  if (btn) { btn.textContent = '⏳ Searching replacement…'; btn.disabled = true; }
+
+  function resetBtn(label) {
+    if (btn) { btn.textContent = label || '🚨 Video not loading? Report broken video'; btn.disabled = false; }
+  }
+
+  // ── Immediate YouTube search fallback (client-side, no timeout risk) ──
+  const searchQuery = encodeURIComponent(`${domain || ''} ${taskTitle || 'tutorial'} tutorial`);
+  const ytSearchUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
+
   try {
-    const empId = studentData?.employeeId || localStorage.getItem('employeeId') || '';
+    const empId = (studentData && studentData.employeeId) || localStorage.getItem('employeeId') || '';
+    // Short timeout so the button never hangs — 5 s max
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
     const res = await fetch('/api/v2/student/report-broken-video', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-      body: JSON.stringify({ taskId, domain, weekNumber: weekNum, taskTitle })
+      body: JSON.stringify({ taskId, domain, weekNumber: weekNum, taskTitle }),
+      signal: controller.signal
     });
+    clearTimeout(timeout);
     const data = await res.json();
+
     if (data.success && data.replaced && data.newVideoUrl) {
-      // Replace iframe with new video
+      // Swap the iframe to the replacement video
       const iframe = document.getElementById(`yt-${taskId}`);
       if (iframe) {
-        const newYtId = data.newVideoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-        if (newYtId) {
-          iframe.src = `https://www.youtube.com/embed/${newYtId[1]}?enablejsapi=1`;
-          if (typeof Swal !== 'undefined') {
-            Swal.fire({ icon:'success', title:'Video Replaced! 🎬', text:'A working replacement video has been loaded.', timer:2500, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8' });
-          }
-        }
+        const m = data.newVideoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+        if (m) iframe.src = `https://www.youtube.com/embed/${m[1]}?enablejsapi=1&rel=0`;
       }
-    } else if (data.searchUrl) {
-      window.open(data.searchUrl, '_blank');
+      resetBtn('✅ Replacement loaded');
       if (typeof Swal !== 'undefined') {
-        Swal.fire({ icon:'info', title:'No Auto-Replacement Found', text:'Opening a YouTube search for your topic.', timer:2000, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8' });
+        Swal.fire({ icon:'success', title:'Video Replaced! 🎬', text:'A working replacement video has been loaded for you.', timer:2500, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8' });
       }
+      return;
+    }
+
+    // No DB fallback — open YouTube search immediately
+    window.open(data.searchUrl || ytSearchUrl, '_blank');
+    resetBtn('🔍 Search opened in new tab');
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({ icon:'info', title:'YouTube Search Opened 🔍', text:'We opened a YouTube search for your topic in a new tab. Find a suitable video there.', timer:3000, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8' });
     }
   } catch(e) {
-    if (btn) { btn.textContent = '🚨 Video not loading? Report broken video'; btn.disabled = false; }
+    // Network error OR 5 s timeout — fall back to client-side search immediately
+    window.open(ytSearchUrl, '_blank');
+    resetBtn('🔍 Search opened in new tab');
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({ icon:'info', title:'YouTube Search Opened 🔍', text:'Opening a YouTube search for your topic in a new tab.', timer:2500, timerProgressBar:true, showConfirmButton:false, background:'#0e1428', color:'#F0EEE8' });
+    }
   }
 }
 
