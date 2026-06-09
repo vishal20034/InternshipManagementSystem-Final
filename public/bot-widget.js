@@ -395,7 +395,9 @@
     border-radius: 20px 20px 0 0;
     max-height: 70vh;
   }
-  .ten-bot-launcher { right: 12px; bottom: 12px; }
+  .ten-bot-launcher { right: 10px; bottom: 14px; gap: 8px; }
+  .ten-bot-launcher-btn { font-size: 13px; padding: 11px 18px 11px 14px; min-width: 130px; }
+  .ten-bot-launcher-btn span:first-child { font-size: 17px; }
 }
     `;
     document.head.appendChild(s);

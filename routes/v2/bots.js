@@ -35,7 +35,7 @@ async function askGemini(systemPrompt, userMessage) {
   if (!apiKey || apiKey.includes('your_key')) {
     throw new Error('GEMINI_API_KEY not set in environment');
   }
-  const url  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   const body = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
     contents:          [{ parts: [{ text: userMessage }] }],
