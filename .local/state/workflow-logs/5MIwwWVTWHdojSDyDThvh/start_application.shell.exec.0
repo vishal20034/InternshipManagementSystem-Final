@@ -1,0 +1,25 @@
+◇ injected env (0) from .env [2m// tip: ◈ secrets for agents [www.dotenvx.com][0m
+[V2] Student portal routes mounted at /api/v2
+[V2] Quiz routes mounted at /api/v2/quiz
+[V2] Document routes mounted at /api/v2
+[V2] Certificate routes mounted at /api/v2
+[V2] HR routes mounted at /api/v2/hr
+[V2] Payment routes mounted at /api/v2/payment
+(node:850) [MONGOOSE] DeprecationWarning: Mongoose: the `strictQuery` option will be switched back to `false` by default in Mongoose 7. Use `mongoose.set('strictQuery', false);` if you want to prepare for this change. Or use `mongoose.set('strictQuery', true);` to suppress this warning.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Server running on port 5000
+Error: Missing credentials for "PLAIN"
+    at SMTPConnection._formatError [90m(/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-connection/index.js:905:19[90m)[39m
+    at SMTPConnection.login [90m(/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-connection/index.js:542:38[90m)[39m
+    at [90m/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-transport/index.js:380:32
+    at SMTPConnection.<anonymous> [90m(/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-connection/index.js:255:17[90m)[39m
+[90m    at Object.onceWrapper (node:events:638:28)[39m
+[90m    at SMTPConnection.emit (node:events:524:28)[39m
+    at SMTPConnection._actionEHLO [90m(/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-connection/index.js:1510:14[90m)[39m
+    at SMTPConnection._processResponse [90m(/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-connection/index.js:1099:20[90m)[39m
+    at SMTPConnection._onData [90m(/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-connection/index.js:865:14[90m)[39m
+    at SMTPConnection._onSocketData [90m(/home/runner/workspace/[39mnode_modules/[4mnodemailer[24m/lib/smtp-connection/index.js:224:44[90m)[39m {
+  code: [32m'EAUTH'[39m,
+  command: [32m'API'[39m
+}
+MongoDB Connected
