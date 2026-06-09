@@ -55,40 +55,60 @@
 /* ── Launcher ──────────────────────────────────────────────────── */
 .ten-bot-launcher {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
+  bottom: 32px;
+  right: 20px;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 10px;
   z-index: 99990;
 }
 .ten-bot-launcher-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px 10px 12px;
+  gap: 10px;
+  padding: 13px 24px 13px 18px;
   border: none;
   border-radius: 50px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #fff;
   white-space: nowrap;
+  letter-spacing: 0.02em;
+  min-width: 155px;
+  justify-content: flex-start;
   animation: botPop .5s cubic-bezier(.34,1.56,.64,1) both;
-  transition: transform .15s, box-shadow .15s;
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
 }
-.ten-bot-launcher-btn:hover { transform: translateX(-4px) scale(1.04); }
-.ten-bot-launcher-btn span:first-child { font-size: 18px; }
-.ten-lbtn-ten-task  { background: linear-gradient(135deg,#4f46e5,#7c3aed); box-shadow: 0 4px 16px rgba(79,70,229,.4); animation-delay:.1s; }
-.ten-lbtn-ten-query { background: linear-gradient(135deg,#0891b2,#2563eb); box-shadow: 0 4px 16px rgba(8,145,178,.4); animation-delay:.2s; }
-.ten-lbtn-ten-voice { background: linear-gradient(135deg,#7c3aed,#c026d3); box-shadow: 0 4px 16px rgba(124,58,237,.4); animation-delay:.3s; }
+.ten-bot-launcher-btn:hover {
+  transform: translateX(-6px) scale(1.05);
+  filter: brightness(1.12);
+}
+.ten-bot-launcher-btn:active { transform: translateX(-2px) scale(.98); }
+.ten-bot-launcher-btn span:first-child { font-size: 20px; line-height: 1; flex-shrink: 0; }
+.ten-lbtn-ten-task  {
+  background: linear-gradient(120deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 6px 22px rgba(99,102,241,.55), 0 2px 8px rgba(139,92,246,.35);
+  animation-delay: .1s;
+}
+.ten-lbtn-ten-query {
+  background: linear-gradient(120deg, #0ea5e9 0%, #6366f1 100%);
+  box-shadow: 0 6px 22px rgba(14,165,233,.5), 0 2px 8px rgba(99,102,241,.3);
+  animation-delay: .2s;
+}
+.ten-lbtn-ten-voice {
+  background: linear-gradient(120deg, #a855f7 0%, #ec4899 100%);
+  box-shadow: 0 6px 22px rgba(168,85,247,.55), 0 2px 8px rgba(236,72,153,.35);
+  animation-delay: .3s;
+}
 
 /* ── Panel ─────────────────────────────────────────────────────── */
 .ten-bot-panel {
   position: fixed;
-  bottom: 90px;
-  right: 24px;
+  bottom: 180px;
+  right: 20px;
   width: 360px;
   max-height: 520px;
   display: flex;
