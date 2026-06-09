@@ -139,21 +139,38 @@ router.get("/student/me", requireStudent, async (req, res) => {
     try {
         const student = req.student;
         const { totalCoins, rupeeValue } = await coinService.getBalance(student._id);
+        const me = student;
+        // Compute internship end date same as login route
+        let meEndDate = null;
+        if (me.joiningDate) {
+            const jd = new Date(me.joiningDate);
+            if (!isNaN(jd.getTime())) {
+                const t = String(me.tenure || "").toLowerCase();
+                const days = t.includes("6") ? 180 : t.includes("3") ? 90 : 30;
+                const end = new Date(jd); end.setDate(end.getDate() + days);
+                meEndDate = end.toISOString();
+            }
+        }
         res.json({
             success: true,
             student: {
-                name:               `${student.firstName || ""} ${student.lastName || ""}`.trim(),
-                firstName:          student.firstName,
-                lastName:           student.lastName,
-                email:              student.email || "",
-                employeeId:         student.employeeId,
-                domain:             student.domain,
-                tenure:             student.tenure,
-                joiningDate:        student.joiningDate,
-                linkedDomains:      student.linkedDomains || [],
-                onboardingPopupSeen: student.onboardingPopupSeen || false,
-                joinerTypeSelected:  student.joinerTypeSelected  || false,
-                joinerType:          student.joinerType           || null
+                name:               `${me.firstName || ""} ${me.lastName || ""}`.trim(),
+                firstName:          me.firstName,
+                lastName:           me.lastName,
+                email:              me.email || "",
+                phone:              me.whatsapp || me.phone || "",
+                college:            me.collegeName || me.college || "",
+                collegeName:        me.collegeName || me.college || "",
+                employeeId:         me.employeeId,
+                domain:             me.domain,
+                tenure:             me.tenure,
+                joiningDate:        me.joiningDate,
+                internshipEnd:      meEndDate,
+                endDate:            meEndDate,
+                linkedDomains:      me.linkedDomains || [],
+                onboardingPopupSeen: me.onboardingPopupSeen || false,
+                joinerTypeSelected:  me.joinerTypeSelected  || false,
+                joinerType:          me.joinerType           || null
             },
             totalCoins,
             rupeeValue

@@ -2159,6 +2159,29 @@ if(!student){
   window.location.href="/login.html";
 }
 
+// Silently refresh phone/college/dates from server so profile modal always shows correct data
+(function refreshStudentProfile() {
+  try {
+    var empId = (student && student.employeeId) || localStorage.getItem('employeeId') || '';
+    if (!empId) return;
+    fetch('/api/v2/student/me', { headers: { 'x-employee-id': empId } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.success || !data.student) return;
+        var s = data.student;
+        var stored = JSON.parse(localStorage.getItem('student') || '{}');
+        if (s.phone)        stored.phone        = s.phone;
+        if (s.college)      stored.college      = s.college;
+        if (s.collegeName)  stored.collegeName  = s.collegeName;
+        if (s.joiningDate)  stored.joiningDate  = s.joiningDate;
+        if (s.internshipEnd) stored.internshipEnd = s.internshipEnd;
+        if (s.endDate)      stored.endDate      = s.endDate;
+        localStorage.setItem('student', JSON.stringify(stored));
+      })
+      .catch(function(){});
+  } catch(e) {}
+})();
+
 const employeeId = student.employeeId;
 const domain = student.domain;
 
@@ -3952,10 +3975,10 @@ function openProfileModal() {
   document.getElementById('pmEmpId').textContent = stu.employeeId || stu.employee_id || '—';
   document.getElementById('pmCollege').textContent = stu.college || stu.collegeName || '—';
   document.getElementById('pmEmail').textContent = stu.email || '—';
-  document.getElementById('pmPhone').textContent = stu.phone || stu.mobile || '—';
-  var joined = stu.startDate || stu.joinDate || stu.createdAt;
+  document.getElementById('pmPhone').textContent = stu.phone || stu.whatsapp || stu.mobile || '—';
+  var joined = stu.joiningDate || stu.startDate || stu.joinDate || stu.createdAt;
   document.getElementById('pmJoined').textContent = joined ? new Date(joined).toLocaleDateString('en-IN') : '—';
-  var end = stu.endDate || stu.internshipEnd;
+  var end = stu.internshipEnd || stu.endDate;
   document.getElementById('pmEnd').textContent = end ? new Date(end).toLocaleDateString('en-IN') : '—';
   _pmPassVal = stu.password || stu.plainPassword || '';
   _pmPassVisible = false;
