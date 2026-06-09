@@ -451,7 +451,7 @@ body::after {
             💼 <b style="color:#f0e6c8;">Open Domains:</b> Web Dev · MERN Stack · Python · AI/ML · Data Science · DevOps &amp; AWS · Cyber Security · Flutter · Java · UI/UX · HR &amp; Management<br><br>
             📅 <b style="color:#f0e6c8;">Duration:</b> 1 Month / 3 Months (Flexible) &nbsp;|&nbsp; 🌐 <b style="color:#f0e6c8;">100% Remote</b><br>
             💰 <b style="color:#f0e6c8;">Stipend:</b> Performance-based pay starting from Day 1<br><br>
-            👉 <b style="color:#f0e6c8;">Apply Now (FREE):</b> <a href="https://forms.gle/TENinternship" target="_blank" rel="noopener" style="color:#D4AF37;text-decoration:none;font-weight:800;">forms.gle/TENinternship</a><br><br>
+            👉 <b style="color:#f0e6c8;">Apply Now (FREE):</b> <a href="https://www.entrepreneurshipnetwork.net" target="_blank" rel="noopener" style="color:#D4AF37;text-decoration:none;font-weight:800;">www.entrepreneurshipnetwork.net</a><br><br>
             📲 <i style="color:#9a8a6a;">Tag a friend who deserves this opportunity! ⬇️</i><br>
             <span style="color:#6a7a94;font-size:11px;">#TEN #Internship #HiringNow #TechInternship #FreeInternship #Students2024 #WorkFromHome #RemoteInternship #TheEntrepreneurshipNetwork</span>
           </div>
@@ -496,24 +496,8 @@ body::after {
           </label>
         </div>
 
-        <!-- Other platform — custom URL opener -->
-        <div style="background:rgba(255,255,255,0.02);border:1px dashed rgba(212,175,55,0.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
-          <p style="font-size:12px;color:#9a8a6a;margin-bottom:8px;font-weight:600;">🔗 Other Platform? Paste your app link below and click Open:</p>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <input id="djpCustomUrl" type="url" placeholder="e.g. https://twitter.com or any app link…" style="flex:1;min-width:180px;padding:9px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#f0e6c8;font-size:13px;font-family:inherit;outline:none;" oninput="document.getElementById('djpCustomOpenBtn').disabled=!this.value.trim();" />
-            <button id="djpCustomOpenBtn" onclick="djpOpenCustomUrl()" disabled style="padding:9px 18px;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:8px;color:#D4AF37;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">🚀 Open &amp; Mark</button>
-          </div>
-          <div id="djpCustomPlatformList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
-        </div>
-        
-        <!-- Tracking form link -->
-        <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;">
-          <p style="font-size:12px;color:#9a8a6a;margin-bottom:6px;">📋 After posting, fill the tracking form (+3 bonus coins):</p>
-          <a href="https://docs.google.com/forms/d/e/1FAIpQLSf3qZwNUgQl7vqqTnGW4PKrMDwRWPJEMiVQ-NUI6h4NnJa8Zg/viewform" target="_blank" rel="noopener" style="color:#D4AF37;font-size:13px;font-weight:700;text-decoration:none;">→ Open Tracking Form</a>
-          <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:#c8baa0;cursor:pointer;">
-            <input type="checkbox" id="djpFormFilled" style="cursor:pointer;accent-color:#D4AF37;"> I have filled the tracking form
-          </label>
-        </div>
+        <!-- hint label -->
+        <p style="font-size:11px;color:#6a5a3a;margin-bottom:10px;">✅ Tick each platform where you posted. Each platform = <b style="color:#D4AF37;">3 coins</b> · Max <b style="color:#D4AF37;">10 coins</b> per day.</p>
       </div>
       
       <!-- Coins display -->
@@ -521,7 +505,7 @@ body::after {
         <div style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:14px;padding:16px 20px;margin-bottom:12px;">
           <div style="font-size:11px;color:#8aa4c8;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Today's Coins</div>
           <div id="djpCoinPreview" style="font-size:32px;font-weight:800;color:#D4AF37;">🪙 0</div>
-          <div style="font-size:10px;color:#6a5a3a;margin-top:4px;">+3 for tracking form</div>
+          <div style="font-size:10px;color:#6a5a3a;margin-top:4px;">3 coins × platforms (max 10)</div>
         </div>
         <div id="djpStatusBadge" style="display:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;"></div>
       </div>
@@ -874,8 +858,9 @@ function renderTask(task, weekNum) {
       <!-- FEATURE 5 — Watch gate button -->
       <div id="video-gate-${task._id}" style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         ${alreadyWatched
-          ? `<span style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:6px 14px;font-size:12px;color:#10b981;font-weight:700;">✅ Video watched — Quiz unlocked</span>`
-          : `<button onclick="markVideoWatched('${task._id}')" style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:7px 14px;font-size:12px;color:#D4AF37;font-weight:700;cursor:pointer;font-family:inherit;">▶ I've watched 80%+ of this video (+5 🪙)</button>`
+          ? `<span style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:6px 14px;font-size:12px;color:#10b981;font-weight:700;">✅ Video watched — Quiz unlocked</span>
+             <a href="quiz-portal.html?taskId=${task._id}&domain=${encodeURIComponent(task.domain || '')}&week=${weekNum}" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:800;color:#0a0700;text-decoration:none;cursor:pointer;">🎯 Take Quiz →</a>`
+          : `<button onclick="markVideoWatched('${task._id}','${encodeURIComponent(task.domain||'')}',${weekNum})" style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:7px 14px;font-size:12px;color:#D4AF37;font-weight:700;cursor:pointer;font-family:inherit;">▶ I've watched 80%+ of this video (+5 🪙)</button>`
         }
       </div>
       <!-- FEATURE 7 — Broken video report -->
@@ -1032,7 +1017,7 @@ const DJP_SHARE_MSG = `🚀 TEN is Hiring Interns — Join The Entrepreneurship 
 📅 Duration: 1 Month / 3 Months (Flexible) | 🌐 100% Remote
 💰 Stipend: Performance-based pay starting from Day 1
 
-👉 Apply Now (FREE): https://forms.gle/TENinternship
+👉 Apply Now (FREE): https://www.entrepreneurshipnetwork.net
 
 📲 Tag a friend who deserves this opportunity! ⬇️
 #TEN #Internship #HiringNow #TechInternship #FreeInternship #Students2024 #WorkFromHome #RemoteInternship #TheEntrepreneurshipNetwork`;
@@ -1102,11 +1087,16 @@ function djpOpenCustomUrl() {
 }
 
 // FEATURE 5 — Mark video as watched (80%+ gate)
-async function markVideoWatched(taskId) {
+async function markVideoWatched(taskId, domainEncoded, weekNum) {
   localStorage.setItem(`v2_video_watched_${taskId}`, '1');
+  const domain = domainEncoded ? decodeURIComponent(domainEncoded) : (studentData && studentData.domain) || '';
+  const wk = weekNum || 1;
   const gateEl = document.getElementById(`video-gate-${taskId}`);
   if (gateEl) {
-    gateEl.innerHTML = `<span style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:6px 14px;font-size:12px;color:#10b981;font-weight:700;">✅ Video watched — Quiz unlocked (+5 🪙)</span>`;
+    gateEl.innerHTML = `
+      <span style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:6px 14px;font-size:12px;color:#10b981;font-weight:700;">✅ Video watched — Quiz unlocked (+5 🪙)</span>
+      <a href="quiz-portal.html?taskId=${taskId}&domain=${encodeURIComponent(domain)}&week=${wk}" style="display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:8px;padding:7px 16px;font-size:12px;font-weight:800;color:#0a0700;text-decoration:none;cursor:pointer;">🎯 Take Quiz →</a>
+    `;
   }
   // Update progress bar
   const fill = document.getElementById(`vpf-${taskId}`);
@@ -1216,6 +1206,41 @@ function closeCoinDrawer() {
   document.getElementById('drawerBackdrop').classList.remove('show');
 }
 
+// ── YouTube broken-video auto-detect via postMessage ─────────────────
+// YouTube sends postMessage with info.errorCode when a video is unavailable.
+// We listen for it and auto-trigger the broken-video flow.
+window.addEventListener('message', function(evt) {
+  try {
+    const data = typeof evt.data === 'string' ? JSON.parse(evt.data) : evt.data;
+    // YouTube error codes: 2=invalid id, 5=html5 error, 100=not found/private, 101/150=embed not allowed
+    if (data && data.event === 'infoDelivery' && data.info && data.info.errorCode) {
+      // Find which iframe sent this
+      const frames = document.querySelectorAll('iframe[id^="yt-"]');
+      frames.forEach(function(fr) {
+        try {
+          if (fr.contentWindow === evt.source) {
+            const taskId = fr.id.replace('yt-', '');
+            const wrapEl = document.getElementById('video-wrap-' + taskId);
+            if (!wrapEl) return;
+            // Show prominent broken-video notice
+            const existing = wrapEl.querySelector('.ytbroken-notice');
+            if (existing) return; // already shown
+            const notice = document.createElement('div');
+            notice.className = 'ytbroken-notice';
+            notice.style.cssText = 'background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.25);border-radius:8px;padding:10px 14px;margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+            notice.innerHTML = '<span style="font-size:12px;color:#f43f5e;font-weight:700;">⚠️ This video is unavailable on YouTube.</span>' +
+              '<button style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:6px;padding:5px 12px;font-size:11px;color:#D4AF37;font-weight:700;cursor:pointer;font-family:inherit;" ' +
+              'onclick="this.closest(\'.ytbroken-notice\').querySelector(\'button\').disabled=true;' +
+              'reportBrokenVideo(this.closest(\'.ytbroken-notice\').querySelector(\'button\'),\'' + taskId + '\',\'' +
+              ((window.studentData && window.studentData.domain) || '') + '\',1,\'\',\'\')">🔍 Find Replacement</button>';
+            wrapEl.appendChild(notice);
+          }
+        } catch(e2) {}
+      });
+    }
+  } catch(e) {}
+});
+
 // ── Boot ─────────────────────────────────────────
 init();
 </script>
@@ -1225,29 +1250,7 @@ init();
 // ═══════════════════════════════════════
 // DAILY JOB POSTING TASK — COIN SYSTEM
 // ═══════════════════════════════════════
-const DJP_DOMAIN_COINS = {
-  'Artificial Intelligence': 12,
-  'Data Science': 12,
-  'HR Management': 12,
-  'Web Development': 10,
-  'MERN Stack Development': 10,
-  'Python Development': 10,
-  'Cyber Security': 10,
-  'DevOps with AWS': 10,
-  'Software Engineering': 10,
-  'Java Development': 8,
-  'Flutter Development': 8,
-};
-const DJP_DEFAULT_COINS = 10;
-const DJP_BONUS_FORM    = 3;
-const DJP_BONUS_5PLUS   = 5;
-
-function getDjpBaseCoins() {
-  try {
-    var stu = JSON.parse(localStorage.getItem('student') || sessionStorage.getItem('student') || '{}');
-    return DJP_DOMAIN_COINS[stu.domain] || DJP_DEFAULT_COINS;
-  } catch(e) { return DJP_DEFAULT_COINS; }
-}
+// Coin rule: 3 coins per platform checked, max 10 per day
 
 function todayKey() {
   return new Date().toISOString().slice(0,10);
@@ -1272,11 +1275,7 @@ function saveDjpDone(coins) {
 
 function updateDjpPreview() {
   var checked = document.querySelectorAll('.djp-check:checked').length;
-  var formFilled = document.getElementById('djpFormFilled')?.checked;
-  var base = getDjpBaseCoins();
-  var coins = checked > 0 ? base : 0;
-  if (checked >= 5) coins += DJP_BONUS_5PLUS;
-  if (formFilled) coins += DJP_BONUS_FORM;
+  var coins = Math.min(checked * 3, 10);
 
   var preview = document.getElementById('djpCoinPreview');
   var btnCoins = document.getElementById('djpBtnCoins');
@@ -1308,11 +1307,7 @@ async function submitDailyJobPosting() {
   }
   var platforms = Array.from(document.querySelectorAll('.djp-check:checked')).map(c => c.dataset.platform);
   if (platforms.length === 0) return;
-  var formFilled = document.getElementById('djpFormFilled')?.checked;
-  var base = getDjpBaseCoins();
-  var coins = base;
-  if (platforms.length >= 5) coins += DJP_BONUS_5PLUS;
-  if (formFilled) coins += DJP_BONUS_FORM;
+  var coins = Math.min(platforms.length * 3, 10);
 
   var btn = document.getElementById('djpSubmitBtn');
   btn.disabled = true;
@@ -1324,18 +1319,16 @@ async function submitDailyJobPosting() {
     var r = await fetch('/api/v2/student/daily-job-post', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-      body: JSON.stringify({ platforms, formFilled, coins, date: todayKey() })
+      body: JSON.stringify({ platforms, coins, date: todayKey() })
     });
     var d = await r.json().catch(() => ({ success: true }));
-    // Whether server succeeds or fails, record locally and award coins display
     saveDjpDone(coins);
     showDjpDoneState(coins);
     Swal.fire({
       icon: 'success',
       title: '🎉 +' + coins + ' Coins Earned!',
-      html: '<p>Great job posting on ' + platforms.length + ' platform(s)!</p>' +
-            (platforms.length >= 5 ? '<p style="color:#D4AF37">🔥 Bonus: 5+ platforms!</p>' : '') +
-            (formFilled ? '<p style="color:#D4AF37">📋 Bonus: Tracking form filled!</p>' : ''),
+      html: '<p>Great job! Posted on ' + platforms.length + ' platform(s).</p>' +
+            (coins >= 10 ? '<p style="color:#D4AF37;font-weight:700;">🔥 Max 10 coins reached!</p>' : ''),
       background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#D4AF37'
     });
     // Refresh coin badge
@@ -1378,11 +1371,7 @@ function showDjpDoneState(coins) {
 // Wire up checkbox events
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.djp-check').forEach(cb => cb.addEventListener('change', updateDjpPreview));
-  var formCb = document.getElementById('djpFormFilled');
-  if (formCb) formCb.addEventListener('change', updateDjpPreview);
 
-  // Set base coin preview
-  var base = getDjpBaseCoins();
   var preview = document.getElementById('djpCoinPreview');
   if (preview) preview.textContent = '🪙 0';
 
