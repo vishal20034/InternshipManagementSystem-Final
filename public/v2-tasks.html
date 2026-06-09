@@ -451,7 +451,7 @@ body::after {
             💼 <b style="color:#f0e6c8;">Open Domains:</b> Web Dev · MERN Stack · Python · AI/ML · Data Science · DevOps &amp; AWS · Cyber Security · Flutter · Java · UI/UX · HR &amp; Management<br><br>
             📅 <b style="color:#f0e6c8;">Duration:</b> 1 Month / 3 Months (Flexible) &nbsp;|&nbsp; 🌐 <b style="color:#f0e6c8;">100% Remote</b><br>
             💰 <b style="color:#f0e6c8;">Stipend:</b> Performance-based pay starting from Day 1<br><br>
-            👉 <b style="color:#f0e6c8;">Apply Now (FREE):</b> <a href="https://www.entrepreneurshipnetwork.net" target="_blank" rel="noopener" style="color:#D4AF37;text-decoration:none;font-weight:800;">www.entrepreneurshipnetwork.net</a><br><br>
+            👉 <b style="color:#f0e6c8;">Apply Now (FREE):</b> <a href="https://virtualinternships.entrepreneurshipnetwork.net/" target="_blank" rel="noopener" style="color:#D4AF37;text-decoration:none;font-weight:800;">virtualinternships.entrepreneurshipnetwork.net</a><br><br>
             📲 <i style="color:#9a8a6a;">Tag a friend who deserves this opportunity! ⬇️</i><br>
             <span style="color:#6a7a94;font-size:11px;">#TEN #Internship #HiringNow #TechInternship #FreeInternship #Students2024 #WorkFromHome #RemoteInternship #TheEntrepreneurshipNetwork</span>
           </div>
@@ -837,8 +837,13 @@ function toggleWeek(weekNum, headerEl) {
 }
 
 // ── Render a single task card ─────────────────────
+// Registry: taskId → { domain, taskTitle, weekNum } — used by postMessage auto-fix
+const _taskMeta = {};
+
 function renderTask(task, weekNum) {
   const ytId = extractYouTubeId(task.videoUrl);
+  // Register metadata for postMessage auto-fix
+  _taskMeta[task._id] = { domain: task.domain || (studentData && studentData.domain) || '', taskTitle: task.taskTitle || '', weekNum: weekNum || 1 };
 
   // FEATURE 5 — Check if video was already watched (80%+ gate)
   const videoWatchedKey = `v2_video_watched_${task._id}`;
@@ -1017,7 +1022,7 @@ const DJP_SHARE_MSG = `🚀 TEN is Hiring Interns — Join The Entrepreneurship 
 📅 Duration: 1 Month / 3 Months (Flexible) | 🌐 100% Remote
 💰 Stipend: Performance-based pay starting from Day 1
 
-👉 Apply Now (FREE): https://www.entrepreneurshipnetwork.net
+👉 Apply Now (FREE): https://virtualinternships.entrepreneurshipnetwork.net/
 
 📲 Tag a friend who deserves this opportunity! ⬇️
 #TEN #Internship #HiringNow #TechInternship #FreeInternship #Students2024 #WorkFromHome #RemoteInternship #TheEntrepreneurshipNetwork`;
@@ -1206,40 +1211,151 @@ function closeCoinDrawer() {
   document.getElementById('drawerBackdrop').classList.remove('show');
 }
 
-// ── YouTube broken-video auto-detect via postMessage ─────────────────
-// YouTube sends postMessage with info.errorCode when a video is unavailable.
-// We listen for it and auto-trigger the broken-video flow.
+// ── Domain backup videos (pre-vetted, stable educational channels) ────
+const DOMAIN_BACKUP_VIDEOS = {
+  'Web Development':          'dQw4w9WgXcQ', // overridden below per real IDs
+  'MERN Stack Development':   'fnpmR6Q5lEc',
+  'Python Development':       '_uQrJ0TkZlc',
+  'Artificial Intelligence':  'ad79nYk2keg',
+  'Data Science':             'ua-CiDNNj30',
+  'Cyber Security':           'inWWhr5tnEA',
+  'DevOps with AWS':          'Wvf0mBNGjXY',
+  'Software Engineering':     'zOjov-2OZ0E',
+  'Java Development':         'grEKMHGYyns',
+  'Flutter Development':      '1ukSR1GRtMU',
+  'HR Management':            'XKozl-apqM8',
+  'Business Analyst':         'QoAOzMTLP5s',
+  'UI/UX Design':             'c9Wg6Cb_YlU',
+  'Digital Marketing':        'bixR-NZYWDQ',
+  'Vibe Coding':              'fnpmR6Q5lEc',
+  'Space Research':           'xRyUfGPEf_s',
+  'Cloud Computing':          'M988_fsOSWo',
+  'Machine Learning':         'GwIo3gDZCVQ',
+};
+// Robust override with real known-working IDs
+Object.assign(DOMAIN_BACKUP_VIDEOS, {
+  'Web Development':          'ysEN5RaKOlA', // freeCodeCamp Full Web Dev
+  'Python Development':       'rfscVS0vtbw', // freeCodeCamp Python Full
+  'Artificial Intelligence':  'JMUxmLyrhSk', // AI full course
+  'Data Science':             'ua-CiDNNj30', // Data Science
+  'Cyber Security':           'inWWhr5tnEA', // Cybersecurity full
+  'DevOps with AWS':          'Wvf0mBNGjXY', // DevOps AWS
+  'Java Development':         'grEKMHGYyns', // Java full
+  'Flutter Development':      '1ukSR1GRtMU', // Flutter crash
+  'MERN Stack Development':   'fnpmR6Q5lEc', // MERN full
+  'Vibe Coding':              'fnpmR6Q5lEc',
+});
+
+// ── Subscribe YouTube iframes to onError/onStateChange after load ─────
+function subscribeYtIframe(iframe) {
+  try {
+    iframe.contentWindow.postMessage(
+      JSON.stringify({ event: 'listening' }), '*'
+    );
+  } catch(e) {}
+}
+
+// ── Auto-fix broken video (called by postMessage handler) ─────────────
+async function autoFixBrokenVideo(taskId) {
+  const meta = _taskMeta[taskId] || {};
+  const domain = meta.domain || (studentData && studentData.domain) || '';
+  const taskTitle = meta.taskTitle || '';
+  const weekNum = meta.weekNum || 1;
+
+  const iframe = document.getElementById('yt-' + taskId);
+  const wrapEl = document.getElementById('video-wrap-' + taskId);
+  if (!iframe || !wrapEl) return;
+
+  // Show "replacing…" status
+  let statusEl = wrapEl.querySelector('.ytbroken-notice');
+  if (!statusEl) {
+    statusEl = document.createElement('div');
+    statusEl.className = 'ytbroken-notice';
+    statusEl.style.cssText = 'background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.25);border-radius:8px;padding:8px 14px;margin-top:6px;font-size:12px;color:#f43f5e;font-weight:700;';
+    statusEl.textContent = '⏳ Video unavailable — loading a replacement…';
+    wrapEl.appendChild(statusEl);
+  }
+
+  // 1️⃣ Try server API first (5s timeout)
+  try {
+    const empId = (studentData && studentData.employeeId) || localStorage.getItem('employeeId') || '';
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch('/api/v2/student/report-broken-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
+      body: JSON.stringify({ taskId, domain, weekNumber: weekNum, taskTitle }),
+      signal: ctrl.signal
+    });
+    clearTimeout(t);
+    const data = await res.json();
+    if (data.success && data.replaced && data.newVideoUrl) {
+      const m = data.newVideoUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+      if (m) {
+        iframe.src = 'https://www.youtube.com/embed/' + m[1] + '?enablejsapi=1&rel=0';
+        statusEl.style.cssText = 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:8px 14px;margin-top:6px;font-size:12px;color:#10b981;font-weight:700;';
+        statusEl.textContent = '✅ Replacement video loaded (from database)';
+        return;
+      }
+    }
+  } catch(e) { /* timeout or network — fall through to backup */ }
+
+  // 2️⃣ Use domain backup video map
+  const backupId = DOMAIN_BACKUP_VIDEOS[domain];
+  if (backupId) {
+    iframe.src = 'https://www.youtube.com/embed/' + backupId + '?enablejsapi=1&rel=0';
+    statusEl.style.cssText = 'background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.25);border-radius:8px;padding:8px 14px;margin-top:6px;font-size:12px;color:#D4AF37;font-weight:700;';
+    statusEl.textContent = '✅ Backup ' + domain + ' video loaded — original was unavailable';
+    return;
+  }
+
+  // 3️⃣ Final fallback: YouTube search link
+  const q = encodeURIComponent((domain + ' ' + taskTitle + ' tutorial').trim());
+  statusEl.innerHTML = '⚠️ Video unavailable. <a href="https://www.youtube.com/results?search_query=' + q + '" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:700;">🔍 Search YouTube →</a>';
+}
+
+// ── YouTube postMessage listener — correct event is "onError" ─────────
 window.addEventListener('message', function(evt) {
   try {
     const data = typeof evt.data === 'string' ? JSON.parse(evt.data) : evt.data;
-    // YouTube error codes: 2=invalid id, 5=html5 error, 100=not found/private, 101/150=embed not allowed
-    if (data && data.event === 'infoDelivery' && data.info && data.info.errorCode) {
-      // Find which iframe sent this
-      const frames = document.querySelectorAll('iframe[id^="yt-"]');
-      frames.forEach(function(fr) {
-        try {
-          if (fr.contentWindow === evt.source) {
-            const taskId = fr.id.replace('yt-', '');
-            const wrapEl = document.getElementById('video-wrap-' + taskId);
-            if (!wrapEl) return;
-            // Show prominent broken-video notice
-            const existing = wrapEl.querySelector('.ytbroken-notice');
-            if (existing) return; // already shown
-            const notice = document.createElement('div');
-            notice.className = 'ytbroken-notice';
-            notice.style.cssText = 'background:rgba(244,63,94,0.08);border:1px solid rgba(244,63,94,0.25);border-radius:8px;padding:10px 14px;margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
-            notice.innerHTML = '<span style="font-size:12px;color:#f43f5e;font-weight:700;">⚠️ This video is unavailable on YouTube.</span>' +
-              '<button style="background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);border-radius:6px;padding:5px 12px;font-size:11px;color:#D4AF37;font-weight:700;cursor:pointer;font-family:inherit;" ' +
-              'onclick="this.closest(\'.ytbroken-notice\').querySelector(\'button\').disabled=true;' +
-              'reportBrokenVideo(this.closest(\'.ytbroken-notice\').querySelector(\'button\'),\'' + taskId + '\',\'' +
-              ((window.studentData && window.studentData.domain) || '') + '\',1,\'\',\'\')">🔍 Find Replacement</button>';
-            wrapEl.appendChild(notice);
-          }
-        } catch(e2) {}
-      });
-    }
+    // YouTube IFrame API fires { event:"onError", info: <errorCode> }
+    // Error codes: 2=invalid id, 5=html5, 100=removed/private, 101/150=embed disallowed
+    if (!data || data.event !== 'onError') return;
+    const errCode = data.info;
+    if (!errCode) return;
+    // Find which iframe fired this
+    document.querySelectorAll('iframe[id^="yt-"]').forEach(function(fr) {
+      try {
+        if (fr.contentWindow === evt.source) {
+          const taskId = fr.id.replace('yt-', '');
+          // Avoid double-fixing
+          if (fr.dataset.autoFixed) return;
+          fr.dataset.autoFixed = '1';
+          autoFixBrokenVideo(taskId);
+        }
+      } catch(e2) {}
+    });
   } catch(e) {}
 });
+
+// Subscribe all iframes when they finish loading so YouTube knows to send events
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('iframe[id^="yt-"]').forEach(subscribeYtIframe);
+});
+// Also subscribe dynamically rendered iframes via MutationObserver
+(function() {
+  const obs = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+      m.addedNodes.forEach(function(n) {
+        if (n.nodeType === 1) {
+          if (n.tagName === 'IFRAME' && n.id && n.id.startsWith('yt-')) subscribeYtIframe(n);
+          n.querySelectorAll && n.querySelectorAll('iframe[id^="yt-"]').forEach(subscribeYtIframe);
+        }
+      });
+    });
+  });
+  obs.observe(document.body || document.documentElement, { childList: true, subtree: true });
+})();
 
 // ── Boot ─────────────────────────────────────────
 init();
