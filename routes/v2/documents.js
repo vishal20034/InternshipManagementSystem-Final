@@ -127,6 +127,19 @@ async function tryAutoGenerateLOC(student) {
         doc.locDocumentNumber = docNumber;
         await doc.save();
 
+        // Sync with Student model
+        try {
+            const pdfBuffer = fs.readFileSync(outPath);
+            await Student.findByIdAndUpdate(student._id, {
+                locPdfBase64: pdfBuffer.toString('base64'),
+                locStatus: 'issued',
+                locIssuedAt: new Date()
+            });
+            console.log(`[Sync] ✓ Synced LOC (issued) to Student ${student._id}`);
+        } catch (syncErr) {
+            console.error(`[Sync] ✗ Failed to sync LOC to Student:`, syncErr.message);
+        }
+
         const studentName = (student.name || student.email || "").trim();
         await DocumentHistory.create({
             studentId:      student._id,
@@ -636,6 +649,19 @@ router.post("/admin/documents/generate-lor/:studentId", requireHR, async (req, r
         docRec.lorSentAt         = new Date();
         docRec.lorDocumentNumber = docNumber;
         await docRec.save();
+
+        // Sync with Student model
+        try {
+            const pdfBuffer = fs.readFileSync(outPath);
+            await Student.findByIdAndUpdate(student._id, {
+                lorPdfBase64: pdfBuffer.toString('base64'),
+                lorStatus: 'issued',
+                lorIssuedAt: new Date()
+            });
+            console.log(`[Sync] ✓ Synced LOR (issued) to Student ${student._id}`);
+        } catch (syncErr) {
+            console.error(`[Sync] ✗ Failed to sync LOR to Student:`, syncErr.message);
+        }
 
         const studentName = (student.name || student.email || "").trim();
         const college     = (student.collegeName || student.college || "Not provided").trim();
