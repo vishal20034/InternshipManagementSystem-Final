@@ -33,4 +33,40 @@ documentHistorySchema.index({ sentAt: -1 });
 documentHistorySchema.index({ employeeId: 1 });
 documentHistorySchema.index({ documentNumber: 1 });
 
+/**
+ * Central helper to log a document send (manual or automation).
+ * Used by all services/routes so the payload-building logic lives in one place.
+ * Never throws — logging must not break the send flow.
+ *
+ * @param {Object} entry  - student / document info (accepts service-style aliases)
+ * @param {string} method - 'manual' | 'automation'
+ * @returns {Promise<Object|null>} created record or null on failure
+ */
+documentHistorySchema.statics.logSend = async function (entry = {}, method = 'manual') {
+  try {
+    const isAuto = method === 'automation';
+    const when = entry.sentAt || entry.sentOn || new Date();
+    return await this.create({
+      studentId:      entry.studentId || null,
+      studentName:    (entry.studentName || entry.name || '').trim(),
+      studentEmail:   entry.studentEmail || entry.email || '',
+      employeeId:     entry.employeeId || '',
+      college:        entry.college || entry.collegeName || 'Not provided',
+      domain:         entry.domain || '',
+      documentType:   entry.documentType || entry.documentKey || 'Document',
+      documentKey:    entry.documentKey || '',
+      documentNumber: entry.documentNumber || '',
+      sentOn:         when,
+      sentAt:         when,
+      sentBy:         entry.sentBy || (isAuto ? 'Auto System' : 'HR Portal'),
+      sentToEmail:    entry.sentToEmail || entry.email || '',
+      method:         isAuto ? 'automation' : 'manual',
+      emailStatus:    entry.emailStatus || 'sent'
+    });
+  } catch (err) {
+    console.error('[DocumentHistory] logSend failed:', err.message);
+    return null;
+  }
+};
+
 module.exports = mongoose.model('DocumentHistory', documentHistorySchema);

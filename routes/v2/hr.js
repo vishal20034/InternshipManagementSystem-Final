@@ -284,7 +284,7 @@ router.post("/document-history/log", requireHR, async (req, res) => {
     const documentType = String(payload.document_type_label || payload.documentType || payload.documentTypeLabel || "").trim() || documentKey;
     const documentNumber = normalizeDocumentNumber(payload.document_number || payload.documentNumber || payload.documentNo || generateDocumentNumber(documentKey || "doc"));
 
-    await DocumentHistory.create({
+    await DocumentHistory.logSend({
       studentId: student?._id || studentId || null,
       studentName,
       studentEmail: payload.student_email || payload.studentEmail || student?.email || "",
@@ -294,13 +294,10 @@ router.post("/document-history/log", requireHR, async (req, res) => {
       documentType,
       documentKey,
       documentNumber,
-      sentOn: new Date(),
-      sentAt: new Date(),
       sentBy: payload.sent_by || payload.sentBy || "HR Portal",
       sentToEmail: payload.sent_to_email || payload.sentToEmail || "",
-      method: "manual",
       emailStatus: payload.email_status || payload.emailStatus || "sent"
-    });
+    }, "manual");
 
     res.json({ success: true, documentNumber });
   } catch (_) {

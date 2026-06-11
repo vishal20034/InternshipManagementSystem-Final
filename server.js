@@ -16,6 +16,7 @@ if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDat
 if(!Student.schema.path("v2Onboarded"))    Student.schema.add({ v2Onboarded:    { type: Boolean, default: false } });
 if(!Student.schema.path("v2DurationType")) Student.schema.add({ v2DurationType: { type: String,  default: null  } });
 const DocumentHistory = require("./models/DocumentHistory");
+const { generateDocumentNumber, normalizeDocumentNumber } = require("./utils/documentNumber");
 const MailHistory = require("./models/MailHistory");
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");

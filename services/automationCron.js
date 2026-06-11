@@ -473,27 +473,19 @@ async function autoGenerateOfferLetter(doc) {
             console.error("[AUTO-CRON] Offer letter email failed:", mailErr.message);
         }
 
-        try {
-            await DocumentHistory.create({
-                studentId:      student._id,
-                studentName:    student.name || "",
-                studentEmail:   student.email || "",
-                employeeId:     student.employeeId || "",
-                college:        student.collegeName || student.college || "",
-                domain:         student.domain || "",
-                documentType:   "Offer Letter",
-                documentKey:    "offer_letter",
-                documentNumber: docNum,
-                sentOn:         new Date(),
-                sentAt:         new Date(),
-                sentBy:         "Auto System",
-                sentToEmail:    student.email || "",
-                method:         "automation",
-                emailStatus:    offerMailStatus
-            });
-        } catch (histErr) {
-            console.error("[AUTO-CRON] Offer letter DocumentHistory log failed:", histErr.message);
-        }
+        await DocumentHistory.logSend({
+            studentId:      student._id,
+            studentName:    student.name || "",
+            studentEmail:   student.email || "",
+            employeeId:     student.employeeId || "",
+            college:        student.collegeName || student.college || "",
+            domain:         student.domain || "",
+            documentType:   "Offer Letter",
+            documentKey:    "offer_letter",
+            documentNumber: docNum,
+            sentToEmail:    student.email || "",
+            emailStatus:    offerMailStatus
+        }, "automation");
 
         console.log(`[AUTO-CRON] Offer letter auto-generated for ${student.employeeId}`);
     } catch (err) {
@@ -684,27 +676,19 @@ async function autoGenerateCertificates(certReq) {
 
         // Log each automation-sent document into Document Send History
         for (const sentDoc of sentDocuments) {
-            try {
-                await DocumentHistory.create({
-                    studentId:      student._id,
-                    studentName:    (student.name || student.email || "").trim(),
-                    studentEmail:   student.email || "",
-                    employeeId:     student.employeeId || "",
-                    college:        student.collegeName || student.college || "Not provided",
-                    domain:         student.domain || "",
-                    documentType:   sentDoc.documentType,
-                    documentKey:    sentDoc.documentKey,
-                    documentNumber: sentDoc.documentNumber,
-                    sentOn:         new Date(),
-                    sentAt:         new Date(),
-                    sentBy:         "Auto System",
-                    sentToEmail:    student.email || "",
-                    method:         "automation",
-                    emailStatus:    certMailStatus
-                });
-            } catch (histErr) {
-                console.error(`[AUTO-CRON] DocumentHistory log failed (${sentDoc.documentKey}):`, histErr.message);
-            }
+            await DocumentHistory.logSend({
+                studentId:      student._id,
+                studentName:    (student.name || student.email || "").trim(),
+                studentEmail:   student.email || "",
+                employeeId:     student.employeeId || "",
+                college:        student.collegeName || student.college || "Not provided",
+                domain:         student.domain || "",
+                documentType:   sentDoc.documentType,
+                documentKey:    sentDoc.documentKey,
+                documentNumber: sentDoc.documentNumber,
+                sentToEmail:    student.email || "",
+                emailStatus:    certMailStatus
+            }, "automation");
         }
 
         certReq.hrApproved         = true;
