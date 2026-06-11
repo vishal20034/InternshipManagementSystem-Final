@@ -96,7 +96,7 @@ const studentsSchema = new mongoose.Schema({
     starContribution:        { type: String, default: null },
       
     offerPdfBase64:          { type: String, default: null },
-    offerLetterStatus:       { type: String, enum: ['not_uploaded','pending','under_review','approved','rejected'], default: 'not_uploaded' },
+    offerLetterStatus:       { type: String, enum: ['not_uploaded','pending','under_review','approved','rejected','issued'], default: 'not_uploaded' },
     offerLetterGeneratedAt:  { type: Date,   default: null },
     documentRejectionReason: { type: String, default: null },
     documentsSubmittedAt:    { type: Date,   default: null },

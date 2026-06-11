@@ -172,6 +172,20 @@ async function handleMyCerts(req, res) {
             safeStudent.offerLetterGeneratedAt = docRec.offerLetterSentAt;
           }
         }
+        if (docRec.locUrl) {
+          safeStudent.hasLocPdf = true;
+          safeStudent.locStatus = 'issued';
+          if (docRec.locSentAt && !safeStudent.locIssuedAt) {
+            safeStudent.locIssuedAt = docRec.locSentAt;
+          }
+        }
+        if (docRec.lorUrl) {
+          safeStudent.hasLorPdf = true;
+          safeStudent.lorStatus = 'issued';
+          if (docRec.lorSentAt && !safeStudent.lorIssuedAt) {
+            safeStudent.lorIssuedAt = docRec.lorSentAt;
+          }
+        }
         if (docRec.rejectionReason && !safeStudent.documentRejectionReason) {
           safeStudent.documentRejectionReason = docRec.rejectionReason;
         }
