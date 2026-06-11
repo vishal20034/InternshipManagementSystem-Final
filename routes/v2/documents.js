@@ -270,6 +270,13 @@ router.post("/documents/submit", requireStudent, async (req, res) => {
         doc.rejectionReason = null;
         await doc.save();
 
+        // Sync with Student model
+        await Student.findByIdAndUpdate(req.student._id, {
+            offerLetterStatus: "pending",
+            documentsSubmittedAt: new Date(),
+            documentRejectionReason: null
+        });
+
         // Notify HR via email (best-effort)
         try {
             const transporter = createTransporter();
@@ -399,6 +406,20 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                 docRec.offerLetterSentAt = new Date();
                 docRec.offerLetterDocumentNumber = docNumber;
                 await docRec.save();
+
+                // Sync with Student model
+                try {
+                    const pdfBuffer = fs.readFileSync(pdfPath);
+                    await Student.findByIdAndUpdate(sid, {
+                        offerPdfBase64: pdfBuffer.toString('base64'),
+                        offerLetterStatus: 'approved', // or 'issued'
+                        offerLetterGeneratedAt: new Date(),
+                        documentRejectionReason: null
+                    });
+                    console.log(`[Sync] ✓ Synced Offer Letter (approved) to Student ${sid}`);
+                } catch (syncErr) {
+                    console.error(`[Sync] ✗ Failed to sync Offer Letter to Student:`, syncErr.message);
+                }
 
                 // Email offer letter to student
                 let mailStatus = "sent";
@@ -687,6 +708,12 @@ router.patch("/admin/documents/reject/:studentId", requireHR, async (req, res) =
         doc.rejectionReason = rejectionReason || "Documents did not meet the requirements. Please re-upload.";
         doc.reviewedAt      = new Date();
         await doc.save();
+
+        // Sync with Student model
+        await Student.findByIdAndUpdate(req.params.studentId, {
+            offerLetterStatus: "rejected",
+            documentRejectionReason: doc.rejectionReason
+        });
 
         // Notify student
         try {

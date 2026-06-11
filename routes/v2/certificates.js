@@ -839,6 +839,30 @@ router.get('/my-certs', async (req, res) => {
     safeStudent.hasLorPdf   = !!lorPdfBase64;
     safeStudent.hasStarPdf  = !!starPdfBase64;
     safeStudent.hasOfferPdf = !!offerPdfBase64;
+
+    // Fallback: integrate and merge status from StudentDocument if available
+    try {
+      const StudentDocument = require("../../models/new/StudentDocument");
+      const docRec = await StudentDocument.findOne({ studentId: student._id }).lean();
+      if (docRec) {
+        if (!safeStudent.offerLetterStatus || safeStudent.offerLetterStatus === 'not_uploaded' || safeStudent.offerLetterStatus === 'not_eligible') {
+          safeStudent.offerLetterStatus = docRec.uploadStatus || 'not_uploaded';
+        }
+        if (docRec.offerLetterUrl) {
+          safeStudent.hasOfferPdf = true;
+          safeStudent.offerLetterStatus = 'issued'; // ensure it matches 'issued' for UI download button
+          if (docRec.offerLetterSentAt && !safeStudent.offerLetterGeneratedAt) {
+            safeStudent.offerLetterGeneratedAt = docRec.offerLetterSentAt;
+          }
+        }
+        if (docRec.rejectionReason && !safeStudent.documentRejectionReason) {
+          safeStudent.documentRejectionReason = docRec.rejectionReason;
+        }
+      }
+    } catch (fallbackErr) {
+      console.error('[My-Certs] StudentDocument fallback error:', fallbackErr.message);
+    }
+
     res.json(safeStudent);
   } catch(e) {
     console.error('[My-Certs] Error:', e.message);
@@ -856,7 +880,34 @@ router.get('/download/:type', async (req, res) => {
   
     const pdfMap = { LOC:'locPdfBase64', LOR:'lorPdfBase64', STAR:'starPdfBase64', OFFER:'offerPdfBase64' };
     const b64 = student[pdfMap[type]];
-    if (!b64) return res.status(404).json({ error: 'Certificate not yet generated' });
+    if (!b64) {
+      // Fallback: Check StudentDocument for legacy / file system PDF
+      try {
+        const StudentDocument = require("../../models/new/StudentDocument");
+        const docRec = await StudentDocument.findOne({ studentId: student._id }).lean();
+        let fileUrl = '';
+        if (type === 'OFFER' && docRec && docRec.offerLetterUrl) {
+          fileUrl = docRec.offerLetterUrl;
+        } else if (type === 'LOC' && docRec && docRec.locUrl) {
+          fileUrl = docRec.locUrl;
+        } else if (type === 'LOR' && docRec && docRec.lorUrl) {
+          fileUrl = docRec.lorUrl;
+        }
+        
+        if (fileUrl) {
+          const absolutePath = path.join(__dirname, "../..", fileUrl);
+          if (fs.existsSync(absolutePath)) {
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="TEN-${type}-${employeeId}.pdf"`);
+            return res.sendFile(absolutePath);
+          }
+        }
+      } catch (fallbackErr) {
+        console.error('[Download] StudentDocument fallback error:', fallbackErr.message);
+      }
+      
+      return res.status(404).json({ error: 'Certificate not yet generated' });
+    }
   
     const buffer = Buffer.from(b64, 'base64');
     res.setHeader('Content-Type', 'application/pdf');
