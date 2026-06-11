@@ -1,9 +1,9 @@
-const DocumentHistory = require("../../models/DocumentHistory");
 // NEW FEATURE: Certificate PDF Generation Service
 // Generates HTML/CSS certificate templates and renders to PDF using PDFKit
 // Template styles: Expert (ivory/gold), Nano Degree (navy), Fellowship (forest green)
 "use strict";
-const DocumentHistory = require('../../models/DocumentHistory'); 
+
+const DocumentHistory = require("../../models/DocumentHistory");
 const PDFDocument = require("pdfkit");
 const fs          = require("fs");
 const crypto      = require("crypto");
@@ -296,9 +296,48 @@ async function generateFellowshipCertificate(data, outputPath) {
     });
 }
 
+/**
+ * Logs a certificate send into the Document Send History.
+ * @param {Object} entry - student / certificate info (certType: expert | nano_degree | fellowship | star ...)
+ * @param {string} [method] - 'manual' | 'automation'
+ * @returns {Promise<Object|null>} the created DocumentHistory record or null on failure
+ */
+async function logCertificateSend(entry = {}, method = "automation") {
+    try {
+        const labels = {
+            expert:      "Expert Certificate",
+            nano_degree: "Nano Degree",
+            fellowship:  "Fellowship",
+            star:        "Star Performer Certificate"
+        };
+        const certKey = String(entry.certType || entry.documentKey || "certificate").toLowerCase();
+        return await DocumentHistory.create({
+            studentId:      entry.studentId || null,
+            studentName:    (entry.studentName || entry.name || "").trim(),
+            studentEmail:   entry.studentEmail || entry.email || "",
+            employeeId:     entry.employeeId || "",
+            college:        entry.college || entry.collegeName || "Not provided",
+            domain:         entry.domain || "",
+            documentType:   entry.documentType || labels[certKey] || certKey,
+            documentKey:    certKey,
+            documentNumber: entry.documentNumber || entry.certificateId || "",
+            sentOn:         entry.sentAt || new Date(),
+            sentAt:         entry.sentAt || new Date(),
+            sentBy:         entry.sentBy || (method === "automation" ? "Auto System" : "HR Portal"),
+            sentToEmail:    entry.sentToEmail || entry.email || "",
+            method:         method === "automation" ? "automation" : "manual",
+            emailStatus:    entry.emailStatus || "sent"
+        });
+    } catch (err) {
+        console.error("[CertificateService] DocumentHistory log failed:", err.message);
+        return null;
+    }
+}
+
 module.exports = {
     generateCertificateId,
     generateExpertCertificate,
     generateNanoCertificate,
-    generateFellowshipCertificate
+    generateFellowshipCertificate,
+    logCertificateSend
 };

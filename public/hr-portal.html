@@ -475,8 +475,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
           <input class="search-input" id="insightsDocSearch" placeholder="Search by name, employee ID, or document number…" oninput="filterInsightsDocumentHistory()">
         </div>
         <div style="overflow-x:auto;"><table class="ins-table">
-          <thead><tr><th>Student Name</th><th>Employee ID</th><th>College</th><th>Document Type</th><th>Document Number</th><th>Sent On</th></tr></thead>
-          <tbody id="insightsDocHistoryTable"><tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
+          <thead><tr><th>Student Name</th><th>Employee ID</th><th>College</th><th>Document Type</th><th>Document Number</th><th>Sent On</th><th>Method</th></tr></thead>
+          <tbody id="insightsDocHistoryTable"><tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr></tbody>
         </table></div>
       </div>
     </div>
@@ -1275,20 +1275,21 @@ async function loadInsightsMonthly(){
 
 async function loadInsightsDocumentHistory(){
   const tb=document.getElementById('insightsDocHistoryTable');
-  tb.innerHTML='<tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr>';
+  tb.innerHTML='<tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr>';
   try{
-    const r=await fetch('/api/hr/document-history?page=1',{headers:{Authorization:hrToken}});
+    const r=await fetch('/api/v2/hr/document-history?page=1&limit=200',{headers:{Authorization:hrToken}});
     const d=await r.json();
-    insightsDocHistoryRecords=d.records||[];
+    insightsDocHistoryRecords=d.data||d.records||[];
     renderInsightsDocumentHistory(insightsDocHistoryRecords);
-  }catch(e){ tb.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="es-icon">📄</div><p>Failed to load</p></div></td></tr>'; }
+  }catch(e){ tb.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="es-icon">📄</div><p>Failed to load</p></div></td></tr>'; }
 }
 
 function renderInsightsDocumentHistory(list){
   const tb=document.getElementById('insightsDocHistoryTable');
-  if(!list.length){tb.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="es-icon">📄</div><p>No records</p></div></td></tr>';return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="7"><div class="empty-state"><div class="es-icon">📄</div><p>No records</p></div></td></tr>';return;}
   tb.innerHTML=list.map(r=>{
-    const sent=r.sentAt?new Date(r.sentAt).toLocaleDateString('en-IN'):'—';
+    const sentDate=r.sentAt||r.sentOn||r.createdAt;
+    const sent=sentDate?new Date(sentDate).toLocaleDateString('en-IN'):'—';
     const type=(r.documentType||'').trim();
     const bc=type==='Offer Letter'?'gold'
       :type==='LOR'||type==='Letter of Recommendation'?'purple'
@@ -1300,7 +1301,9 @@ function renderInsightsDocumentHistory(list){
       :'';
     const typeHtml=type?`<span class="ins-badge ${bc}">${type}</span>`:'—';
     const college=(r.college && String(r.college).trim() && r.college!=='—')?r.college:'Not provided';
-    return `<tr><td>${r.studentName||'—'}</td><td>${r.employeeId||'—'}</td><td>${college}</td><td>${typeHtml}</td><td>${r.documentNumber||'—'}</td><td>${sent}</td></tr>`;
+    const method=(r.method==='automation'||/auto|system|cron/i.test(r.sentBy||''))?'automation':'manual';
+    const methodHtml=method==='automation'?'<span class="ins-badge blue">Automation</span>':'<span class="ins-badge gold">Manual</span>';
+    return `<tr><td>${r.studentName||'—'}</td><td>${r.employeeId||'—'}</td><td>${college}</td><td>${typeHtml}</td><td>${r.documentNumber||'—'}</td><td>${sent}</td><td>${methodHtml}</td></tr>`;
   }).join('');
 }
 
@@ -2399,17 +2402,11 @@ async function generateOfferLetter(silent = false){
   const role=document.getElementById('ol-role').value.trim(),jf=fmtDate(document.getElementById('ol-joining').value),lf=fmtDate(document.getElementById('ol-date').value);
   if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
   if(!docNo) docNo=generateTenDocumentNumber('offer_letter');
-  if(empId){
-    try{
-      const rr=await fetch('/api/hr/document-history/create',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employeeId:empId,documentType:'Offer Letter'})});
-      const dd=await rr.json();
-      if(dd && dd.success){
-        if(dd.documentNumber) docNo=dd.documentNumber;
-        if(dd.studentName) name=dd.studentName;
-        if(dd.college) college=dd.college;
-      }
-    }catch(e){}
-  }
+  try{
+    const rr=await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,college:college,document_key:'offer_letter',document_type_label:'Offer Letter',document_number:docNo,sent_by:'HR Portal (Manual)'})});
+    const dd=await rr.json();
+    if(dd && dd.success && dd.documentNumber) docNo=dd.documentNumber;
+  }catch(e){}
   const docId = generateUniqueDocId('offer', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
@@ -2494,6 +2491,9 @@ ${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80"
 async function generateLOC(silent = false){
   const name=document.getElementById('loc-name').value.trim(),college=document.getElementById('loc-college').value.trim(),empId=document.getElementById('loc-empid').value.trim(),docNo=document.getElementById('loc-docno').value.trim()||'TEN/CT/—',role=document.getElementById('loc-role').value.trim(),course=document.getElementById('loc-course').value.trim()||'CSE',sd=fmtDate(document.getElementById('loc-start').value),ed=fmtDate(document.getElementById('loc-end').value),id_=fmtDate(document.getElementById('loc-issue').value);
   if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  try{
+    await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,college:college,document_key:'loc',document_type_label:'Letter of Completion',document_number:docNo,sent_by:'HR Portal (Manual)'})});
+  }catch(e){}
   const docId = generateUniqueDocId('loc', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
@@ -2540,16 +2540,11 @@ async function generateLOR(silent = false){
   const role=document.getElementById('lor-role').value.trim(),dl=fmtDate(document.getElementById('lor-date').value),sd=fmtDate(document.getElementById('lor-start').value),ed=fmtDate(document.getElementById('lor-end').value),gv=document.getElementById('lor-gender').value;
   if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
   if(!docNo) docNo=generateTenDocumentNumber('lor');
-  if(empId){
-    try{
-      const rr=await fetch('/api/hr/document-history/create',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employeeId:empId,documentType:'LOR'})});
-      const dd=await rr.json();
-      if(dd && dd.success){
-        if(dd.documentNumber) docNo=dd.documentNumber;
-        if(dd.studentName) name=dd.studentName;
-      }
-    }catch(e){}
-  }
+  try{
+    const rr=await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,document_key:'lor',document_type_label:'Letter of Recommendation',document_number:docNo,sent_by:'HR Portal (Manual)'})});
+    const dd=await rr.json();
+    if(dd && dd.success && dd.documentNumber) docNo=dd.documentNumber;
+  }catch(e){}
   const docId = generateUniqueDocId('lor', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
@@ -2595,6 +2590,9 @@ ${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80"
 async function generateStarCert(silent = false){
   const name=document.getElementById('star-name').value.trim(),empId=document.getElementById('star-empid').value.trim(),certId=document.getElementById('star-certid').value.trim()||'TEN/DOC/—',tenure=document.getElementById('star-tenure').value.trim();
   if(!name){if(!silent)Swal.fire({title:'Missing Info',text:'Enter student name.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
+  try{
+    await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,document_key:'star',document_type_label:'Star Performer Certificate',document_number:certId,sent_by:'HR Portal (Manual)'})});
+  }catch(e){}
   const docId = generateUniqueDocId('star', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
