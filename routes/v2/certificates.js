@@ -97,45 +97,98 @@ async function getCertStatus(student) {
 // ════════════════════════════════
 
 // GET /api/v2/certificates/my-certs
-// Returns all 3 cert statuses + progress % for logged-in student
-router.get("/certificates/my-certs", requireStudent, async (req, res) => {
-    try {
-        const student = req.student;
-        const status  = await getCertStatus(student);
+// GET /api/v2/certificates/my-certs — smart unified handler
+async function handleMyCerts(req, res) {
+  try {
+    const employeeId = req.query.employeeId || req.body.employeeId;
+    const headerEmployeeId = req.headers["x-employee-id"] || req.headers["X-Employee-Id"];
 
-        // Fetch existing certificate records
-        const certs = await StudentCertificate.find({ studentId: student._id });
-        const certMap = {};
-        certs.forEach(c => { certMap[c.certificateType] = c; });
+    // If no query parameter employeeId and we have headers, check if it's the old portal (my-certificates.html)
+    if (!employeeId && headerEmployeeId) {
+      const student = await Student.findOne({ employeeId: String(headerEmployeeId) });
+      if (!student) return res.status(401).json({ success: false, message: "Student not found" });
+      const status  = await getCertStatus(student);
 
-        const result = {
-            expert: {
-                unlocked:      status.expertUnlocked,
-                completionPct: status.completionPct,
-                threshold:     30,
-                record:        certMap["expert"]     ? { certificateId: certMap["expert"].certificateId, pdfUrl: certMap["expert"].pdfUrl, issuedAt: certMap["expert"].issuedAt } : null
-            },
-            nano_degree: {
-                unlocked:      status.nanoDegreeUnlocked,
-                completionPct: status.completionPct,
-                threshold:     70,
-                record:        certMap["nano_degree"] ? { certificateId: certMap["nano_degree"].certificateId, pdfUrl: certMap["nano_degree"].pdfUrl, issuedAt: certMap["nano_degree"].issuedAt } : null
-            },
-            fellowship: {
-                visible:       status.fellowshipUnlocked,
-                unlocked:      status.fellowshipUnlocked,
-                cohortRankPct: status.cohortRankPct,
-                completionPct: status.completionPct,
-                threshold:     10,
-                record:        certMap["fellowship"]  ? { certificateId: certMap["fellowship"].certificateId, pdfUrl: certMap["fellowship"].pdfUrl, issuedAt: certMap["fellowship"].issuedAt } : null
-            }
-        };
+      const certs = await StudentCertificate.find({ studentId: student._id });
+      const certMap = {};
+      certs.forEach(c => { certMap[c.certificateType] = c; });
 
-        res.json({ success: true, ...result, paymentEnabled: paymentConfig.PAYMENT_ENABLED, prices: paymentConfig.CERT_PRICES });
-    } catch (err) {
-        console.error("[CERT] my-certs error:", err.message);
-        res.status(500).json({ success: false, message: "Server error" });
+      const result = {
+          expert: {
+              unlocked:      status.expertUnlocked,
+              completionPct: status.completionPct,
+              threshold:     30,
+              record:        certMap["expert"]     ? { certificateId: certMap["expert"].certificateId, pdfUrl: certMap["expert"].pdfUrl, issuedAt: certMap["expert"].issuedAt } : null
+          },
+          nano_degree: {
+              unlocked:      status.nanoDegreeUnlocked,
+              completionPct: status.completionPct,
+              threshold:     70,
+              record:        certMap["nano_degree"] ? { certificateId: certMap["nano_degree"].certificateId, pdfUrl: certMap["nano_degree"].pdfUrl, issuedAt: certMap["nano_degree"].issuedAt } : null
+          },
+          fellowship: {
+              visible:       status.fellowshipUnlocked,
+              unlocked:      status.fellowshipUnlocked,
+              cohortRankPct: status.cohortRankPct,
+              completionPct: status.completionPct,
+              threshold:     10,
+              record:        certMap["fellowship"]  ? { certificateId: certMap["fellowship"].certificateId, pdfUrl: certMap["fellowship"].pdfUrl, issuedAt: certMap["fellowship"].issuedAt } : null
+          }
+      };
+
+      return res.json({ success: true, ...result, paymentEnabled: paymentConfig.PAYMENT_ENABLED, prices: paymentConfig.CERT_PRICES });
     }
+
+    const targetId = employeeId || headerEmployeeId;
+    if (!targetId) {
+      return res.status(400).json({ error: 'employeeId query parameter or header is required' });
+    }
+
+    const student = await Student.findOne({ employeeId: targetId },
+      'name fullName employeeId locStatus locIssuedAt lorStatus lorIssuedAt starStatus starIssuedAt ' +
+      'offerLetterStatus offerLetterGeneratedAt documentRejectionReason ' +
+      'locPdfBase64 lorPdfBase64 starPdfBase64 offerPdfBase64 ' +
+      'attendancePercentage performanceScore pendingFines starContribution'
+    ).lean();
+    if (!student) return res.status(404).json({ error: 'Not found' });
+    
+    const { locPdfBase64, lorPdfBase64, starPdfBase64, offerPdfBase64, ...safeStudent } = student;
+    safeStudent.hasLocPdf   = !!locPdfBase64;
+    safeStudent.hasLorPdf   = !!lorPdfBase64;
+    safeStudent.hasStarPdf  = !!starPdfBase64;
+    safeStudent.hasOfferPdf = !!offerPdfBase64;
+
+    try {
+      const StudentDocument = require("../../models/new/StudentDocument");
+      const docRec = await StudentDocument.findOne({ studentId: student._id }).lean();
+      if (docRec) {
+        if (!safeStudent.offerLetterStatus || safeStudent.offerLetterStatus === 'not_uploaded' || safeStudent.offerLetterStatus === 'not_eligible') {
+          safeStudent.offerLetterStatus = docRec.uploadStatus || 'not_uploaded';
+        }
+        if (docRec.offerLetterUrl) {
+          safeStudent.hasOfferPdf = true;
+          safeStudent.offerLetterStatus = 'issued';
+          if (docRec.offerLetterSentAt && !safeStudent.offerLetterGeneratedAt) {
+            safeStudent.offerLetterGeneratedAt = docRec.offerLetterSentAt;
+          }
+        }
+        if (docRec.rejectionReason && !safeStudent.documentRejectionReason) {
+          safeStudent.documentRejectionReason = docRec.rejectionReason;
+        }
+      }
+    } catch (fallbackErr) {
+      console.error('[My-Certs] StudentDocument fallback error:', fallbackErr.message);
+    }
+
+    res.json(safeStudent);
+  } catch(e) {
+    console.error('[My-Certs] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+}
+
+router.get("/certificates/my-certs", async (req, res) => {
+    return handleMyCerts(req, res);
 });
 
 // GET /api/v2/certificates/preview/:type
@@ -855,93 +908,7 @@ router.post('/star-submit', async (req, res) => {
   
 // GET /api/v2/certificates/my-certs — Student fetches their certificate status (smart/merged)
 router.get('/my-certs', async (req, res) => {
-  try {
-    const { employeeId } = req.query;
-    const headerEmployeeId = req.headers["x-employee-id"];
-
-    // Fallback to old behavior if no query employeeId but header x-employee-id is present (for my-certificates.html)
-    if (!employeeId && headerEmployeeId) {
-      const student = await Student.findOne({ employeeId: String(headerEmployeeId) });
-      if (!student) return res.status(401).json({ success: false, message: "Student not found" });
-      const status  = await getCertStatus(student);
-
-      const certs = await StudentCertificate.find({ studentId: student._id });
-      const certMap = {};
-      certs.forEach(c => { certMap[c.certificateType] = c; });
-
-      const result = {
-          expert: {
-              unlocked:      status.expertUnlocked,
-              completionPct: status.completionPct,
-              threshold:     30,
-              record:        certMap["expert"]     ? { certificateId: certMap["expert"].certificateId, pdfUrl: certMap["expert"].pdfUrl, issuedAt: certMap["expert"].issuedAt } : null
-          },
-          nano_degree: {
-              unlocked:      status.nanoDegreeUnlocked,
-              completionPct: status.completionPct,
-              threshold:     70,
-              record:        certMap["nano_degree"] ? { certificateId: certMap["nano_degree"].certificateId, pdfUrl: certMap["nano_degree"].pdfUrl, issuedAt: certMap["nano_degree"].issuedAt } : null
-          },
-          fellowship: {
-              visible:       status.fellowshipUnlocked,
-              unlocked:      status.fellowshipUnlocked,
-              cohortRankPct: status.cohortRankPct,
-              completionPct: status.completionPct,
-              threshold:     10,
-              record:        certMap["fellowship"]  ? { certificateId: certMap["fellowship"].certificateId, pdfUrl: certMap["fellowship"].pdfUrl, issuedAt: certMap["fellowship"].issuedAt } : null
-          }
-      };
-
-      return res.json({ success: true, ...result, paymentEnabled: paymentConfig.PAYMENT_ENABLED, prices: paymentConfig.CERT_PRICES });
-    }
-
-    const targetId = employeeId || headerEmployeeId;
-    if (!targetId) {
-      return res.status(400).json({ error: 'employeeId query parameter or header is required' });
-    }
-
-    const student = await Student.findOne({ employeeId: targetId },
-      '_id name fullName employeeId locStatus locIssuedAt lorStatus lorIssuedAt starStatus starIssuedAt ' +
-      'offerLetterStatus offerLetterGeneratedAt documentRejectionReason ' +
-      'locPdfBase64 lorPdfBase64 starPdfBase64 offerPdfBase64 ' +
-      'attendancePercentage performanceScore pendingFines starContribution'
-    ).lean();
-    if (!student) return res.status(404).json({ error: 'Not found' });
-    
-    const { locPdfBase64, lorPdfBase64, starPdfBase64, offerPdfBase64, ...safeStudent } = student;
-    safeStudent.hasLocPdf   = !!locPdfBase64;
-    safeStudent.hasLorPdf   = !!lorPdfBase64;
-    safeStudent.hasStarPdf  = !!starPdfBase64;
-    safeStudent.hasOfferPdf = !!offerPdfBase64;
-
-    // Fallback: integrate and merge status from StudentDocument if available
-    try {
-      const StudentDocument = require("../../models/new/StudentDocument");
-      const docRec = await StudentDocument.findOne({ studentId: student._id }).lean();
-      if (docRec) {
-        if (!safeStudent.offerLetterStatus || safeStudent.offerLetterStatus === 'not_uploaded' || safeStudent.offerLetterStatus === 'not_eligible') {
-          safeStudent.offerLetterStatus = docRec.uploadStatus || 'not_uploaded';
-        }
-        if (docRec.offerLetterUrl) {
-          safeStudent.hasOfferPdf = true;
-          safeStudent.offerLetterStatus = 'issued'; // ensure it matches 'issued' for UI download button
-          if (docRec.offerLetterSentAt && !safeStudent.offerLetterGeneratedAt) {
-            safeStudent.offerLetterGeneratedAt = docRec.offerLetterSentAt;
-          }
-        }
-        if (docRec.rejectionReason && !safeStudent.documentRejectionReason) {
-          safeStudent.documentRejectionReason = docRec.rejectionReason;
-        }
-      }
-    } catch (fallbackErr) {
-      console.error('[My-Certs] StudentDocument fallback error:', fallbackErr.message);
-    }
-
-    res.json(safeStudent);
-  } catch(e) {
-    console.error('[My-Certs] Error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
+    return handleMyCerts(req, res);
 });
   
 // GET /api/v2/certificates/download/:type — Download PDF
