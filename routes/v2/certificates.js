@@ -9,6 +9,7 @@ const fs                  = require("fs");
 const Student             = require("../../models/Student");
 const StudentCertificate  = require("../../models/new/StudentCertificate");
 const DocumentHistory     = require("../../models/DocumentHistory");
+const MailHistory         = require("../../models/MailHistory");
 const PsychologyTrigger   = require("../../models/new/PsychologyTrigger");
 const StudentTaskProgress = require("../../models/new/StudentTaskProgress");
 const paymentConfig       = require("../../config/payment");
@@ -669,6 +670,79 @@ async function generateAndSaveCert(studentId, certType, studentData = null) {
   
   const emailResult = await sendCertificateEmail(student.email, student.name || student.fullName || 'Student', certType, pdfBuffer);
   
+  // Update StudentDocument to keep legacy collections in perfect sync
+  try {
+    const StudentDocument = require("../../models/new/StudentDocument");
+    let docRec = await StudentDocument.findOne({ studentId });
+    if (!docRec) docRec = new StudentDocument({ studentId });
+
+    if (certType === 'OFFER') {
+      docRec.uploadStatus = "approved";
+      docRec.offerLetterUrl = `/uploads/offer-letters/${student.employeeId ? student.employeeId.replace(/\//g, "-") : studentId}_offer_letter.pdf`;
+      docRec.offerLetterSentAt = new Date();
+    } else if (certType === 'LOC') {
+      docRec.locUrl = `/uploads/certificates/${student.employeeId ? student.employeeId.replace(/\//g, "-") : studentId}_loc.pdf`;
+      docRec.locSentAt = new Date();
+    } else if (certType === 'LOR') {
+      docRec.lorUrl = `/uploads/certificates/${student.employeeId ? student.employeeId.replace(/\//g, "-") : studentId}_lor.pdf`;
+      docRec.lorSentAt = new Date();
+    }
+    await docRec.save();
+    console.log(`[CertSync] ✓ Synced ${certType} to StudentDocument for student ${studentId}`);
+  } catch (docSyncErr) {
+    console.error(`[CertSync] ✗ Failed to sync to StudentDocument:`, docSyncErr.message);
+  }
+
+  // Create DocumentHistory record (Document Send History)
+  try {
+    const studentName = (student.name || student.fullName || "").trim();
+    const college = (student.collegeName || student.college || "Not provided").trim();
+    const docNumber = `TEN-${certType}-${student.employeeId ? student.employeeId.replace(/\//g, "-") : student._id.toString().slice(-6)}`.toUpperCase();
+
+    const labels = { 
+      LOC: 'Letter of Completion', 
+      LOR: 'Letter of Recommendation', 
+      STAR: 'Star Performer Certificate', 
+      OFFER: 'Offer Letter' 
+    };
+
+    await DocumentHistory.create({
+      studentId: student._id,
+      studentName,
+      studentEmail: student.email || "",
+      employeeId: student.employeeId || "",
+      college,
+      domain: student.domain || "",
+      documentType: labels[certType] || certType,
+      documentKey: certType.toLowerCase(),
+      documentNumber: docNumber,
+      sentAt: new Date(),
+      sentBy: "HR Portal (Auto-Gen)",
+      sentToEmail: student.email || ""
+    });
+    console.log(`[CertHistory] ✓ Logged DocumentHistory for student ${studentId}`);
+  } catch (historyErr) {
+    console.error(`[CertHistory] Failed to log DocumentHistory for ${studentId}:`, historyErr.message);
+  }
+
+  // Create MailHistory record (Automated Mail History)
+  try {
+    const studentName = (student.name || student.fullName || "").trim();
+    await MailHistory.create({
+      recipientEmail: student.email || "",
+      recipientName: studentName,
+      studentId: student._id,
+      subject: `🎓 Your ${certType} — TEN Internship Network`,
+      mailType: certType.toLowerCase(),
+      sentAt: new Date(),
+      status: emailResult.sent ? "sent" : "failed",
+      errorMessage: emailResult.sent ? "" : (emailResult.reason || "SMTP error")
+    });
+    console.log(`[MailHistory] ✓ Logged MailHistory for student ${studentId}`);
+  } catch (mailHistoryErr) {
+    console.error(`[MailHistory] Failed to log MailHistory for ${studentId}:`, mailHistoryErr.message);
+  }
+  
   return { success: true, emailSent: emailResult.sent };
 }
 
@@ -827,7 +901,7 @@ router.get('/my-certs', async (req, res) => {
     }
 
     const student = await Student.findOne({ employeeId: targetId },
-      'locStatus locIssuedAt lorStatus lorIssuedAt starStatus starIssuedAt ' +
+      '_id name fullName employeeId locStatus locIssuedAt lorStatus lorIssuedAt starStatus starIssuedAt ' +
       'offerLetterStatus offerLetterGeneratedAt documentRejectionReason ' +
       'locPdfBase64 lorPdfBase64 starPdfBase64 offerPdfBase64 ' +
       'attendancePercentage performanceScore pendingFines starContribution'
