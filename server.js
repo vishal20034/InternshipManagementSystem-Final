@@ -4444,11 +4444,8 @@ try {
     console.error('[V2] Failed to mount bots routes:', e.message);
 }
 
-// ===== PHASE 1 PR2: NEW ROLE ROUTES =====
-try { app.use('/api/founder',    require('./routes/founderRoutes'));    console.log('[Phase1] founder routes mounted'); } catch(e){ console.error('[Phase1] founderRoutes:',e.message); }
-try { app.use('/api/mentor',     require('./routes/mentorRoutes'));     console.log('[Phase1] mentor routes mounted');  } catch(e){ console.error('[Phase1] mentorRoutes:',e.message);  }
-try { app.use('/api/investor',   require('./routes/investorRoutes'));   console.log('[Phase1] investor routes mounted');} catch(e){ console.error('[Phase1] investorRoutes:',e.message); }
-try { app.use('/api/contractor', require('./routes/contractorRoutes')); console.log('[Phase1] contractor routes mounted');} catch(e){ console.error('[Phase1] contractorRoutes:',e.message); }
+// ===== PHASE 1 PR3: TALENT PROFILE =====
+try { app.use('/api/talent', require('./routes/talentProfile')); console.log('[Phase1] talent routes mounted at /api/talent'); } catch(e){ console.error('[Phase1] talentProfile:',e.message); }
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
 const expressModule = require("express");
