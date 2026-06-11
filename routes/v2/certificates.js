@@ -860,13 +860,22 @@ async function checkAndIssueCerts(studentId) {
 // POST /api/v2/certificates/hr-approve — HR manually approves
 router.post('/hr-approve', async (req, res) => {
   try {
-    const { studentId, certTypes } = req.body; // certTypes: ['LOC','LOR','STAR']
+    const { studentId, certTypes, force } = req.body; // certTypes: ['LOC','LOR','STAR']
     const update = {};
     if (certTypes.includes('LOC'))  update.locStatus  = 'pending_hr';
     if (certTypes.includes('LOR'))  update.lorStatus  = 'pending_hr';
     if (certTypes.includes('STAR')) update.starStatus = 'approved';
     await Student.findByIdAndUpdate(studentId, update);
-    await checkAndIssueCerts(studentId);
+    
+    if (force) {
+      const studentObj = await Student.findById(studentId);
+      if (certTypes.includes('LOC')) await generateAndSaveCert(studentId, 'LOC', studentObj);
+      if (certTypes.includes('LOR')) await generateAndSaveCert(studentId, 'LOR', studentObj);
+      if (certTypes.includes('STAR')) await generateAndSaveCert(studentId, 'STAR', studentObj);
+    } else {
+      await checkAndIssueCerts(studentId);
+    }
+    
     res.json({ success: true });
   } catch(e) {
     console.error('[HR-Approve] Error:', e.message);
@@ -1080,5 +1089,8 @@ cron.schedule('40 * * * *', async () => {
     console.error('[CertCron-3] Error:', e.message);
   }
 });
+
+router.generateAndSaveCert = generateAndSaveCert;
+router.checkAndIssueCerts = checkAndIssueCerts;
 
 module.exports = router;

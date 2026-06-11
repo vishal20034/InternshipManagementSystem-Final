@@ -276,121 +276,21 @@ function getInternshipEndDate(joiningDate, tenure) {
 
 async function sendAutoDocumentsToStudent(student, docType) {
     try {
-        const name       = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
-        const empId      = student.employeeId || '—';
-        const domain     = student.domain || '—';
-        const college    = student.collegeName || student.college || '—';
-        const email      = student.email;
-        const tenure     = student.tenure || '1 Month';
-        const joining    = student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
-        const endDate    = getInternshipEndDate(student.joiningDate, student.tenure);
-        const endStr     = endDate ? endDate.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
-        const issuedDate = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
-        const docKeyMap = { offer: "offer_letter", loc: "loc", lor: "lor", star: "star", all: "internship_documents" };
-        const uniqueDocId = normalizeDocumentNumber(generateDocumentNumber(docKeyMap[docType] || "doc"));
-        const verifyUrl   = BASE_URL + '/verify-document?id=' + uniqueDocId;
-
-        const docTypeLabels = { offer:'Offer Letter', loc:'Letter of Completion', lor:'Letter of Recommendation', star:'Star Performer Certificate', all:'Internship Documents' };
-        const docTypeLabel  = docTypeLabels[docType] || 'Internship Documents';
-
-        await Student.findByIdAndUpdate(student._id, {
-            documentsAutoSent:   true,
-            documentsAutoSentAt: new Date(),
-            autoDocUniqueId:     uniqueDocId,
-            documentVerified:    true,
-            documentVerifiedAt:  new Date(),
-            documentNumber:      uniqueDocId
-        });
-
-        const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-            body{font-family:'Times New Roman',serif;background:#f5f5f5;margin:0;padding:20px}
-            .wrap{max-width:680px;margin:0 auto;background:#fff;border:2px solid #D4AF37;border-radius:8px;overflow:hidden}
-            .hdr{background:linear-gradient(135deg,#1a1a2e,#0f3460);padding:32px;text-align:center}
-            .hdr .inf{font-size:48px;color:#D4AF37}.hdr h1{color:#D4AF37;font-size:18px;letter-spacing:3px;text-transform:uppercase;margin:8px 0 4px}
-            .hdr p{color:#a08040;font-size:12px;margin:0}.bd{padding:32px 36px}
-            .bd h2{color:#1a1a2e;font-size:22px;margin-bottom:8px}.bd p{font-size:14px;line-height:1.8;color:#333}
-            .dc{background:#fffbf0;border:1px solid #D4AF37;border-radius:8px;padding:18px 22px;margin:16px 0}
-            .dc h3{color:#b8860b;font-size:15px;margin:0 0 6px}.dc p{margin:0;font-size:13px;color:#555}
-            .vb{background:#f0f8ff;border:1px solid #4a90d9;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:center}
-            .vb p{font-size:13px;color:#333;margin:0 0 8px}.vb a{color:#1a5fb4;font-weight:700;word-break:break-all}
-            .did{font-family:'Courier New',monospace;font-size:13px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:6px 12px;display:inline-block;color:#333;margin:8px 0}
-            .ft{background:#1a1a2e;padding:20px;text-align:center}.ft p{color:#a08040;font-size:11px;margin:0}
-            table.inf{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
-            table.inf td{padding:7px 10px;border-bottom:1px solid #f0e8d0}
-            table.inf td:first-child{font-weight:700;color:#b8860b;width:40%}
-        </style></head><body>
-        <div class="wrap">
-          <div class="hdr"><div class="inf">∞</div><h1>The Entrepreneurship Network</h1><p>Internship Completion — Official Documents</p></div>
-          <div class="bd">
-            <h2>Dear ${name},</h2>
-            <p>Congratulations on completing your internship with <strong>The Entrepreneurship Network</strong>! Your internship period of <strong>${tenure}</strong> has now concluded.</p>
-            <table class="inf">
-              <tr><td>Employee ID</td><td>${empId}</td></tr>
-              <tr><td>Domain</td><td>${domain}</td></tr>
-              <tr><td>College / University</td><td>${college}</td></tr>
-              <tr><td>Internship Period</td><td>${joining} — ${endStr}</td></tr>
-              <tr><td>Duration</td><td>${tenure}</td></tr>
-              <tr><td>Date of Issue</td><td>${issuedDate}</td></tr>
-            </table>
-            <div class="dc"><h3>📄 Offer Letter</h3><p>Your official internship offer letter from The Entrepreneurship Network.</p></div>
-            <div class="dc"><h3>🎓 Letter of Completion (LOC)</h3><p>Certifies successful completion of your ${domain} internship tenure.</p></div>
-            <div class="dc"><h3>📝 Letter of Recommendation (LOR)</h3><p>Official recommendation letter from the Director, The Entrepreneurship Network.</p></div>
-            <div class="vb">
-              <p><strong>🔐 Document Verification</strong></p>
-              <p>Your unique Document ID:</p>
-              <div class="did">${uniqueDocId}</div>
-              <p>Verify authenticity at:</p>
-              <a href="${verifyUrl}">${verifyUrl}</a>
-            </div>
-            <p>Log in to your student portal at <a href="${BASE_URL}">${BASE_URL}</a> to download your full PDF documents.</p>
-            <p>For queries: <a href="mailto:hr@entrepreneurshipnetwork.net">hr@entrepreneurshipnetwork.net</a></p>
-            <p>Best Regards,<br><strong>HR Department</strong><br>The Entrepreneurship Network</p>
-          </div>
-          <div class="ft"><p>© The Entrepreneurship Network — Limitless Technologies LLP</p><p style="margin-top:4px">Document ID: ${uniqueDocId}</p></div>
-        </div></body></html>`;
-
-        let mailStatus = "sent";
-        let mailError = "";
-        try {
-            await transporter.sendMail({
-                from:    '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                to:      email,
-                subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
-                html:    emailHtml
-            });
-        } catch (err) {
-            mailStatus = "failed";
-            mailError = err && err.message ? String(err.message) : "";
+        const v2Certificates = require("./routes/v2/certificates");
+        if (docType === 'offer') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student);
+        } else if (docType === 'loc') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student);
+        } else if (docType === 'lor') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student);
+        } else if (docType === 'star') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'STAR', student);
+        } else if (docType === 'all') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student);
         }
-
-        await DocumentHistory.create({
-            studentId:      student._id,
-            studentName:    name,
-            studentEmail:   email,
-            employeeId:     empId,
-            college:        college,
-            domain:         domain,
-            documentType:   docTypeLabel,
-            documentKey:    docKeyMap[docType] || "internship_documents",
-            documentNumber: uniqueDocId,
-            sentBy:         'HR System',
-            sentToEmail:    email,
-            sentAt:         new Date()
-        });
-
-        try {
-            await MailHistory.create({
-                recipientEmail: email,
-                recipientName: name,
-                studentId: student._id,
-                subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
-                mailType: docKeyMap[docType] || "internship_documents",
-                sentAt: new Date(),
-                status: mailStatus,
-                errorMessage: mailError
-            });
-        } catch (_) {}
-        console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
+        console.log(`[AUTO-DOCS] Successfully generated and synced document type ${docType} for student ${student._id}`);
     } catch(err) {
         console.error('[AUTO-DOCS] Error:', err.message);
     }
