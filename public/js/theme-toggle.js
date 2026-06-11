@@ -1,32 +1,48 @@
-// TEN Theme Toggle
-// Switches between dark (default) and light mode using data-theme attribute
-(function () {
-  const KEY = "ten-theme";
+'use strict';
+/* globals window, document, localStorage */
+
+(function initTENTheme() {
+  const STORAGE_KEY = 'ten-theme';
+  const VALID_THEMES = ['light', 'dark'];
 
   function applyTheme(theme) {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem(KEY, theme);
+    document.documentElement.setAttribute('data-theme', theme);
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) {
+      btn.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
+      btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+    }
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    const preferred = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    const theme = VALID_THEMES.includes(saved) ? saved : preferred;
+    applyTheme(theme);
   }
 
   function toggleTheme() {
-    const current = document.documentElement.getAttribute("data-theme") || "dark";
-    applyTheme(current === "dark" ? "light" : "dark");
+    const current = getTheme();
+    const next = current === 'dark' ? 'light' : 'dark';
+    localStorage.setItem(STORAGE_KEY, next);
+    applyTheme(next);
   }
 
-  // Apply saved or system preference on load
-  const saved = localStorage.getItem(KEY);
-  const preferred = saved || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-  applyTheme(preferred);
+  function getTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+  }
 
-  // Expose globally
-  window.TEN = window.TEN || {};
-  window.TEN.toggleTheme = toggleTheme;
-  window.TEN.applyTheme  = applyTheme;
+  window.TENTheme = { initTheme, toggleTheme, getTheme };
 
-  // Auto-bind any element with data-theme-toggle
-  document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll("[data-theme-toggle]").forEach(el => {
-      el.addEventListener("click", toggleTheme);
-    });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTheme);
+  } else {
+    initTheme();
+  }
+
+  document.addEventListener('click', function handleThemeClick(e) {
+    if (e.target && e.target.id === 'theme-toggle-btn') {
+      toggleTheme();
+    }
   });
 }());
