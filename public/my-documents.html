@@ -120,17 +120,23 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
   <!-- Link to dedicated certificates page -->
   <a href="/my-certificates.html" class="cert-link-btn">🏅 View My Certificates →</a>
 
+  <!-- Status Banner (Global across both tabs) -->
+  <div class="status-banner not-uploaded" id="statusBanner" style="margin-bottom: 20px;">
+    <div class="status-icon" id="statusIcon">📋</div>
+    <div class="status-msg">
+      <div class="label" id="statusLabel">Status</div>
+      <div class="desc"  id="statusDesc">Loading your document status...</div>
+    </div>
+  </div>
+
+  <!-- Submit Section (Global across both tabs) -->
+  <div class="submit-section" id="submitSection" style="display:none; margin-bottom: 20px;">
+    <div class="submit-info"><strong>Both documents uploaded.</strong> Click Submit to send them for HR review.<br>You can re-upload until HR starts reviewing.</div>
+    <button class="submit-btn" id="submitBtn" onclick="submitDocuments()">📤 Submit for Review</button>
+  </div>
+
   <!-- ════════ TAB 1: Upload Documents ════════ -->
   <div class="tab-panel active" id="tab-upload">
-
-    <!-- Status Banner -->
-    <div class="status-banner not-uploaded" id="statusBanner">
-      <div class="status-icon" id="statusIcon">📋</div>
-      <div class="status-msg">
-        <div class="label" id="statusLabel">Status</div>
-        <div class="desc"  id="statusDesc">Loading your document status...</div>
-      </div>
-    </div>
 
     <!-- Upload Grid -->
     <div class="upload-grid" id="uploadGrid">
@@ -154,12 +160,6 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
         <div class="upload-progress" id="progress-marksheet"><div class="upload-bar-wrap"><div class="upload-bar" id="bar-marksheet"></div></div></div>
         <div id="preview-marksheet" style="display:none;"></div>
       </div>
-    </div>
-
-    <!-- Submit Section -->
-    <div class="submit-section" id="submitSection" style="display:none;">
-      <div class="submit-info"><strong>Both documents uploaded.</strong> Click Submit to send them for HR review.<br>You can re-upload until HR starts reviewing.</div>
-      <button class="submit-btn" id="submitBtn" onclick="submitDocuments()">📤 Submit for Review</button>
     </div>
   </div>
 
