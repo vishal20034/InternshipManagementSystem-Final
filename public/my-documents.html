@@ -590,6 +590,7 @@ async function submitDocuments() {
         uploadTab.appendChild(pendingCard);
       }
       pendingCard.style.display = 'block';
+      loadMyCertificates(); // REFRESH MY DOCUMENTS STATUS IMMEDIATELY!
       Swal.fire({ icon: 'success', title: 'Submitted!', text: 'Your documents are now under HR review.', background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#D4AF37' });
     } else {
       btn.innerHTML = '📤 Submit for Review';
