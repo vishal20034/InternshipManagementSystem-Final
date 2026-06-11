@@ -169,10 +169,14 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-transporter.verify((error)=>{
-    if(error){ console.log(error); }
-    else{ console.log("Email Server Ready"); }
-});
+if(process.env.EMAIL_USER && process.env.EMAIL_PASS){
+    transporter.verify((error)=>{
+        if(error){ console.log("Email verify error:", error.message); }
+        else{ console.log("Email Server Ready"); }
+    });
+} else {
+    console.log("Email not configured — skipping SMTP verify.");
+}
 
 // Sends one activity-cycle HR mail (appreciation or re-engagement), records it
 // in MailHistory and mirrors it as an in-app student notification.
@@ -421,6 +425,8 @@ app.get("/groups", (req,res)=>{ res.sendFile(path.join(__dirname,"public","group
 app.get("/edit.html", (req,res)=>{ res.sendFile(path.join(__dirname,"public","edit.html")); });
 app.get("/hr-portal", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
 app.get("/hr-login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-login.html")); });
+app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","register.html")); });
+app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coming-soon.html")); });
 
 // ================= EMPLOYEE ID =================
 
