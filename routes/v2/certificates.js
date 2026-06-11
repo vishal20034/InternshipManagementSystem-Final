@@ -10,6 +10,7 @@ const Student             = require("../../models/Student");
 const StudentCertificate  = require("../../models/new/StudentCertificate");
 const DocumentHistory     = require("../../models/DocumentHistory");
 const MailHistory         = require("../../models/MailHistory");
+const Notification        = require("../../models/Notification");
 const PsychologyTrigger   = require("../../models/new/PsychologyTrigger");
 const StudentTaskProgress = require("../../models/new/StudentTaskProgress");
 const paymentConfig       = require("../../config/payment");
@@ -809,7 +810,23 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
   } catch (mailHistoryErr) {
     console.error(`[MailHistory] Failed to log MailHistory for ${studentId}:`, mailHistoryErr.message);
   }
-  
+
+  // In-app notification mirroring the HR certificate mail (additive, failure-safe)
+  {
+    const notifLabels = {
+      LOC: "Letter of Completion",
+      LOR: "Letter of Recommendation",
+      STAR: "Star Performer Certificate",
+      OFFER: "Offer Letter"
+    };
+    const docLabel = notifLabels[certType] || certType;
+    await Notification.notifyStudent(student, {
+      title: `📄 ${docLabel} Issued`,
+      message: `Dear ${student.name || student.fullName || "Student"}, your ${docLabel} has been generated${emailResult.sent ? ` and emailed to ${student.email}` : ""}. You can view it in your Student Portal under My Documents.`,
+      type: "success"
+    });
+  }
+
   return { success: true, emailSent: emailResult.sent };
 }
 

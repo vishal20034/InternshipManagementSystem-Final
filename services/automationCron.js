@@ -11,6 +11,7 @@ const StudentDocument    = require("../models/new/StudentDocument");
 const CertificateRequest = require("../models/CertificateRequest");
 const DocumentHistory    = require("../models/DocumentHistory");
 const MailHistory        = require("../models/MailHistory");
+const Notification       = require("../models/Notification");
 const { generateDocumentNumber } = require("../utils/documentNumber");
 const Attendance          = require("../models/Attendance");
 const StudentTaskProgress = require("../models/new/StudentTaskProgress");
@@ -487,6 +488,12 @@ async function autoGenerateOfferLetter(doc) {
             emailStatus:    offerMailStatus
         }, "automation");
 
+        await Notification.notifyStudent(student, {
+            title: "📄 Offer Letter Ready",
+            message: `Congratulations ${student.name || "Intern"}! Your internship offer letter (${docNum}) is ready and has been emailed to ${student.email || "your registered email"}. You can also download it from the Student Portal.`,
+            type: "success"
+        });
+
         console.log(`[AUTO-CRON] Offer letter auto-generated for ${student.employeeId}`);
     } catch (err) {
         console.error("[AUTO-CRON] autoGenerateOfferLetter error:", err.message);
@@ -690,6 +697,12 @@ async function autoGenerateCertificates(certReq) {
                 emailStatus:    certMailStatus
             }, "automation");
         }
+
+        await Notification.notifyStudent(student, {
+            title: "🏅 Your Internship Certificates Are Ready!",
+            message: `Congratulations ${student.name || "Intern"} on completing your ${student.domain || ""} internship! Earned: ${earnedList.join("; ")}.${missedList.length ? ` Not earned: ${missedList.join("; ")}.` : ""} The certificates have been emailed to you and are available in the Student Portal.`,
+            type: "success"
+        });
 
         certReq.hrApproved         = true;
         certReq.hrApprovedAt       = new Date();

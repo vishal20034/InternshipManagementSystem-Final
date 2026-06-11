@@ -174,6 +174,62 @@ transporter.verify((error)=>{
     else{ console.log("Email Server Ready"); }
 });
 
+// Sends one activity-cycle HR mail (appreciation or re-engagement), records it
+// in MailHistory and mirrors it as an in-app student notification.
+const ACTIVITY_MAILS = {
+    "active-appreciation": {
+        subject: "Keep it up! You're doing great 🌟",
+        html: (name) => `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${name||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`,
+        notifTitle: "🌟 Appreciation from HR",
+        notifMessage: (name) => `Hi ${name || "Intern"}, great work staying active this week. Keep it up! — TEN HR Team`,
+        notifType: "success"
+    },
+    "inactive-reengagement": {
+        subject: "We miss you! Come back and keep growing 💪",
+        html: (name) => `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${name||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`,
+        notifTitle: "💪 Inactivity Alert",
+        notifMessage: (name) => `Hi ${name || "Intern"}, we noticed you haven't been active recently. Jump back in whenever you're ready — we're here to help you keep growing. — TEN HR Team`,
+        notifType: "warning"
+    }
+};
+
+async function sendActivityMail(student, studentName, mailType){
+    const spec = ACTIVITY_MAILS[mailType];
+    const email = student.email;
+    let mailStatus = "sent";
+    let mailError = "";
+    try {
+        await transporter.sendMail({
+            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+            to: email,
+            subject: spec.subject,
+            html: spec.html(studentName)
+        });
+    } catch (err) {
+        mailStatus = "failed";
+        mailError = err && err.message ? String(err.message) : "";
+    } finally {
+        try {
+            await MailHistory.create({
+                recipientEmail: email,
+                recipientName: studentName || "Intern",
+                studentId: student._id,
+                subject: spec.subject,
+                mailType,
+                sentAt: new Date(),
+                status: mailStatus,
+                errorMessage: mailError
+            });
+        } catch (_) {}
+    }
+    await Notification.notifyStudent(student, {
+        title: spec.notifTitle,
+        message: spec.notifMessage(studentName),
+        type: spec.notifType
+    });
+    await AutoMailLog.create({ studentName, studentEmail: email, employeeId: student.employeeId || "", mailType });
+}
+
 async function runActivityMailer(){
     try{
         const students = await Student.find();
@@ -188,63 +244,10 @@ async function runActivityMailer(){
                 if(!email) continue;
                 const lastActive = student.lastActiveDate ? new Date(student.lastActiveDate) : null;
                 const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
-                const employeeId = student.employeeId || "";
                 if(lastActive && lastActive >= sevenDaysAgo){
-                    let mailStatus = "sent";
-                    let mailError = "";
-                    try {
-                        await transporter.sendMail({
-                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                            to: email,
-                            subject: "Keep it up! You're doing great 🌟",
-                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`
-                        });
-                    } catch (err) {
-                        mailStatus = "failed";
-                        mailError = err && err.message ? String(err.message) : "";
-                    } finally {
-                        try {
-                            await MailHistory.create({
-                                recipientEmail: email,
-                                recipientName: studentName || "Intern",
-                                studentId: student._id,
-                                subject: "Keep it up! You're doing great 🌟",
-                                mailType: "active-appreciation",
-                                sentAt: new Date(),
-                                status: mailStatus,
-                                errorMessage: mailError
-                            });
-                        } catch (_) {}
-                    }
-                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
+                    await sendActivityMail(student, studentName, "active-appreciation");
                 } else if(!lastActive || lastActive < fourteenDaysAgo){
-                    let mailStatus = "sent";
-                    let mailError = "";
-                    try {
-                        await transporter.sendMail({
-                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                            to: email,
-                            subject: "We miss you! Come back and keep growing 💪",
-                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`
-                        });
-                    } catch (err) {
-                        mailStatus = "failed";
-                        mailError = err && err.message ? String(err.message) : "";
-                    } finally {
-                        try {
-                            await MailHistory.create({
-                                recipientEmail: email,
-                                recipientName: studentName || "Intern",
-                                studentId: student._id,
-                                subject: "We miss you! Come back and keep growing 💪",
-                                mailType: "inactive-reengagement",
-                                sentAt: new Date(),
-                                status: mailStatus,
-                                errorMessage: mailError
-                            });
-                        } catch (_) {}
-                    }
-                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
+                    await sendActivityMail(student, studentName, "inactive-reengagement");
                 }
             }catch(error){
                 console.log(error);
@@ -606,6 +609,11 @@ try{
                         errorMessage: mailError
                     });
                 } catch (_) {}
+                await Notification.notifyStudent({ employeeId, domain }, {
+                    title: "🎉 Welcome to TEN!",
+                    message: `Hello ${newStudent.name.trim()}, your internship registration was successful. Your Employee ID is ${employeeId} (${domain}). A welcome email has been sent to ${emailLc}.`,
+                    type: "success"
+                });
             }
         }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
     }
@@ -2691,6 +2699,11 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
                 status: "sent"
             });
         } catch (_) {}
+        await Notification.notifyStudent({ employeeId, domain }, {
+            title: "🎉 You've been promoted!",
+            message: `Congratulations ${name}! You have been promoted from ${fromRoleLabel} to ${toRoleLabel}. Check your email for the registration link (valid 48 hours).`,
+            type: "success"
+        });
         return { ok: true };
     } catch(e){
         console.log("Promotion email failed:", e.message);
@@ -3304,6 +3317,13 @@ app.post("/auth/forgot-password", async(req,res)=>{
                             errorMessage: mailError
                         });
                     } catch (_) {}
+                    if (role === "student") {
+                        await Notification.notifyStudent(user, {
+                            title: "🔐 Password Reset Requested",
+                            message: "A password reset link was sent to your registered email. It expires in 1 hour. If you did not request this, you can ignore the email.",
+                            type: "warning"
+                        });
+                    }
                 }
             }catch(e){ console.log("forgot-password mail error:", e && e.message); }
         }
