@@ -27,6 +27,7 @@ const Coordinator = require("./models/Coordinator");
 const Promotion = require("./models/Promotion");
 const BadgeAward = require("./models/BadgeAward");
 const BlockList = require("./models/BlockList");
+const EcosystemUser = require("./models/EcosystemUser");
 
 const autoMailLogSchema = new mongoose.Schema({
   studentName:  String,
@@ -169,10 +170,14 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-transporter.verify((error)=>{
-    if(error){ console.log(error); }
-    else{ console.log("Email Server Ready"); }
-});
+if(process.env.EMAIL_USER && process.env.EMAIL_PASS){
+    transporter.verify((error)=>{
+        if(error){ console.log("Email verify error:", error.message); }
+        else{ console.log("Email Server Ready"); }
+    });
+} else {
+    console.log("Email not configured — skipping SMTP verify.");
+}
 
 // Sends one activity-cycle HR mail (appreciation or re-engagement), records it
 // in MailHistory and mirrors it as an in-app student notification.
@@ -416,11 +421,16 @@ const TestResult = mongoose.model("TestResult", testResultSchema);
 
 // ================= ROUTES =================
 
+// Phase-1 multi-role registration hub
+app.use("/api/register-hub", require("./routes/registerHub"));
+
 app.get("/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","dashboard.html")); });
 app.get("/groups", (req,res)=>{ res.sendFile(path.join(__dirname,"public","groups.html")); });
 app.get("/edit.html", (req,res)=>{ res.sendFile(path.join(__dirname,"public","edit.html")); });
 app.get("/hr-portal", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
 app.get("/hr-login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-login.html")); });
+app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","register.html")); });
+app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coming-soon.html")); });
 
 // ================= EMPLOYEE ID =================
 
@@ -4433,6 +4443,12 @@ try {
 } catch(e) {
     console.error('[V2] Failed to mount bots routes:', e.message);
 }
+
+// ===== PHASE 1 PR2: NEW ROLE ROUTES =====
+try { app.use('/api/founder',    require('./routes/founderRoutes'));    console.log('[Phase1] founder routes mounted'); } catch(e){ console.error('[Phase1] founderRoutes:',e.message); }
+try { app.use('/api/mentor',     require('./routes/mentorRoutes'));     console.log('[Phase1] mentor routes mounted');  } catch(e){ console.error('[Phase1] mentorRoutes:',e.message);  }
+try { app.use('/api/investor',   require('./routes/investorRoutes'));   console.log('[Phase1] investor routes mounted');} catch(e){ console.error('[Phase1] investorRoutes:',e.message); }
+try { app.use('/api/contractor', require('./routes/contractorRoutes')); console.log('[Phase1] contractor routes mounted');} catch(e){ console.error('[Phase1] contractorRoutes:',e.message); }
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
 const expressModule = require("express");
