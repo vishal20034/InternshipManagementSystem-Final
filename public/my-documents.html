@@ -272,6 +272,7 @@ async function loadStatus() {
     if (d.marksheetUrl)    markExistingFile('marksheet', d.marksheetUrl);
     locked = ['pending', 'under_review', 'approved'].includes(d.status);
     if (locked) lockZones();
+    updateSubmitBtn();
   } catch(e) { console.error(e); }
 }
 
@@ -477,6 +478,7 @@ async function uploadFile(type, file) {
       uploaded[type] = true;
       document.getElementById('zone-' + type).classList.add('has-file');
       showFilePreview(type, file.name, file.size);
+      updateSubmitBtn();
       if (d.autoSubmitted || d.uploadStatus === 'pending') {
         currentStatus = 'pending';
         showBanner('pending', '✅ Documents submitted — HR will review them shortly');
