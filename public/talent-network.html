@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Talent Network — TEN Platform</title>
+  <link rel="stylesheet" href="/css/design-system.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <script src="/js/theme-toggle.js" defer></script>
+  <script src="/js/components.js" defer></script>
+  <script src="/js/api-client.js" defer></script>
+  <style>
+    .talent-card { background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-default); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); transition: box-shadow var(--transition-fast); }
+    .talent-card:hover { box-shadow: var(--shadow-md); }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #8B5CF6); color: #fff; display: flex; align-items: center; justify-content: center; font-size: var(--text-lg); font-weight: 700; }
+    .talents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
+    .skill-list { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+    .search-bar { display: flex; gap: var(--space-3); margin-bottom: var(--space-8); flex-wrap: wrap; }
+    .search-bar input, .search-bar select { flex: 1; min-width: 140px; padding: var(--space-2) var(--space-3); border: 1.5px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-primary); font: inherit; outline: none; }
+    .search-bar input:focus, .search-bar select:focus { border-color: var(--color-primary); }
+    .trending-skills { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-2); }
+    .trending-skills::-webkit-scrollbar { height: 4px; }
+    .trending-skills::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+    .section-title { font-size: var(--text-xl); font-weight: 700; margin-bottom: var(--space-4); }
+  </style>
+</head>
+<body class="dashboard-layout">
+
+  <aside class="sidebar">
+    <a class="sidebar__logo" href="/dashboard">⚡ TEN</a>
+    <nav class="sidebar__nav">
+      <a href="/dashboard"       class="nav-item">🏠 Dashboard</a>
+      <a href="/founder-os"      class="nav-item nav-item--new" data-roles="founder,admin">🚀 Founder OS</a>
+      <a href="/talent-network"  class="nav-item nav-item--new nav-item--active">🌐 Talent Network</a>
+      <a href="/programs"        class="nav-item nav-item--new">📋 Programs</a>
+      <a href="/community"       class="nav-item nav-item--new">👥 Community</a>
+    </nav>
+    <div class="sidebar__footer">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm" style="width:100%">🌙 Dark Mode</button>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <button class="btn btn--ghost btn--sm" data-sidebar-toggle>☰</button>
+    <input class="topbar__search" type="search" placeholder="Search talents…" id="topbar-search" />
+    <div class="topbar__actions">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm">🌙</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-header__title">🌐 Talent Network</h1>
+      <p class="page-header__subtitle">Discover verified talent across skills, industries, and availability</p>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+      <input type="text" id="search-skills"   placeholder="Skills (e.g. React, Python)" />
+      <select id="search-availability">
+        <option value="">Any Availability</option>
+        <option value="immediately">Immediately</option>
+        <option value="2weeks">In 2 Weeks</option>
+        <option value="1month">In 1 Month</option>
+      </select>
+      <select id="search-open-to">
+        <option value="">Open To…</option>
+        <option value="internship">Internship</option>
+        <option value="fulltime">Full-time</option>
+        <option value="freelance">Freelance</option>
+        <option value="mentorship">Mentorship</option>
+      </select>
+      <button class="btn btn--primary" id="search-btn">🔍 Search</button>
+    </div>
+
+    <!-- Trending Skills -->
+    <h2 class="section-title">🔥 Trending Skills</h2>
+    <div class="trending-skills" id="trending-skills">
+      <span style="color:var(--text-muted);font-size:var(--text-sm);">Loading…</span>
+    </div>
+
+    <!-- Featured Talents -->
+    <h2 class="section-title" style="margin-top:var(--space-8);">⭐ Featured Talent</h2>
+    <div class="talents-grid" id="talents-grid">
+      <div class="empty-state" style="grid-column:1/-1">
+        <div class="empty-state__icon">⏳</div>
+        <div class="empty-state__title">Loading profiles…</div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function() {
+      function getInitials(str) {
+        if (!str) return '?';
+        return str.split(' ').map(function(w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
+      }
+
+      function renderCard(profile) {
+        var skills = (profile.skills || []).slice(0, 3).map(function(s) {
+          return '<span class="badge badge--primary">' + s.name + '</span>';
+        }).join('');
+        var avail = profile.availability || '';
+        var availBadge = avail ? '<span class="badge badge--success" style="font-size:0.65rem;">' + avail + '</span>' : '';
+        var verified = profile.isVerified ? '<span class="badge badge--info" style="font-size:0.65rem;">✔ Verified</span>' : '';
+
+        return '<div class="talent-card">' +
+          '<div style="display:flex;align-items:center;gap:var(--space-3);">' +
+          '<div class="avatar">' + getInitials(profile.name || 'U') + '</div>' +
+          '<div><div style="font-weight:600;font-size:var(--text-sm);">' + (profile.name || 'Talent') + '</div>' +
+          '<div style="color:var(--text-secondary);font-size:var(--text-xs);">' + (profile.headline || '') + '</div></div></div>' +
+          '<div class="skill-list">' + skills + '</div>' +
+          '<div style="display:flex;gap:var(--space-1);flex-wrap:wrap;">' + availBadge + verified + '</div>' +
+          '<a href="/api/talent/profile/' + (profile.userId || profile._id) + '" class="btn btn--secondary btn--sm" style="margin-top:auto;">View Profile</a>' +
+          '</div>';
+      }
+
+      function loadFeatured() {
+        fetch('/api/talent-network/featured', { credentials: 'include' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var grid = document.getElementById('talents-grid');
+            if (data.success && data.profiles && data.profiles.length > 0) {
+              grid.innerHTML = data.profiles.map(renderCard).join('');
+            } else {
+              grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">👤</div><div class="empty-state__title">No featured profiles yet</div><div class="empty-state__desc">Talent profiles will appear here once members complete their profiles.</div></div>';
+            }
+          })
+          .catch(function() {
+            document.getElementById('talents-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">⚠️</div><div class="empty-state__title">Could not load profiles</div></div>';
+          });
+      }
+
+      function loadTrending() {
+        fetch('/api/talent-network/trending-skills', { credentials: 'include' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            var container = document.getElementById('trending-skills');
+            if (data.success && data.skills && data.skills.length > 0) {
+              container.innerHTML = data.skills.map(function(s) {
+                return '<span class="badge badge--outline badge--primary" style="cursor:pointer;white-space:nowrap;" onclick="searchBySkill(\'' + s.skill + '\')">' + s.skill + ' <small>(' + s.count + ')</small></span>';
+              }).join('');
+            } else {
+              container.innerHTML = '<span style="color:var(--text-muted);font-size:var(--text-sm);">No trending skills yet</span>';
+            }
+          })
+          .catch(function() {});
+      }
+
+      window.searchBySkill = function(skill) {
+        document.getElementById('search-skills').value = skill;
+        performSearch();
+      };
+
+      function performSearch() {
+        var skills   = document.getElementById('search-skills').value.trim();
+        var avail    = document.getElementById('search-availability').value;
+        var openTo   = document.getElementById('search-open-to').value;
+        var params   = new URLSearchParams();
+        if (skills)  params.set('skills', skills);
+        if (avail)   params.set('availability', avail);
+        if (openTo)  params.set('openTo', openTo);
+
+        var grid = document.getElementById('talents-grid');
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">⏳</div><div class="empty-state__title">Searching…</div></div>';
+
+        fetch('/api/talent/search?' + params.toString(), { credentials: 'include' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.success && data.profiles && data.profiles.length > 0) {
+              grid.innerHTML = data.profiles.map(renderCard).join('');
+            } else {
+              grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-state__icon">🔍</div><div class="empty-state__title">No results found</div><div class="empty-state__desc">Try different filters or check back later.</div></div>';
+            }
+          })
+          .catch(function() {});
+      }
+
+      document.getElementById('search-btn').addEventListener('click', performSearch);
+      document.getElementById('topbar-search').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          document.getElementById('search-skills').value = e.target.value;
+          performSearch();
+        }
+      });
+
+      loadFeatured();
+      loadTrending();
+    }());
+  </script>
+</body>
+</html>
