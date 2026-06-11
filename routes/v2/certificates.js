@@ -711,7 +711,7 @@ async function buildCertPDF(student, certType) {
   });
 }
 
-async function generateAndSaveCert(studentId, certType, studentData = null) {
+async function generateAndSaveCert(studentId, certType, studentData = null, sentBy = "System") {
   const student = studentData || await Student.findById(studentId);
   if (!student) {
     console.error(`[Cert] Student not found: ${studentId}`);
@@ -784,7 +784,7 @@ async function generateAndSaveCert(studentId, certType, studentData = null) {
       documentKey: certType.toLowerCase(),
       documentNumber: docNumber,
       sentAt: new Date(),
-      sentBy: "HR Portal (Auto-Gen)",
+      sentBy: sentBy,
       sentToEmail: student.email || ""
     });
     console.log(`[CertHistory] ✓ Logged DocumentHistory for student ${studentId}`);
@@ -813,7 +813,7 @@ async function generateAndSaveCert(studentId, certType, studentData = null) {
   return { success: true, emailSent: emailResult.sent };
 }
 
-async function checkAndIssueCerts(studentId) {
+async function checkAndIssueCerts(studentId, sentBy = "System Automation") {
   const student = await Student.findById(studentId).lean();
   if (!student) return;
   const att  = student.attendancePercentage || 0;
@@ -825,7 +825,7 @@ async function checkAndIssueCerts(studentId) {
   // LOC check
   if (['pending_hr', 'approved', 'fine_pending'].includes(student.locStatus) && student.locStatus !== 'issued') {
     if (att >= 75 || locFinePaid) {
-      await generateAndSaveCert(studentId, 'LOC', student);
+      await generateAndSaveCert(studentId, 'LOC', student, sentBy);
     } else {
       // Add fine if not already added
       const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'loc_attendance');
@@ -845,7 +845,7 @@ async function checkAndIssueCerts(studentId) {
   // LOR check
   if (['pending_hr', 'approved', 'fine_pending'].includes(student.lorStatus) && student.lorStatus !== 'issued') {
     if ((att >= 75 && perf >= 75) || lorFinePaid) {
-      await generateAndSaveCert(studentId, 'LOR', student);
+      await generateAndSaveCert(studentId, 'LOR', student, sentBy);
     } else {
       const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'lor_criteria');
       if (!hasFine) {
@@ -867,7 +867,7 @@ async function checkAndIssueCerts(studentId) {
   
   // STAR — only if HR explicitly set starStatus = 'approved'
   if (student.starStatus === 'approved') {
-    await generateAndSaveCert(studentId, 'STAR', student);
+    await generateAndSaveCert(studentId, 'STAR', student, sentBy);
   }
 }
 
@@ -883,11 +883,11 @@ router.post('/hr-approve', async (req, res) => {
     
     if (force) {
       const studentObj = await Student.findById(studentId);
-      if (certTypes.includes('LOC')) await generateAndSaveCert(studentId, 'LOC', studentObj);
-      if (certTypes.includes('LOR')) await generateAndSaveCert(studentId, 'LOR', studentObj);
-      if (certTypes.includes('STAR')) await generateAndSaveCert(studentId, 'STAR', studentObj);
+      if (certTypes.includes('LOC')) await generateAndSaveCert(studentId, 'LOC', studentObj, "HR Portal (Forced)");
+      if (certTypes.includes('LOR')) await generateAndSaveCert(studentId, 'LOR', studentObj, "HR Portal (Forced)");
+      if (certTypes.includes('STAR')) await generateAndSaveCert(studentId, 'STAR', studentObj, "HR Portal (Forced)");
     } else {
-      await checkAndIssueCerts(studentId);
+      await checkAndIssueCerts(studentId, "HR Portal");
     }
     
     res.json({ success: true });
@@ -1097,7 +1097,7 @@ cron.schedule('40 * * * *', async () => {
     });
     for (const s of list) {
       console.log(`[CertCron-3] Auto-generating Offer Letter for ${s.employeeId}`);
-      await generateAndSaveCert(s._id.toString(), 'OFFER', s);
+      await generateAndSaveCert(s._id.toString(), 'OFFER', s, "System Automation");
     }
   } catch (e) {
     console.error('[CertCron-3] Error:', e.message);

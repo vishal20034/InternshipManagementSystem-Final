@@ -274,23 +274,23 @@ function getInternshipEndDate(joiningDate, tenure) {
     return end;
 }
 
-async function sendAutoDocumentsToStudent(student, docType) {
+async function sendAutoDocumentsToStudent(student, docType, sentBy = "System") {
     try {
         const v2Certificates = require("./routes/v2/certificates");
         if (docType === 'offer') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student, sentBy);
         } else if (docType === 'loc') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student, sentBy);
         } else if (docType === 'lor') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student, sentBy);
         } else if (docType === 'star') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'STAR', student);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'STAR', student, sentBy);
         } else if (docType === 'all') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student);
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student);
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student, sentBy);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student, sentBy);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student, sentBy);
         }
-        console.log(`[AUTO-DOCS] Successfully generated and synced document type ${docType} for student ${student._id}`);
+        console.log(`[AUTO-DOCS] Successfully generated and synced document type ${docType} for student ${student._id} (sentBy: ${sentBy})`);
     } catch(err) {
         console.error('[AUTO-DOCS] Error:', err.message);
     }
@@ -305,7 +305,7 @@ async function runAutoDocumentCheck() {
             if (!student.joiningDate || !student.tenure || !student.email) continue;
             const endDate = getInternshipEndDate(student.joiningDate, student.tenure);
             if (endDate && now >= endDate) {
-                await sendAutoDocumentsToStudent(student, 'all');
+                await sendAutoDocumentsToStudent(student, 'all', "System Automation");
                 count++;
                 await new Promise(r => setTimeout(r, 2000));
             }
@@ -1160,7 +1160,7 @@ app.post('/hr/send-documents-now', async(req, res) => {
         if (!student.email) return res.json({ success: false, message: 'Student has no email' });
         student.documentsAutoSent = false;
         await student.save();
-        await sendAutoDocumentsToStudent(student, docType || 'all');
+        await sendAutoDocumentsToStudent(student, docType || 'all', "HR Portal");
         res.json({ success: true, message: 'Documents sent to ' + student.email });
     } catch(err) {
         console.error('[MANUAL-DOCS]', err);
