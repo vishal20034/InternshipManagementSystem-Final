@@ -291,7 +291,7 @@ async function loadMyCertificates() {
   if (!employeeId) return;
   
   try {
-    const res  = await fetch(`/api/v2/certificates/my-certs?employeeId=${employeeId}`);
+    const res  = await fetch(`/api/v2/certificates/my-certs?employeeId=${encodeURIComponent(employeeId)}`);
     const data = await res.json();
     renderDocumentTable(data);
     renderFineNotices(data.pendingFines || []);
@@ -340,7 +340,7 @@ function updateDocRow(type, status, date, hasPdf, rejectionReason) {
   
   let actionHTML = '';
   if (hasPdf && ['issued','approved'].includes(status)) {
-    actionHTML = `<a href="/api/v2/certificates/download/${type.toUpperCase()}?employeeId=${empId}" 
+    actionHTML = `<a href="/api/v2/certificates/download/${type.toUpperCase()}?employeeId=${encodeURIComponent(empId)}" 
       download style="padding:8px 18px;background:linear-gradient(135deg,#059669,#10b981);border-radius:8px;color:#fff;text-decoration:none;font-weight:700;font-size:13px;display:inline-block">
       ⬇️ Download</a>`;
   } else if (status === 'rejected' && rejectionReason) {
