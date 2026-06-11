@@ -1,3 +1,4 @@
+const DocumentHistory = require("../../models/DocumentHistory");
 // NEW FEATURE: Certificate PDF Generation Service
 // Generates HTML/CSS certificate templates and renders to PDF using PDFKit
 // Template styles: Expert (ivory/gold), Nano Degree (navy), Fellowship (forest green)
