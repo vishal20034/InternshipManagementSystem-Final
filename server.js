@@ -422,12 +422,7 @@ const TestResult = mongoose.model("TestResult", testResultSchema);
 // ================= ROUTES =================
 
 // Phase-1 multi-role registration hub
-// ===== PHASE 1 PR4: REGISTRATION HUB (updated mounts) =====
-try {
-    app.use("/api/register/hub", require("./routes/registerHub"));
-    app.get("/register-hub", require("./controllers/registerHubController").getHub);
-    console.log("[Phase1] register-hub routes mounted at /api/register/hub and /register-hub");
-} catch(e){ console.error("[Phase1] registerHub:", e.message); }
+app.use("/api/register-hub", require("./routes/registerHub"));
 
 app.get("/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","dashboard.html")); });
 app.get("/groups", (req,res)=>{ res.sendFile(path.join(__dirname,"public","groups.html")); });
@@ -4448,6 +4443,9 @@ try {
 } catch(e) {
     console.error('[V2] Failed to mount bots routes:', e.message);
 }
+
+// ===== PHASE 1 PR3: TALENT PROFILE =====
+try { app.use('/api/talent', require('./routes/talentProfile')); console.log('[Phase1] talent routes mounted at /api/talent'); } catch(e){ console.error('[Phase1] talentProfile:',e.message); }
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
 const expressModule = require("express");
