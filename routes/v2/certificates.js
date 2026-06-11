@@ -805,13 +805,16 @@ async function checkAndIssueCerts(studentId) {
   const att  = student.attendancePercentage || 0;
   const perf = student.performanceScore || 0;
   
+  const locFinePaid = (student.pendingFines||[]).some(f => f.fineType === 'loc_attendance' && f.paid);
+  const lorFinePaid = (student.pendingFines||[]).some(f => f.fineType === 'lor_criteria' && f.paid);
+
   // LOC check
-  if (['pending_hr', 'approved'].includes(student.locStatus) && student.locStatus !== 'issued') {
-    if (att >= 75) {
+  if (['pending_hr', 'approved', 'fine_pending'].includes(student.locStatus) && student.locStatus !== 'issued') {
+    if (att >= 75 || locFinePaid) {
       await generateAndSaveCert(studentId, 'LOC', student);
     } else {
       // Add fine if not already added
-      const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'loc_attendance' && !f.paid);
+      const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'loc_attendance');
       if (!hasFine) {
         await Student.findByIdAndUpdate(studentId, {
           locStatus: 'fine_pending',
@@ -826,11 +829,11 @@ async function checkAndIssueCerts(studentId) {
   }
   
   // LOR check
-  if (['pending_hr', 'approved'].includes(student.lorStatus) && student.lorStatus !== 'issued') {
-    if (att >= 75 && perf >= 75) {
+  if (['pending_hr', 'approved', 'fine_pending'].includes(student.lorStatus) && student.lorStatus !== 'issued') {
+    if ((att >= 75 && perf >= 75) || lorFinePaid) {
       await generateAndSaveCert(studentId, 'LOR', student);
     } else {
-      const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'lor_criteria' && !f.paid);
+      const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'lor_criteria');
       if (!hasFine) {
         let reason = '';
         if (att < 75 && perf < 75) reason = `Attendance ${att}% and Performance ${perf}% are both below 75%.`;
@@ -867,6 +870,46 @@ router.post('/hr-approve', async (req, res) => {
     res.json({ success: true });
   } catch(e) {
     console.error('[HR-Approve] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/v2/certificates/pay-fine — HR marks a fine as paid and triggers issuance
+router.post('/pay-fine', async (req, res) => {
+  try {
+    const { studentId, fineType } = req.body; // fineType: 'loc_attendance' or 'lor_criteria'
+    
+    // Find student, update the specific fine to paid = true
+    const student = await Student.findById(studentId);
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+    
+    let fineFound = false;
+    if (student.pendingFines) {
+      student.pendingFines.forEach(f => {
+        if (f.fineType === fineType && !f.paid) {
+          f.paid = true;
+          fineFound = true;
+        }
+      });
+    }
+    
+    if (fineFound) {
+      // Also update locStatus / lorStatus back from fine_pending to pending_hr so it gets processed
+      if (fineType === 'loc_attendance' && student.locStatus === 'fine_pending') {
+        student.locStatus = 'pending_hr';
+      } else if (fineType === 'lor_criteria' && student.lorStatus === 'fine_pending') {
+        student.lorStatus = 'pending_hr';
+      }
+      
+      await student.save();
+      // Auto run certificate checks!
+      await checkAndIssueCerts(studentId);
+      return res.json({ success: true, message: `Fine of type ${fineType} successfully marked as paid and certificate generated` });
+    } else {
+      return res.status(400).json({ success: false, message: `No unpaid fine of type ${fineType} found for this student` });
+    }
+  } catch(e) {
+    console.error('[Pay-Fine] Error:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
