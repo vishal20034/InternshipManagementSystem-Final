@@ -1,7 +1,12 @@
-const express = require("express");
-const router = express.Router();
-const ctrl = require("../controllers/registerHubController");
+'use strict';
 
-router.post("/", ctrl.register);
+const express = require('express');
+const { getHub, getRoleConfig, registerUser } = require('../controllers/registerHubController');
+
+const router = express.Router();
+
+router.get( '/',         getHub);
+router.get( '/roles',    getRoleConfig);
+router.post('/register', registerUser);
 
 module.exports = router;
