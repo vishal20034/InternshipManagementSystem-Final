@@ -145,33 +145,13 @@ async function generateOfferLetterPDF(data, outputPath) {
 
 /**
  * Logs an offer-letter send into the Document Send History.
+ * Delegates to the shared DocumentHistory.logSend helper.
  * @param {Object} entry - student / document info
  * @param {string} [method] - 'manual' | 'automation'
  * @returns {Promise<Object|null>} the created DocumentHistory record or null on failure
  */
-async function logOfferLetterSend(entry = {}, method = "manual") {
-    try {
-        return await DocumentHistory.create({
-            studentId:      entry.studentId || null,
-            studentName:    (entry.studentName || entry.name || "").trim(),
-            studentEmail:   entry.studentEmail || entry.email || "",
-            employeeId:     entry.employeeId || "",
-            college:        entry.college || entry.collegeName || "Not provided",
-            domain:         entry.domain || "",
-            documentType:   "Offer Letter",
-            documentKey:    "offer_letter",
-            documentNumber: entry.documentNumber || "",
-            sentOn:         entry.sentAt || new Date(),
-            sentAt:         entry.sentAt || new Date(),
-            sentBy:         entry.sentBy || (method === "automation" ? "Auto System" : "HR Portal"),
-            sentToEmail:    entry.sentToEmail || entry.email || "",
-            method:         method === "automation" ? "automation" : "manual",
-            emailStatus:    entry.emailStatus || "sent"
-        });
-    } catch (err) {
-        console.error("[OfferLetterService] DocumentHistory log failed:", err.message);
-        return null;
-    }
+function logOfferLetterSend(entry = {}, method = "manual") {
+    return DocumentHistory.logSend({ ...entry, documentType: "Offer Letter", documentKey: "offer_letter" }, method);
 }
 
 module.exports = { generateOfferLetterPDF, logOfferLetterSend };

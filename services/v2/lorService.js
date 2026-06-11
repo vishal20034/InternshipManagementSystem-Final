@@ -133,33 +133,13 @@ async function generateLORPDF(data, outputPath) {
 
 /**
  * Logs a Letter of Recommendation send into the Document Send History.
+ * Delegates to the shared DocumentHistory.logSend helper.
  * @param {Object} entry - student / document info
  * @param {string} [method] - 'manual' | 'automation'
  * @returns {Promise<Object|null>} the created DocumentHistory record or null on failure
  */
-async function logLORSend(entry = {}, method = "manual") {
-    try {
-        return await DocumentHistory.create({
-            studentId:      entry.studentId || null,
-            studentName:    (entry.studentName || entry.name || "").trim(),
-            studentEmail:   entry.studentEmail || entry.email || "",
-            employeeId:     entry.employeeId || "",
-            college:        entry.college || entry.collegeName || "Not provided",
-            domain:         entry.domain || "",
-            documentType:   "Letter of Recommendation",
-            documentKey:    "lor",
-            documentNumber: entry.documentNumber || "",
-            sentOn:         entry.sentAt || new Date(),
-            sentAt:         entry.sentAt || new Date(),
-            sentBy:         entry.sentBy || (method === "automation" ? "Auto System" : "HR Portal"),
-            sentToEmail:    entry.sentToEmail || entry.email || "",
-            method:         method === "automation" ? "automation" : "manual",
-            emailStatus:    entry.emailStatus || "sent"
-        });
-    } catch (err) {
-        console.error("[LORService] DocumentHistory log failed:", err.message);
-        return null;
-    }
+function logLORSend(entry = {}, method = "manual") {
+    return DocumentHistory.logSend({ ...entry, documentType: "Letter of Recommendation", documentKey: "lor" }, method);
 }
 
 module.exports = { generateLORPDF, logLORSend };
