@@ -216,6 +216,11 @@ async function runActivityMailer(){
                             });
                         } catch (_) {}
                     }
+                    await Notification.notifyStudent(student, {
+                        title: "🌟 Appreciation from HR",
+                        message: `Hi ${studentName || "Intern"}, great work staying active this week. Keep it up! — TEN HR Team`,
+                        type: "success"
+                    });
                     await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
                 } else if(!lastActive || lastActive < fourteenDaysAgo){
                     let mailStatus = "sent";
@@ -244,6 +249,11 @@ async function runActivityMailer(){
                             });
                         } catch (_) {}
                     }
+                    await Notification.notifyStudent(student, {
+                        title: "💪 Inactivity Alert",
+                        message: `Hi ${studentName || "Intern"}, we noticed you haven't been active recently. Jump back in whenever you're ready — we're here to help you keep growing. — TEN HR Team`,
+                        type: "warning"
+                    });
                     await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
                 }
             }catch(error){
@@ -606,6 +616,11 @@ try{
                         errorMessage: mailError
                     });
                 } catch (_) {}
+                await Notification.notifyStudent({ employeeId, domain }, {
+                    title: "🎉 Welcome to TEN!",
+                    message: `Hello ${newStudent.name.trim()}, your internship registration was successful. Your Employee ID is ${employeeId} (${domain}). A welcome email has been sent to ${emailLc}.`,
+                    type: "success"
+                });
             }
         }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
     }
@@ -2691,6 +2706,11 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
                 status: "sent"
             });
         } catch (_) {}
+        await Notification.notifyStudent({ employeeId, domain }, {
+            title: "🎉 You've been promoted!",
+            message: `Congratulations ${name}! You have been promoted from ${fromRoleLabel} to ${toRoleLabel}. Check your email for the registration link (valid 48 hours).`,
+            type: "success"
+        });
         return { ok: true };
     } catch(e){
         console.log("Promotion email failed:", e.message);
@@ -3304,6 +3324,13 @@ app.post("/auth/forgot-password", async(req,res)=>{
                             errorMessage: mailError
                         });
                     } catch (_) {}
+                    if (role === "student") {
+                        await Notification.notifyStudent(user, {
+                            title: "🔐 Password Reset Requested",
+                            message: "A password reset link was sent to your registered email. It expires in 1 hour. If you did not request this, you can ignore the email.",
+                            type: "warning"
+                        });
+                    }
                 }
             }catch(e){ console.log("forgot-password mail error:", e && e.message); }
         }

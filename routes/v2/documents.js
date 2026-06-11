@@ -16,6 +16,7 @@ const { generateLORPDF }  = require("../../services/v2/lorService");
 const { generateLOCPDF }  = require("../../services/v2/locService");
 const DocumentHistory     = require("../../models/DocumentHistory");
 const MailHistory         = require("../../models/MailHistory");
+const Notification        = require("../../models/Notification");
 const { generateDocumentNumber, normalizeDocumentNumber } = require("../../utils/documentNumber");
 
 // ── Multer storage for documents ──
@@ -167,6 +168,11 @@ async function tryAutoGenerateLOC(student) {
                 attachments: [{ filename: "TEN_Letter_of_Completion.pdf", path: outPath }]
             });
         } catch (_) {}
+        await Notification.notifyStudent(student, {
+            title: "🎓 Letter of Completion Issued",
+            message: `Congratulations ${student.name}! You completed 100% of your internship programme. Your Letter of Completion (${docNumber}) is available under My Documents and has been emailed to you.`,
+            type: "success"
+        });
 
         console.log(`[DOCS] LOC auto-generated for student: ${student.name} (${student.employeeId})`);
     } catch (err) {
@@ -484,6 +490,11 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                         errorMessage: mailError
                     });
                 } catch (_) {}
+                await Notification.notifyStudent(student, {
+                    title: "📄 Offer Letter Sent",
+                    message: `Congratulations ${studentName}! Your Internship Offer Letter (${docNumber}) has been generated and emailed to ${student.email || "your registered email"}. You can also download it from My Documents.`,
+                    type: "success"
+                });
 
                 results.push({
                     studentId: sid,
