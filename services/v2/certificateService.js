@@ -2,7 +2,7 @@
 // Generates HTML/CSS certificate templates and renders to PDF using PDFKit
 // Template styles: Expert (ivory/gold), Nano Degree (navy), Fellowship (forest green)
 "use strict";
-
+const DocumentHistory = require('../../models/DocumentHistory'); 
 const PDFDocument = require("pdfkit");
 const fs          = require("fs");
 const crypto      = require("crypto");
