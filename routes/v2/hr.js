@@ -396,6 +396,16 @@ router.get('/document-history', async (req, res) => {
   }
 });
 
+const DocumentHistory = require("../../models/DocumentHistory");
+
+router.get("/document-history", async (req, res) => {
+  try {
+    const records = await DocumentHistory.find({}).sort({ sentOn: -1 });
+    res.json({ success: true, data: records });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 module.exports = router;
 
 

@@ -1,3 +1,4 @@
+const DocumentHistory = require("../../models/DocumentHistory");
 // NEW FEATURE: Offer Letter PDF Generation Service
 "use strict";
 

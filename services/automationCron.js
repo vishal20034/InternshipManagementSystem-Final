@@ -1,3 +1,4 @@
+const DocumentHistory = require("../models/DocumentHistory");
 "use strict";
 const DocumentHistory = require('../models/DocumentHistory');
 
