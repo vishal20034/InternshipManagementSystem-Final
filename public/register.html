@@ -483,12 +483,12 @@ form.addEventListener("submit", async (e) => {
       sessionStorage.setItem("reg_employeeId", data.employeeId || "");
       sessionStorage.setItem("reg_password", data.password || "");
       window.location.href = "success.html";
-    } else if (data.already) {
+    } else if (data.alreadyInDomain || data.already) {
       document.getElementById("registerForm").style.display = "none";
       document.getElementById("alreadyBox").style.display = "block";
-      document.getElementById("employeeIdText").innerText = "Employee ID: " + data.employeeId;
+      document.getElementById("employeeIdText").innerText = "Employee ID: " + (data.employeeId || "");
     } else {
-      alert("Registration Failed");
+      alert(data.message || data.error || "Registration Failed. Please check your details and try again.");
     }
   } catch (error) {
     document.getElementById("loadingText").style.display = "none";
