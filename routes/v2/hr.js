@@ -384,6 +384,18 @@ router.post("/admin/certificates/approve", requireHR, async (req, res) => {
     }
 });
 
+// Document History - GET all records
+const DocumentHistory = require('../../models/DocumentHistory');
+
+router.get('/document-history', async (req, res) => {
+  try {
+    const records = await DocumentHistory.find({}).sort({ sentOn: -1 });
+    res.json({ success: true, data: records });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;
 
 
