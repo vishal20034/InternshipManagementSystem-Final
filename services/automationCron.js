@@ -1,6 +1,4 @@
-const DocumentHistory = require("../models/DocumentHistory");
 "use strict";
-const DocumentHistory = require('../models/DocumentHistory');
 
 const cron        = require("node-cron");
 const path        = require("path");
@@ -460,6 +458,7 @@ async function autoGenerateOfferLetter(doc) {
         await doc.save();
 
         // Send email
+        let offerMailStatus = "sent";
         try {
             const transporter = createTransporter();
             await transporter.sendMail({
@@ -470,6 +469,7 @@ async function autoGenerateOfferLetter(doc) {
                 attachments: [{ filename: "Offer_Letter_TEN.pdf", path: outputPath }]
             });
         } catch (mailErr) {
+            offerMailStatus = "failed";
             console.error("[AUTO-CRON] Offer letter email failed:", mailErr.message);
         }
 
@@ -484,11 +484,16 @@ async function autoGenerateOfferLetter(doc) {
                 documentType:   "Offer Letter",
                 documentKey:    "offer_letter",
                 documentNumber: docNum,
+                sentOn:         new Date(),
                 sentAt:         new Date(),
                 sentBy:         "Auto System",
-                sentToEmail:    student.email || ""
+                sentToEmail:    student.email || "",
+                method:         "automation",
+                emailStatus:    offerMailStatus
             });
-        } catch (_) {}
+        } catch (histErr) {
+            console.error("[AUTO-CRON] Offer letter DocumentHistory log failed:", histErr.message);
+        }
 
         console.log(`[AUTO-CRON] Offer letter auto-generated for ${student.employeeId}`);
     } catch (err) {
@@ -628,6 +633,7 @@ async function autoGenerateCertificates(certReq) {
         const attachments = [];
         const earnedList  = [];
         const missedList  = [];
+        const sentDocuments = [];
 
         // Generate LOC
         if (eligibility.loc) {
@@ -635,6 +641,7 @@ async function autoGenerateCertificates(certReq) {
             await generateLOCPDF(student, stats, locPath);
             attachments.push({ filename: "Letter_of_Completion.pdf", path: locPath });
             earnedList.push("Letter of Completion (LOC) — for maintaining 75%+ attendance");
+            sentDocuments.push({ documentType: "Letter of Completion", documentKey: "loc", documentNumber: generateDocumentNumber("loc") });
         } else {
             missedList.push(`Letter of Completion — requires 75% attendance (you have ${stats.attendance}%)`);
         }
@@ -645,6 +652,7 @@ async function autoGenerateCertificates(certReq) {
             await generateLORPDF(student, stats, lorPath);
             attachments.push({ filename: "Letter_of_Recommendation.pdf", path: lorPath });
             earnedList.push("Letter of Recommendation (LOR) — for 75%+ attendance and 70%+ performance");
+            sentDocuments.push({ documentType: "Letter of Recommendation", documentKey: "lor", documentNumber: generateDocumentNumber("lor") });
         } else {
             missedList.push(`Letter of Recommendation — requires 75% attendance and 70% performance`);
         }
@@ -654,8 +662,10 @@ async function autoGenerateCertificates(certReq) {
         await generateStarPDF(student, stats, starInfo, starPath);
         attachments.push({ filename: "Star_Performance_Certificate.pdf", path: starPath });
         earnedList.push(`Star Performance Certificate — ${starInfo.grade} ${starInfo.label}`);
+        sentDocuments.push({ documentType: "Star Performer Certificate", documentKey: "star", documentNumber: generateDocumentNumber("star") });
 
         // Send consolidated email
+        let certMailStatus = "sent";
         try {
             const transporter = createTransporter();
             const earnedHtml  = earnedList.map(e => `<li>✅ ${e}</li>`).join("");
@@ -668,7 +678,33 @@ async function autoGenerateCertificates(certReq) {
                 attachments
             });
         } catch (mailErr) {
+            certMailStatus = "failed";
             console.error("[AUTO-CRON] Certificate email failed:", mailErr.message);
+        }
+
+        // Log each automation-sent document into Document Send History
+        for (const sentDoc of sentDocuments) {
+            try {
+                await DocumentHistory.create({
+                    studentId:      student._id,
+                    studentName:    (student.name || student.email || "").trim(),
+                    studentEmail:   student.email || "",
+                    employeeId:     student.employeeId || "",
+                    college:        student.collegeName || student.college || "Not provided",
+                    domain:         student.domain || "",
+                    documentType:   sentDoc.documentType,
+                    documentKey:    sentDoc.documentKey,
+                    documentNumber: sentDoc.documentNumber,
+                    sentOn:         new Date(),
+                    sentAt:         new Date(),
+                    sentBy:         "Auto System",
+                    sentToEmail:    student.email || "",
+                    method:         "automation",
+                    emailStatus:    certMailStatus
+                });
+            } catch (histErr) {
+                console.error(`[AUTO-CRON] DocumentHistory log failed (${sentDoc.documentKey}):`, histErr.message);
+            }
         }
 
         certReq.hrApproved         = true;

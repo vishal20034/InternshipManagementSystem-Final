@@ -270,7 +270,13 @@ router.post("/document-history/log", requireHR, async (req, res) => {
   try {
     const payload = req.body || {};
     const studentId = payload.studentId || payload.student_id || null;
-    const student = studentId ? await Student.findById(studentId).select("firstName lastName name email employeeId domain collegeName college").lean() : null;
+    let student = studentId ? await Student.findById(studentId).select("firstName lastName name email employeeId domain collegeName college").lean() : null;
+    if (!student) {
+      const employeeId = String(payload.employee_id || payload.employeeId || "").trim();
+      if (employeeId) {
+        student = await Student.findOne({ employeeId }).select("firstName lastName name email employeeId domain collegeName college").lean();
+      }
+    }
     const studentName =
       (payload.student_name || payload.studentName || student?.name || `${student?.firstName || ""} ${student?.lastName || ""}`.trim() || student?.email || "").trim();
 
@@ -288,9 +294,12 @@ router.post("/document-history/log", requireHR, async (req, res) => {
       documentType,
       documentKey,
       documentNumber,
+      sentOn: new Date(),
       sentAt: new Date(),
       sentBy: payload.sent_by || payload.sentBy || "HR Portal",
-      sentToEmail: payload.sent_to_email || payload.sentToEmail || ""
+      sentToEmail: payload.sent_to_email || payload.sentToEmail || "",
+      method: "manual",
+      emailStatus: payload.email_status || payload.emailStatus || "sent"
     });
 
     res.json({ success: true, documentNumber });
@@ -384,28 +393,47 @@ router.post("/admin/certificates/approve", requireHR, async (req, res) => {
     }
 });
 
-// Document History - GET all records
-const DocumentHistory = require('../../models/DocumentHistory');
-
-router.get('/document-history', async (req, res) => {
+// ─────────────────────────────────────────────────────
+// DOCUMENT HISTORY — GET /api/v2/hr/document-history
+// Returns all document-send records (manual + automation)
+// for the HR portal "Document Send History" tab.
+// ─────────────────────────────────────────────────────
+router.get("/document-history", requireHR, async (req, res) => {
   try {
-    const records = await DocumentHistory.find({}).sort({ sentOn: -1 });
-    res.json({ success: true, data: records });
+    const page  = Math.max(1, parseInt(req.query.page || "1", 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit || "100", 10) || 100));
+    const skip  = (page - 1) * limit;
+
+    const [total, rawRecords] = await Promise.all([
+      DocumentHistory.countDocuments(),
+      DocumentHistory.find({}).sort({ sentAt: -1, sentOn: -1, createdAt: -1 }).skip(skip).limit(limit).lean()
+    ]);
+
+    const records = (rawRecords || []).map((r) => {
+      const studentName    = (r.studentName || r.student_name || "").trim() || "—";
+      const employeeId     = (r.employeeId || r.employee_id || "").trim() || "—";
+      const college        = ((r.college || "").trim() && r.college !== "—") ? r.college.trim() : "Not provided";
+      const documentNumber = normalizeDocumentNumber(r.documentNumber || r.document_number || "") || "—";
+      return {
+        ...r,
+        studentName,
+        employeeId,
+        college,
+        documentNumber,
+        documentType: r.documentType || r.documentKey || "—",
+        sentAt:       r.sentAt || r.sentOn || r.createdAt,
+        sentBy:       r.sentBy || "System",
+        method:       r.method || "manual",
+        emailStatus:  r.emailStatus || "sent"
+      };
+    });
+
+    res.json({ success: true, data: records, records, total, page });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message, data: [], records: [], total: 0, page: 1 });
   }
 });
 
-const DocumentHistory = require("../../models/DocumentHistory");
-
-router.get("/document-history", async (req, res) => {
-  try {
-    const records = await DocumentHistory.find({}).sort({ sentOn: -1 });
-    res.json({ success: true, data: records });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
 module.exports = router;
 
 
