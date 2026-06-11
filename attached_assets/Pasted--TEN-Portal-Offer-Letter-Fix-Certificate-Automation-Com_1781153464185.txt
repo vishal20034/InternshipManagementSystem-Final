@@ -1,0 +1,909 @@
+# TEN Portal — Offer Letter Fix + Certificate Automation (Complete Build)
+
+---
+
+## ⚠️ ABSOLUTE RULES — FOLLOW BEFORE TOUCHING ANYTHING
+
+1. **READ EXISTING CODE FIRST** — Before writing a single line, grep and read every relevant file.
+2. **NEVER DELETE existing routes, models, or HTML sections** not mentioned here.
+3. **NEVER use `alert()`, `confirm()`, or `prompt()`** — replace all with custom modals.
+4. **DO NOT duplicate** existing cron jobs or routes — check if they exist before adding.
+5. **All new UI** must match existing dark theme: background `#0a0a19`, gold accents `#f59e0b`, text `#e2e8f0`.
+6. **Test each section** with `console.log` before moving to next. Stop and report if any section fails.
+7. **node-cron is already installed** — use it. Do NOT install new packages unless listed here.
+8. **pdfkit is already installed** — use it for PDF generation. Do NOT use puppeteer or html-pdf.
+
+---
+
+## STEP 0 — READ THESE FILES FIRST (before any code changes)
+
+Run these commands to understand existing code. Report what you find for each:
+
+```bash
+# 1. Find existing offer letter generation route
+grep -rn "offer.letter\|offerLetter\|offer_letter\|generate.*offer" server.js routes/ --include="*.js" -l
+
+# 2. Find existing document review/upload handling
+grep -rn "document.*review\|pending.*document\|addressProof\|marksheet" server.js routes/ --include="*.js" -l
+
+# 3. Find existing cron jobs
+grep -rn "cron\|schedule\|setInterval" server.js routes/ --include="*.js"
+
+# 4. Find existing certificate generation (LOC/LOR/Star)
+grep -rn "LOC\|LOR\|loc\|lor\|completion.*cert\|certificate" server.js routes/ --include="*.js" -l
+
+# 5. Find existing coordinator approval flow
+grep -rn "coordinator.*approv\|approv.*coordinator\|pendingHR\|pending_hr" server.js routes/ --include="*.js"
+
+# 6. Check Student model fields
+grep -n "attendance\|performance\|offerLetter\|addressProof\|marksheet\|internship.*complete\|fine\|coordinatorApproved" models/Student.js
+
+# 7. Check how HR portal currently calls offer letter
+grep -n "generate.*offer\|offerLetter\|offer-letter" public/hr-portal.html | head -30
+```
+
+**After reading, tell me exactly:**
+- Does an offer letter generation route exist? What is its path?
+- Does a cron job exist for auto-generation?
+- What fields does the Student model have for documents/status?
+- Does a coordinator approval → HR escalation flow exist?
+
+Then proceed with the fixes below.
+
+---
+
+## SECTION 1 — Fix Offer Letter Generation (PRIORITY)
+
+### 1A. Fix the backend offer letter route
+
+Find the existing offer letter generation route. It likely has one of these paths:
+- `POST /api/hr/generate-offer-letters`
+- `POST /api/v2/hr/generate-offer-letters`
+- Similar
+
+**Debug the existing route first:**
+```js
+// Add these debug logs at the start of the route handler:
+console.log('[OfferLetter] Called with body:', req.body);
+console.log('[OfferLetter] Student IDs:', req.body.studentIds || req.body.ids);
+```
+
+**Common bugs to check and fix:**
+1. Student IDs not being passed correctly from frontend → backend
+2. PDF generation failing silently (wrap in try-catch, log the error)
+3. Email not configured (check `nodemailer` config in `.env`)
+4. Student model field name mismatch (`employeeId` vs `_id` vs `studentId`)
+
+**The route must do:**
+1. Accept array of student IDs
+2. For each student: generate PDF offer letter using pdfkit
+3. Save PDF to disk OR store as Buffer in MongoDB
+4. Update student document: `{ offerLetterStatus: 'approved', offerLetterGeneratedAt: new Date(), offerLetterPath: <path> }`
+5. Send email with PDF attachment to student
+6. Return `{ success: true, generated: count, failed: failedList }`
+
+**Offer Letter PDF must contain:**
+- TEN Internship Network letterhead
+- Student Name, Employee ID, Domain, Duration
+- Start Date, internship details
+- Official language: "This is to certify that [Name] has been offered an internship..."
+- Digital signature placeholder
+- Date of issuance
+
+### 1B. Replace ALL browser dialogs in hr-portal.html with custom modals
+
+Find every `confirm(`, `alert(`, `prompt(` in `public/hr-portal.html` and replace:
+
+**Replace the "Reject" prompt dialog** — find the reject button handler and replace with this modal flow:
+
+Add this HTML before `</body>` in hr-portal.html:
+```html
+<!-- Reject Modal -->
+<div id="reject-doc-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); backdrop-filter:blur(8px); z-index:99999; align-items:center; justify-content:center">
+  <div style="background:linear-gradient(160deg,#0d0f1e,#111528); border:1px solid rgba(239,68,68,.3); border-radius:20px; padding:28px; width:480px; max-width:92vw;">
+    <h3 style="color:#f87171; font-size:17px; font-weight:800; margin:0 0 8px">❌ Reject Documents</h3>
+    <p style="color:#94a3b8; font-size:13px; margin:0 0 16px">Student will be notified with this reason and asked to re-upload.</p>
+    <input id="reject-doc-student-id" type="hidden">
+    <textarea id="reject-reason-text" placeholder="Enter rejection reason (e.g. Documents are blurry, please re-upload clearer images)" rows="4" style="width:100%; padding:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#f1f5f9; font-size:13px; resize:none; font-family:inherit; outline:none; box-sizing:border-box;"></textarea>
+    <div style="display:flex; gap:10px; margin-top:14px; justify-content:flex-end;">
+      <button onclick="document.getElementById('reject-doc-modal').style.display='none'" style="padding:10px 20px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#94a3b8; cursor:pointer; font-family:inherit;">Cancel</button>
+      <button onclick="submitDocRejection()" style="padding:10px 24px; background:linear-gradient(135deg,#dc2626,#ef4444); border:none; border-radius:10px; color:#fff; cursor:pointer; font-weight:700; font-family:inherit;">Send Rejection</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Generate Confirmation Modal -->
+<div id="bulk-generate-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); backdrop-filter:blur(8px); z-index:99999; align-items:center; justify-content:center">
+  <div style="background:linear-gradient(160deg,#0d0f1e,#111528); border:1px solid rgba(245,158,11,.3); border-radius:20px; padding:28px; width:480px; max-width:92vw;">
+    <h3 style="color:#f59e0b; font-size:17px; font-weight:800; margin:0 0 8px">📄 Generate Offer Letters</h3>
+    <p id="bulk-generate-msg" style="color:#94a3b8; font-size:14px; margin:0 0 20px; line-height:1.6"></p>
+    <div style="background:rgba(245,158,11,.07); border:1px solid rgba(245,158,11,.2); border-radius:10px; padding:12px 14px; margin-bottom:20px; font-size:13px; color:#fcd34d;">
+      ⚡ PDFs will be generated and emailed to each student automatically.
+    </div>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button onclick="document.getElementById('bulk-generate-modal').style.display='none'" style="padding:10px 20px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#94a3b8; cursor:pointer; font-family:inherit;">Cancel</button>
+      <button onclick="confirmBulkGenerate()" id="bulk-generate-confirm-btn" style="padding:10px 24px; background:linear-gradient(135deg,#d97706,#f59e0b); border:none; border-radius:10px; color:#000; cursor:pointer; font-weight:800; font-family:inherit;">✅ Generate & Email</button>
+    </div>
+  </div>
+</div>
+```
+
+Add this JavaScript (before `ten-motion.js` script tag):
+```html
+<script>
+var _pendingBulkStudentIds = [];
+var _pendingRejectStudentId = null;
+
+// Call this instead of confirm() for bulk generation
+window.openBulkGenerateModal = function(studentIds, count) {
+  _pendingBulkStudentIds = studentIds;
+  document.getElementById('bulk-generate-msg').textContent = 
+    'Generate and email Offer Letters for ' + count + ' student(s)? Their documents will be marked as approved.';
+  document.getElementById('bulk-generate-modal').style.display = 'flex';
+};
+
+window.confirmBulkGenerate = async function() {
+  var btn = document.getElementById('bulk-generate-confirm-btn');
+  btn.textContent = '⏳ Generating...';
+  btn.disabled = true;
+  document.getElementById('bulk-generate-modal').style.display = 'none';
+  
+  try {
+    // Find the correct API endpoint from existing code and call it
+    var res = await fetch('/api/v2/hr/generate-offer-letters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentIds: _pendingBulkStudentIds })
+    });
+    var data = await res.json();
+    showToastMsg('✅ Generated ' + (data.generated || 0) + ' offer letter(s) and emailed students.', 'success');
+    setTimeout(function(){ loadPendingDocuments(); }, 1500);
+  } catch(e) {
+    showToastMsg('❌ Error: ' + e.message, 'error');
+  }
+  btn.textContent = '✅ Generate & Email';
+  btn.disabled = false;
+};
+
+// Call this instead of prompt() for rejection
+window.openRejectModal = function(studentId) {
+  _pendingRejectStudentId = studentId;
+  document.getElementById('reject-reason-text').value = '';
+  document.getElementById('reject-doc-modal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('reject-reason-text').focus(); }, 100);
+};
+
+window.submitDocRejection = async function() {
+  var reason = document.getElementById('reject-reason-text').value.trim();
+  if(!reason) { alert('Please enter a rejection reason.'); return; }
+  try {
+    var res = await fetch('/api/v2/hr/reject-document', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: _pendingRejectStudentId, reason: reason })
+    });
+    var data = await res.json();
+    if(data.success) {
+      document.getElementById('reject-doc-modal').style.display = 'none';
+      showToastMsg('📤 Rejection sent to student.', 'success');
+      setTimeout(function(){ loadPendingDocuments(); }, 1500);
+    }
+  } catch(e) {
+    showToastMsg('❌ Error: ' + e.message, 'error');
+  }
+};
+
+// Toast helper (check if showToast already exists in code, if so use that name)
+function showToastMsg(msg, type) {
+  var t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:80px;right:20px;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:99998;animation:toastIn .3s ease;max-width:340px;';
+  t.style.background = type==='success' ? 'linear-gradient(135deg,#059669,#10b981)' : 'linear-gradient(135deg,#dc2626,#ef4444)';
+  t.style.color = '#fff';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 4000);
+}
+</script>
+```
+
+**Now update the existing button onclick handlers** in the document review table to call `openBulkGenerateModal()` and `openRejectModal()` instead of `confirm()`/`prompt()`.
+
+### 1C. Student "Under Review" → Status Updates
+
+When HR approves:
+- Student's `offerLetterStatus` → `'approved'`
+- `public/my-documents.html` should show: `✅ Approved` + **Download Offer Letter** button
+
+When HR rejects:
+- Student's `offerLetterStatus` → `'rejected'`
+- Student's `documentRejectionReason` → the reason text
+- `public/my-documents.html` should show: `❌ Rejected` with the reason + **Re-upload** button (clear previous files)
+
+**Update `my-documents.html`** — find where it shows offer letter status and update the rendering logic:
+```js
+// In the document status display logic, render based on status:
+// 'under_review' / 'pending' → "⏳ Under Review — HR will process within 24 hours"
+// 'approved' → "✅ Approved" + download button linking to /api/student/download-offer-letter
+// 'rejected' → "❌ Rejected: [reason]" + re-upload button
+// null/undefined → "Upload documents to get your Offer Letter"
+```
+
+---
+
+## SECTION 2 — Document Upload Submit Button
+
+### 2A. Find the upload form in `public/my-documents.html`
+
+Read the current upload section. There is currently no explicit submit button after selecting both files.
+
+**Add a submit button** that only appears after BOTH files are selected:
+
+Find the upload section and add this logic:
+```js
+// After each file input's 'change' event, check if both files are selected:
+function checkBothFilesReady() {
+  var hasAddress = /* check if address proof file selected OR previously uploaded */;
+  var hasMarksheet = /* check if marksheet file selected OR previously uploaded */;
+  var submitBtn = document.getElementById('doc-submit-btn');
+  if(submitBtn) submitBtn.style.display = (hasAddress && hasMarksheet) ? 'block' : 'none';
+}
+```
+
+**Add submit button HTML** in the upload section (after both upload cards):
+```html
+<div id="doc-submit-wrapper" style="margin-top:28px; text-align:center;">
+  <button id="doc-submit-btn" onclick="submitDocumentsToHR()" style="display:none; padding:16px 48px; background:linear-gradient(135deg,#059669,#10b981); border:none; border-radius:14px; color:#fff; font-size:16px; font-weight:800; cursor:pointer; font-family:inherit; box-shadow:0 8px 24px rgba(5,150,105,.3); transition:.2s; letter-spacing:.3px;">
+    📤 Submit Documents for Review
+  </button>
+  <p id="doc-submit-note" style="color:#64748b; font-size:12px; margin-top:8px; display:none;">
+    Documents will be reviewed by HR within 24 hours
+  </p>
+</div>
+```
+
+**Submit function** — sends files to server, then shows confirmation:
+```js
+async function submitDocumentsToHR() {
+  var btn = document.getElementById('doc-submit-btn');
+  btn.textContent = '⏳ Submitting...';
+  btn.disabled = true;
+  
+  var formData = new FormData();
+  // Add address proof and marksheet files to formData
+  // Add employeeId from localStorage
+  
+  try {
+    // POST to the existing upload endpoint (find it via grep first)
+    var res = await fetch('/api/student/submit-documents', {  // CHECK ACTUAL ENDPOINT
+      method: 'POST',
+      body: formData
+    });
+    var data = await res.json();
+    if(data.success) {
+      // Show success state
+      document.getElementById('doc-submit-wrapper').innerHTML = 
+        '<div style="padding:20px; background:rgba(5,150,105,.1); border:1px solid rgba(5,150,105,.3); border-radius:14px; color:#34d399; font-size:15px; font-weight:700; text-align:center;">✅ Documents submitted! HR will review within 24 hours.</div>';
+    }
+  } catch(e) {
+    btn.textContent = '📤 Submit Documents for Review';
+    btn.disabled = false;
+    alert('Error: ' + e.message);
+  }
+}
+```
+
+**IMPORTANT:** Find the actual upload endpoint URL by running:
+```bash
+grep -n "upload.*document\|submit.*document\|addressProof\|marksheet\|multer" routes/ server.js -r | head -20
+```
+Use the real endpoint URL, not the placeholder above.
+
+---
+
+## SECTION 3 — LOC / LOR / Star Performer Certificate Automation
+
+### 3A. First: Check existing automation
+
+Run this and report findings:
+```bash
+# Check existing cron jobs for certificates
+grep -n "cron\|LOC\|LOR\|completion\|certificate\|auto.*cert" server.js | head -40
+
+# Check existing certificate routes
+grep -rn "loc\|lor\|star.*perform\|certificate" routes/ --include="*.js" -l
+
+# Check Student model for completion/certificate fields
+grep -n "attendance\|performance\|internshipComplete\|locStatus\|lorStatus\|starStatus\|certificateStatus\|coordinatorApproved\|hrApproved" models/Student.js
+```
+
+**IF automation already exists:** Check if it works correctly and only fix bugs.
+**IF automation does NOT exist:** Implement it as described below.
+
+### 3B. Add required fields to Student model (if not present)
+
+In `models/Student.js`, ensure these fields exist (add only missing ones, never remove existing):
+```js
+// Certificate flow tracking
+internshipCompleted:       { type: Boolean, default: false },
+internshipCompletedAt:     { type: Date, default: null },
+coordinatorApprovedAt:     { type: Date, default: null },
+coordinatorApprovalStatus: { type: String, enum: ['pending', 'approved', 'escalated_to_hr'], default: null },
+hrApprovedAt:              { type: Date, default: null },
+
+// LOC (Letter of Completion) — requires 75%+ attendance
+locStatus:      { type: String, enum: ['not_eligible', 'pending_coordinator', 'pending_hr', 'approved', 'issued', 'fine_pending'], default: 'not_eligible' },
+locIssuedAt:    { type: Date, default: null },
+locPdfPath:     { type: String, default: null },
+locFinePaid:    { type: Boolean, default: false },
+
+// LOR (Letter of Recommendation) — requires 75%+ attendance AND 75%+ performance  
+lorStatus:      { type: String, enum: ['not_eligible', 'pending_coordinator', 'pending_hr', 'approved', 'issued', 'fine_pending'], default: 'not_eligible' },
+lorIssuedAt:    { type: Date, default: null },
+lorPdfPath:     { type: String, default: null },
+lorFinePaid:    { type: Boolean, default: false },
+
+// Star Performer — requires contribution submission + HR approval
+starStatus:         { type: String, enum: ['not_submitted', 'pending_review', 'approved', 'issued', 'rejected'], default: 'not_submitted' },
+starContribution:   { type: String, default: null },  // student's submitted idea/implementation
+starPdfPath:        { type: String, default: null },
+starIssuedAt:       { type: Date, default: null },
+
+// Fine tracking
+pendingFines: [{
+  type:      { type: String, enum: ['loc_attendance', 'lor_criteria'] },
+  amount:    { type: Number },  // 100 for LOC, 50 for LOR
+  reason:    { type: String },
+  paid:      { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+}],
+
+// Attendance and performance (check if already exist, add only if missing)
+attendancePercentage: { type: Number, default: 0 },
+performanceScore:     { type: Number, default: 0 },
+```
+
+### 3C. Implement the complete certificate automation flow
+
+Add a new file `routes/v2/certificates.js`:
+
+```js
+const router   = require('express').Router();
+const Student  = require('../../models/Student');
+const cron     = require('node-cron');
+const PDFDoc   = require('pdfkit');
+const path     = require('path');
+const fs       = require('fs');
+const nodemailer = require('nodemailer'); // use existing transporter from app
+
+// ─────────────────────────────────────────────────────────────────
+// HELPER: Generate certificate PDF using pdfkit
+// type: 'LOC' | 'LOR' | 'STAR'
+// ─────────────────────────────────────────────────────────────────
+async function generateCertPDF(student, type) {
+  return new Promise((resolve, reject) => {
+    const dir = path.join(__dirname, '../../uploads/certificates');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    const filename = `${type}-${student.employeeId}-${Date.now()}.pdf`;
+    const filepath  = path.join(dir, filename);
+    const doc = new PDFDoc({ size: 'A4', margin: 60 });
+    const stream = fs.createWriteStream(filepath);
+    doc.pipe(stream);
+
+    // — Header —
+    doc.fontSize(10).fillColor('#888').text('THE ENTREPRENEURSHIP NETWORK', { align: 'center' });
+    doc.moveDown(0.3);
+    
+    const titles = {
+      LOC:  'LETTER OF COMPLETION',
+      LOR:  'LETTER OF RECOMMENDATION',
+      STAR: 'STAR PERFORMER CERTIFICATE',
+    };
+    doc.fontSize(22).fillColor('#1a1a2e').font('Helvetica-Bold')
+       .text(titles[type], { align: 'center' });
+    doc.moveDown(0.5);
+    doc.moveTo(60, doc.y).lineTo(535, doc.y).stroke('#f59e0b');
+    doc.moveDown(1);
+
+    // — Body —
+    doc.fontSize(12).fillColor('#333').font('Helvetica')
+       .text(`This is to certify that`, { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(18).font('Helvetica-Bold').fillColor('#1a1a2e')
+       .text(student.name || student.fullName, { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(11).font('Helvetica').fillColor('#555')
+       .text(`Employee ID: ${student.employeeId}`, { align: 'center' });
+    doc.moveDown(1);
+
+    if (type === 'LOC') {
+      doc.text(`has successfully completed the internship program in`, { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#1a1a2e')
+         .text(student.domain, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica').fillColor('#555')
+         .text(`Duration: ${student.internshipDuration || '45 Days'}`, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.text(`Attendance: ${student.attendancePercentage || 0}%`, { align: 'center' });
+    } else if (type === 'LOR') {
+      doc.text(`is hereby recommended for demonstrating outstanding dedication during the internship in`, { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#1a1a2e')
+         .text(student.domain, { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica').fillColor('#555')
+         .text(`Attendance: ${student.attendancePercentage || 0}% | Performance: ${student.performanceScore || 0}%`, { align: 'center' });
+    } else if (type === 'STAR') {
+      doc.text(`has been recognized as a Star Performer for valuable contributions to`, { align: 'center' });
+      doc.moveDown(0.3);
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#1a1a2e')
+         .text('The Entrepreneurship Network', { align: 'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica').fillColor('#555')
+         .text(`Domain: ${student.domain}`, { align: 'center' });
+    }
+
+    doc.moveDown(2);
+    doc.moveTo(60, doc.y).lineTo(535, doc.y).stroke('#e5e5e5');
+    doc.moveDown(1);
+    doc.fontSize(11).fillColor('#555')
+       .text(`Date of Issue: ${new Date().toLocaleDateString('en-IN', { year:'numeric', month:'long', day:'numeric' })}`, { align: 'right' });
+    doc.moveDown(0.5);
+    doc.text('Authorized by: The Entrepreneurship Network HR Team', { align: 'right' });
+
+    doc.end();
+    stream.on('finish', () => resolve({ filepath, filename }));
+    stream.on('error', reject);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HELPER: Send certificate email
+// ─────────────────────────────────────────────────────────────────
+async function sendCertEmail(student, type, filepath) {
+  // Use existing email transporter from your app (check how nodemailer is configured in server.js)
+  // This is a placeholder — adapt to your existing transporter variable name
+  try {
+    const transporter = require('../../services/emailService'); // adjust path
+    const titles = { LOC: 'Letter of Completion', LOR: 'Letter of Recommendation', STAR: 'Star Performer Certificate' };
+    await transporter.sendMail({
+      to: student.email,
+      subject: `🎓 Your ${titles[type]} — TEN Internship`,
+      html: `<p>Dear ${student.name || student.fullName},</p>
+             <p>Congratulations! Your <strong>${titles[type]}</strong> has been issued.</p>
+             <p>Please find it attached to this email. You can also download it from your portal under <strong>My Documents</strong>.</p>
+             <p>Best regards,<br>TEN HR Team</p>`,
+      attachments: [{ filename: path.basename(filepath), path: filepath }],
+    });
+  } catch(e) {
+    console.error('[CertEmail] Failed to send:', e.message);
+    // Don't throw — cert generation succeeded even if email fails
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HELPER: Check and issue certificates for a student
+// Called when: HR approves, OR auto-trigger runs
+// ─────────────────────────────────────────────────────────────────
+async function processStudentCertificates(student) {
+  const att  = student.attendancePercentage || 0;
+  const perf = student.performanceScore || 0;
+  const updates = {};
+
+  // — LOC: requires 75%+ attendance —
+  if (student.locStatus === 'pending_hr' || student.locStatus === 'approved') {
+    if (att >= 75) {
+      const { filepath } = await generateCertPDF(student, 'LOC');
+      updates.locStatus = 'issued';
+      updates.locIssuedAt = new Date();
+      updates.locPdfPath = filepath;
+      await sendCertEmail(student, 'LOC', filepath);
+    } else {
+      // Not eligible — add fine if not already added
+      const alreadyFined = (student.pendingFines || []).some(f => f.type === 'loc_attendance' && !f.paid);
+      if (!alreadyFined) {
+        updates.$push = { pendingFines: {
+          type: 'loc_attendance',
+          amount: 100,
+          reason: `Attendance is ${att}% (required: 75%). Pay ₹100 fine to receive LOC.`,
+          paid: false,
+        }};
+        updates.locStatus = 'fine_pending';
+      }
+    }
+  }
+
+  // — LOR: requires 75%+ attendance AND 75%+ performance —
+  if (student.lorStatus === 'pending_hr' || student.lorStatus === 'approved') {
+    if (att >= 75 && perf >= 75) {
+      const { filepath } = await generateCertPDF(student, 'LOR');
+      updates.lorStatus = 'issued';
+      updates.lorIssuedAt = new Date();
+      updates.lorPdfPath = filepath;
+      await sendCertEmail(student, 'LOR', filepath);
+    } else {
+      const alreadyFined = (student.pendingFines || []).some(f => f.type === 'lor_criteria' && !f.paid);
+      if (!alreadyFined) {
+        const reason = att < 75 && perf < 75
+          ? `Attendance ${att}% and Performance ${perf}% both below 75%.`
+          : att < 75 ? `Attendance ${att}% below 75%.` : `Performance ${perf}% below 75%.`;
+        updates.$push = { pendingFines: {
+          type: 'lor_criteria',
+          amount: 50,
+          reason: `${reason} Pay ₹50 fine to receive LOR.`,
+          paid: false,
+        }};
+        updates.lorStatus = 'fine_pending';
+      }
+    }
+  }
+
+  // — Star Performer: HR manually approved —
+  if (student.starStatus === 'approved') {
+    const { filepath } = await generateCertPDF(student, 'STAR');
+    updates.starStatus = 'issued';
+    updates.starIssuedAt = new Date();
+    updates.starPdfPath = filepath;
+    await sendCertEmail(student, 'STAR', filepath);
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await Student.findByIdAndUpdate(student._id, updates);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// API: HR manually approves certificates for a student
+// POST /api/v2/certificates/hr-approve
+// ─────────────────────────────────────────────────────────────────
+router.post('/hr-approve', async (req, res) => {
+  try {
+    const { studentId, types } = req.body; // types: ['LOC', 'LOR', 'STAR']
+    const student = await Student.findById(studentId).lean();
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const updates = { hrApprovedAt: new Date() };
+    if (types.includes('LOC'))  updates.locStatus = 'approved';
+    if (types.includes('LOR'))  updates.lorStatus = 'approved';
+    if (types.includes('STAR')) updates.starStatus = 'approved';
+
+    await Student.findByIdAndUpdate(studentId, updates);
+    const updatedStudent = await Student.findById(studentId).lean();
+    await processStudentCertificates(updatedStudent);
+
+    res.json({ success: true });
+  } catch(e) {
+    console.error('[CertApprove]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// API: Coordinator approves student internship completion
+// POST /api/v2/certificates/coordinator-approve
+// ─────────────────────────────────────────────────────────────────
+router.post('/coordinator-approve', async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    await Student.findByIdAndUpdate(studentId, {
+      coordinatorApprovalStatus: 'approved',
+      coordinatorApprovedAt: new Date(),
+      locStatus: 'pending_hr',
+      lorStatus: 'pending_hr',
+    });
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// API: Get students pending HR certificate approval
+// GET /api/v2/certificates/pending-hr
+// ─────────────────────────────────────────────────────────────────
+router.get('/pending-hr', async (req, res) => {
+  try {
+    const students = await Student.find({
+      $or: [
+        { locStatus: 'pending_hr' },
+        { lorStatus: 'pending_hr' },
+        { starStatus: 'pending_review' },
+        { coordinatorApprovalStatus: 'escalated_to_hr' },
+      ]
+    }).lean();
+    res.json({ students });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// API: Student downloads their certificate
+// GET /api/v2/certificates/download/:type
+// ─────────────────────────────────────────────────────────────────
+router.get('/download/:type', async (req, res) => {
+  try {
+    const employeeId = req.query.employeeId;
+    const type = req.params.type.toUpperCase(); // LOC | LOR | STAR | OFFER
+    const student = await Student.findOne({ employeeId }).lean();
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const pathMap = { LOC: student.locPdfPath, LOR: student.lorPdfPath, STAR: student.starPdfPath, OFFER: student.offerLetterPath };
+    const filePath = pathMap[type];
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Certificate not generated yet' });
+    }
+
+    res.download(filePath, `TEN-${type}-${employeeId}.pdf`);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// API: Student submits Star Performer contribution
+// POST /api/v2/certificates/star-submit
+// ─────────────────────────────────────────────────────────────────
+router.post('/star-submit', async (req, res) => {
+  try {
+    const { employeeId, contribution } = req.body;
+    await Student.findOneAndUpdate({ employeeId }, {
+      starStatus: 'pending_review',
+      starContribution: contribution,
+    });
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// CRON JOB 1: Coordinator didn't act in 24h → escalate to HR
+// Runs every hour
+// ─────────────────────────────────────────────────────────────────
+cron.schedule('0 * * * *', async () => {
+  try {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const toEscalate = await Student.find({
+      internshipCompleted: true,
+      coordinatorApprovalStatus: { $in: [null, 'pending'] },
+      internshipCompletedAt: { $lt: cutoff },
+    });
+    for (const s of toEscalate) {
+      await Student.findByIdAndUpdate(s._id, {
+        coordinatorApprovalStatus: 'escalated_to_hr',
+        locStatus: 'pending_hr',
+        lorStatus: 'pending_hr',
+      });
+      console.log(`[CertCron] Escalated ${s.employeeId} to HR (coordinator 24h timeout)`);
+    }
+  } catch(e) {
+    console.error('[CertCron-Escalate]', e.message);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// CRON JOB 2: HR didn't act in 24h → auto-process certificates
+// Runs every hour
+// ─────────────────────────────────────────────────────────────────
+cron.schedule('30 * * * *', async () => {
+  try {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const toAutoProcess = await Student.find({
+      $or: [{ locStatus: 'pending_hr' }, { lorStatus: 'pending_hr' }],
+      coordinatorApprovedAt: { $lt: cutoff },
+      locStatus: { $ne: 'issued' },
+    });
+    for (const s of toAutoProcess) {
+      console.log(`[CertCron] Auto-processing certs for ${s.employeeId}`);
+      await processStudentCertificates(s);
+    }
+  } catch(e) {
+    console.error('[CertCron-AutoProcess]', e.message);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// CRON JOB 3: Offer letter auto-generation (24h after doc upload)
+// Runs every hour
+// ─────────────────────────────────────────────────────────────────
+cron.schedule('15 * * * *', async () => {
+  try {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Find students whose documents were submitted > 24h ago and offer letter not generated
+    const pending = await Student.find({
+      offerLetterStatus: { $in: ['pending', 'under_review'] },
+      documentsSubmittedAt: { $lt: cutoff },
+    });
+    for (const s of pending) {
+      console.log(`[OfferCron] Auto-generating offer letter for ${s.employeeId}`);
+      // Use same offer letter generation logic as manual HR generation
+      // Call the existing generateOfferLetter function
+      try {
+        await autoGenerateOfferLetter(s);
+        console.log(`[OfferCron] ✓ Generated for ${s.employeeId}`);
+      } catch(err) {
+        console.error(`[OfferCron] ✗ Failed for ${s.employeeId}:`, err.message);
+      }
+    }
+  } catch(e) {
+    console.error('[OfferCron]', e.message);
+  }
+});
+
+// autoGenerateOfferLetter — implement using same pdfkit logic as manual generation
+async function autoGenerateOfferLetter(student) {
+  // Generate PDF (use same pdfkit code as manual offer letter generation)
+  // Save to disk
+  // Update student: offerLetterStatus = 'approved', offerLetterPath = filepath, offerLetterGeneratedAt = now
+  // Send email with PDF attachment
+  // This should call the same function used by the manual HR button
+  // Find that function in the existing codebase and call it here
+}
+
+module.exports = router;
+```
+
+**Mount the route in server.js** — add immediately after the bots route mount:
+```js
+try {
+    app.use('/api/v2/certificates', require('./routes/v2/certificates'));
+    console.log('[V2] Certificate routes mounted at /api/v2/certificates');
+} catch(e) {
+    console.error('[V2] Failed to mount certificate routes:', e.message);
+}
+```
+
+---
+
+## SECTION 4 — Update Student Portal (my-documents.html)
+
+### 4A. Show certificates with download buttons
+
+Find the section in `my-documents.html` that shows LOC, LOR, Star Performer status.
+
+Update each row to call the new download endpoint when status is `'issued'`:
+
+```js
+// For each certificate type, render based on status:
+function renderCertRow(label, status, type, employeeId) {
+  const downloadBtn = status === 'issued'
+    ? `<a href="/api/v2/certificates/download/${type}?employeeId=${employeeId}" 
+          download style="padding:8px 18px; background:linear-gradient(135deg,#059669,#10b981); border-radius:8px; color:#fff; text-decoration:none; font-weight:700; font-size:13px;">
+         ⬇️ Download
+       </a>`
+    : '';
+  
+  const statusBadge = {
+    'issued':        '<span style="color:#34d399; font-weight:700">✅ Issued</span>',
+    'pending_hr':    '<span style="color:#f59e0b; font-weight:700">⏳ Pending Approval</span>',
+    'fine_pending':  '<span style="color:#ef4444; font-weight:700">⚠️ Fine Required</span>',
+    'not_eligible':  '<span style="color:#64748b">🔒 Not Yet Eligible</span>',
+  }[status] || '<span style="color:#64748b">🔒 Not Yet Available</span>';
+  
+  return `<tr>...<td>${statusBadge}</td><td>${downloadBtn}</td></tr>`;
+}
+```
+
+### 4B. Show Star Performer submission form
+
+When `starStatus === 'not_submitted'` and student has completed internship, show:
+```html
+<div style="margin-top:12px; padding:16px; background:rgba(245,158,11,.07); border:1px solid rgba(245,158,11,.2); border-radius:12px;">
+  <p style="color:#fcd34d; font-size:13px; font-weight:700; margin:0 0 8px">⭐ How to get Star Performer Certificate:</p>
+  <p style="color:#94a3b8; font-size:13px; margin:0 0 12px; line-height:1.6">
+    Submit a genuine idea to improve the TEN portal plus evidence of its implementation (screenshots, code, design mockups). HR will review and issue the certificate if approved.
+  </p>
+  <textarea id="star-contribution" placeholder="Describe your idea and what you implemented..." rows="4" style="width:100%; padding:10px; background:rgba(0,0,0,.2); border:1px solid rgba(245,158,11,.2); border-radius:8px; color:#f1f5f9; font-size:13px; resize:none; font-family:inherit; outline:none; box-sizing:border-box;"></textarea>
+  <button onclick="submitStarContribution()" style="margin-top:10px; padding:10px 24px; background:linear-gradient(135deg,#d97706,#f59e0b); border:none; border-radius:8px; color:#000; cursor:pointer; font-weight:800; font-family:inherit;">⭐ Submit for Review</button>
+</div>
+```
+
+### 4C. Show fine notices
+
+When `locStatus === 'fine_pending'` or `lorStatus === 'fine_pending'`, show:
+```html
+<div style="padding:14px; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); border-radius:10px; margin-top:8px;">
+  <p style="color:#f87171; font-size:13px; font-weight:700; margin:0 0 6px">⚠️ Fine Required</p>
+  <p style="color:#94a3b8; font-size:13px; margin:0 0 10px">[Show the fine reason and amount from pendingFines array]</p>
+  <!-- Payment integration: use existing Razorpay if configured, otherwise show bank transfer details -->
+  <button onclick="payFine('[fineType]')" style="padding:9px 20px; background:linear-gradient(135deg,#dc2626,#ef4444); border:none; border-radius:8px; color:#fff; cursor:pointer; font-weight:700; font-family:inherit;">💳 Pay Fine ₹[amount]</button>
+</div>
+```
+
+---
+
+## SECTION 5 — HR Portal: Certificate Approval Section
+
+### 5A. Add "Certificate Approvals" section to hr-portal.html
+
+Add a nav button (alongside existing nav buttons in sidebar):
+```html
+<button class="nav-btn" onclick="showCertApprovals()"><span class="icon">🎓</span> Cert Approvals</button>
+```
+
+Add the section HTML (before `<script src="ten-motion.js"></script>`):
+
+The section should:
+1. Load from `GET /api/v2/certificates/pending-hr`
+2. Show table: Student Name | Employee ID | Domain | Attendance % | Performance % | Coordinator Status | Pending Certs | Actions
+3. Actions: **Approve LOC** | **Approve LOR** | **Approve Star** buttons (only show relevant ones)
+4. **Bulk approve** checkbox + bulk action button
+5. Show `escalated_to_hr` students with orange badge "⚠️ Coordinator didn't act"
+6. Auto-refresh every 60 seconds
+
+---
+
+## SECTION 6 — Coordinator Portal: Student Completion Approval
+
+### 6A. Find existing coordinator dashboard student list
+
+Run:
+```bash
+grep -n "student.*overview\|overview.*student\|internship.*complete\|markComplete\|completion" public/coordinator-dashboard.html | head -20
+```
+
+### 6B. Add approve button for internship completion
+
+In the student cards/table in coordinator dashboard, add:
+- If student `internshipCompleted: true` AND `coordinatorApprovalStatus` is null/pending:
+  - Show **"✅ Approve Completion"** button → calls `POST /api/v2/certificates/coordinator-approve`
+  - After clicking → button changes to "Approved ✓" (green, disabled)
+- Show countdown timer if approaching 24h auto-escalation: "⚠️ Auto-escalates to HR in X hours"
+
+---
+
+## SECTION 7 — Verification Checklist
+
+After completing all sections, verify each with these tests:
+
+```bash
+# 1. Certificate routes mounted
+grep "api/v2/certificates" server.js
+
+# 2. Student model has new fields
+grep "locStatus\|lorStatus\|starStatus\|coordinatorApprovalStatus" models/Student.js
+
+# 3. Cron jobs present
+grep "cron.schedule" routes/v2/certificates.js | wc -l  # should be 3
+
+# 4. Download endpoint works
+curl "http://localhost:3000/api/v2/certificates/pending-hr"
+# Should return { students: [...] }
+
+# 5. Check uploads/certificates directory created
+ls uploads/certificates/
+```
+
+**Manual flow test:**
+1. Log in as student → My Documents → upload both files → click Submit button → verify HR portal shows pending
+2. Log in as HR → Pending Documents → click "Generate Offer Letter" (new modal, not browser dialog) → verify PDF generated and status changes
+3. Log in as HR → click "Reject" → new modal appears → enter reason → verify student gets notified
+4. Check cron logs after restart: `[CertCron]` messages should appear in console
+
+---
+
+## 🚫 DO NOT TOUCH
+
+- `public/chat-widget.js` (group chat — completely separate)
+- `public/bot-widget.js` (AI bots — separate feature)
+- All existing authentication routes
+- All existing task submission/review routes
+- All existing coordinator task management routes  
+- `models/Student.js` existing fields — only ADD new fields, never remove or rename
+- Existing cron jobs for attendance/notifications — only ADD new ones
+- `public/ten-motion.js`, `public/ten-motion.css` — design system, do not touch
+
+---
+
+## 📋 Summary of Changes
+
+| File | Action |
+|------|--------|
+| `models/Student.js` | Add ~15 new fields for cert tracking + fines |
+| `routes/v2/certificates.js` | Create new — 6 APIs + 3 cron jobs |
+| `server.js` | Mount `/api/v2/certificates` route (+4 lines) |
+| `public/hr-portal.html` | Replace browser dialogs + add Cert Approvals section |
+| `public/coordinator-dashboard.html` | Add completion approve button |
+| `public/my-documents.html` | Add submit button + cert download buttons + fine notices |
