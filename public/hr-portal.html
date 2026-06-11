@@ -1795,35 +1795,53 @@ async function saveStudentEdit(){
     closeEditStudent();showHRToast('✅ Student updated!','success');allStudents=[];allTrackerStudents=[];loadStudents();
   }catch(e){showHRToast('❌ Update failed.','error');}
 }
-async function generateLOR(studentId, studentName) {
-  const confirm = await Swal.fire({
-    title: `Generate LOR`,
-    html: `Generate Letter of Recommendation for <strong>${studentName}</strong>?<br><small style="color:#9a9080;">Student must have completed at least 50% of internship.</small>`,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonText: '📄 Generate LOR',
-    cancelButtonText: 'Cancel',
-    background: '#0e1428',
-    color: '#F0EEE8',
-    confirmButtonColor: '#8b5cf6'
-  });
-  if (!confirm.isConfirmed) return;
+async function generateLOR(studentId, studentName, force = false) {
+  if (!force) {
+    const confirm = await Swal.fire({
+      title: `Generate LOR`,
+      html: `Generate Letter of Recommendation for <strong>${studentName}</strong>?<br><small style="color:#9a9080;">Student must have completed at least 50% of internship.</small>`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '📄 Generate LOR',
+      cancelButtonText: 'Cancel',
+      background: '#0e1428',
+      color: '#F0EEE8',
+      confirmButtonColor: '#8b5cf6'
+    });
+    if (!confirm.isConfirmed) return;
+  }
   try {
     const r = await fetch(`/api/v2/admin/documents/generate-lor/${studentId}`, {
       method: 'POST',
-      headers: { Authorization: hrToken, 'Content-Type': 'application/json' }
+      headers: { Authorization: hrToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force })
     });
     const d = await r.json();
     if (d.success) {
       Swal.fire({
         icon: 'success',
         title: '✅ LOR Generated',
-        html: `LOR sent to student's email.<br>Document: <code>${d.documentNumber}</code><br>Completion: ${d.completionPercent}%`,
+        html: `LOR sent to student's email.<br>Completion: ${d.completionPercent}%`,
         background: '#0e1428',
         color: '#F0EEE8',
         confirmButtonColor: '#8b5cf6'
       });
       showHRToast(`📄 LOR generated for ${studentName}`, 'success');
+    } else if (d.warning) {
+      const confirmBypass = await Swal.fire({
+        title: '⚠️ Bypassing Criteria Warning',
+        html: `${d.message}<br><br>Do you still want to force generate and sync the LOR anyway?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, force generate LOR',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#e11d48',
+        background: '#0e1428',
+        color: '#F0EEE8'
+      });
+      if (confirmBypass.isConfirmed) {
+        await generateLOR(studentId, studentName, true);
+      }
     } else {
       Swal.fire({ icon: 'error', title: 'LOR Failed', text: d.message, background: '#0e1428', color: '#F0EEE8' });
     }
@@ -2696,14 +2714,19 @@ function renderCertApproved(){
   if(!hrApprovedStudents.length){ c.innerHTML='<div class="empty-state"><div class="es-icon">📭</div><p>No fully-approved students yet</p></div>'; return; }
   c.innerHTML=hrApprovedStudents.map((s,i)=>{
     const st=s.stats||{}; const elig=(st.combinedPct||0)>=75;
-    const gen = !elig
-      ? `<div class="cert-lock">🔒 Attendance below 75% (${st.combinedPct||0}%). Certificates locked.</div>`
-      : `<div class="cert-actions">
-          <button class="cert-gen-btn" onclick="genCert(${i},'loc')">🎓 Generate LOC</button>
-          <button class="cert-gen-btn" onclick="genCert(${i},'lor')">📝 Generate LOR</button>
-          <button class="cert-gen-btn" onclick="genCert(${i},'star')">⭐ Star Performer</button>
-          <button class="cert-gen-btn" style="background:linear-gradient(135deg,#0a66c2,#004182);color:#fff;border-color:transparent;" onclick="shareCertOnLinkedIn(${i})">🔗 Share on LinkedIn</button>
-        </div>`;
+    const gen = `
+      <div class="cert-actions">
+        ${!elig ? `<div style="color:#f87171;font-size:12px;font-weight:700;margin-bottom:8px;text-align:left;">⚠️ Warning: Attendance below 75% (${st.combinedPct||0}%). Fines may apply unless bypassed.</div>` : ''}
+        <button class="cert-gen-btn" onclick="genCert(${i},'loc')">🎓 View/Print LOC</button>
+        <button class="cert-gen-btn" onclick="genCert(${i},'lor')">📝 View/Print LOR</button>
+        <button class="cert-gen-btn" onclick="genCert(${i},'star')">⭐ View/Print Star</button>
+        
+        <button class="cert-gen-btn" style="background:#059669;color:#fff;border-color:transparent;" onclick="emailAndSyncCert(${i},'loc')">📧 Send &amp; Sync LOC</button>
+        <button class="cert-gen-btn" style="background:#059669;color:#fff;border-color:transparent;" onclick="emailAndSyncCert(${i},'lor')">📧 Send &amp; Sync LOR</button>
+        <button class="cert-gen-btn" style="background:#059669;color:#fff;border-color:transparent;" onclick="emailAndSyncCert(${i},'star')">📧 Send &amp; Sync Star</button>
+        
+        <button class="cert-gen-btn" style="background:linear-gradient(135deg,#0a66c2,#004182);color:#fff;border-color:transparent;" onclick="shareCertOnLinkedIn(${i})">🔗 Share on LinkedIn</button>
+      </div>`;
     return `<div class="cert-card">
       <div class="cert-card-head">
         <div><div class="cert-name">${s.name}</div><div class="cert-id">${s.employeeId}</div><div class="cert-meta">${s.domain} · ${collegeText(s)} · Joined ${s.joiningDate||'—'} · ${s.tenure||''}</div></div>
@@ -2717,6 +2740,71 @@ function renderCertApproved(){
       ${gen}
     </div>`;
   }).join('');
+}
+
+async function emailAndSyncCert(i, docType) {
+  const s = hrApprovedStudents[i]; if(!s) return;
+  const labels = { loc: 'Letter of Completion', lor: 'Letter of Recommendation', star: 'Star Performer Certificate' };
+  
+  // Warn-but-bypass policy!
+  const combinedAtt = s.stats ? (s.stats.combinedPct || 0) : 0;
+  let warn = false;
+  let warnMsg = '';
+  
+  if (docType === 'loc' && combinedAtt < 75) {
+    warn = true;
+    warnMsg = `Warning: Student's attendance is ${combinedAtt}% which is below 75%. LOC requires 75% attendance.`;
+  } else if (docType === 'lor' && combinedAtt < 75) {
+    warn = true;
+    warnMsg = `Warning: Student's attendance is ${combinedAtt}% which is below 75%. LOR requires 75% attendance.`;
+  }
+  
+  if (warn) {
+    const confirm = await Swal.fire({
+      title: '⚠️ Bypassing Criteria Warning',
+      html: `${warnMsg}<br><br>Do you still want to force generate, email, and sync to the student portal anyway?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, force generate',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e11d48',
+      background: '#0c1220',
+      color: '#f0eee8'
+    });
+    if (!confirm.isConfirmed) return;
+  } else {
+    const confirm = await Swal.fire({
+      title: `Generate & Sync ${labels[docType]}`,
+      html: `Would you like to generate, email, and sync the **${labels[docType]}** for **${s.name}** directly to their student portal?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Send & Sync',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#10b981',
+      background: '#0c1220',
+      color: '#f0eee8'
+    });
+    if (!confirm.isConfirmed) return;
+  }
+  
+  showHRToast('⏳ Generating & sending...', 'info');
+  try {
+    const r = await fetch('/hr/send-documents-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+      body: JSON.stringify({ employeeId: s.employeeId, docType })
+    });
+    const d = await r.json();
+    if (d.success) {
+      Swal.fire({ title: 'Success 🎉', text: `${labels[docType]} has been generated, saved to student portal, and sent to email!`, icon: 'success', background: '#0c1220', color: '#f0eee8' });
+      showHRToast(`✅ ${labels[docType]} synced for ${s.name}`, 'success');
+      loadCertApproved(); // reload
+    } else {
+      Swal.fire({ title: 'Failed', text: d.message, icon: 'error', background: '#0c1220', color: '#f0eee8' });
+    }
+  } catch (e) {
+    Swal.fire({ title: 'Error', text: e.message, icon: 'error', background: '#0c1220', color: '#f0eee8' });
+  }
 }
 function genCert(i,type){
   const s=hrApprovedStudents[i]; if(!s) return;

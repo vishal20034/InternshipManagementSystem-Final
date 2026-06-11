@@ -598,11 +598,13 @@ router.get("/documents/my-certificates", requireStudent, async (req, res) => {
 });
 
 // POST /api/v2/admin/documents/generate-lor/:studentId
-// HR generates an LOR for a student who has completed at least 50% of their internship
+// HR generates an LOR for a student
 router.post("/admin/documents/generate-lor/:studentId", requireHR, async (req, res) => {
     try {
         const student = await Student.findById(req.params.studentId);
         if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+        const { force } = req.body;
 
         // Check minimum 50% completion
         const [totalCount, approvedCount] = await Promise.all([
@@ -610,112 +612,21 @@ router.post("/admin/documents/generate-lor/:studentId", requireHR, async (req, r
             StudentTaskProgress.countDocuments({ studentId: student._id, status: "approved" })
         ]);
         const completionPercent = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0;
-        if (completionPercent < 50) {
-            return res.status(400).json({
+        if (completionPercent < 50 && !force) {
+            return res.json({
                 success: false,
-                message: `Student has only completed ${completionPercent}% of internship. LOR requires at least 50% completion.`
+                warning: true,
+                message: `Student has only completed ${completionPercent}% of the internship (LOR requires at least 50% completion). Do you still want to generate and send LOR anyway?`
             });
         }
 
-        const lorDir = path.join(__dirname, "../../uploads/lor");
-        try { fs.mkdirSync(lorDir, { recursive: true }); } catch (_) {}
-
-        const docNumber  = normalizeDocumentNumber(generateDocumentNumber("lor"));
-        const joining    = student.joiningDate ? new Date(student.joiningDate) : new Date();
-        const tenureDays = student.tenure === "45 Days" ? 45 : student.tenure === "1 Month" ? 30 : student.tenure === "3 Months" ? 90 : student.tenure === "6 Months" ? 180 : 45;
-        const endDate    = new Date(joining.getTime() + tenureDays * 24 * 3600 * 1000);
-        const fmt = d => d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-
-        const outPath = path.join(lorDir, `${student._id}_lor.pdf`);
-        await generateLORPDF({
-            studentName:       student.name,
-            employeeId:        student.employeeId,
-            domain:            student.domain,
-            durationText:      student.tenure,
-            startDate:         fmt(joining),
-            endDate:           fmt(endDate),
-            dateIssued:        fmt(new Date()),
-            documentNumber:    docNumber,
-            completionPercent,
-            directorName:      "Kamlesh Gupta"
-        }, outPath);
-
-        const lorUrl = `/uploads/lor/${path.basename(outPath)}`;
-
-        // Update StudentDocument with LOR info
-        let docRec = await StudentDocument.findOne({ studentId: student._id });
-        if (!docRec) docRec = new StudentDocument({ studentId: student._id });
-        docRec.lorUrl            = lorUrl;
-        docRec.lorSentAt         = new Date();
-        docRec.lorDocumentNumber = docNumber;
-        await docRec.save();
-
-        // Sync with Student model
-        try {
-            const pdfBuffer = fs.readFileSync(outPath);
-            await Student.findByIdAndUpdate(student._id, {
-                lorPdfBase64: pdfBuffer.toString('base64'),
-                lorStatus: 'issued',
-                lorIssuedAt: new Date()
-            });
-            console.log(`[Sync] ✓ Synced LOR (issued) to Student ${student._id}`);
-        } catch (syncErr) {
-            console.error(`[Sync] ✗ Failed to sync LOR to Student:`, syncErr.message);
-        }
-
-        const studentName = (student.name || student.email || "").trim();
-        const college     = (student.collegeName || student.college || "Not provided").trim();
-
-        await DocumentHistory.create({
-            studentId:      student._id,
-            studentName,
-            studentEmail:   student.email || "",
-            employeeId:     student.employeeId || "",
-            college,
-            domain:         student.domain || "",
-            documentType:   "Letter of Recommendation",
-            documentKey:    "lor",
-            documentNumber: docNumber,
-            sentAt:         new Date(),
-            sentBy:         "HR Portal",
-            sentToEmail:    student.email || ""
-        });
-
-        // Email LOR to student (best-effort)
-        let mailStatus = "sent";
-        try {
-            const transporter = createTransporter();
-            await transporter.sendMail({
-                from:        process.env.EMAIL_US,
-                to:          student.email,
-                subject:     "Your Letter of Recommendation — The Entrepreneurship Network",
-                html:        `<p>Dear ${student.name},</p><p>Please find your Letter of Recommendation attached to this email.</p><p>You can also download it anytime from your Student Portal under <strong>My Documents</strong>.</p><p>Best regards,<br>HR Team<br>The Entrepreneurship Network</p>`,
-                attachments: [{ filename: "TEN_Letter_of_Recommendation.pdf", path: outPath }]
-            });
-        } catch (mailErr) {
-            console.error("[DOCS] LOR email error:", mailErr.message);
-            mailStatus = "failed";
-        }
-
-        try {
-            await MailHistory.create({
-                recipientEmail: student.email || "",
-                recipientName:  studentName,
-                studentId:      student._id,
-                subject:        "Your Letter of Recommendation — The Entrepreneurship Network",
-                mailType:       "lor",
-                sentAt:         new Date(),
-                status:         mailStatus
-            });
-        } catch (_) {}
+        const v2Certificates = require("./certificates");
+        const certResult = await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student);
 
         res.json({
-            success:        true,
-            message:        `LOR generated and sent to ${student.email}`,
-            documentNumber: docNumber,
-            lorUrl,
-            completionPercent,
-            emailStatus:    mailStatus
+            success: true,
+            message: `LOR generated and synced to Student portal.`,
+            completionPercent
         });
     } catch (err) {
         console.error("[DOCS] generate-lor error:", err.message);
