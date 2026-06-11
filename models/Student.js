@@ -80,7 +80,48 @@ const studentsSchema = new mongoose.Schema({
 
     // v2 portal fields
     v2Onboarded:          { type: Boolean, default: false },
-    v2DurationType:       { type: String, default: null }
+    v2DurationType:       { type: String, default: null },
+
+    // Attendance and performance
+    attendancePercentage: { type: Number, default: 0 },
+    performanceScore:     { type: Number, default: 0 },
+
+    // Offer letter tracking
+    offerLetterStatus:       { type: String, default: null },
+    offerLetterGeneratedAt:  { type: Date,   default: null },
+    offerLetterPath:         { type: String, default: null },
+
+    // Certificate flow tracking
+    internshipCompleted:       { type: Boolean, default: false },
+    internshipCompletedAt:     { type: Date,    default: null },
+    coordinatorApprovalStatus: { type: String,  enum: ['pending', 'approved', 'escalated_to_hr'], default: null },
+
+    // LOC (Letter of Completion) — requires 75%+ attendance
+    locStatus:    { type: String, enum: ['not_eligible', 'pending_coordinator', 'pending_hr', 'approved', 'issued', 'fine_pending'], default: 'not_eligible' },
+    locIssuedAt:  { type: Date,    default: null },
+    locPdfPath:   { type: String,  default: null },
+    locFinePaid:  { type: Boolean, default: false },
+
+    // LOR (Letter of Recommendation) — requires 75%+ attendance AND 75%+ performance
+    lorStatus:    { type: String, enum: ['not_eligible', 'pending_coordinator', 'pending_hr', 'approved', 'issued', 'fine_pending'], default: 'not_eligible' },
+    lorIssuedAt:  { type: Date,    default: null },
+    lorPdfPath:   { type: String,  default: null },
+    lorFinePaid:  { type: Boolean, default: false },
+
+    // Star Performer — requires contribution submission + HR approval
+    starStatus:       { type: String, enum: ['not_submitted', 'pending_review', 'approved', 'issued', 'rejected'], default: 'not_submitted' },
+    starContribution: { type: String, default: null },
+    starPdfPath:      { type: String, default: null },
+    starIssuedAt:     { type: Date,   default: null },
+
+    // Fine tracking
+    pendingFines: [{
+        type:      { type: String, enum: ['loc_attendance', 'lor_criteria'] },
+        amount:    { type: Number },
+        reason:    { type: String },
+        paid:      { type: Boolean, default: false },
+        createdAt: { type: Date,    default: Date.now }
+    }]
 }, {
     timestamps: true
 });

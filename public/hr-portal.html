@@ -3316,16 +3316,14 @@ function clearPendingDocSelections() {
   updateBulkOfferBar();
 }
 
-async function approveSingleOfferLetter(studentId) {
-  if (!confirm('Generate and email the Offer Letter for this student?')) return;
-  await generateOfferLettersForIds([studentId]);
+function approveSingleOfferLetter(studentId) {
+  openBulkGenerateModal([studentId], 1);
 }
 
-async function bulkGenerateOfferLetters() {
+function bulkGenerateOfferLetters() {
   const ids = Array.from(pendingDocSelections);
   if (ids.length === 0) return;
-  if (!confirm(`Generate and email Offer Letters for ${ids.length} student(s)? This will also mark their documents as approved.`)) return;
-  await generateOfferLettersForIds(ids);
+  openBulkGenerateModal(ids, ids.length);
 }
 
 async function generateOfferLettersForIds(studentIds) {
@@ -3353,24 +3351,23 @@ async function generateOfferLettersForIds(studentIds) {
   }
 }
 
-async function rejectPendingDoc(studentId) {
-  const reason = prompt('Rejection reason (will be sent to student):',
-    'Documents do not meet requirements. Please re-upload clearer images.');
-  if (reason === null) return;
-  try {
-    const r = await fetch(`/api/v2/admin/documents/reject/${studentId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: hrToken },
-      body: JSON.stringify({ rejectionReason: reason })
-    });
-    const d = await r.json();
-    if (d.success) {
-      showHRToast('✅ Student notified of rejection', 'success');
-      document.getElementById('pdrow-' + studentId)?.remove();
-    } else {
-      showHRToast('❌ ' + d.message, 'error');
-    }
-  } catch(e) { showHRToast('❌ Network error', 'error'); }
+function rejectPendingDoc(studentId) {
+  openRejectModal(studentId, async (reason) => {
+    try {
+      const r = await fetch(`/api/v2/admin/documents/reject/${studentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+        body: JSON.stringify({ rejectionReason: reason })
+      });
+      const d = await r.json();
+      if (d.success) {
+        showHRToast('✅ Student notified of rejection', 'success');
+        document.getElementById('pdrow-' + studentId)?.remove();
+      } else {
+        showHRToast('❌ ' + d.message, 'error');
+      }
+    } catch(e) { showHRToast('❌ Network error', 'error'); }
+  });
 }
 
 async function loadPendingDocsBadge() {
@@ -3543,15 +3540,97 @@ setTimeout(loadPendingDocsBadge, 2000);
         document.getElementById('ai-answer-modal').style.display = 'none';
         loadAIQueries();
       } else {
-        alert('Error: ' + (data.error || 'Unknown error'));
+        showHRToast('❌ Error: ' + (data.error || 'Unknown error'), 'error');
       }
     } catch(e) {
-      alert('Network error: ' + e.message);
+      showHRToast('❌ Network error: ' + e.message, 'error');
     }
   };
 })();
 </script>
 <!-- ══════════════ END AI QUERIES SECTION ══════════════ -->
+
+<!-- ══════════════ DOCUMENT MODALS ══════════════ -->
+<!-- Reject Document Modal -->
+<div id="reject-doc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999;align-items:center;justify-content:center">
+  <div style="background:linear-gradient(160deg,#0d0f1e,#111528);border:1px solid rgba(239,68,68,.3);border-radius:20px;padding:28px;width:480px;max-width:92vw;">
+    <h3 style="color:#f87171;font-size:17px;font-weight:800;margin:0 0 8px">Reject Documents</h3>
+    <p style="color:#94a3b8;font-size:13px;margin:0 0 16px">Student will be notified with this reason and asked to re-upload.</p>
+    <textarea id="reject-reason-text" placeholder="Enter rejection reason (e.g. Documents are blurry, please re-upload clearer images)" rows="4" style="width:100%;padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#f1f5f9;font-size:13px;resize:none;font-family:inherit;outline:none;box-sizing:border-box;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:14px;justify-content:flex-end;">
+      <button onclick="closeRejectModal()" style="padding:10px 20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#94a3b8;cursor:pointer;font-family:inherit;">Cancel</button>
+      <button onclick="submitDocRejection()" style="padding:10px 24px;background:linear-gradient(135deg,#dc2626,#ef4444);border:none;border-radius:10px;color:#fff;cursor:pointer;font-weight:700;font-family:inherit;">Send Rejection</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Generate Offer Letters Modal -->
+<div id="bulk-generate-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:99999;align-items:center;justify-content:center">
+  <div style="background:linear-gradient(160deg,#0d0f1e,#111528);border:1px solid rgba(245,158,11,.3);border-radius:20px;padding:28px;width:480px;max-width:92vw;">
+    <h3 style="color:#f59e0b;font-size:17px;font-weight:800;margin:0 0 8px">Generate Offer Letters</h3>
+    <p id="bulk-generate-msg" style="color:#94a3b8;font-size:14px;margin:0 0 20px;line-height:1.6"></p>
+    <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:#fcd34d;">
+      PDFs will be generated and emailed to each student automatically.
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeBulkModal()" style="padding:10px 20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#94a3b8;cursor:pointer;font-family:inherit;">Cancel</button>
+      <button onclick="confirmBulkGenerate()" id="bulk-generate-confirm-btn" style="padding:10px 24px;background:linear-gradient(135deg,#d97706,#f59e0b);border:none;border-radius:10px;color:#000;cursor:pointer;font-weight:800;font-family:inherit;">Generate &amp; Email</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  let _pendingBulkStudentIds = [];
+  let _rejectCallback = null;
+
+  window.openBulkGenerateModal = function (studentIds, count) {
+    _pendingBulkStudentIds = studentIds;
+    document.getElementById('bulk-generate-msg').textContent =
+      'Generate and email Offer Letters for ' + count + ' student(s)? Their documents will be marked as approved.';
+    document.getElementById('bulk-generate-modal').style.display = 'flex';
+  };
+
+  window.closeBulkModal = function () {
+    document.getElementById('bulk-generate-modal').style.display = 'none';
+  };
+
+  window.confirmBulkGenerate = async function () {
+    const btn = document.getElementById('bulk-generate-confirm-btn');
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+    document.getElementById('bulk-generate-modal').style.display = 'none';
+    await generateOfferLettersForIds(_pendingBulkStudentIds);
+    btn.textContent = 'Generate & Email';
+    btn.disabled = false;
+  };
+
+  window.openRejectModal = function (studentId, callback) {
+    _rejectCallback = callback || null;
+    document.getElementById('reject-reason-text').value = '';
+    document.getElementById('reject-doc-modal').style.display = 'flex';
+    setTimeout(function () { document.getElementById('reject-reason-text').focus(); }, 100);
+  };
+
+  window.closeRejectModal = function () {
+    document.getElementById('reject-doc-modal').style.display = 'none';
+  };
+
+  window.submitDocRejection = async function () {
+    const reason = document.getElementById('reject-reason-text').value.trim();
+    if (!reason) {
+      showHRToast('Please enter a rejection reason.', 'error');
+      return;
+    }
+    document.getElementById('reject-doc-modal').style.display = 'none';
+    if (typeof _rejectCallback === 'function') {
+      await _rejectCallback(reason);
+    }
+    _rejectCallback = null;
+  };
+}());
+</script>
+<!-- ══════════════ END DOCUMENT MODALS ══════════════ -->
 
 <script src="ten-motion.js"></script>
 </body>

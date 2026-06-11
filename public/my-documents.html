@@ -218,7 +218,10 @@ async function loadStatus() {
     currentStatus = d.status;
     const cfg = STATUS_CONFIG[d.status] || STATUS_CONFIG['not_uploaded'];
     let desc = cfg.desc;
-    if (d.status === 'rejected' && d.rejectionReason) desc += `<br><small style="opacity:0.8">Reason: ${d.rejectionReason}</small>`;
+    if (d.status === 'rejected') {
+      if (d.rejectionReason) desc += `<br><small style="opacity:0.8">Reason: ${d.rejectionReason}</small>`;
+      desc += `<br><span style="font-size:12px;color:#94a3b8;margin-top:6px;display:inline-block;">Your upload zones below are now unlocked — please re-upload corrected files and submit again.</span>`;
+    }
     if (d.status === 'approved' && d.offer_letter_url) {
       desc += ` <a href="${d.offer_letter_url}" target="_blank" class="download-btn" style="margin-left:12px;font-size:12px;">⬇ Download Offer Letter</a>`;
     }
@@ -353,6 +356,7 @@ async function uploadFile(type, file) {
       uploaded[type] = true;
       document.getElementById('zone-' + type).classList.add('has-file');
       showFilePreview(type, file.name, file.size);
+      updateSubmitBtn();
       if (d.autoSubmitted || d.uploadStatus === 'pending') {
         currentStatus = 'pending';
         showBanner('pending', '✅ Documents submitted — HR will review them shortly');
