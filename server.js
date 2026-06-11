@@ -4444,6 +4444,11 @@ try {
     console.error('[V2] Failed to mount bots routes:', e.message);
 }
 
+// ===== PHASE 1 PR5: PAYMENT SETU SERVICE LAYER =====
+try {
+    app.use('/api/payment/setu', require('./routes/paymentSetuRoutes'));
+    console.log('[Phase1] PaymentSetu routes mounted at /api/payment/setu');
+} catch(e){ console.error('[Phase1] paymentSetuRoutes:', e.message); }
 // ===== PHASE 1 PR3: TALENT PROFILE =====
 try { app.use('/api/talent', require('./routes/talentProfile')); console.log('[Phase1] talent routes mounted at /api/talent'); } catch(e){ console.error('[Phase1] talentProfile:',e.message); }
 
