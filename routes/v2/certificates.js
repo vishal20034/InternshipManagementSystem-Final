@@ -422,4 +422,528 @@ router.get("/psychology/check-triggers", requireStudent, async (req, res) => {
     }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CERTIFICATE AUTOMATION — SECTION 1, 2, 3, 4
+// ─────────────────────────────────────────────────────────────────────────────
+
+const nodemailer          = require("nodemailer");
+const PDFDocument         = require("pdfkit");
+const cron                = require("node-cron");
+
+// Find the existing transporter and make it fault-tolerant
+const transporter = nodemailer.createTransport({
+  service: process.env.EMAIL_SERVICE || 'gmail',    // or 'smtp'
+  host:    process.env.EMAIL_HOST,
+  port:    parseInt(process.env.EMAIL_PORT) || 587,
+  secure:  process.env.EMAIL_SECURE === 'true',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+async function sendCertificateEmail(toEmail, studentName, certType, pdfBuffer) {
+  try {
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.warn('[Email] EMAIL_USER or EMAIL_PASS not set — skipping email');
+      return { sent: false, reason: 'Email not configured' };
+    }
+    await transporter.sendMail({
+      from:    `"TEN Internship" <${process.env.EMAIL_USER}>`,
+      to:      toEmail,
+      subject: `🎓 Your ${certType} — TEN Internship Network`,
+      html:    buildCertEmailHTML(studentName, certType),
+      attachments: [{ 
+        filename: `TEN-${certType}-${studentName.replace(/\s/g,'-')}.pdf`, 
+        content: pdfBuffer, 
+        contentType: 'application/pdf' 
+      }],
+    });
+    console.log(`[Email] ✓ ${certType} sent to ${toEmail}`);
+    return { sent: true };
+  } catch(e) {
+    console.error(`[Email] ✗ Failed to send ${certType} to ${toEmail}:`, e.message);
+    return { sent: false, reason: e.message };  // NEVER throw — just return failure
+  }
+}
+
+function buildCertEmailHTML(name, certType) {
+  const labels = { LOC:'Letter of Completion', LOR:'Letter of Recommendation', STAR:'Star Performer Certificate', OFFER:'Offer Letter' };
+  return `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0a0a19;color:#e2e8f0;padding:40px;border-radius:16px;">
+      <h2 style="color:#f59e0b;text-align:center;">🎓 TEN Internship Network</h2>
+      <hr style="border-color:#1e293b;">
+      <h3 style="color:#f1f5f9;">Dear ${name},</h3>
+      <p style="color:#94a3b8;line-height:1.7;">
+        Congratulations! Your <strong style="color:#f1f5f9">${labels[certType] || certType}</strong> has been officially issued by TEN.
+      </p>
+      <p style="color:#94a3b8;line-height:1.7;">
+        Your certificate is attached to this email as a PDF. You can also download it anytime from your 
+        <strong style="color:#f59e0b">My Documents</strong> section in the student portal.
+      </p>
+      <div style="background:#1e293b;border-radius:10px;padding:16px;margin:20px 0;">
+        <p style="margin:0;color:#64748b;font-size:13px;">
+          📌 Keep this certificate safe — it is your official proof of internship with TEN.
+        </p>
+      </div>
+      <p style="color:#475569;font-size:12px;text-align:center;margin-top:30px;">
+        The Entrepreneurship Network · virtualinternships.entrepreneurshipnetwork.net
+      </p>
+    </div>
+  `;
+}
+
+async function buildCertPDF(student, certType) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const doc = new PDFDocument({ size: 'A4', margin: 70, bufferPages: true });
+    doc.on('data', chunk => chunks.push(chunk));
+    doc.on('end',  ()    => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+  
+    const gold  = '#b45309';
+    const dark  = '#1a1a2e';
+    const gray  = '#64748b';
+    const name  = student.name || student.fullName || 'Student';
+    const empId = student.employeeId || '';
+    const dom   = student.domain || '';
+    const dur   = student.internshipDuration || '45 Days';
+    const att   = student.attendancePercentage || 0;
+    const perf  = student.performanceScore     || 0;
+    const now   = new Date().toLocaleDateString('en-IN', { year:'numeric', month:'long', day:'numeric' });
+  
+    // ── Header ──
+    doc.fontSize(9).fillColor(gray).text('THE ENTREPRENEURSHIP NETWORK', { align:'center' });
+    doc.moveDown(0.2);
+    doc.fontSize(8).fillColor(gray).text('virtualinternships.entrepreneurshipnetwork.net', { align:'center' });
+    doc.moveDown(0.5);
+  
+    // Gold divider
+    doc.moveTo(70, doc.y).lineTo(525, doc.y).lineWidth(2).strokeColor(gold).stroke();
+    doc.moveDown(0.8);
+  
+    // Title
+    const titles = {
+      LOC:   'LETTER OF COMPLETION',
+      LOR:   'LETTER OF RECOMMENDATION',
+      STAR:  'STAR PERFORMER CERTIFICATE',
+      OFFER: 'INTERNSHIP OFFER LETTER',
+    };
+    doc.fontSize(24).fillColor(dark).font('Helvetica-Bold')
+       .text(titles[certType], { align:'center' });
+    doc.moveDown(1.2);
+  
+    // Body
+    doc.fontSize(12).fillColor('#374151').font('Helvetica')
+       .text('This is to certify that', { align:'center' });
+    doc.moveDown(0.4);
+    doc.fontSize(20).font('Helvetica-Bold').fillColor(dark)
+       .text(name, { align:'center' });
+    doc.moveDown(0.3);
+    doc.fontSize(11).font('Helvetica').fillColor(gray)
+       .text(`Employee ID: ${empId}`, { align:'center' });
+    doc.moveDown(1);
+  
+    if (certType === 'LOC') {
+      doc.fontSize(12).fillColor('#374151')
+         .text('has successfully completed the Virtual Internship Program in', { align:'center' });
+      doc.moveDown(0.4);
+      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
+         .text(dom, { align:'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica').fillColor(gray)
+         .text(`Duration: ${dur}  |  Attendance: ${att}%`, { align:'center' });
+  
+    } else if (certType === 'LOR') {
+      doc.fontSize(12).fillColor('#374151')
+         .text('is hereby recommended for outstanding performance during the Virtual Internship in', { align:'center' });
+      doc.moveDown(0.4);
+      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
+         .text(dom, { align:'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica').fillColor(gray)
+         .text(`Attendance: ${att}%  |  Performance Score: ${perf}%`, { align:'center' });
+  
+    } else if (certType === 'STAR') {
+      doc.fontSize(12).fillColor('#374151')
+         .text('has been awarded the Star Performer distinction for exceptional contribution to', { align:'center' });
+      doc.moveDown(0.4);
+      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
+         .text('The Entrepreneurship Network', { align:'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica').fillColor(gray)
+         .text(`Domain: ${dom}`, { align:'center' });
+  
+    } else if (certType === 'OFFER') {
+      doc.fontSize(12).fillColor('#374151')
+         .text('is hereby offered a Virtual Internship position in', { align:'center' });
+      doc.moveDown(0.4);
+      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
+         .text(dom, { align:'center' });
+      doc.moveDown(0.5);
+      doc.fontSize(11).font('Helvetica').fillColor(gray)
+         .text(`Duration: ${dur}  |  Mode: Virtual / Remote`, { align:'center' });
+    }
+  
+    doc.moveDown(1.5);
+    doc.moveTo(70, doc.y).lineTo(525, doc.y).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
+    doc.moveDown(1);
+  
+    // Issuance info
+    doc.fontSize(11).fillColor(gray)
+       .text(`Date of Issue: ${now}`, 300, doc.y, { align:'right', width:225 });
+    doc.moveDown(0.4);
+    doc.fontSize(10).fillColor(gray)
+       .text('Authorized by: TEN HR Team', { align:'right' });
+  
+    doc.moveDown(2);
+  
+    // ── Fine / Eligibility Notice box (always shown) ──
+    const noticeY = doc.y;
+    doc.rect(70, noticeY, 455, certType === 'OFFER' ? 80 : 110)
+       .lineWidth(0.5).strokeColor('#e2e8f0').stroke();
+    doc.moveDown(0.3);
+    
+    doc.fontSize(8).fillColor(gray).font('Helvetica-Bold')
+       .text('CERTIFICATE ELIGIBILITY CRITERIA & FINE POLICY', 80, noticeY + 10);
+    doc.font('Helvetica').fillColor(gray);
+  
+    if (certType === 'LOC') {
+      doc.fontSize(8).text(
+        '• LOC is issued when attendance ≥ 75%.\n' +
+        '• If attendance < 75%, a ₹100 fine must be paid to receive this certificate.\n' +
+        '• Fine payment unlocks certificate issuance within 24 hours.\n' +
+        '• Pay fine from: My Documents → Outstanding Fines section in the student portal.',
+        80, noticeY + 22, { width: 435, lineGap: 3 }
+      );
+    } else if (certType === 'LOR') {
+      doc.fontSize(8).text(
+        '• LOR is issued when both Attendance ≥ 75% AND Performance ≥ 75%.\n' +
+        '• If either criterion is not met, a ₹50 fine must be paid to receive this certificate.\n' +
+        '• Fine payment unlocks certificate issuance within 24 hours.\n' +
+        '• Pay fine from: My Documents → Outstanding Fines section in the student portal.',
+        80, noticeY + 22, { width: 435, lineGap: 3 }
+      );
+    } else if (certType === 'STAR') {
+      doc.fontSize(8).text(
+        '• Star Performer Certificate is awarded to students who contribute a genuine idea + implementation to improve TEN.\n' +
+        '• Submit your contribution from My Documents → Star Performer section.\n' +
+        '• HR reviews submissions and approves manually. No fine applies for this certificate.',
+        80, noticeY + 22, { width: 435, lineGap: 3 }
+      );
+    } else if (certType === 'OFFER') {
+      doc.fontSize(8).text(
+        '• Offer Letter is issued after HR reviews and approves your uploaded Address Proof and College Marksheet.\n' +
+        '• Upload documents from My Documents → Upload Documents tab. HR processes within 24 hours.',
+        80, noticeY + 22, { width: 435, lineGap: 3 }
+      );
+    }
+  
+    doc.end();
+  });
+}
+
+async function generateAndSaveCert(studentId, certType, studentData = null) {
+  const student = studentData || await Student.findById(studentId);
+  if (!student) {
+    console.error(`[Cert] Student not found: ${studentId}`);
+    return { success: false, error: 'Student not found' };
+  }
+  const pdfBuffer = await buildCertPDF(student, certType);
+  
+  const fieldMap = {
+    LOC:   { pdfField: 'locPdfBase64',   statusField: 'locStatus',   dateField: 'locIssuedAt' },
+    LOR:   { pdfField: 'lorPdfBase64',   statusField: 'lorStatus',   dateField: 'lorIssuedAt' },
+    STAR:  { pdfField: 'starPdfBase64',  statusField: 'starStatus',  dateField: 'starIssuedAt' },
+    OFFER: { pdfField: 'offerPdfBase64', statusField: 'offerLetterStatus', dateField: 'offerLetterGeneratedAt' },
+  };
+  const fields = fieldMap[certType];
+  
+  // SAVE FIRST — email is optional
+  await Student.findByIdAndUpdate(studentId, {
+    [fields.pdfField]:   pdfBuffer.toString('base64'),
+    [fields.statusField]: 'issued',
+    [fields.dateField]:  new Date(),
+  });
+  console.log(`[Cert] ✓ ${certType} saved to DB for student ${studentId}`);
+  
+  const emailResult = await sendCertificateEmail(student.email, student.name || student.fullName || 'Student', certType, pdfBuffer);
+  
+  return { success: true, emailSent: emailResult.sent };
+}
+
+async function checkAndIssueCerts(studentId) {
+  const student = await Student.findById(studentId).lean();
+  if (!student) return;
+  const att  = student.attendancePercentage || 0;
+  const perf = student.performanceScore || 0;
+  
+  // LOC check
+  if (['pending_hr', 'approved'].includes(student.locStatus) && student.locStatus !== 'issued') {
+    if (att >= 75) {
+      await generateAndSaveCert(studentId, 'LOC', student);
+    } else {
+      // Add fine if not already added
+      const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'loc_attendance' && !f.paid);
+      if (!hasFine) {
+        await Student.findByIdAndUpdate(studentId, {
+          locStatus: 'fine_pending',
+          $push: { pendingFines: {
+            fineType: 'loc_attendance',
+            amount: 100,
+            reason: `Your attendance is ${att}% (minimum required: 75%). Pay ₹100 to unlock your LOC.`,
+          }}
+        });
+      }
+    }
+  }
+  
+  // LOR check
+  if (['pending_hr', 'approved'].includes(student.lorStatus) && student.lorStatus !== 'issued') {
+    if (att >= 75 && perf >= 75) {
+      await generateAndSaveCert(studentId, 'LOR', student);
+    } else {
+      const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'lor_criteria' && !f.paid);
+      if (!hasFine) {
+        let reason = '';
+        if (att < 75 && perf < 75) reason = `Attendance ${att}% and Performance ${perf}% are both below 75%.`;
+        else if (att < 75)  reason = `Attendance ${att}% is below 75% (performance is fine at ${perf}%).`;
+        else                reason = `Performance ${perf}% is below 75% (attendance is fine at ${att}%).`;
+        await Student.findByIdAndUpdate(studentId, {
+          lorStatus: 'fine_pending',
+          $push: { pendingFines: {
+            fineType: 'lor_criteria',
+            amount: 50,
+            reason: `${reason} Pay ₹50 to unlock your LOR.`,
+          }}
+        });
+      }
+    }
+  }
+  
+  // STAR — only if HR explicitly set starStatus = 'approved'
+  if (student.starStatus === 'approved') {
+    await generateAndSaveCert(studentId, 'STAR', student);
+  }
+}
+
+// POST /api/v2/certificates/hr-approve — HR manually approves
+router.post('/hr-approve', async (req, res) => {
+  try {
+    const { studentId, certTypes } = req.body; // certTypes: ['LOC','LOR','STAR']
+    const update = {};
+    if (certTypes.includes('LOC'))  update.locStatus  = 'pending_hr';
+    if (certTypes.includes('LOR'))  update.lorStatus  = 'pending_hr';
+    if (certTypes.includes('STAR')) update.starStatus = 'approved';
+    await Student.findByIdAndUpdate(studentId, update);
+    await checkAndIssueCerts(studentId);
+    res.json({ success: true });
+  } catch(e) {
+    console.error('[HR-Approve] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+  
+// POST /api/v2/certificates/coordinator-approve — Coordinator marks completion
+router.post('/coordinator-approve', async (req, res) => {
+  try {
+    const { studentId } = req.body;
+    await Student.findByIdAndUpdate(studentId, {
+      internshipCompleted: true,
+      internshipCompletedAt: new Date(),
+      coordinatorApprovedAt: new Date(),
+      coordinatorApprovalStatus: 'approved',
+      locStatus: 'pending_hr',
+      lorStatus: 'pending_hr',
+    });
+    await checkAndIssueCerts(studentId);
+    res.json({ success: true });
+  } catch(e) {
+    console.error('[Coordinator-Approve] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+  
+// POST /api/v2/certificates/star-submit — Student submits star contribution
+router.post('/star-submit', async (req, res) => {
+  try {
+    const { employeeId, contribution } = req.body;
+    await Student.findOneAndUpdate({ employeeId }, {
+      starStatus: 'pending_review',
+      starContribution: contribution,
+    });
+    res.json({ success: true });
+  } catch(e) {
+    console.error('[Star-Submit] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+  
+// GET /api/v2/certificates/my-certs — Student fetches their certificate status (smart/merged)
+router.get('/my-certs', async (req, res) => {
+  try {
+    const { employeeId } = req.query;
+    const headerEmployeeId = req.headers["x-employee-id"];
+
+    // Fallback to old behavior if no query employeeId but header x-employee-id is present (for my-certificates.html)
+    if (!employeeId && headerEmployeeId) {
+      const student = await Student.findOne({ employeeId: String(headerEmployeeId) });
+      if (!student) return res.status(401).json({ success: false, message: "Student not found" });
+      const status  = await getCertStatus(student);
+
+      const certs = await StudentCertificate.find({ studentId: student._id });
+      const certMap = {};
+      certs.forEach(c => { certMap[c.certificateType] = c; });
+
+      const result = {
+          expert: {
+              unlocked:      status.expertUnlocked,
+              completionPct: status.completionPct,
+              threshold:     30,
+              record:        certMap["expert"]     ? { certificateId: certMap["expert"].certificateId, pdfUrl: certMap["expert"].pdfUrl, issuedAt: certMap["expert"].issuedAt } : null
+          },
+          nano_degree: {
+              unlocked:      status.nanoDegreeUnlocked,
+              completionPct: status.completionPct,
+              threshold:     70,
+              record:        certMap["nano_degree"] ? { certificateId: certMap["nano_degree"].certificateId, pdfUrl: certMap["nano_degree"].pdfUrl, issuedAt: certMap["nano_degree"].issuedAt } : null
+          },
+          fellowship: {
+              visible:       status.fellowshipUnlocked,
+              unlocked:      status.fellowshipUnlocked,
+              cohortRankPct: status.cohortRankPct,
+              completionPct: status.completionPct,
+              threshold:     10,
+              record:        certMap["fellowship"]  ? { certificateId: certMap["fellowship"].certificateId, pdfUrl: certMap["fellowship"].pdfUrl, issuedAt: certMap["fellowship"].issuedAt } : null
+          }
+      };
+
+      return res.json({ success: true, ...result, paymentEnabled: paymentConfig.PAYMENT_ENABLED, prices: paymentConfig.CERT_PRICES });
+    }
+
+    const targetId = employeeId || headerEmployeeId;
+    if (!targetId) {
+      return res.status(400).json({ error: 'employeeId query parameter or header is required' });
+    }
+
+    const student = await Student.findOne({ employeeId: targetId },
+      'locStatus locIssuedAt lorStatus lorIssuedAt starStatus starIssuedAt ' +
+      'offerLetterStatus offerLetterGeneratedAt documentRejectionReason ' +
+      'locPdfBase64 lorPdfBase64 starPdfBase64 offerPdfBase64 ' +
+      'attendancePercentage performanceScore pendingFines starContribution'
+    ).lean();
+    if (!student) return res.status(404).json({ error: 'Not found' });
+    
+    const { locPdfBase64, lorPdfBase64, starPdfBase64, offerPdfBase64, ...safeStudent } = student;
+    safeStudent.hasLocPdf   = !!locPdfBase64;
+    safeStudent.hasLorPdf   = !!lorPdfBase64;
+    safeStudent.hasStarPdf  = !!starPdfBase64;
+    safeStudent.hasOfferPdf = !!offerPdfBase64;
+    res.json(safeStudent);
+  } catch(e) {
+    console.error('[My-Certs] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+  
+// GET /api/v2/certificates/download/:type — Download PDF
+router.get('/download/:type', async (req, res) => {
+  try {
+    const { employeeId } = req.query;
+    const type = req.params.type.toUpperCase();
+    const student = await Student.findOne({ employeeId }).lean();
+    if (!student) return res.status(404).json({ error: 'Not found' });
+  
+    const pdfMap = { LOC:'locPdfBase64', LOR:'lorPdfBase64', STAR:'starPdfBase64', OFFER:'offerPdfBase64' };
+    const b64 = student[pdfMap[type]];
+    if (!b64) return res.status(404).json({ error: 'Certificate not yet generated' });
+  
+    const buffer = Buffer.from(b64, 'base64');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="TEN-${type}-${employeeId}.pdf"`);
+    res.send(buffer);
+  } catch(e) {
+    console.error('[Download] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+  
+// GET /api/v2/certificates/pending-hr — HR views what needs approval
+router.get('/pending-hr', async (req, res) => {
+  try {
+    const students = await Student.find({
+      $or: [
+        { locStatus:  { $in: ['pending_hr'] } },
+        { lorStatus:  { $in: ['pending_hr'] } },
+        { starStatus: 'pending_review' },
+        { coordinatorApprovalStatus: 'escalated_to_hr' },
+      ]
+    }, 'name fullName employeeId domain attendancePercentage performanceScore locStatus lorStatus starStatus coordinatorApprovalStatus internshipCompletedAt starContribution').lean();
+    res.json({ students });
+  } catch(e) {
+    console.error('[Pending-HR] Error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CRON JOBS — SECTION 4
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Cron 1: Coordinator didn't act in 24h → escalate to HR
+cron.schedule('0 * * * *', async () => {
+  try {
+    const cutoff = new Date(Date.now() - 24*60*60*1000);
+    const list = await Student.find({
+      internshipCompleted: true,
+      coordinatorApprovalStatus: 'pending',
+      internshipCompletedAt: { $lt: cutoff },
+    });
+    for (const s of list) {
+      await Student.findByIdAndUpdate(s._id, {
+        coordinatorApprovalStatus: 'escalated_to_hr',
+        locStatus: 'pending_hr',
+        lorStatus: 'pending_hr',
+      });
+      console.log(`[CertCron-1] Escalated ${s.employeeId} → HR (coordinator 24h timeout)`);
+    }
+  } catch (e) {
+    console.error('[CertCron-1] Error:', e.message);
+  }
+});
+  
+// Cron 2: HR didn't act in 24h → auto-process certs
+cron.schedule('20 * * * *', async () => {
+  try {
+    const cutoff = new Date(Date.now() - 24*60*60*1000);
+    const list = await Student.find({
+      $or: [{ locStatus:'pending_hr' }, { lorStatus:'pending_hr' }],
+      coordinatorApprovedAt: { $lt: cutoff },
+    });
+    for (const s of list) {
+      console.log(`[CertCron-2] Auto-issuing certs for ${s.employeeId}`);
+      await checkAndIssueCerts(s._id.toString());
+    }
+  } catch (e) {
+    console.error('[CertCron-2] Error:', e.message);
+  }
+});
+  
+// Cron 3: Offer letter auto-generate 24h after doc upload if HR hasn't acted
+cron.schedule('40 * * * *', async () => {
+  try {
+    const cutoff = new Date(Date.now() - 24*60*60*1000);
+    const list = await Student.find({
+      offerLetterStatus: { $in: ['pending', 'under_review'] },
+      documentsSubmittedAt: { $lt: cutoff },
+    });
+    for (const s of list) {
+      console.log(`[CertCron-3] Auto-generating Offer Letter for ${s.employeeId}`);
+      await generateAndSaveCert(s._id.toString(), 'OFFER', s);
+    }
+  } catch (e) {
+    console.error('[CertCron-3] Error:', e.message);
+  }
+});
+
 module.exports = router;
