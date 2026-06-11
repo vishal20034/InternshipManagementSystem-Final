@@ -10,6 +10,7 @@ const cron                = require("node-cron");
 const nodemailer          = require("nodemailer");
 const PDFDocument         = require("pdfkit");
 const Student             = require("../../models/Student");
+const StudentDocument     = require("../../models/new/StudentDocument");
 const StudentCertificate  = require("../../models/new/StudentCertificate");
 const DocumentHistory     = require("../../models/DocumentHistory");
 const PsychologyTrigger   = require("../../models/new/PsychologyTrigger");
@@ -525,10 +526,17 @@ async function processStudentCertificates(student) {
     // LOC: requires 75%+ attendance
     if (student.locStatus === "pending_hr" || student.locStatus === "approved") {
         if (att >= 75) {
-            const { filepath } = await generateCertPDF(student, "LOC");
+            const { filepath, filename } = await generateCertPDF(student, "LOC");
             updates.locStatus   = "issued";
             updates.locIssuedAt = new Date();
             updates.locPdfPath  = filepath;
+            const locUrl = `/uploads/certificates/${filename}`;
+            // Sync to StudentDocument so portal can display it
+            let docRec = await StudentDocument.findOne({ studentId: student._id });
+            if (!docRec) docRec = new StudentDocument({ studentId: student._id });
+            docRec.locUrl    = locUrl;
+            docRec.locSentAt = new Date();
+            await docRec.save();
             await sendCertEmail(student, "LOC", filepath);
         } else {
             const alreadyFined = (student.pendingFines || []).some(f => f.type === "loc_attendance" && !f.paid);
@@ -549,10 +557,17 @@ async function processStudentCertificates(student) {
     // LOR: requires 75%+ attendance AND 75%+ performance
     if (student.lorStatus === "pending_hr" || student.lorStatus === "approved") {
         if (att >= 75 && perf >= 75) {
-            const { filepath } = await generateCertPDF(student, "LOR");
+            const { filepath, filename } = await generateCertPDF(student, "LOR");
             updates.lorStatus   = "issued";
             updates.lorIssuedAt = new Date();
             updates.lorPdfPath  = filepath;
+            const lorUrl = `/uploads/certificates/${filename}`;
+            // Sync to StudentDocument so portal can display it
+            let docRec2 = await StudentDocument.findOne({ studentId: student._id });
+            if (!docRec2) docRec2 = new StudentDocument({ studentId: student._id });
+            docRec2.lorUrl    = lorUrl;
+            docRec2.lorSentAt = new Date();
+            await docRec2.save();
             await sendCertEmail(student, "LOR", filepath);
         } else {
             const alreadyFined = (student.pendingFines || []).some(f => f.type === "lor_criteria" && !f.paid);
@@ -575,10 +590,17 @@ async function processStudentCertificates(student) {
 
     // Star Performer: HR manually approved
     if (student.starStatus === "approved") {
-        const { filepath } = await generateCertPDF(student, "STAR");
+        const { filepath, filename } = await generateCertPDF(student, "STAR");
         updates.starStatus   = "issued";
         updates.starIssuedAt = new Date();
         updates.starPdfPath  = filepath;
+        const starUrl = `/uploads/certificates/${filename}`;
+        // Sync to StudentDocument so portal can display it
+        let docRec3 = await StudentDocument.findOne({ studentId: student._id });
+        if (!docRec3) docRec3 = new StudentDocument({ studentId: student._id });
+        docRec3.starUrl    = starUrl;
+        docRec3.starSentAt = new Date();
+        await docRec3.save();
         await sendCertEmail(student, "STAR", filepath);
     }
 

@@ -21,7 +21,10 @@ const studentDocumentSchema = new mongoose.Schema({
     // LOC — Letter of Completion (auto-generated at 100% task completion)
     locUrl:           { type: String, default: null },
     locSentAt:        { type: Date, default: null },
-    locDocumentNumber:{ type: String, default: null }
+    locDocumentNumber:{ type: String, default: null },
+    // STAR — Star Performance Award (awarded by HR)
+    starUrl:          { type: String, default: null },
+    starSentAt:       { type: Date, default: null }
 }, { timestamps: true });
 
 studentDocumentSchema.index({ studentId: 1 });

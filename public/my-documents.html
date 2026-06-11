@@ -245,56 +245,109 @@ function showBanner(status, desc) {
 // ── Render My Documents table ──
 function renderDocsTable(d) {
   const fmt = dt => dt ? new Date(dt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
-  const rows = [
-    {
-      name: 'Offer Letter',
-      desc: 'Internship offer from TEN',
-      status: d.offer_letter_url ? 'issued' : (d.status === 'approved' ? 'processing' : ['pending','under_review'].includes(d.status) ? 'pending' : 'locked'),
-      date:  d.offerLetterSentAt || null,
-      url:   d.offer_letter_url  || null
-    },
-    {
-      name: 'Letter of Recommendation (LOR)',
-      desc: 'Issued by HR after 50%+ completion',
-      status: d.lor_url ? 'issued' : 'locked',
-      date:  d.lorSentAt || null,
-      url:   d.lor_url   || null
-    },
-    {
-      name: 'Letter of Completion (LOC)',
-      desc: 'Auto-issued at 100% course completion',
-      status: d.loc_url ? 'issued' : 'locked',
-      date:  d.locSentAt || null,
-      url:   d.loc_url   || null
-    },
-    {
-      name: '⭐ Star Performance Award',
-      desc: 'Awarded to top performers by HR',
-      status: d.star_performance_url ? 'issued' : 'locked',
-      date:  d.starPerformanceSentAt || null,
-      url:   d.star_performance_url   || null
+
+  // Helper: map raw locStatus/lorStatus/starStatus to display status
+  function certBadgeAndAction(url, sentAt, rawStatus, type) {
+    if (url) {
+      return {
+        badge:  `<span class="badge-issued">✅ Issued</span>`,
+        action: `<a href="${url}" target="_blank" class="download-btn">⬇ Download PDF</a>`,
+        date:   sentAt
+      };
     }
-  ];
+    const statusMap = {
+      'pending_coordinator': { badge: `<span class="badge-pending">📋 Awaiting Coordinator</span>`, action: 'Coordinator approval pending' },
+      'pending_hr':          { badge: `<span class="badge-pending">⏳ Pending HR Review</span>`,    action: 'HR is reviewing your eligibility' },
+      'approved':            { badge: `<span class="badge-pending">🔄 Generating…</span>`,           action: 'Certificate being generated' },
+      'fine_pending':        { badge: `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;">⚠️ Fine Pending</span>`, action: 'A fine is due — contact HR' },
+      'not_eligible':        { badge: `<span class="badge-locked">🔒 Not Eligible Yet</span>`,      action: type === 'LOC' ? 'Need 75%+ attendance' : 'Need 75%+ attendance & performance' },
+      'not_submitted':       { badge: `<span class="badge-locked">🔒 Not Submitted</span>`,         action: 'Submit your contribution below' },
+      'pending_review':      { badge: `<span class="badge-pending">⏳ Under HR Review</span>`,      action: 'HR is reviewing your submission' },
+      'rejected':            { badge: `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;">❌ Not Approved</span>`, action: 'Not awarded this time' }
+    };
+    const entry = statusMap[rawStatus] || { badge: `<span class="badge-locked">🔒 Not Available</span>`, action: 'Not yet issued' };
+    return { badge: entry.badge, action: `<span style="color:var(--muted);font-size:12px;">${entry.action}</span>`, date: null };
+  }
+
+  const offerStatus = d.offer_letter_url ? 'issued'
+    : d.status === 'approved' ? 'processing'
+    : ['pending','under_review'].includes(d.status) ? 'pending'
+    : 'locked';
+
+  const loc  = certBadgeAndAction(d.loc_url,  d.locSentAt,  d.locStatus,  'LOC');
+  const lor  = certBadgeAndAction(d.lor_url,  d.lorSentAt,  d.lorStatus,  'LOR');
+  const star = certBadgeAndAction(d.star_url, d.starSentAt, d.starStatus, 'STAR');
+
+  // Star submit form shown when internship completed + not yet submitted
+  const showStarForm = d.internshipCompleted && (d.starStatus === 'not_submitted' || !d.starStatus);
+  const starExtraRow = showStarForm ? `
+    <tr id="star-submit-row">
+      <td colspan="4" style="padding:16px;background:rgba(212,175,55,0.04);border-top:1px solid rgba(212,175,55,0.1);">
+        <div style="font-size:13px;color:#f59e0b;font-weight:700;margin-bottom:8px;">⭐ Submit for Star Performance Award</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Describe your key contribution during the internship (min 100 characters).</div>
+        <textarea id="star-contribution-text" rows="3" placeholder="e.g. Developed a lead generation bot that reduced manual effort by 60%..." style="width:100%;padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text);font-size:13px;resize:vertical;font-family:inherit;outline:none;box-sizing:border-box;"></textarea>
+        <button onclick="submitStarContribution()" style="margin-top:8px;padding:9px 20px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:8px;color:#0a0600;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">🌟 Submit Contribution</button>
+      </td>
+    </tr>` : '';
 
   const tbody = document.getElementById('docsTableBody');
-  tbody.innerHTML = rows.map(row => {
-    let badge = '';
-    if (row.status === 'issued')      badge = `<span class="badge-issued">✅ Issued</span>`;
-    else if (row.status === 'pending') badge = `<span class="badge-pending">⏳ Under Review</span>`;
-    else if (row.status === 'processing') badge = `<span class="badge-pending">🔄 Processing</span>`;
-    else                               badge = `<span class="badge-locked">🔒 Not Available</span>`;
+  tbody.innerHTML = `
+    <tr>
+      <td><div class="doc-name">Offer Letter</div><div class="doc-desc">Internship offer from TEN</div></td>
+      <td>${offerStatus === 'issued'      ? '<span class="badge-issued">✅ Issued</span>'
+           : offerStatus === 'processing' ? '<span class="badge-pending">🔄 Processing</span>'
+           : offerStatus === 'pending'    ? '<span class="badge-pending">⏳ Under Review</span>'
+           :                               '<span class="badge-locked">🔒 Not Available</span>'}</td>
+      <td style="color:var(--muted);font-size:12px;">${fmt(d.offerLetterSentAt)}</td>
+      <td>${d.offer_letter_url
+        ? `<a href="${d.offer_letter_url}" target="_blank" class="download-btn">⬇ Download PDF</a>`
+        : `<span style="color:var(--muted);font-size:12px;">${offerStatus === 'pending' ? 'HR is reviewing your documents' : offerStatus === 'processing' ? 'Being generated' : 'Upload documents first'}</span>`
+      }</td>
+    </tr>
+    <tr>
+      <td><div class="doc-name">Letter of Recommendation (LOR)</div><div class="doc-desc">Issued by HR — requires 75%+ attendance &amp; performance</div></td>
+      <td>${lor.badge}</td>
+      <td style="color:var(--muted);font-size:12px;">${fmt(lor.date)}</td>
+      <td>${lor.action}</td>
+    </tr>
+    <tr>
+      <td><div class="doc-name">Letter of Completion (LOC)</div><div class="doc-desc">Auto-issued on internship completion — requires 75%+ attendance</div></td>
+      <td>${loc.badge}</td>
+      <td style="color:var(--muted);font-size:12px;">${fmt(loc.date)}</td>
+      <td>${loc.action}</td>
+    </tr>
+    <tr>
+      <td><div class="doc-name">⭐ Star Performance Award</div><div class="doc-desc">Awarded to top performers by HR</div></td>
+      <td>${star.badge}</td>
+      <td style="color:var(--muted);font-size:12px;">${fmt(star.date)}</td>
+      <td>${star.action}</td>
+    </tr>
+    ${starExtraRow}
+  `;
+}
 
-    const action = row.url
-      ? `<a href="${row.url}" target="_blank" class="download-btn">⬇ Download PDF</a>`
-      : `<span style="color:var(--muted);font-size:12px;">${row.status === 'locked' ? 'Not yet issued' : 'Available soon'}</span>`;
-
-    return `<tr>
-      <td><div class="doc-name">${row.name}</div><div class="doc-desc">${row.desc}</div></td>
-      <td>${badge}</td>
-      <td style="color:var(--muted);font-size:12px;">${fmt(row.date)}</td>
-      <td>${action}</td>
-    </tr>`;
-  }).join('');
+async function submitStarContribution() {
+  const text = (document.getElementById('star-contribution-text')?.value || '').trim();
+  if (text.length < 100) {
+    return Swal.fire({ icon: 'warning', title: 'Too short', text: 'Please write at least 100 characters describing your contribution.', background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#D4AF37' });
+  }
+  try {
+    const r = await fetch('/api/v2/certificates/star-submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-employee-id': EMP_ID },
+      body: JSON.stringify({ contribution: text })
+    });
+    const resp = await r.json();
+    if (resp.success) {
+      Swal.fire({ icon: 'success', title: '🌟 Submitted!', text: 'Your contribution has been submitted. HR will review it shortly.', background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#D4AF37' });
+      docData.starStatus = 'pending_review';
+      renderDocsTable(docData);
+    } else {
+      Swal.fire({ icon: 'error', title: 'Error', text: resp.message, background: '#0e1428', color: '#F0EEE8' });
+    }
+  } catch(e) {
+    Swal.fire({ icon: 'error', title: 'Network error', text: 'Could not reach the server.', background: '#0e1428', color: '#F0EEE8' });
+  }
 }
 
 // ── Upload logic ──

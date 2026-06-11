@@ -173,6 +173,11 @@ router.get("/documents/my-status", requireStudent, async (req, res) => {
         // Trigger LOC check on every status load (non-blocking)
         tryAutoGenerateLOC(req.student).catch(() => {});
 
+        // Also fetch cert statuses from Student model for portal display
+        const studentData = await Student.findById(req.student._id)
+            .select("locStatus lorStatus starStatus coordinatorApprovalStatus attendancePercentage performanceScore internshipCompleted")
+            .lean();
+
         res.json({
             success:         true,
             status:          doc.uploadStatus,
@@ -190,7 +195,18 @@ router.get("/documents/my-status", requireStudent, async (req, res) => {
             locUrl:           doc.locUrl || null,
             locSentAt:        doc.locSentAt || null,
             locDocumentNumber: doc.locDocumentNumber || null,
-            uploadedAt:       doc.uploadedAt
+            star_url:         doc.starUrl || null,
+            starUrl:          doc.starUrl || null,
+            starSentAt:       doc.starSentAt || null,
+            uploadedAt:       doc.uploadedAt,
+            // Cert pipeline statuses from Student model
+            locStatus:    studentData?.locStatus    || "not_eligible",
+            lorStatus:    studentData?.lorStatus    || "not_eligible",
+            starStatus:   studentData?.starStatus   || "not_submitted",
+            coordinatorApprovalStatus: studentData?.coordinatorApprovalStatus || null,
+            attendancePercentage: studentData?.attendancePercentage || 0,
+            performanceScore:     studentData?.performanceScore     || 0,
+            internshipCompleted:  studentData?.internshipCompleted  || false
         });
     } catch (err) {
         console.error("[DOCS] my-status error:", err.message);
