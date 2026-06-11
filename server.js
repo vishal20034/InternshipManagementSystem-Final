@@ -4497,6 +4497,15 @@ try {
     console.error('[V2] Failed to mount payment routes:', e.message);
 }
 
+// AI CHATBOT SYSTEM — Task Bot, Query Bot, Voice Bot (Gemini 2.0 Flash)
+try {
+    const v2Bots = require('./routes/v2/bots');
+    app.use('/api/v2/bots', v2Bots);
+    console.log('[V2] Bots routes mounted at /api/v2/bots');
+} catch(e) {
+    console.error('[V2] Failed to mount bots routes:', e.message);
+}
+
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
 const expressModule = require("express");
 app.use("/uploads/certificates", expressModule.static("uploads/certificates"));
