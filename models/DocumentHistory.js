@@ -1,24 +1,67 @@
-const mongoose = require("mongoose");
+'use strict';
+
+const mongoose = require('mongoose');
 
 const documentHistorySchema = new mongoose.Schema(
   {
-    studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student", default: null, index: true },
-    studentName: { type: String, default: "" },
-    studentEmail: { type: String, default: "" },
-    employeeId: { type: String, default: "", index: true },
-    college: { type: String, default: "" },
-    domain: { type: String, default: "" },
-    documentType: { type: String, default: "" },
-    documentKey: { type: String, default: "", index: true },
-    documentNumber: { type: String, default: "", index: true },
-    sentAt: { type: Date, default: Date.now, index: true },
-    sentBy: { type: String, default: "" },
-    sentToEmail: { type: String, default: "" }
+    studentName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    employeeId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    college: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    documentType: {
+      type: String,
+      required: true,
+      enum: ['Offer Letter', 'LOC', 'LOR', 'Certificate'],
+    },
+    documentNumber: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    sentOn: {
+      type: Date,
+      default: Date.now,
+    },
+    sentBy: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    method: {
+      type: String,
+      required: true,
+      enum: ['manual', 'automation'],
+    },
+    emailStatus: {
+      type: String,
+      required: true,
+      enum: ['sent', 'failed', 'pending'],
+      default: 'pending',
+    },
   },
-  { timestamps: true, minimize: true }
+  {
+    timestamps: true,
+  }
 );
 
-documentHistorySchema.index({ documentNumber: 1 }, { unique: false });
+documentHistorySchema.statics.record = async function (params) {
+  const entry = new this(params);
+  return entry.save();
+};
 
-module.exports =
-  mongoose.models.DocumentHistory || mongoose.model("DocumentHistory", documentHistorySchema);
+const DocumentHistory =
+  mongoose.models.DocumentHistory ||
+  mongoose.model('DocumentHistory', documentHistorySchema);
+
+module.exports = DocumentHistory;

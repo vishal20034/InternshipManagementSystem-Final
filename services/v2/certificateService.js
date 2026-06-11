@@ -1,3 +1,4 @@
+const DocumentHistory = require('../../models/DocumentHistory');
 // NEW FEATURE: Certificate PDF Generation Service
 // Generates HTML/CSS certificate templates and renders to PDF using PDFKit
 // Template styles: Expert (ivory/gold), Nano Degree (navy), Fellowship (forest green)
@@ -12,6 +13,25 @@ const crypto      = require("crypto");
  * @param {string} type - 'expert' | 'nano_degree' | 'fellowship'
  * @returns {string}
  */
+
+async function recordDocumentHistory(intern, method, emailStatus) {
+  try {
+    await DocumentHistory.record({
+      studentName:    intern.name       || intern.studentName || 'Unknown',
+      employeeId:     intern.employeeId || intern._id.toString(),
+      college:        intern.college    || 'N/A',
+      documentType:   'Certificate',
+      documentNumber: intern.certificateNumber || ('CERT-' + intern._id.toString().slice(-6)),
+      sentOn:         new Date(),
+      sentBy:         method === 'manual' ? (intern.sentByName || 'HR') : 'System (Automation)',
+      method:         method || 'manual',
+      emailStatus:    emailStatus || 'sent',
+    });
+  } catch (err) {
+    console.error('[certificateService] History record failed:', err.message);
+  }
+}
+
 function generateCertificateId(type) {
     const year  = new Date().getFullYear();
     const code  = type === "expert" ? "EXP" : type === "nano_degree" ? "ND" : "FEL";

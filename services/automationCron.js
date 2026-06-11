@@ -772,7 +772,27 @@ async function autoMarkCoordinatorAttendance() {
 // ════════════════════════════════════════════════════
 function initAutomation() {
     // Offer Letter Auto-Send — every 30 min
-    cron.schedule("*/30 * * * *", checkOverdueOfferLetters);
+    
+// DocumentHistory helper for automation sends
+async function recordAutomationHistory(params) {
+  try {
+    await DocumentHistory.record({
+      studentName:    params.studentName    || 'Unknown',
+      employeeId:     params.employeeId     || 'N/A',
+      college:        params.college        || 'N/A',
+      documentType:   params.documentType,
+      documentNumber: params.documentNumber || 'N/A',
+      sentOn:         new Date(),
+      sentBy:         'System (Automation)',
+      method:         'automation',
+      emailStatus:    params.emailStatus    || 'sent',
+    });
+  } catch (err) {
+    console.error('[automationCron] Failed to record history:', err.message);
+  }
+}
+
+cron.schedule("*/30 * * * *", checkOverdueOfferLetters);
 
     // Internship Completion Detection — daily 9 AM
     cron.schedule("0 9 * * *", detectCompletedInternships);

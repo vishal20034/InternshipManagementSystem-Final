@@ -1,3 +1,4 @@
+const DocumentHistory = require('../../models/DocumentHistory');
 "use strict";
 
 const PDFDocument = require("pdfkit");
@@ -10,6 +11,25 @@ const fs          = require("fs");
  * @param {string} outputPath - Full path where PDF should be saved
  * @returns {Promise<string>} resolves with outputPath on success
  */
+
+async function recordDocumentHistory(intern, method, emailStatus) {
+  try {
+    await DocumentHistory.record({
+      studentName:    intern.name       || intern.studentName || 'Unknown',
+      employeeId:     intern.employeeId || intern._id.toString(),
+      college:        intern.college    || 'N/A',
+      documentType:   'LOC',
+      documentNumber: intern.locNumber || ('LOC-' + intern._id.toString().slice(-6)),
+      sentOn:         new Date(),
+      sentBy:         method === 'manual' ? (intern.sentByName || 'HR') : 'System (Automation)',
+      method:         method || 'manual',
+      emailStatus:    emailStatus || 'sent',
+    });
+  } catch (err) {
+    console.error('[locService] History record failed:', err.message);
+  }
+}
+
 async function generateLOCPDF(data, outputPath) {
     return new Promise((resolve, reject) => {
         try {

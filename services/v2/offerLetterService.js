@@ -1,3 +1,4 @@
+const DocumentHistory = require('../../models/DocumentHistory');
 // NEW FEATURE: Offer Letter PDF Generation Service
 "use strict";
 
@@ -11,6 +12,25 @@ const path        = require("path");
  * @param {string} outputPath - Full path where PDF should be saved
  * @returns {Promise<string>} resolves with outputPath on success
  */
+
+async function recordDocumentHistory(intern, method, emailStatus) {
+  try {
+    await DocumentHistory.record({
+      studentName:    intern.name       || intern.studentName || 'Unknown',
+      employeeId:     intern.employeeId || intern._id.toString(),
+      college:        intern.college    || 'N/A',
+      documentType:   'Offer Letter',
+      documentNumber: intern.offerLetterNumber || ('OL-' + intern._id.toString().slice(-6)),
+      sentOn:         new Date(),
+      sentBy:         method === 'manual' ? (intern.sentByName || 'HR') : 'System (Automation)',
+      method:         method || 'manual',
+      emailStatus:    emailStatus || 'sent',
+    });
+  } catch (err) {
+    console.error('[offerLetterService] History record failed:', err.message);
+  }
+}
+
 async function generateOfferLetterPDF(data, outputPath) {
     return new Promise((resolve, reject) => {
         try {
