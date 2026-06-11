@@ -433,7 +433,8 @@ async function autoGenerateOfferLetter(doc) {
             await Student.findByIdAndUpdate(student._id, { documentNumber: docNum });
         }
 
-        const filename   = `${student.employeeId || student._id}_offer_letter.pdf`;
+        const safeEmpId  = String(student.employeeId || student._id).replace(/\//g, "-");
+        const filename   = `${safeEmpId}_offer_letter.pdf`;
         const outputPath = path.join(offerLetterDir, filename);
 
         await generateDomainOfferLetterPDF({

@@ -386,7 +386,8 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                 const endDate   = new Date(joining.getTime() + tenureDays * 24 * 3600 * 1000);
                 const fmt = d => d.toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
 
-                const pdfPath = path.join(offerDir, `${student.employeeId || sid}_offer_letter.pdf`);
+                const safeEmpId = String(student.employeeId || sid).replace(/\//g, "-");
+                const pdfPath = path.join(offerDir, `${safeEmpId}_offer_letter.pdf`);
                 await generateOfferLetterPDF({
                     studentName:    student.name,
                     collegeName:    student.collegeName || student.college || "",
