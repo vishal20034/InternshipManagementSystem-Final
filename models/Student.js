@@ -80,7 +80,41 @@ const studentsSchema = new mongoose.Schema({
 
     // v2 portal fields
     v2Onboarded:          { type: Boolean, default: false },
-    v2DurationType:       { type: String, default: null }
+    v2DurationType:       { type: String, default: null },
+
+    locPdfBase64:            { type: String, default: null },
+    locStatus:               { type: String, enum: ['not_eligible','pending_coordinator','pending_hr','fine_pending','issued'], default: 'not_eligible' },
+    locIssuedAt:             { type: Date,   default: null },
+      
+    lorPdfBase64:            { type: String, default: null },
+    lorStatus:               { type: String, enum: ['not_eligible','pending_coordinator','pending_hr','fine_pending','issued'], default: 'not_eligible' },
+    lorIssuedAt:             { type: Date,   default: null },
+      
+    starPdfBase64:           { type: String, default: null },
+    starStatus:              { type: String, enum: ['not_submitted','pending_review','approved','issued','rejected'], default: 'not_submitted' },
+    starIssuedAt:            { type: Date,   default: null },
+    starContribution:        { type: String, default: null },
+      
+    offerPdfBase64:          { type: String, default: null },
+    offerLetterStatus:       { type: String, enum: ['not_uploaded','pending','under_review','approved','rejected'], default: 'not_uploaded' },
+    offerLetterGeneratedAt:  { type: Date,   default: null },
+    documentRejectionReason: { type: String, default: null },
+    documentsSubmittedAt:    { type: Date,   default: null },
+      
+    attendancePercentage:    { type: Number, default: 0 },
+    performanceScore:        { type: Number, default: 0 },
+    internshipCompleted:     { type: Boolean, default: false },
+    internshipCompletedAt:   { type: Date,   default: null },
+    coordinatorApprovedAt:   { type: Date,   default: null },
+    coordinatorApprovalStatus: { type: String, enum: ['pending','approved','escalated_to_hr'], default: 'pending' },
+      
+    pendingFines: [{
+      fineType: { type: String },       // 'loc_attendance' | 'lor_criteria'
+      amount:   { type: Number },       // 100 or 50
+      reason:   { type: String },
+      paid:     { type: Boolean, default: false },
+      createdAt:{ type: Date, default: Date.now },
+    }]
 }, {
     timestamps: true
 });

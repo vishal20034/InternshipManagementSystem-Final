@@ -170,10 +170,53 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans
       <table class="doc-table">
         <thead><tr><th>Document</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
         <tbody id="docsTableBody">
-          <tr><td colspan="4" style="text-align:center;padding:32px;color:var(--muted);">Loading documents...</td></tr>
+          <!-- Offer Letter row -->
+          <tr>
+            <td>
+              <div class="doc-name">Offer Letter</div>
+              <div class="doc-desc">Internship offer from TEN</div>
+            </td>
+            <td id="status-offer"><span style="color:#475569;font-weight:600">🔒 Not Available</span></td>
+            <td id="date-offer">—</td>
+            <td id="action-offer"><span style="color:#475569;font-size:13px">Not yet issued</span></td>
+          </tr>
+          <!-- LOR row -->
+          <tr>
+            <td>
+              <div class="doc-name">Letter of Recommendation (LOR)</div>
+              <div class="doc-desc">Issued by HR after performance check</div>
+            </td>
+            <td id="status-lor"><span style="color:#475569;font-weight:600">🔒 Not Available</span></td>
+            <td id="date-lor">—</td>
+            <td id="action-lor"><span style="color:#475569;font-size:13px">Not yet issued</span></td>
+          </tr>
+          <!-- LOC row -->
+          <tr>
+            <td>
+              <div class="doc-name">Letter of Completion (LOC)</div>
+              <div class="doc-desc">Auto-issued at internship completion</div>
+            </td>
+            <td id="status-loc"><span style="color:#475569;font-weight:600">🔒 Not Available</span></td>
+            <td id="date-loc">—</td>
+            <td id="action-loc"><span style="color:#475569;font-size:13px">Not yet issued</span></td>
+          </tr>
+          <!-- Star Performer row -->
+          <tr>
+            <td>
+              <div class="doc-name">⭐ Star Performance Award</div>
+              <div class="doc-desc">Awarded to top performers by HR</div>
+            </td>
+            <td id="status-star"><span style="color:#475569;font-weight:600">🔒 Not Submitted</span></td>
+            <td id="date-star">—</td>
+            <td id="action-star"><span style="color:#475569;font-size:13px">Not yet issued</span></td>
+          </tr>
         </tbody>
       </table>
     </div>
+
+    <!-- Fine and Star submit containers -->
+    <div id="fine-notices-container" style="max-width:700px;margin:16px auto"></div>
+    <div id="star-submit-container"></div>
   </div>
 
 
@@ -204,7 +247,9 @@ function switchTab(tab) {
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
-  if (tab === 'docs') renderDocsTable(docData);
+  if (tab === 'docs') {
+    loadMyCertificates();
+  }
 }
 
 // ── Load document status (always fresh) ──
@@ -240,58 +285,137 @@ function showBanner(status, desc) {
 }
 
 // ── Render My Documents table ──
-function renderDocsTable(d) {
-  const fmt = dt => dt ? new Date(dt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
-  const rows = [
-    {
-      name: 'Offer Letter',
-      desc: 'Internship offer from TEN',
-      status: d.offer_letter_url ? 'issued' : (d.status === 'approved' ? 'processing' : ['pending','under_review'].includes(d.status) ? 'pending' : 'locked'),
-      date:  d.offerLetterSentAt || null,
-      url:   d.offer_letter_url  || null
-    },
-    {
-      name: 'Letter of Recommendation (LOR)',
-      desc: 'Issued by HR after 50%+ completion',
-      status: d.lor_url ? 'issued' : 'locked',
-      date:  d.lorSentAt || null,
-      url:   d.lor_url   || null
-    },
-    {
-      name: 'Letter of Completion (LOC)',
-      desc: 'Auto-issued at 100% course completion',
-      status: d.loc_url ? 'issued' : 'locked',
-      date:  d.locSentAt || null,
-      url:   d.loc_url   || null
-    },
-    {
-      name: '⭐ Star Performance Award',
-      desc: 'Awarded to top performers by HR',
-      status: d.star_performance_url ? 'issued' : 'locked',
-      date:  d.starPerformanceSentAt || null,
-      url:   d.star_performance_url   || null
-    }
-  ];
+async function loadMyCertificates() {
+  const employeeId = localStorage.getItem('employeeId') || EMP_ID;
+  if (!employeeId) return;
+  
+  try {
+    const res  = await fetch(`/api/v2/certificates/my-certs?employeeId=${employeeId}`);
+    const data = await res.json();
+    renderDocumentTable(data);
+    renderFineNotices(data.pendingFines || []);
+    renderStarSubmitForm(data);
+  } catch(e) {
+    console.error('[MyCerts] Failed to load:', e.message);
+  }
+}
 
-  const tbody = document.getElementById('docsTableBody');
-  tbody.innerHTML = rows.map(row => {
-    let badge = '';
-    if (row.status === 'issued')      badge = `<span class="badge-issued">✅ Issued</span>`;
-    else if (row.status === 'pending') badge = `<span class="badge-pending">⏳ Under Review</span>`;
-    else if (row.status === 'processing') badge = `<span class="badge-pending">🔄 Processing</span>`;
-    else                               badge = `<span class="badge-locked">🔒 Not Available</span>`;
+function renderDocumentTable(data) {
+  // Update each row in the OFFICIAL DOCUMENTS table:
+  
+  // Offer Letter row
+  updateDocRow('offer', data.offerLetterStatus, data.offerLetterGeneratedAt, data.hasOfferPdf, data.documentRejectionReason);
+  // LOR row
+  updateDocRow('lor', data.lorStatus, data.lorIssuedAt, data.hasLorPdf, null);
+  // LOC row
+  updateDocRow('loc', data.locStatus, data.locIssuedAt, data.hasLocPdf, null);
+  // Star row
+  updateDocRow('star', data.starStatus, data.starIssuedAt, data.hasStarPdf, null);
+}
 
-    const action = row.url
-      ? `<a href="${row.url}" target="_blank" class="download-btn">⬇ Download PDF</a>`
-      : `<span style="color:var(--muted);font-size:12px;">${row.status === 'locked' ? 'Not yet issued' : 'Available soon'}</span>`;
+function updateDocRow(type, status, date, hasPdf, rejectionReason) {
+  const empId = localStorage.getItem('employeeId') || EMP_ID;
+  const statusEl = document.getElementById(`status-${type}`);
+  const dateEl   = document.getElementById(`date-${type}`);
+  const actionEl = document.getElementById(`action-${type}`);
+  if (!statusEl) return;
+  
+  const statusConfig = {
+    'issued':          { badge:'✅ Issued',      color:'#34d399' },
+    'pending':         { badge:'⏳ Under Review', color:'#f59e0b' },
+    'under_review':    { badge:'⏳ Under Review', color:'#f59e0b' },
+    'approved':        { badge:'✅ Approved',     color:'#34d399' },
+    'rejected':        { badge:'❌ Rejected',     color:'#ef4444' },
+    'fine_pending':    { badge:'⚠️ Fine Required',color:'#f87171' },
+    'pending_hr':      { badge:'⏳ Pending HR',   color:'#a78bfa' },
+    'pending_review':  { badge:'👀 Under Review', color:'#60a5fa' },
+    'not_submitted':   { badge:'🔒 Not Submitted',color:'#475569' },
+    'not_eligible':    { badge:'🔒 Not Available',color:'#475569' },
+  };
+  const cfg = statusConfig[status] || { badge: status || 'Not Available', color:'#475569' };
+  
+  statusEl.innerHTML = `<span style="color:${cfg.color};font-weight:600">${cfg.badge}</span>`;
+  dateEl.textContent  = date ? new Date(date).toLocaleDateString('en-IN') : '—';
+  
+  let actionHTML = '';
+  if (hasPdf && ['issued','approved'].includes(status)) {
+    actionHTML = `<a href="/api/v2/certificates/download/${type.toUpperCase()}?employeeId=${empId}" 
+      download style="padding:8px 18px;background:linear-gradient(135deg,#059669,#10b981);border-radius:8px;color:#fff;text-decoration:none;font-weight:700;font-size:13px;display:inline-block">
+      ⬇️ Download</a>`;
+  } else if (status === 'rejected' && rejectionReason) {
+    actionHTML = `<span style="color:#f87171;font-size:12px">Reason: ${rejectionReason}</span>
+      <button onclick="showReuploadSection()" style="margin-left:8px;padding:6px 14px;background:#7c3aed;border:none;border-radius:7px;color:#fff;cursor:pointer;font-size:12px;font-weight:700">Re-upload</button>`;
+  } else if (status === 'not_eligible' || !status) {
+    actionHTML = '<span style="color:#475569;font-size:13px">Not yet issued</span>';
+  } else {
+    actionHTML = '<span style="color:#64748b;font-size:13px">Available soon</span>';
+  }
+  actionEl.innerHTML = actionHTML;
+}
 
-    return `<tr>
-      <td><div class="doc-name">${row.name}</div><div class="doc-desc">${row.desc}</div></td>
-      <td>${badge}</td>
-      <td style="color:var(--muted);font-size:12px;">${fmt(row.date)}</td>
-      <td>${action}</td>
-    </tr>`;
-  }).join('');
+function renderFineNotices(fines) {
+  const unpaid = fines.filter(f => !f.paid);
+  if (!unpaid.length) {
+    const container = document.getElementById('fine-notices-container');
+    if (container) container.innerHTML = '';
+    return;
+  }
+  const container = document.getElementById('fine-notices-container');
+  if (!container) return;
+  container.innerHTML = unpaid.map(f => `
+    <div style="padding:14px 16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;margin-bottom:10px">
+      <p style="color:#f87171;font-weight:700;margin:0 0 6px">⚠️ Outstanding Fine — ₹${f.amount}</p>
+      <p style="color:#94a3b8;font-size:13px;margin:0 0 10px">${f.reason}</p>
+      <p style="color:#64748b;font-size:12px;margin:0 0 10px">
+        To pay: transfer ₹${f.amount} to our UPI ID <strong style="color:#f1f5f9">tenportal@upi</strong> 
+        and email the screenshot to <strong style="color:#f1f5f9">hr@entrepreneurshipnetwork.net</strong> 
+        with subject: "Fine Payment - ${f.fineType} - ${localStorage.getItem('employeeId') || EMP_ID}".
+        HR will unlock your certificate within 24 hours of payment confirmation.
+      </p>
+    </div>`).join('');
+}
+
+function renderStarSubmitForm(data) {
+  const container = document.getElementById('star-submit-container');
+  if (!container) return;
+  if (data.starStatus === 'not_submitted') {
+    container.innerHTML = `
+      <div style="margin-top:12px;padding:16px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:12px">
+        <p style="color:#fcd34d;font-weight:700;margin:0 0 8px">⭐ How to get Star Performer Certificate</p>
+        <p style="color:#94a3b8;font-size:13px;margin:0 0 12px;line-height:1.6">
+          Submit a genuine idea to improve the TEN portal AND evidence of implementation 
+          (screenshots, written plan, code, or design mockups). HR will review and issue 
+          the certificate if the contribution is approved. No fine applies.
+        </p>
+        <textarea id="star-contrib-text" placeholder="Describe your idea and what you implemented in detail..." 
+          rows="4" style="width:100%;padding:10px;background:rgba(0,0,0,.2);border:1px solid rgba(245,158,11,.2);
+          border-radius:8px;color:#f1f5f9;font-size:13px;resize:none;font-family:inherit;outline:none;box-sizing:border-box"></textarea>
+        <button onclick="submitStarContrib()" style="margin-top:10px;padding:10px 24px;background:linear-gradient(135deg,#d97706,#f59e0b);border:none;border-radius:8px;color:#000;cursor:pointer;font-weight:800;font-family:inherit">
+          ⭐ Submit for Review
+        </button>
+      </div>`;
+  } else if (data.starStatus === 'pending_review') {
+    container.innerHTML = `<p style="color:#60a5fa;font-size:13px;margin-top:8px">👀 Your Star Performer submission is under HR review.</p>`;
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+async function submitStarContrib() {
+  const contribution = document.getElementById('star-contrib-text').value.trim();
+  if (!contribution || contribution.length < 50) {
+    alert('Please provide a detailed description (at least 50 characters).');
+    return;
+  }
+  await fetch('/api/v2/certificates/star-submit', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ employeeId: localStorage.getItem('employeeId') || EMP_ID, contribution })
+  });
+  loadMyCertificates(); // refresh
+}
+
+function showReuploadSection() {
+  switchTab('upload');
 }
 
 // ── Upload logic ──
@@ -480,6 +604,8 @@ async function submitDocuments() {
 
 // Init — always fetch fresh status
 loadStatus();
+loadMyCertificates();
+document.addEventListener('DOMContentLoaded', loadMyCertificates);
 </script>
 </body>
 </html>

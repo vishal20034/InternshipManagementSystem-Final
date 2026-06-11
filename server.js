@@ -4481,6 +4481,13 @@ try {
 }
 
 try {
+    app.use('/api/v2/certificates', require('./routes/v2/certificates'));
+    console.log('[V2] Certificate routes mounted at /api/v2/certificates');
+} catch(e) {
+    console.error('[V2] Failed to mount certificate routes:', e.message);
+}
+
+try {
     const v2HR = require("./routes/v2/hr");
     app.use("/api/v2/hr", v2HR);
     console.log("[V2] HR routes mounted at /api/v2/hr");
