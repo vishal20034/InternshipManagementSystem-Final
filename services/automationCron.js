@@ -1,4 +1,5 @@
 "use strict";
+const DocumentHistory = require('../models/DocumentHistory');
 
 const cron        = require("node-cron");
 const path        = require("path");
