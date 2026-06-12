@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "build": "echo 'No build required'",
+    "lint": "echo 'No lint required'",
     "test": "jest --forceExit --detectOpenHandles",
     "seed": "node seeds/domainTasks.seed.js",
     "seed:fresh": "node seeds/dropAndReseed.js",
@@ -16,7 +18,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

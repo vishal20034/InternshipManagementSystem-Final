@@ -44,6 +44,23 @@ h1{font-size:22px;font-weight:700;margin-bottom:8px;}
 .step-label{font-size:10px;color:var(--muted);letter-spacing:0.5px;}
 .step.active .step-label{color:var(--gold);}
 .step.done .step-label{color:var(--green);}
+
+/* Enhanced selection list */
+.cert-list {text-align: left; margin-top: 24px; display: flex; flex-direction: column; gap: 14px;}
+.cert-item {background: rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:12px; padding:16px; display: flex; flex-direction: column; gap: 8px;}
+.cert-item.unlocked {border-color: rgba(212,175,55,0.3); background: rgba(212,175,55,0.03);}
+.cert-item.paid {border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.03);}
+.cert-item-title {font-weight: 700; font-size: 15px; color: var(--text); display: flex; justify-content: space-between; align-items: center;}
+.cert-item-badge {font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 800; text-transform: uppercase;}
+.cert-item-badge.unlocked {background: rgba(212,175,55,0.15); color: var(--gold);}
+.cert-item-badge.paid {background: rgba(16,185,129,0.15); color: var(--green);}
+.cert-item-badge.locked {background: rgba(255,255,255,0.05); color: var(--muted);}
+.cert-item-desc {font-size: 12.5px; color: var(--muted); line-height: 1.4;}
+.cert-item-btn {padding: 10px 14px; font-size: 13px; font-weight: 700; border: none; border-radius: 8px; text-align: center; text-decoration: none; cursor: pointer; transition: transform 0.15s, opacity 0.2s;}
+.cert-item-btn:hover {opacity: 0.9;}
+.cert-item-btn.btn-pay {background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #0a0600;}
+.cert-item-btn.btn-download {background: transparent; border: 1px solid var(--green); color: var(--green);}
+.cert-item-btn.btn-locked {background: rgba(255,255,255,0.05); color: var(--muted); cursor: not-allowed; border: 1px dashed rgba(255,255,255,0.1);}
 </style>
 </head>
 <body>
@@ -57,13 +74,16 @@ h1{font-size:22px;font-weight:700;margin-bottom:8px;}
 
 <div class="card">
   <div class="logo">TEN — Certificate Payment</div>
-  <h1 id="pageTitle">Redirecting to Payment...</h1>
-  <div class="amount-badge">₹<span id="amountDisplay">—</span></div>
-  <div class="cert-label" id="certLabel">Loading...</div>
+  
+  <div id="paymentContent">
+    <h1 id="pageTitle">Redirecting to Payment...</h1>
+    <div class="amount-badge" id="amountBadgeWrap" style="display:none;">₹<span id="amountDisplay">—</span></div>
+    <div class="cert-label" id="certLabel">Loading...</div>
 
-  <div class="spinner" id="loadingSpinner"></div>
-  <div class="status-text" id="statusText">
-    <strong>Please wait</strong> — you are being redirected to our secure payment partner to complete your payment via UPI.
+    <div class="spinner" id="loadingSpinner"></div>
+    <div class="status-text" id="statusText">
+      <strong>Please wait</strong> — retrieving session context and setting up your secure checkout session.
+    </div>
   </div>
 
   <div id="errorMsg" class="msg" style="display:none;"></div>
@@ -76,44 +96,172 @@ h1{font-size:22px;font-weight:700;margin-bottom:8px;}
 (async () => {
   const params  = new URLSearchParams(location.search);
   const type    = params.get('type')    || '';
-  const amount  = params.get('amount')  || '0';
+  const amount  = params.get('amount')  || '';
   const orderId = params.get('orderId') || '';
-  const empId   = params.get('empId')   || '';
+  
+  // Try retrieving active employeeId from URL, fallback to local storage
+  let empId = params.get('empId') || localStorage.getItem('employeeId') || '';
+  if (!empId) {
+    const studentData = localStorage.getItem('student');
+    if (studentData) {
+      try {
+        const parsed = JSON.parse(studentData);
+        if (parsed.employeeId) empId = parsed.employeeId;
+      } catch(e) {}
+    }
+  }
 
-  const CERT_NAMES = { expert: 'Expert Certificate', nano_degree: 'Nano Degree Certificate', fellowship: 'Fellowship Certificate' };
-  document.getElementById('amountDisplay').textContent = Number(amount).toLocaleString('en-IN');
-  document.getElementById('certLabel').textContent = CERT_NAMES[type] || type || 'Certificate';
-  document.getElementById('pageTitle').textContent = 'Pay for ' + (CERT_NAMES[type] || 'Certificate');
-
-  if (!empId || !type) {
-    showError('Session error — please go back and click Claim Certificate again.');
+  // Not logged in error
+  if (!empId) {
+    showError('Session missing. Please log in first to pay for your certificates.');
+    setTimeout(() => { window.location.href = '/login.html'; }, 2500);
     return;
   }
 
-  // Call create-order API to get PaymentSetu payment URL
-  try {
-    const res = await fetch('/api/payment/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-      body: JSON.stringify({ certType: type, employeeId: empId })
-    });
-    const data = await res.json();
+  const CERT_NAMES = { expert: 'Expert Certificate', nano_degree: 'Nano Degree Certificate', fellowship: 'Fellowship Certificate' };
 
-    if (data.success && data.paymentUrl) {
-      document.getElementById('statusText').innerHTML = '<strong>Redirecting...</strong> You will be taken to the payment page now.';
-      // Redirect to PaymentSetu hosted payment page
-      setTimeout(() => { window.location.href = data.paymentUrl; }, 800);
-    } else {
-      showError(data.message || 'Could not create payment. Please try again.');
+  // FLOW A: Explicit parameter check (Direct redirect path)
+  if (type) {
+    const defaultPrices = { expert: '100', nano_degree: '1,000', fellowship: '2,500' };
+    const displayAmt = amount && amount !== '0' ? Number(amount).toLocaleString('en-IN') : (defaultPrices[type] || '—');
+    
+    document.getElementById('amountBadgeWrap').style.display = 'inline-flex';
+    document.getElementById('amountDisplay').textContent = displayAmt;
+    document.getElementById('certLabel').textContent = CERT_NAMES[type] || type || 'Certificate';
+    document.getElementById('pageTitle').textContent = 'Pay for ' + (CERT_NAMES[type] || 'Certificate');
+    document.getElementById('statusText').innerHTML = '<strong>Please wait</strong> — you are being redirected to our secure payment gateway to complete your payment.';
+
+    try {
+      const res = await fetch(`/api/v2/certificates/claim/${type}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
+        body: JSON.stringify({ employeeId: empId })
+      });
+      const data = await res.json();
+
+      if (data.success && data.paymentUrl) {
+        document.getElementById('statusText').innerHTML = '<strong>Redirecting...</strong> Opening secure payments...';
+        setTimeout(() => { window.location.href = data.paymentUrl; }, 800);
+      } else {
+        showError(data.message || 'Could not initiate certificate claim order. Please try again.');
+      }
+    } catch(e) {
+      showError('Network error — please check your connection and try again.');
     }
-  } catch(e) {
-    showError('Network error — please check your connection and try again.');
+    return;
+  }
+
+  // FLOW B: Workspace Selection Path (Missing parameter -> Render highly polished certificates menu list)
+  document.getElementById('pageTitle').textContent = 'My Certificate Checkout';
+  document.getElementById('certLabel').textContent = 'Select Certificate';
+  
+  try {
+    const res = await fetch('/api/v2/certificates/my-certs', {
+      headers: { 'x-employee-id': empId }
+    });
+    const d = await res.json();
+    
+    if (!d.success) {
+      showError(d.message || 'Failed to load eligible certificates.');
+      return;
+    }
+
+    document.getElementById('loadingSpinner').style.display = 'none';
+    document.getElementById('statusText').style.display = 'none';
+
+    // Build the dynamic UI list of certificates
+    const certTiers = [
+      { key: 'expert', name: 'Expert Certificate', desc: 'Accelerated skill milestones. Requires at least 30% approved internship tasks.', price: d.prices?.expert || 100 },
+      { key: 'nano_degree', name: 'Nano Degree Certificate', desc: 'Comprehensive domain specialization. Requires at least 70% approved internship tasks.', price: d.prices?.nano_degree || 1000 },
+      { key: 'fellowship', name: 'Fellowship Certificate', desc: 'Elite cohort standing. Granted to top 10% high-performing domains.', price: d.prices?.fellowship || 2500 }
+    ];
+
+    let html = `<p style="font-size: 14.5px; color: var(--muted); margin-bottom: 20px; line-height: 1.6;">Below are your TEN certification pathways. You can pay and claim any unlocked certificate.</p>`;
+    html += `<div class="cert-list">`;
+
+    certTiers.forEach(t => {
+      const status = d[t.key] || {};
+      const unlocked = status.unlocked;
+      const record = status.record;
+      const isPaid = record && (record.paymentStatus === 'paid' || record.pdfUrl);
+
+      let badge = `<span class="cert-item-badge locked">Locked</span>`;
+      let actionHtml = `<button class="cert-item-btn btn-locked" disabled>🔒 Locked</button>`;
+      let itemClass = '';
+
+      if (isPaid) {
+        badge = `<span class="cert-item-badge paid">Claimed</span>`;
+        actionHtml = `<a href="my-certificates.html" class="cert-item-btn btn-download">View / Download →</a>`;
+        itemClass = 'paid';
+      } else if (unlocked) {
+        badge = `<span class="cert-item-badge unlocked">Ready</span>`;
+        actionHtml = `<button class="cert-item-btn btn-pay" onclick="initiateCheckout('${t.key}', '${t.price}')">Pay ₹${t.price} &amp; Claim →</button>`;
+        itemClass = 'unlocked';
+      }
+
+      html += `
+        <div class="cert-item ${itemClass}">
+          <div class="cert-item-title">
+            <span>${t.name}</span>
+            ${badge}
+          </div>
+          <p class="cert-item-desc">${t.desc}</p>
+          ${actionHtml}
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    document.getElementById('paymentContent').innerHTML = html;
+    document.getElementById('backLink').style.display = 'inline-flex';
+
+  } catch (e) {
+    showError('Could not render certificate workspace menu.');
   }
 })();
 
+// Action triggered when selecting a certificate inside Flow B
+async function initiateCheckout(type, amount) {
+  const container = document.getElementById('paymentContent');
+  container.innerHTML = `
+    <h1 id="pageTitle">Redirecting to Payment...</h1>
+    <div class="amount-badge">₹<span>${Number(amount).toLocaleString('en-IN')}</span></div>
+    <div class="spinner"></div>
+    <div class="status-text">
+      <strong>Redirecting...</strong> You are now going to the secure PaymentSetu page.
+    </div>
+  `;
+  
+  let empId = localStorage.getItem('employeeId') || '';
+  if (!empId) {
+    const studentData = localStorage.getItem('student');
+    if (studentData) {
+      try { empId = JSON.parse(studentData).employeeId; } catch(e) {}
+    }
+  }
+
+  try {
+    const res = await fetch(`/api/v2/certificates/claim/${type}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
+      body: JSON.stringify({ employeeId: empId })
+    });
+    const data = await res.json();
+    if (data.success && data.paymentUrl) {
+      window.location.href = data.paymentUrl;
+    } else {
+      alert(data.message || 'Payment initiation failed.');
+      window.location.reload();
+    }
+  } catch(e) {
+    alert('Network error initiating gateway checkout.');
+    window.location.reload();
+  }
+}
+
 function showError(msg) {
   document.getElementById('loadingSpinner').style.display = 'none';
-  document.getElementById('statusText').style.display = 'none';
+  if (document.getElementById('statusText')) document.getElementById('statusText').style.display = 'none';
   const el = document.getElementById('errorMsg');
   el.textContent = msg;
   el.className = 'msg error';

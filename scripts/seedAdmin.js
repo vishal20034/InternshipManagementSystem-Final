@@ -1,7 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
-const bcrypt   = require('bcrypt');
+const bcrypt   = require('bcryptjs');
 
 async function main() {
   const uri = process.env.MONGODB_URI;

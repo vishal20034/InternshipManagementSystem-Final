@@ -2,13 +2,42 @@
 require("dotenv").config();
 
 const path = require("path");
+const fs = require("fs");
+
+// ===== AUTOMATIC CASING REPAIR FOR CASE-SENSITIVE LINUX ENVIRONMENTS =====
+const modelsDir = path.join(__dirname, "models");
+if (fs.existsSync(modelsDir)) {
+    try {
+        const files = fs.readdirSync(modelsDir);
+        const expectedModels = [
+            "Student", "Attendance", "BadgeAward", "BlockList", "BotQuery", 
+            "CertificateRequest", "Coordinator", "DocumentHistory", "EcosystemNotification", 
+            "EcosystemUser", "FounderProfile", "HR", "InvestorProfile", "MailHistory", 
+            "MentorProfile", "Message", "Notice", "Notification", "Payment", 
+            "PaymentTransaction", "Promotion", "SystemKnowledge", "TalentProfile", "UserRole"
+        ];
+        for (const model of expectedModels) {
+            const found = files.find(f => f.toLowerCase() === `${model.toLowerCase()}.js`);
+            if (found && found !== `${model}.js`) {
+                console.log(`[Casing Auto-Repair] Renaming ${found} to ${model}.js for Linux compatibility.`);
+                try {
+                    fs.renameSync(path.join(modelsDir, found), path.join(modelsDir, `${model}.js`));
+                } catch (err) {
+                    console.error(`[Casing Auto-Repair Failed] Could not rename ${found}:`, err.message);
+                }
+            }
+        }
+    } catch (e) {
+        console.error("[Casing Auto-Repair Error]", e.message);
+    }
+}
+
 const cors = require("cors");
 const express = require("express");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const nodemailer = require("nodemailer");
-const fs = require("fs");
 
 const Student = require("./models/Student");
 if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDate:    { type: Date } });
@@ -37,7 +66,7 @@ const autoMailLogSchema = new mongoose.Schema({
 });
 const AutoMailLog = mongoose.model('AutoMailLog', autoMailLogSchema);
 
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const QRCode = require("qrcode");
@@ -63,7 +92,19 @@ const ALL_DOMAINS = [
 // SECURITY: Passwords are loaded from environment variables in production.
 // The fallback defaults below are for LOCAL DEVELOPMENT ONLY and should be
 // overridden via HR_CREDENTIALS / COORDINATOR_CREDENTIALS env vars in production.
-const _hrCredsEnv = process.env.HR_CREDENTIALS ? JSON.parse(process.env.HR_CREDENTIALS) : null;
+let _hrCredsEnv = null;
+if (process.env.HR_CREDENTIALS) {
+    try {
+        _hrCredsEnv = JSON.parse(process.env.HR_CREDENTIALS);
+    } catch (e) {
+        console.warn("Warning: HR_CREDENTIALS is not valid JSON. Using as raw default password for hr_admin and hr_manager.", e.message);
+        _hrCredsEnv = {
+            "hr_admin": process.env.HR_CREDENTIALS,
+            "hr_manager": process.env.HR_CREDENTIALS
+        };
+    }
+}
+
 const HR_ACCOUNTS = _hrCredsEnv ? {
     "hr_admin":   { password: _hrCredsEnv.hr_admin   || "", name: "HR Administrator", email: "hr.admin@ten.local" },
     "hr_manager": { password: _hrCredsEnv.hr_manager || "", name: "HR Manager",       email: "hr.manager@ten.local" }
@@ -72,7 +113,6 @@ const HR_ACCOUNTS = _hrCredsEnv ? {
     "hr_manager": { password: "CHANGE_ME_hr_manager", name: "HR Manager",       email: "hr.manager@ten.local" }
 };
 
-const _coordCredsEnv = process.env.COORDINATOR_CREDENTIALS ? JSON.parse(process.env.COORDINATOR_CREDENTIALS) : null;
 const _COORD_DOMAINS = {
     "devops_aws_admin":      "DevOps with AWS",
     "python_admin":          "Python Development",
@@ -91,6 +131,20 @@ const _COORD_DOMAINS = {
     "businessanalyst_admin": "Business Analyst",
     "hr_domain_admin":       "HR"
 };
+
+let _coordCredsEnv = null;
+if (process.env.COORDINATOR_CREDENTIALS) {
+    try {
+        _coordCredsEnv = JSON.parse(process.env.COORDINATOR_CREDENTIALS);
+    } catch (e) {
+        console.warn("Warning: COORDINATOR_CREDENTIALS is not valid JSON. Using as raw default password for coordinators.", e.message);
+        _coordCredsEnv = {};
+        for (const username of Object.keys(_COORD_DOMAINS)) {
+            _coordCredsEnv[username] = process.env.COORDINATOR_CREDENTIALS;
+        }
+    }
+}
+
 const COORDINATORS = {};
 for (const [username, domain] of Object.entries(_COORD_DOMAINS)) {
     COORDINATORS[username] = {
@@ -102,7 +156,7 @@ for (const [username, domain] of Object.entries(_COORD_DOMAINS)) {
 const app = express();
 
 // ===== Production config =====
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || "https://virtualinternships.entrepreneurshipnetwork.net";
 
 // Ensure uploads directory exists (multer writes to it)
@@ -122,7 +176,7 @@ app.use(cors(_corsOrigins ? {
 } : undefined));
 
 app.use(express.json());
-app.use(express.static("public"));
+app.use(express.static("public", { extensions: ["html"] }));
 app.use('/uploads', express.static('uploads'));
 
 
@@ -202,20 +256,36 @@ const upload = multer({
 
 // ================= MAIL =================
 
-const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+const hasEmailCreds = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
 
-transporter.verify((error)=>{
-    if(error){ console.error("Email transporter verification failed:", error.message); }
-    else{ console.log("Email Server Ready"); }
-});
+let transporter;
+if (hasEmailCreds) {
+    transporter = nodemailer.createTransport({
+        host: "smtp-relay.brevo.com",
+        port: 587,
+        secure: false,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+
+    transporter.verify((error)=>{
+        if(error){
+            console.warn("Email transporter verification warning:", error.message);
+        } else {
+            console.log("Email Server Ready");
+        }
+    });
+} else {
+    console.log("Email credentials not fully configured. Email sending will be logged to console instead.");
+    transporter = {
+        sendMail: async (options) => {
+            console.log(`[MOCK EMAIL] To: ${options.to}, Subject: ${options.subject}`);
+            return { messageId: "mock-id-" + Date.now() };
+        }
+    };
+}
 
 async function runActivityMailer(){
     try{
@@ -569,9 +639,19 @@ app.get("/hr-login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-
 app.get("/login",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","login.html")); });
 app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","register.html")); });
 app.get("/hr/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
+app.get("/hr/login",     (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-login.html")); });
 app.get("/my-internships", (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-internships.html")); });
 app.get("/talent-network", (req,res)=>{ res.sendFile(path.join(__dirname,"public","talent-network.html")); });
 app.get("/programs", (req,res)=>{ res.sendFile(path.join(__dirname,"public","programs.html")); });
+app.get("/community", (req,res)=>{ res.sendFile(path.join(__dirname,"public","community.html")); });
+app.get("/student/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-dashboard.html")); });
+app.get("/student-dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-dashboard.html")); });
+app.get("/coordinator/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coordinator-dashboard.html")); });
+app.get("/coordinator/login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coordinator-login.html")); });
+app.get("/my-certificates", (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-certificates.html")); });
+app.get("/my-documents",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-documents.html")); });
+app.get("/v2-tasks",        (req,res)=>{ res.sendFile(path.join(__dirname,"public","v2-tasks.html")); });
+app.get("/register-hub",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","register-hub.html")); });
 app.get("/founder/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
 app.get("/mentor/directory",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-directory.html")); });
 app.get("/investor/directory",(req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-directory.html")); });
@@ -4909,4 +4989,4 @@ io.on("connection", (socket) => {
 });
 
 
-server.listen(PORT, ()=>{ console.log(`Server running on port ${PORT}`); });
+server.listen(PORT, "0.0.0.0", ()=>{ console.log(`Server running on port ${PORT}`); });

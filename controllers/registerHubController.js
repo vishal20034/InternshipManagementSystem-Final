@@ -7,7 +7,7 @@
  */
 
 const path          = require('path');
-const bcrypt        = require('bcrypt');
+const bcrypt        = require('bcryptjs');
 const EcosystemUser = require('../models/EcosystemUser');
 const Student       = require('../models/Student');
 const HR            = require('../models/HR');
