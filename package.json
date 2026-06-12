@@ -6,9 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "echo 'No build required'",
-    "lint": "echo 'No lint required'",
-    "test": "jest --forceExit --detectOpenHandles",
+    "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "node seeds/domainTasks.seed.js",
     "seed:fresh": "node seeds/dropAndReseed.js",
     "seed:quiz": "node seeds/quizQuestions.seed.js"
@@ -18,7 +16,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -37,8 +35,5 @@
     "razorpay": "^2.9.6",
     "socket.io": "^4.8.3",
     "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "jest": "^30.4.2"
   }
 }
