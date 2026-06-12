@@ -1,126 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Programs — TEN Platform</title>
-  <link rel="stylesheet" href="/css/design-system.css" />
-  <link rel="stylesheet" href="/css/components.css" />
-  <script src="/js/theme-toggle.js" defer></script>
-  <script src="/js/components.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Programs — TEN Portal</title>
+<link rel="stylesheet" href="ten-theme.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg-base:#05070e;--bg-surface:#090d1a;--bg-card:#0e1428;--border:rgba(212,175,55,0.08);--border-strong:rgba(212,175,55,0.18);--accent-gold:#D4AF37;--text-primary:#F0EEE8;--text-secondary:#9a9080;}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-base);color:var(--text-primary);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;padding:24px;}
+body::before{content:'';position:fixed;top:-200px;left:-200px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,.04),transparent 70%);pointer-events:none;}
+.top-bar{display:flex;align-items:center;gap:16px;margin-bottom:32px;}
+.back-btn{background:var(--bg-card);border:1px solid var(--border-strong);color:var(--text-primary);padding:10px 20px;border-radius:10px;cursor:pointer;font-size:14px;text-decoration:none;transition:.2s;}
+.back-btn:hover{border-color:var(--accent-gold);color:var(--accent-gold);}
+.hero{text-align:center;padding:48px 24px 40px;}
+.hero-badge{display:inline-block;padding:6px 16px;background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.2);border-radius:20px;font-size:13px;color:var(--accent-gold);margin-bottom:16px;}
+.hero h1{font-size:40px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,#F0EEE8,var(--accent-gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero p{color:var(--text-secondary);font-size:16px;max-width:600px;margin:0 auto 32px;}
+.apply-bar{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;}
+.btn-primary{padding:14px 32px;background:linear-gradient(135deg,var(--accent-gold),#b8962e);color:#05070e;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;transition:.2s;text-decoration:none;}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,.3);}
+.btn-outline{padding:14px 32px;background:transparent;border:1px solid var(--border-strong);color:var(--text-primary);border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;transition:.2s;text-decoration:none;}
+.btn-outline:hover{border-color:var(--accent-gold);color:var(--accent-gold);}
+.section-title{font-size:22px;font-weight:700;margin-bottom:20px;color:var(--accent-gold);}
+.programs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;max-width:1200px;margin:0 auto 60px;}
+.prog-card{background:var(--bg-card);border:1px solid var(--border);border-radius:20px;padding:28px;transition:.3s;position:relative;overflow:hidden;}
+.prog-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--prog-color,var(--accent-gold));}
+.prog-card:hover{border-color:var(--border-strong);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.4);}
+.prog-icon{font-size:40px;margin-bottom:16px;}
+.prog-name{font-size:20px;font-weight:700;margin-bottom:8px;}
+.prog-desc{color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:20px;}
+.prog-meta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;}
+.prog-meta-item{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);}
+.prog-meta-item span{font-weight:600;color:var(--text-primary);}
+.enroll-btn{width:100%;padding:12px;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:.2s;background:var(--prog-color,var(--accent-gold));color:#05070e;}
+.enroll-btn:hover{opacity:.85;transform:translateY(-1px);}
+.duration-tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:0 auto 36px;max-width:600px;}
+.dur-tab{padding:8px 20px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;transition:.2s;}
+.dur-tab.active,.dur-tab:hover{border-color:var(--accent-gold);color:var(--accent-gold);background:rgba(212,175,55,.05);}
+</style>
 </head>
-<body class="dashboard-layout">
+<body>
+<div class="top-bar">
+  <a href="index.html" class="back-btn">← Home</a>
+</div>
+<div class="hero">
+  <div class="hero-badge">🎓 TEN Internship Programs</div>
+  <h1>Launch Your Tech Career</h1>
+  <p>Join world-class internship programs across 15+ domains. Get hands-on experience, mentorship, and a verified certificate.</p>
+  <div class="apply-bar">
+    <a href="register.html" class="btn-primary">Apply Now →</a>
+    <a href="login.html" class="btn-outline">Student Login</a>
+  </div>
+</div>
 
-  <aside class="sidebar">
-    <a class="sidebar__logo" href="/dashboard">⚡ TEN</a>
-    <nav class="sidebar__nav">
-      <a href="/dashboard"      class="nav-item">🏠 Dashboard</a>
-      <a href="/founder-os"     class="nav-item nav-item--new" data-roles="founder,admin">🚀 Founder OS</a>
-      <a href="/talent-network" class="nav-item nav-item--new">🌐 Talent Network</a>
-      <a href="/programs"       class="nav-item nav-item--new nav-item--active">📋 Programs</a>
-      <a href="/community"      class="nav-item nav-item--new">👥 Community</a>
-    </nav>
-    <div class="sidebar__footer">
-      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm" style="width:100%">🌙 Dark Mode</button>
-    </div>
-  </aside>
+<div style="max-width:1200px;margin:0 auto;">
+<div class="duration-tabs">
+  <div class="dur-tab active" onclick="filterDur('all',this)">All Durations</div>
+  <div class="dur-tab" onclick="filterDur('45days',this)">45 Days</div>
+  <div class="dur-tab" onclick="filterDur('1month',this)">1 Month</div>
+  <div class="dur-tab" onclick="filterDur('3months',this)">3 Months</div>
+  <div class="dur-tab" onclick="filterDur('6months',this)">6 Months</div>
+</div>
 
-  <header class="topbar">
-    <button class="btn btn--ghost btn--sm" data-sidebar-toggle>☰</button>
-    <input class="topbar__search" type="search" placeholder="Search programs…" />
-    <div class="topbar__actions">
-      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm">🌙</button>
-    </div>
-  </header>
+<div class="section-title">🔥 Available Programs</div>
+<div class="programs-grid" id="programsGrid"></div>
+</div>
 
-  <main class="main-content">
-    <div class="page-header">
-      <h1 class="page-header__title">📋 Programs</h1>
-      <p class="page-header__subtitle">Discover internships, bootcamps, and fellowship opportunities</p>
-    </div>
+<script>
+const PROGRAMS = [
+  {name:'MERN Stack Development',icon:'⚛️',color:'#10b981',desc:'Build full-stack web applications using MongoDB, Express.js, React, and Node.js. Work on real-world projects.',skills:['React','Node.js','MongoDB','REST APIs'],level:'Intermediate'},
+  {name:'Artificial Intelligence',icon:'🤖',color:'#8b5cf6',desc:'Dive deep into machine learning, neural networks, and AI-powered application development.',skills:['Python','TensorFlow','NLP','Computer Vision'],level:'Advanced'},
+  {name:'Data Science',icon:'📊',color:'#3b82f6',desc:'Master data analysis, visualization, and predictive modelling using industry tools.',skills:['Python','Pandas','SQL','Matplotlib'],level:'Intermediate'},
+  {name:'Python Development',icon:'🐍',color:'#f59e0b',desc:'Build robust backend systems, automation scripts, and web applications with Python.',skills:['Python','Django','Flask','APIs'],level:'Beginner'},
+  {name:'Web Development',icon:'🌐',color:'#06b6d4',desc:'Create stunning, responsive web applications with modern frontend and backend technologies.',skills:['HTML/CSS','JavaScript','React','Node.js'],level:'Beginner'},
+  {name:'Cyber Security',icon:'🛡️',color:'#ef4444',desc:'Learn ethical hacking, penetration testing, and digital forensics to protect systems.',skills:['Kali Linux','Networking','OSINT','Pen Testing'],level:'Intermediate'},
+  {name:'DevOps with AWS',icon:'☁️',color:'#f97316',desc:'Master cloud infrastructure, CI/CD pipelines, containerization, and DevOps practices.',skills:['AWS','Docker','Kubernetes','CI/CD'],level:'Advanced'},
+  {name:'Java Development',icon:'☕',color:'#eab308',desc:'Build enterprise-grade applications with Java, Spring Boot, and microservices architecture.',skills:['Java','Spring Boot','JPA','Microservices'],level:'Intermediate'},
+  {name:'Flutter Development',icon:'📱',color:'#ec4899',desc:'Develop beautiful cross-platform mobile apps for iOS and Android using Flutter and Dart.',skills:['Flutter','Dart','Firebase','Mobile UI'],level:'Intermediate'},
+  {name:'Software Engineering',icon:'⚙️',color:'#6366f1',desc:'Master system design, algorithms, data structures, and software engineering best practices.',skills:['DSA','System Design','Design Patterns','Testing'],level:'Advanced'},
+  {name:'HR Management',icon:'👥',color:'#14b8a6',desc:'Learn HR analytics, talent acquisition, employee engagement, and compliance.',skills:['HR Analytics','Talent Acquisition','Compliance','L&D'],level:'Beginner'},
+  {name:'Venture Capital',icon:'💰',color:'#D4AF37',desc:'Understand startup investment, due diligence, term sheets, and portfolio management.',skills:['Investment Analysis','Due Diligence','Finance','Startup Evaluation'],level:'Advanced'},
+  {name:'Vibe Coding',icon:'🎵',color:'#a78bfa',desc:'Learn modern, aesthetic, and AI-augmented development. Ship products fast.',skills:['AI Tools','Rapid Prototyping','No-Code','Design'],level:'Beginner'},
+  {name:'Space Research',icon:'🚀',color:'#818cf8',desc:'Explore aerospace technology, satellite systems, and space entrepreneurship.',skills:['Physics','Data Analysis','Research','Simulation'],level:'Advanced'},
+  {name:'Business Analyst',icon:'📈',color:'#34d399',desc:'Develop skills in business analysis, requirements gathering, and process optimization.',skills:['Data Analysis','SQL','Tableau','Process Mapping'],level:'Beginner'},
+];
 
-    <!-- Filter Tabs -->
-    <div class="tabs" data-tabs-container>
-      <div class="tab tab--active" data-tab="tab-all">All</div>
-      <div class="tab" data-tab="tab-internship">Internship</div>
-      <div class="tab" data-tab="tab-bootcamp">Bootcamp</div>
-      <div class="tab" data-tab="tab-fellowship">Fellowship</div>
-    </div>
+const DURATIONS = ['45 Days','1 Month','3 Months','6 Months'];
 
-    <!-- All Programs (shown by default) -->
-    <div id="tab-all" class="tab-panel tab-panel--active">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-6);">
+let activeDur = 'all';
 
-        <div class="card card--bordered">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-3);">
-            <span class="badge badge--primary">Internship</span>
-            <span class="badge badge--success">Open</span>
-          </div>
-          <h3 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-2);">TEN Summer Internship Program</h3>
-          <p style="color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:var(--space-4);">Work on real projects with top startups across Web, Data Science, and more. Mentorship included.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4);font-size:var(--text-sm);">
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DURATION</div><div>3 Months</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">STIPEND</div><div>₹5,000 / mo</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">SEATS</div><div>50</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DEADLINE</div><div>July 31, 2026</div></div>
-          </div>
-          <a href="/register" class="btn btn--primary btn--sm">Apply Now →</a>
-        </div>
-
-        <div class="card card--bordered">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-3);">
-            <span class="badge badge--secondary">Fellowship</span>
-            <span class="badge badge--warning">Limited Seats</span>
-          </div>
-          <h3 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-2);">Founder Accelerator Cohort</h3>
-          <p style="color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:var(--space-4);">6-week intensive for early-stage founders. Mentorship, investor access, and go-to-market support.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4);font-size:var(--text-sm);">
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DURATION</div><div>6 Weeks</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">STIPEND</div><div>Equity-based</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">SEATS</div><div>15</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DEADLINE</div><div>Aug 15, 2026</div></div>
-          </div>
-          <a href="/register-hub" class="btn btn--primary btn--sm">Apply as Founder →</a>
-        </div>
-
-        <div class="card card--bordered">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-3);">
-            <span class="badge badge--info">Mentorship</span>
-            <span class="badge badge--success">Open</span>
-          </div>
-          <h3 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-2);">Mentor-in-Residence</h3>
-          <p style="color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:var(--space-4);">Experienced professionals guide TEN's intern cohort for a semester. Flexible commitment. Paid engagement.</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4);font-size:var(--text-sm);">
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DURATION</div><div>1 Semester</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">COMP</div><div>₹15,000 / mo</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">SEATS</div><div>10</div></div>
-            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DEADLINE</div><div>Rolling</div></div>
-          </div>
-          <a href="/register-hub" class="btn btn--primary btn--sm">Apply as Mentor →</a>
-        </div>
-
+function renderPrograms(programs) {
+  document.getElementById('programsGrid').innerHTML = programs.map(p => `
+    <div class="prog-card" style="--prog-color:${p.color}">
+      <div class="prog-icon">${p.icon}</div>
+      <div class="prog-name">${p.name}</div>
+      <div class="prog-desc">${p.desc}</div>
+      <div class="prog-meta">
+        <div class="prog-meta-item">📚 <span>${p.level}</span></div>
+        <div class="prog-meta-item">🏆 <span>Certificate</span></div>
+        <div class="prog-meta-item">👨‍💻 <span>Remote</span></div>
       </div>
-    </div>
-    <div id="tab-internship" class="tab-panel"></div>
-    <div id="tab-bootcamp"   class="tab-panel"></div>
-    <div id="tab-fellowship" class="tab-panel"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+        ${p.skills.map(s=>`<span style="padding:3px 10px;background:${p.color}15;border:1px solid ${p.color}30;border-radius:12px;font-size:11px;color:${p.color}">${s}</span>`).join('')}
+      </div>
+      <button class="enroll-btn" onclick="window.location.href='register.html?domain=${encodeURIComponent(p.name)}'">Apply for This Program →</button>
+    </div>`).join('');
+}
 
-    <!-- CTA Banner -->
-    <div style="background:linear-gradient(135deg,#6366F1,#06B6D4);border-radius:var(--radius-xl);padding:var(--space-8);text-align:center;margin-top:var(--space-8);color:#fff;">
-      <h2 style="font-size:var(--text-2xl);font-weight:800;color:#fff;margin-bottom:var(--space-2);">Have a program to list?</h2>
-      <p style="opacity:0.9;margin-bottom:var(--space-4);">Partner with TEN to reach thousands of talented students and founders.</p>
-      <a href="mailto:programs@ten-platform.dev" class="btn" style="background:#fff;color:#6366F1;font-weight:600;">Contact Us</a>
-    </div>
-  </main>
+function filterDur(dur, el) {
+  activeDur = dur;
+  document.querySelectorAll('.dur-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderPrograms(PROGRAMS);
+}
 
-  <script>
-    // Tab filter content
-    document.addEventListener('DOMContentLoaded', function() {
-      var internHTML = document.getElementById('tab-all').querySelector('.card--bordered:first-child');
-      document.getElementById('tab-internship').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-6);">' + (internHTML ? internHTML.outerHTML : '') + '</div>';
-      document.getElementById('tab-bootcamp').innerHTML   = '<div class="empty-state"><div class="empty-state__icon">🏗️</div><div class="empty-state__title">Coming Soon</div><div class="empty-state__desc">Bootcamp listings will be available in Phase 2.</div></div>';
-      document.getElementById('tab-fellowship').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-6);">' + (document.querySelectorAll('.card--bordered')[1] ? document.querySelectorAll('.card--bordered')[1].outerHTML : '') + '</div>';
-    });
-  </script>
+renderPrograms(PROGRAMS);
+</script>
 </body>
 </html>
