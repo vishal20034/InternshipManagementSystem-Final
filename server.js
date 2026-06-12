@@ -432,6 +432,20 @@ app.get("/hr-login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-
 app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","register.html")); });
 app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coming-soon.html")); });
 
+// ── Phase 2 page routes ─────────────────────────────────────────────────────
+app.get("/login",             (req,res)=>{ res.sendFile(path.join(__dirname,"public","login.html")); });
+app.get("/my-internships",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-internships.html")); });
+app.get("/talent-network",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","talent-network.html")); });
+app.get("/programs",          (req,res)=>{ res.sendFile(path.join(__dirname,"public","programs.html")); });
+app.get("/founder/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
+app.get("/mentor/directory",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-directory.html")); });
+app.get("/investor/directory",(req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-directory.html")); });
+app.get("/hr/dashboard",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-ecosystem.html")); });
+app.get("/founder-os",        (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-os.html")); });
+app.get("/community",         (req,res)=>{ res.sendFile(path.join(__dirname,"public","community.html")); });
+app.get("/payment",           (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
+app.get("/payment-return",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-return.html")); });
+
 // ================= EMPLOYEE ID =================
 
 async function generateEmployeeId(domain){
