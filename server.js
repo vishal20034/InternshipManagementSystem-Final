@@ -530,9 +530,55 @@ app.get("/my-internships", (req,res)=>{ res.sendFile(path.join(__dirname,"public
 app.get("/talent-network", (req,res)=>{ res.sendFile(path.join(__dirname,"public","talent-network.html")); });
 app.get("/programs", (req,res)=>{ res.sendFile(path.join(__dirname,"public","programs.html")); });
 app.get("/founder/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
-app.get("/mentor/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-directory.html")); });
-app.get("/investor/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-directory.html")); });
-app.get("/payment/success", (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-success.html")); });
+app.get("/mentor/directory",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-directory.html")); });
+app.get("/investor/directory",(req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-directory.html")); });
+app.get("/founder-os",        (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
+app.get("/payment",           (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
+app.get("/payment.html",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
+app.get("/payment/success",   (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-success.html")); });
+
+// ── Public payment config (safe — no secrets) ─────────────────────────────
+app.get("/api/payment/config", (req, res) => {
+    res.json({
+        upiId:   process.env.UPI_ID   || "paytmqr5k0ods@ptys",
+        upiName: process.env.UPI_NAME || "TEN Entrepreneurship Network",
+        currency: "INR"
+    });
+});
+
+// ── Verify UTR and auto-approve certificate ────────────────────────────────
+app.post("/api/payment/verify-utr", async (req, res) => {
+    try {
+        const { utr, certType, empId, orderId } = req.body;
+        if (!utr || !certType || !empId)
+            return res.status(400).json({ success: false, message: "utr, certType and empId are required" });
+
+        const student = await Student.findOne({ employeeId: String(empId) });
+        if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+        const StudentCertificate = require("./models/new/StudentCertificate");
+        let certRecord = await StudentCertificate.findOne({ studentId: student._id, certificateType: certType });
+        if (!certRecord) {
+            certRecord = new StudentCertificate({
+                studentId:       student._id,
+                certificateType: certType,
+                domain:          student.domain || "",
+                paymentStatus:   "pending"
+            });
+        }
+        certRecord.paymentStatus = "paid";
+        certRecord.paymentTxnId  = String(utr).trim();
+        certRecord.paymentPaidAt = new Date();
+        if (orderId) certRecord.orderId = orderId;
+        await certRecord.save();
+
+        console.log(`[Payment] UTR verified & cert unlocked: ${certType} for ${empId}, UTR: ${utr}`);
+        res.json({ success: true, message: "Payment verified! Your certificate is now ready to download.", certType, empId });
+    } catch (err) {
+        console.error("[Payment] verify-utr error:", err.message);
+        res.status(500).json({ success: false, message: "Error verifying payment: " + err.message });
+    }
+});
 
 // ── PaymentSetu — Create Order ────────────────────────────────────────────
 app.post("/api/payment/create-order", async (req, res) => {
