@@ -64,6 +64,18 @@ const talentProfileSchema = new mongoose.Schema({
   profileScore: { type: Number, default: 0, min: 0, max: 100 },
   isVerified:   { type: Boolean, default: false },
   verifiedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'EcosystemUser', default: null },
+  // Phase 2 additions
+  rating:          { type: Number, default: 0, min: 0, max: 5 },
+  reviewCount:     { type: Number, default: 0 },
+  profileViews:    { type: Number, default: 0 },
+  resumeUrl:       { type: String, trim: true, default: '' },
+  avatarUrl:       { type: String, trim: true, default: '' },
+  location:        { type: String, trim: true, default: '' },
+  languages:       [{ name: { type: String }, proficiency: { type: String } }],
+  certifications:  [{ name: String, issuer: String, year: Number, url: String }],
+  achievements:    [{ title: String, description: String, year: Number }],
+  verificationStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  rejectionReason: { type: String, default: '' },
 }, { timestamps: true });
 
 /** Auto-calculate profile completeness score before every save. */

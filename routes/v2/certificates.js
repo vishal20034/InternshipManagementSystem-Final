@@ -190,9 +190,9 @@ router.post("/certificates/claim/:type", requireStudent, async (req, res) => {
         // Check for existing cert record
         let certRecord = await StudentCertificate.findOne({ studentId: student._id, certificateType: type });
 
-        // ── Payment redirect — send student to internal UPI payment page ──
+        // ── Payment via PaymentSetu — redirect to hosted payment page ──
         const orderId = `CERT_${student._id}_${type}_${Date.now()}`;
-        const priceRs = paymentConfig.CERT_PRICES[type] || 0;
+        const pricePaise = paymentConfig.CERT_PRICES[type] || 0;
 
         if (!certRecord) {
             certRecord = await StudentCertificate.create({
@@ -207,13 +207,39 @@ router.post("/certificates/claim/:type", requireStudent, async (req, res) => {
             await certRecord.save();
         }
 
-        const paymentUrl = `/payment.html?type=${type}&amount=${priceRs}&orderId=${orderId}&empId=${student.employeeId}`;
+        // If already paid, return download status
+        if (certRecord && certRecord.paymentStatus === "paid") {
+            return res.json({ success: true, status: "paid", message: "Certificate already paid. You can download it now." });
+        }
+
+        // Call PaymentSetu API to create order and get hosted payment URL
+        const axios = require("axios");
+        const baseUrl = process.env.BASE_URL || `https://${req.headers.host}`;
+        const redirectUrl = `${baseUrl}/payment/success?orderId=${orderId}&certType=${type}&empId=${student.employeeId}`;
+
+        const paymentRes = await axios.post("https://paymentsetu.com/api/create_order", {
+            order_id:        orderId,
+            amount:          pricePaise,
+            redirect_url:    redirectUrl,
+            customer_name:   student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
+            customer_email:  student.email || "",
+            customer_mobile: student.whatsapp || "9999999999",
+            remarks:         `TEN ${type} certificate — ${student.employeeId}`
+        }, {
+            headers: { "Authorization": `Bearer ${process.env.PAYMENTSETU_API_KEY}`, "Content-Type": "application/json" },
+            timeout: 15000
+        });
+
+        if (!paymentRes.data || !paymentRes.data.status) {
+            return res.status(502).json({ success: false, message: paymentRes.data?.msg || "Payment gateway error. Please try again." });
+        }
+
         res.json({
             success:        true,
             status:         "payment_redirect",
-            paymentUrl,
+            paymentUrl:     paymentRes.data.payment_url,
             orderId,
-            amount:         priceRs * 100,
+            amount:         pricePaise,
             paymentEnabled: true
         });
     } catch (err) {

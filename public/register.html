@@ -44,7 +44,7 @@
     document.getElementById("regForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target));
-      const res = await fetch("/api/register-hub", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data) });
+      const res = await fetch("/api/register-hub/register", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data) });
       const json = await res.json();
       if (json.success) { alert("Registration successful! Please log in."); window.location.href = "/"; }
       else { alert("Error: " + (json.error || "Registration failed")); }
