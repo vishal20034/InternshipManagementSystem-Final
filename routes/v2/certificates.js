@@ -293,7 +293,7 @@ router.post("/certificates/generate-pdf/:type", requireStudent, async (req, res)
                 sentBy: "System",
                 sentToEmail: student.email || ""
             });
-        } catch (_) {}
+        } catch (histErr) { console.error("[CERT] document-history save failed:", histErr.message); }
 
         res.json({ success: true, pdfUrl, certificateId: certRecord.certificateId, verificationUrl: certRecord.verificationUrl });
     } catch (err) {

@@ -170,7 +170,7 @@ const transporter = nodemailer.createTransport({
 });
 
 transporter.verify((error)=>{
-    if(error){ console.log(error); }
+    if(error){ console.error("Email transporter verification failed:", error.message); }
     else{ console.log("Email Server Ready"); }
 });
 
@@ -214,7 +214,7 @@ async function runActivityMailer(){
                                 status: mailStatus,
                                 errorMessage: mailError
                             });
-                        } catch (_) {}
+                        } catch (histErr) { console.error("[mail-history] failed to log active-appreciation:", histErr.message); }
                     }
                     await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
                 } else if(!lastActive || lastActive < fourteenDaysAgo){
@@ -242,16 +242,16 @@ async function runActivityMailer(){
                                 status: mailStatus,
                                 errorMessage: mailError
                             });
-                        } catch (_) {}
+                        } catch (histErr) { console.error("[mail-history] failed to log inactive-reengagement:", histErr.message); }
                     }
                     await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
                 }
             }catch(error){
-                console.log(error);
+                console.error(error);
             }
         }
     }catch(error){
-        console.log(error);
+        console.error(error);
     }
 }
 cron.schedule('0 9 * * 1', runActivityMailer);
@@ -390,7 +390,7 @@ async function sendAutoDocumentsToStudent(student, docType) {
                 status: mailStatus,
                 errorMessage: mailError
             });
-        } catch (_) {}
+        } catch (histErr) { console.error("[AUTO-DOCS] document-history save failed:", histErr.message); }
         console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
     } catch(err) {
         console.error('[AUTO-DOCS] Error:', err.message);
@@ -427,7 +427,7 @@ mongoose.connect(
     "mongodb://nagbishal07_db_user:_DXMzR6bkF!7Bc9@ac-kbv0ma9-shard-00-00.dtg7de6.mongodb.net:27017,ac-kbv0ma9-shard-00-01.dtg7de6.mongodb.net:27017,ac-kbv0ma9-shard-00-02.dtg7de6.mongodb.net:27017/?ssl=true&replicaSet=atlas-ekamxn-shard-0&authSource=admin&appName=Cluster0"
 )
 .then(()=>console.log("MongoDB Connected"))
-.catch((err)=>console.log("MongoDB error:", err.message));
+.catch((err)=>console.error("MongoDB connection error:", err.message));
 
 // ================= SCHEMAS =================
 
@@ -850,14 +850,14 @@ try{
                         status: mailStatus,
                         errorMessage: mailError
                     });
-                } catch (_) {}
+                } catch (histErr) { console.error("[register] mail-history save failed:", histErr.message); }
             }
-        }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
+        }catch(mailError){ console.error("[register] welcome email failed:", mailError && mailError.message); }
     }
 
     res.json({ success:true, employeeId, secondDomain: !isFirstRegistration });
 
-}catch(error){ console.log(error); res.status(500).json({ success:false, message:"Server Error" }); }
+}catch(error){ console.error(error); res.status(500).json({ success:false, message:"Server Error" }); }
 });
 
 // ================= LOGIN =================
@@ -869,7 +869,7 @@ try{
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
     await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
     res.json({ success:true, student });
-}catch(error){ res.status(500).json({ success:false, message:"Server Error" }); }
+}catch(error){ console.error(error); res.status(500).json({ success:false, message:"Server Error" }); }
 });
 
 // ================= SUBMIT TASK =================
@@ -917,8 +917,8 @@ try{
     await recomputeBadgesFor(employeeId);
     res.json({ success:true, message:"Task Submitted Successfully" });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, message:"Submission Failed" });
+    console.error(error);
+    res.status(500).json({ success:false, message:"Submission Failed" });
 }
 });
 
@@ -930,8 +930,8 @@ try{
     const submissions = await Submission.find({ employeeId }).sort({ submittedAt:-1 });
     res.json({ success:true, submissions });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, submissions:[] });
+    console.error(error);
+    res.status(500).json({ success:false, submissions:[] });
 }
 });
 
@@ -943,8 +943,8 @@ try{
     const submissions = await Submission.find({ domain }).sort({ submittedAt:-1 });
     res.json(submissions);
 }catch(error){
-    console.log(error);
-    res.json([]);
+    console.error(error);
+    res.status(500).json([]);
 }
 });
 
@@ -1002,8 +1002,8 @@ try{
 
     res.json({ success:true, message:"Status Updated Successfully" });
 }catch(error){
-    console.log(error);
-    res.json({ success:false });
+    console.error(error);
+    res.status(500).json({ success:false });
 }
 });
 
@@ -1062,8 +1062,8 @@ try{
 
     res.json({ success:true, message:"Attendance Submitted", thresholdMsg, attendanceCount: count });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, message:"Attendance Failed" });
+    console.error(error);
+    res.status(500).json({ success:false, message:"Attendance Failed" });
 }
 });
 
@@ -1087,7 +1087,7 @@ function removeSSEClient(key, res){
 }
 
 function sendSSE(res, data){
-    try{ res.write(`data: ${JSON.stringify(data)}\n\n`); } catch(e){}
+    try{ res.write(`data: ${JSON.stringify(data)}\n\n`); } catch(e){ /* SSE write may fail if client disconnected */ }
 }
 
 function broadcastNotification(domain, employeeId, notif){
@@ -1185,7 +1185,7 @@ try{
 
     res.json({ success:true });
 }catch(error){
-    console.log(error);
+    console.error(error);
     res.status(500).json({ success:false });
 }
 });
@@ -1196,7 +1196,7 @@ app.get("/get-notice/:domain", async(req,res)=>{
 try{
     const notice = await Notice.findOne({ domain:req.params.domain });
     res.json(notice || {});
-}catch(error){ res.json({ success:false }); }
+}catch(error){ console.error(error); res.status(500).json({ success:false }); }
 });
 
 // ================= NOTIFICATIONS - GET FOR STUDENT =================
@@ -1220,8 +1220,8 @@ try{
     
     res.json({ success:true, notifications:notifs, unread });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, notifications:[], unread:0 });
+    console.error(error);
+    res.status(500).json({ success:false, notifications:[], unread:0 });
 }
 });
 
@@ -1244,8 +1244,8 @@ try{
     
     res.json({ success:true, notifications:notifs, unread });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, notifications:[], unread:0 });
+    console.error(error);
+    res.status(500).json({ success:false, notifications:[], unread:0 });
 }
 });
 
@@ -1259,7 +1259,8 @@ try{
     });
     res.json({ success:true });
 }catch(error){
-    res.json({ success:false });
+    console.error(error);
+    res.status(500).json({ success:false });
 }
 });
 
@@ -1310,8 +1311,8 @@ try{
     }
     res.json({ success:true, hr:{ username: identifier, email: hr.email || "", name:hr.name, role:"hr" } });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, message:"Server Error" });
+    console.error(error);
+    res.status(500).json({ success:false, message:"Server Error" });
 }
 });
 
@@ -1373,8 +1374,8 @@ try{
     
     res.json({ success:true, message:"Notification sent successfully" });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, message:"Failed to send notification" });
+    console.error(error);
+    res.status(500).json({ success:false, message:"Failed to send notification" });
 }
 });
 
@@ -1388,7 +1389,7 @@ try{
     }
     const students = await Student.find().sort({ createdAt:-1 });
     res.json({ success:true, students });
-}catch(error){ res.status(500).json({ message:"Error fetching students" }); }
+}catch(error){ console.error(error); res.status(500).json({ message:"Error fetching students" }); }
 });
 
 // ================= HR - SEND DOCUMENTS NOW =================
@@ -1445,7 +1446,7 @@ try{
     });
     res.json({ records: mapped, total, page });
 }catch(error){
-    console.log(error);
+    console.error(error);
     res.status(500).json({ records:[], total:0, page:1 });
 }
 });
@@ -1510,8 +1511,8 @@ try{
         verifiedAt:  s.documentVerifiedAt || null
     });
 }catch(error){
-    console.log(error);
-    res.json({ verified: false, message: "Student not found" });
+    console.error(error);
+    res.status(500).json({ verified: false, message: "Server error" });
 }
 });
 
@@ -1526,7 +1527,7 @@ try{
     const out = await verifyByDocumentNumber(documentNumber);
     res.json(out);
 }catch(error){
-    console.log(error);
+    console.error(error);
     res.status(500).json({ verified: false, message: "Server error during verification" });
 }
 });
@@ -1544,7 +1545,7 @@ try{
     const records = await AutoMailLog.find().sort({ sentAt: -1 }).skip(skip).limit(limit);
     res.json({ records, total, page });
 }catch(error){
-    console.log(error);
+    console.error(error);
     res.status(500).json({ records:[], total:0, page:1 });
 }
 });
@@ -1578,7 +1579,7 @@ try{
     }
     res.json({ totalInterns, activeThisMonth, inactiveInterns, newJoinsThisMonth });
 }catch(error){
-    console.log(error);
+    console.error(error);
     res.status(500).json({ totalInterns:0, activeThisMonth:0, inactiveInterns:0, newJoinsThisMonth:0 });
 }
 });
@@ -1614,7 +1615,7 @@ try{
     }
     res.json(months.map(x => ({ month: x.month, count: x.count })));
 }catch(error){
-    console.log(error);
+    console.error(error);
     res.status(500).json([]);
 }
 });
@@ -1657,7 +1658,7 @@ app.get('/api/hr/intern-list', async (req, res) => {
       college: s.collegeName || s.college
     }))});
   }catch(e){
-    console.log(e);
+    console.error(e);
     res.status(500).json({ students: [] });
   }
 });
@@ -1674,7 +1675,7 @@ try{
     const students = await Student.find({ domain }).sort({ createdAt:-1 });
     res.json({ success:true, students });
 }catch(error){ 
-    console.log(error);
+    console.error(error);
     res.status(500).json({ message:"Error fetching domain students" }); 
 }
 });
@@ -1720,7 +1721,7 @@ try{
 
     res.json({ success:true, coordinators: out });
 }catch(error){
-    console.log("Error fetching coordinators:", error);
+    console.error("Error fetching coordinators:", error.message);
     res.status(500).json({ success:false, message:"Error fetching coordinators" });
 }
 });
@@ -1735,7 +1736,7 @@ try{
     }
     const submissions = await Submission.find().sort({ submittedAt:-1 });
     res.json({ success:true, submissions: await attachStudentDetailsToSubmissions(submissions) });
-}catch(error){ res.status(500).json({ message:"Error" }); }
+}catch(error){ console.error(error); res.status(500).json({ message:"Error" }); }
 });
 
 app.get("/hr/submissions/filter", async(req,res)=>{
@@ -1748,7 +1749,7 @@ try{
     const query = status ? { status } : {};
     const submissions = await Submission.find(query).sort({ submittedAt:-1 });
     res.json({ success:true, submissions: await attachStudentDetailsToSubmissions(submissions) });
-}catch(error){ res.status(500).json({ message:"Error" }); }
+}catch(error){ console.error(error); res.status(500).json({ message:"Error" }); }
 });
 
 // ================= HR - GET STATS =================
@@ -1781,7 +1782,7 @@ try{
         domainStats,
         notifications
     });
-}catch(error){ res.status(500).json({ message:"Error" }); }
+}catch(error){ console.error(error); res.status(500).json({ message:"Error" }); }
 });
 
 // ================= HR - GET ALL NOTIFICATIONS SENT =================
@@ -1794,7 +1795,7 @@ try{
     }
     const notifs = await Notification.find().sort({ createdAt:-1 }).limit(100);
     res.json({ success:true, notifications:notifs });
-}catch(error){ res.status(500).json({ success:false }); }
+}catch(error){ console.error(error); res.status(500).json({ success:false }); }
 });
 
 // ================= HR - DELETE NOTIFICATION =================
@@ -1803,7 +1804,7 @@ app.delete("/hr/notifications/:id", async(req,res)=>{
 try{
     await Notification.findByIdAndDelete(req.params.id);
     res.json({ success:true });
-}catch(error){ res.json({ success:false }); }
+}catch(error){ console.error(error); res.status(500).json({ success:false }); }
 });
 
 // ================= ALL STUDENTS (legacy admin) =================
@@ -1816,7 +1817,7 @@ app.get("/students", async(req,res)=>{
     try{
         const students = await Student.find().sort({ createdAt:-1 });
         res.json(students);
-    }catch(error){ res.status(500).json({ message:"Error fetching students" }); }
+    }catch(error){ console.error(error); res.status(500).json({ message:"Error fetching students" }); }
 });
 
 // ================= UPDATE STUDENT =================
@@ -1834,7 +1835,7 @@ try{
     }
     await Student.findByIdAndUpdate(req.params.id, body, { new:true });
     res.json({ message:"Student Updated" });
-}catch(error){ res.status(500).json({ message:"Update Failed" }); }
+}catch(error){ console.error(error); res.status(500).json({ message:"Update Failed" }); }
 });
 
 // ================= DELETE STUDENT =================
@@ -1843,7 +1844,7 @@ app.delete("/students/:id", async(req,res)=>{
 try{
     await Student.findByIdAndDelete(req.params.id);
     res.json({ message:"Student deleted" });
-}catch(error){ res.status(500).json({ message:"Error deleting student" }); }
+}catch(error){ console.error(error); res.status(500).json({ message:"Error deleting student" }); }
 });
 
 // ================= STUDENT LOGIN =================
@@ -1895,8 +1896,8 @@ try{
         }
     });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, message:"Server Error" });
+    console.error(error);
+    res.status(500).json({ success:false, message:"Server Error" });
 }
 });
 
@@ -1933,8 +1934,8 @@ try{
     }
     return res.json({ success:false });
 }catch(error){
-    console.log(error);
-    res.json({ success:false });
+    console.error(error);
+    res.status(500).json({ success:false });
 }
 });
 
@@ -1948,8 +1949,8 @@ try{
     await TestQuestion.insertMany(docs);
     res.json({ success:true, message:"Test questions saved" });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, message:"Failed to save questions" });
+    console.error(error);
+    res.status(500).json({ success:false, message:"Failed to save questions" });
 }
 });
 
@@ -1961,8 +1962,8 @@ try{
     const questions = await TestQuestion.find({ domain }, { correctAnswer:0 });
     res.json({ success:true, questions });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, questions:[] });
+    console.error(error);
+    res.status(500).json({ success:false, questions:[] });
 }
 });
 
@@ -1992,8 +1993,8 @@ try{
 
     res.json({ success:true, score, totalQuestions:questions.length, percentage });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, message:"Test submission failed" });
+    console.error(error);
+    res.status(500).json({ success:false, message:"Test submission failed" });
 }
 });
 
@@ -2005,8 +2006,8 @@ try{
     const results = await TestResult.find({ domain }).sort({ percentage:-1, submittedAt:1 });
     res.json({ success:true, leaderboard:results });
 }catch(error){
-    console.log(error);
-    res.json({ success:false, leaderboard:[] });
+    console.error(error);
+    res.status(500).json({ success:false, leaderboard:[] });
 }
 });
 
@@ -2211,7 +2212,7 @@ try{
     res.json({ success:true, message:"Attendance marked for today", attendance:att });
 }catch(e){
     if(e.code === 11000) return res.json({ success:false, alreadyMarked:true, message:"Already marked for today" });
-    console.log(e); res.json({ success:false, message:"Failed to mark attendance" });
+    console.error("[attendance self] error:", e.message); res.status(500).json({ success:false, message:"Failed to mark attendance" });
 }
 });
 
@@ -2246,7 +2247,7 @@ try{
             });
             await notif.save();
             broadcastNotification(student.domain, employeeId, notif);
-        }catch(_){}
+        }catch(notifErr){ console.error("[notification] attendance-update notification failed:", notifErr.message); }
         return res.json({ success:true, updated:true, message:"Attendance updated", attendance:att });
     }
 
@@ -2266,11 +2267,11 @@ try{
         });
         await notif.save();
         broadcastNotification(student.domain, employeeId, notif);
-    }catch(_){}
+    }catch(notifErr){ console.error("[notification] attendance-mark notification failed:", notifErr.message); }
     res.json({ success:true, message:"Attendance marked", attendance:att });
 }catch(e){
     if(e.code === 11000) return res.json({ success:false, message:"Already marked for this date" });
-    console.log(e); res.json({ success:false, message:"Failed to mark attendance" });
+    console.error("[coordinator mark attendance] error:", e.message); res.status(500).json({ success:false, message:"Failed to mark attendance" });
 }
 });
 
@@ -2287,7 +2288,7 @@ try{
     if(coordinatorId) att.coordinatorId = coordinatorId;
     await att.save();
     res.json({ success:true, message:"Attendance updated", attendance:att });
-}catch(e){ console.log(e); res.json({ success:false, message:"Failed to update" }); }
+}catch(e){ console.error("[attendance PUT] error:", e.message); res.status(500).json({ success:false, message:"Failed to update" }); }
 });
 
 // ---- GET attendance history + stats for one student ----
@@ -2300,7 +2301,7 @@ try{
     const today = toDateKey(new Date());
     const markedToday = records.some(r => r.markedBy === "self" && r.dateKey === today);
     res.json({ success:true, attendance:records, stats, markedToday });
-}catch(e){ console.log(e); res.json({ success:false, attendance:[], stats:null }); }
+}catch(e){ console.error("[attendance GET] error:", e.message); res.status(500).json({ success:false, attendance:[], stats:null }); }
 });
 
 // ---- HR: attendance monitor (all students summary) ----
@@ -2322,7 +2323,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
+}catch(e){ console.error("[attendance monitor] error:", e.message); res.status(500).json({ success:false, students:[] }); }
 });
 
 // ---- COORDINATOR: student overview for their domain ----
@@ -2366,7 +2367,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
+}catch(e){ console.error("[coordinator student-overview] error:", e.message); res.status(500).json({ success:false, students:[] }); }
 });
 
 // ---- COORDINATOR: all attendance records for a domain (optionally one date) ----
@@ -2377,7 +2378,7 @@ try{
     if(req.query.date) query.dateKey = req.query.date;
     const records = await Attendance.find(query).sort({ date:-1 });
     res.json({ success:true, records });
-}catch(e){ console.log(e); res.json({ success:false, records:[] }); }
+}catch(e){ console.error("[coordinator attendance records] error:", e.message); res.status(500).json({ success:false, records:[] }); }
 });
 
 // ---- COORDINATOR: approve student for certificate consideration ----
@@ -2409,7 +2410,7 @@ try{
     broadcastNotification(student.domain, student.employeeId, notif);
 
     res.json({ success:true, message:"Student approved and sent to HR for review" });
-}catch(e){ console.log(e); res.json({ success:false, message:"Failed to approve" }); }
+}catch(e){ console.error("[coordinator approve] error:", e.message); res.status(500).json({ success:false, message:"Failed to approve" }); }
 });
 
 // ---- COORDINATOR: revoke a previously given approval ----
@@ -2428,7 +2429,7 @@ try{
     await student.save();
 
     res.json({ success:true, message:"Approval revoked" });
-}catch(e){ console.log(e); res.json({ success:false, message:"Failed to revoke" }); }
+}catch(e){ console.error("[coordinator revoke] error:", e.message); res.status(500).json({ success:false, message:"Failed to revoke" }); }
 });
 
 // ---- HR: list students approved by coordinator & awaiting HR review ----
@@ -2460,7 +2461,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
+}catch(e){ console.error("[HR pending list] error:", e.message); res.status(500).json({ success:false, students:[] }); }
 });
 
 // ---- HR: final approval ----
@@ -2495,7 +2496,7 @@ try{
     broadcastNotification(student.domain, student.employeeId, notif);
 
     res.json({ success:true, message:"Student fully approved for certificates" });
-}catch(e){ console.log(e); res.json({ success:false, message:"Failed to approve" }); }
+}catch(e){ console.error("[HR final approve] error:", e.message); res.status(500).json({ success:false, message:"Failed to approve" }); }
 });
 
 // ---- HR: reject (sends student back to coordinator with a reason) ----
@@ -2525,7 +2526,7 @@ try{
     await notif.save();
 
     res.json({ success:true, message:"Student rejected and returned to coordinator" });
-}catch(e){ console.log(e); res.json({ success:false, message:"Failed to reject" }); }
+}catch(e){ console.error("[HR reject] error:", e.message); res.status(500).json({ success:false, message:"Failed to reject" }); }
 });
 
 // ---- HR: list fully approved (certificate-eligible) students ----
@@ -2549,7 +2550,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
+}catch(e){ console.error("[HR approved list] error:", e.message); res.status(500).json({ success:false, students:[] }); }
 });
 
 // ==================================================================
@@ -2588,7 +2589,7 @@ try{
     await Submission.findByIdAndDelete(id);
     res.json({ success:true, message:"Submission deleted" });
 }catch(e){
-    console.log(e);
+    console.error(e);
     res.status(500).json({ success:false, message:"Failed to delete submission" });
 }
 });
@@ -2699,7 +2700,7 @@ try{
     const messages = await Message.find({ chatRoom: room }).sort({ timestamp: -1 }).limit(50);
     messages.reverse();   // chronological for the UI
     res.json({ success:true, messages });
-}catch(e){ console.log(e); res.status(500).json({ success:false, messages:[] }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false, messages:[] }); }
 });
 
 // REST fallback for delete (Socket.IO event is the primary path)
@@ -2717,7 +2718,7 @@ try{
     await Message.findByIdAndDelete(msg._id);
     if(io){ io.to(msg.chatRoom).emit("message_deleted", { messageId: String(msg._id), room: msg.chatRoom }); }
     res.json({ success:true });
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -2810,7 +2811,7 @@ try{
     if(!student) return res.status(404).json({ success:false, message:"Student not found" });
     const perf = await calculatePerformance(student);
     res.json({ success:true, performance: perf });
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -2930,10 +2931,10 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
                 sentAt: new Date(),
                 status: "sent"
             });
-        } catch (_) {}
+        } catch (histErr) { console.error("[promotion] mail-history save failed:", histErr.message); }
         return { ok: true };
     } catch(e){
-        console.log("Promotion email failed:", e.message);
+        console.error("[promotion] email failed:", e.message);
         try {
             await MailHistory.create({
                 recipientEmail: to,
@@ -2945,7 +2946,7 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
                 status: "failed",
                 errorMessage: e && e.message ? String(e.message) : ""
             });
-        } catch (_) {}
+        } catch (histErr) { console.error("[promotion] mail-history (failed) save failed:", histErr.message); }
         return { ok: false, error: e.message };
     }
 }
@@ -2999,7 +3000,7 @@ try{
     });
 
     res.json({ success:true, message:`Promotion email sent to ${student.email}`, emailSent: !!mail.ok, promotion:{ _id: record._id } });
-}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
 });
 
 // ---- HR: promote coordinator -> HR ----
@@ -3069,7 +3070,7 @@ try{
     });
 
     res.json({ success:true, message:`Promotion email sent to ${resolvedEmail}`, emailSent: !!mail.ok, promotion:{ _id: record._id } });
-}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
 });
 
 // ---- HR: list promotions ----
@@ -3085,7 +3086,7 @@ try{
         domain:p.domain, tempPasswordExpiresAt:p.tempPasswordExpiresAt,
         promotedByHRId:p.promotedByHRId
     })) });
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ---- Promoted user: verify temp credentials ----
@@ -3100,7 +3101,7 @@ try{
     const ok = await bcrypt.compare(tempPassword, rec.hashedTempPassword);
     if(!ok) return res.json({ valid:false, message:"Invalid temporary password" });
     res.json({ valid:true, name:rec.name, employeeId:rec.employeeId, newRole:rec.toRole, domain:rec.domain });
-}catch(e){ console.log(e); res.status(500).json({ valid:false, message:"Server error" }); }
+}catch(e){ console.error(e); res.status(500).json({ valid:false, message:"Server error" }); }
 });
 
 // ---- Promoted user: complete registration ----
@@ -3156,7 +3157,7 @@ try{
     await rec.save();
 
     res.json({ success:true, message:"Registration complete! Welcome to your new role.", redirect, role:rec.toRole });
-}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 // ==================================================================
@@ -3211,11 +3212,11 @@ async function awardBadgeIfNew(student, badgeId){
             });
             await notif.save();
             broadcastNotification(student.domain, student.employeeId, notif);
-        }catch(_){}
+        }catch(notifErr){ console.error("[notification] badge-award notification failed:", notifErr.message); }
         return award;
     }catch(e){
         if(e.code === 11000) return null;        // already awarded — ignore
-        console.log("awardBadgeIfNew error:", e.message);
+        console.error("awardBadgeIfNew error:", e.message);
         return null;
     }
 }
@@ -3276,7 +3277,7 @@ async function recomputeBadgesFor(employeeId){
             const lb = await buildDomainLeaderboard(student.domain, 1);
             if(lb.length && lb[0].employeeId === employeeId)          await awardBadgeIfNew(student, "top_performer");
         }
-    }catch(e){ console.log("recomputeBadgesFor error:", e.message); }
+    }catch(e){ console.error("recomputeBadgesFor error:", e.message); }
 }
 
 // Update streak + milestones on a self-attendance mark. Called inline by
@@ -3316,7 +3317,7 @@ async function bumpStreakAndMilestones(student){
         }
 
         await student.save();
-    }catch(e){ console.log("bumpStreakAndMilestones error:", e.message); }
+    }catch(e){ console.error("bumpStreakAndMilestones error:", e.message); }
 }
 
 // Async-safe milestone setter — mark a single milestone with a date if not set.
@@ -3329,7 +3330,7 @@ async function setMilestone(employeeId, key, when){
             s.milestones[key] = when || new Date();
             await s.save();
         }
-    }catch(_){}
+    }catch(err){ console.error("[setMilestone] error:", err.message); }
 }
 
 // Eligibility: combined attendance >= 75% AND ≥ 5 approved tasks.
@@ -3342,7 +3343,7 @@ async function checkCertificateEligibility(employeeId){
         if((stats.combinedPct || 0) >= 75 && approved >= 5){
             await setMilestone(employeeId, "certificateEligible");
         }
-    }catch(_){}
+    }catch(err){ console.error("[checkCertificateEligibility] error:", err.message); }
 }
 
 // ---- Build leaderboard entries for a domain or globally ----
@@ -3380,13 +3381,13 @@ app.get("/leaderboard/domain/:domain", async(req,res)=>{
         const domain = decodeURIComponent(req.params.domain);
         const rows = await buildDomainLeaderboard(domain, 10);
         res.json({ success:true, leaderboard: rows, domain });
-    }catch(e){ console.log(e); res.status(500).json({ success:false, leaderboard:[] }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false, leaderboard:[] }); }
 });
 app.get("/leaderboard/overall", async(req,res)=>{
     try{
         const rows = await buildOverallLeaderboard(20);
         res.json({ success:true, leaderboard: rows });
-    }catch(e){ console.log(e); res.status(500).json({ success:false, leaderboard:[] }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false, leaderboard:[] }); }
 });
 
 // Feature 6 — badges
@@ -3404,7 +3405,7 @@ app.get("/badges/student/:employeeId", async(req,res)=>{
             return { ...b, earned: owned, awardedAt: e ? e.awardedAt : null };
         });
         res.json({ success:true, badges: out, earnedCount: earned.length, totalCount: BADGE_CATALOG.length });
-    }catch(e){ console.log(e); res.status(500).json({ success:false, badges:[] }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false, badges:[] }); }
 });
 
 // Feature 7 — streak
@@ -3418,7 +3419,7 @@ app.get("/students/:employeeId/streak", async(req,res)=>{
             bestStreak: s.bestStreak || 0,
             lastAttendanceDate: s.lastAttendanceDate
         });
-    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // Feature 11 — timeline (returns the milestones object)
@@ -3445,7 +3446,7 @@ app.get("/students/:employeeId/timeline", async(req,res)=>{
             certificateApprovedByCoordinator: !!s.certificateApprovedByCoordinator,
             certificateApprovedByHR: !!s.certificateApprovedByHR
         });
-    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3543,12 +3544,12 @@ app.post("/auth/forgot-password", async(req,res)=>{
                             status: mailStatus,
                             errorMessage: mailError
                         });
-                    } catch (_) {}
+                    } catch (histErr) { console.error("[forgot-password] mail-history save failed:", histErr.message); }
                 }
-            }catch(e){ console.log("forgot-password mail error:", e && e.message); }
+            }catch(e){ console.error("[forgot-password] mail error:", e && e.message); }
         }
         res.json({ success:true, message:"If that account exists, a reset link has been sent to its email." });
-    }catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 app.post("/auth/reset-password", async(req,res)=>{
@@ -3578,7 +3579,7 @@ app.post("/auth/reset-password", async(req,res)=>{
         user.passwordResetExpiry = null;
         await user.save();
         res.json({ success:true, message:"Password updated! Please log in with your new password." });
-    }catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 // ==================================================================
@@ -3611,7 +3612,7 @@ try{
         }});
     }
     res.json({ success:true, assigned:false });
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3634,7 +3635,7 @@ try{
         college: getStudentCollege(target),
         collegeName: getStudentCollege(target)
     }});
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3683,11 +3684,11 @@ try{
                 });
                 await notif.save();
                 broadcastNotification(s.domain, s.employeeId, notif);
-            }catch(_){}
+            }catch(notifErr){ console.error("[notification] bulk-attendance notification failed:", notifErr.message); }
         }catch(e){ failed++; }
     }
     res.json({ success:true, created, updated, failed, total: students.length });
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3715,7 +3716,7 @@ try{
         deleted++;
     }
     res.json({ success:true, deleted, skipped });
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3751,14 +3752,14 @@ try{
             });
             await notif.save();
             broadcastNotification(sub.domain, sub.employeeId, notif);
-        }catch(_){}
+        }catch(notifErr){ console.error("[notification] submission-review notification failed:", notifErr.message); }
         if(status === "Approved") await setMilestone(sub.employeeId, "firstTaskApproved");
         await checkCertificateEligibility(sub.employeeId);
         await recomputeBadgesFor(sub.employeeId);
         updated++;
     }
     res.json({ success:true, updated, skipped });
-}catch(e){ console.log(e); res.status(500).json({ success:false }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3776,7 +3777,7 @@ try{
     const url  = host + "/qr-attendance.html?domain=" + encodeURIComponent(domain) + "&coordinatorId=" + encodeURIComponent(coordinatorId);
     const dataUrl = await QRCode.toDataURL(url, { errorCorrectionLevel: "M", margin: 2, width: 360, color: { dark:"#0c1220", light:"#ffffff" } });
     res.json({ success:true, url, dataUrl });
-}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to generate QR" }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Failed to generate QR" }); }
 });
 
 // Verify-and-mark from the QR scan landing page.
@@ -3817,10 +3818,10 @@ try{
         });
         await notif.save();
         broadcastNotification(student.domain, student.employeeId, notif);
-    }catch(_){}
+    }catch(notifErr){ console.error("[notification] qr-attendance notification failed:", notifErr.message); }
 
     res.json({ success:true, message:`Attendance marked successfully for ${dateKey}. Have a great day!` });
-}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
+}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 // ==================================================================
@@ -3865,7 +3866,7 @@ app.post("/chat/block", async(req,res)=>{
             { upsert: true, new: true }
         );
         res.json({ success:true, message:"User blocked in this chat" });
-    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 app.post("/chat/unblock", async(req,res)=>{
@@ -3879,7 +3880,7 @@ app.post("/chat/unblock", async(req,res)=>{
             return res.status(403).json({ success:false, message:"Only the blocker (or HR) can unblock" });
         await BlockList.findOneAndDelete({ chatRoom, blockedUser });
         res.json({ success:true, message:"User unblocked" });
-    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 app.get("/chat/blocked-list", async(req,res)=>{
@@ -3889,7 +3890,7 @@ app.get("/chat/blocked-list", async(req,res)=>{
         const filter = actor.role === "hr" ? {} : { blockedBy: actor.id };
         const list = await BlockList.find(filter).sort({ blockedAt: -1 });
         res.json({ success:true, blocked: list });
-    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -4129,7 +4130,7 @@ app.get("/coordinator/coding-questions/:domain", async(req,res)=>{
         const domain = decodeURIComponent(req.params.domain);
         const list = await CodingQuestion.find({ domain }).sort({ createdAt:-1 });
         res.json({ success:true, questions:list });
-    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 app.post("/coordinator/coding-questions", async(req,res)=>{
     try {
@@ -4158,13 +4159,13 @@ app.post("/coordinator/coding-questions", async(req,res)=>{
             testCases: cleanCases
         });
         res.json({ success:true, question:q });
-    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 app.delete("/coordinator/coding-questions/:id", async(req,res)=>{
     try {
         await CodingQuestion.findByIdAndDelete(req.params.id);
         res.json({ success:true });
-    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ----- Student-facing -----
@@ -4179,7 +4180,7 @@ app.get("/student/coding-questions/:domain", async(req,res)=>{
             return obj;
         });
         res.json({ success:true, questions:safe });
-    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 app.get("/student/coding-questions/question/:id", async(req,res)=>{
     try {
@@ -4188,14 +4189,14 @@ app.get("/student/coding-questions/question/:id", async(req,res)=>{
         const obj = q.toObject();
         obj.testCases = (obj.testCases || []).filter(t => !t.isHidden);
         res.json({ success:true, question:obj });
-    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 app.get("/student/coding-submissions/:employeeId", async(req,res)=>{
     try {
         const employeeId = decodeURIComponent(req.params.employeeId);
         const list = await CodingSubmission.find({ employeeId }).sort({ submittedAt:-1 });
         res.json({ success:true, submissions:list });
-    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ----- Local code runner (child_process) -----
@@ -4478,7 +4479,7 @@ app.get("/coordinator/coding-submissions/:domain", async(req,res)=>{
         const domain = decodeURIComponent(req.params.domain);
         const list = await CodingSubmission.find({ domain }).sort({ submittedAt:-1 }).limit(200);
         res.json({ success:true, submissions:list });
-    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
 });
 
 // ================= PUBLIC DOCUMENT VERIFICATION =================
@@ -4678,7 +4679,7 @@ io.on("connection", (socket) => {
                     if(ack) ack({ success:false, blocked:true, message:"You have been restricted from sending messages in this chat" });
                     return;
                 }
-            }catch(_){}
+            }catch(blkErr){ console.error("[chat] block-check error:", blkErr.message); }
 
             const doc = await Message.create({
                 chatRoom:     room,
