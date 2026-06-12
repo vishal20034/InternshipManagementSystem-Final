@@ -1,17 +1,11 @@
 'use strict';
 
 const { validateTalentProfile } = require('../../middleware/validateTalentProfile');
-
-function mockRes() {
-  const res = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  return res;
-}
+const { mockRes, expectValidationError, expectNextCalled } = require('../helpers');
 
 describe('middleware/validateTalentProfile', () => {
   it('calls next() for a valid body', () => {
-    const req = {
+    expectNextCalled({
       body: {
         headline: 'Software Engineer',
         bio: 'I build things.',
@@ -21,174 +15,68 @@ describe('middleware/validateTalentProfile', () => {
         openTo: ['internship', 'fulltime'],
         socialLinks: { linkedin: 'https://linkedin.com/in/test' },
       },
-    };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(next).toHaveBeenCalledTimes(1);
-    expect(res.status).not.toHaveBeenCalled();
+    }, validateTalentProfile);
   });
 
   it('calls next() for an empty body (all fields optional)', () => {
-    const req = { body: {} };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(next).toHaveBeenCalled();
+    expectNextCalled({ body: {} }, validateTalentProfile);
   });
 
   it('rejects headline longer than 120 characters', () => {
-    const req = { body: { headline: 'x'.repeat(121) } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: false,
-        errors: expect.arrayContaining([
-          expect.objectContaining({ field: 'headline' }),
-        ]),
-      })
-    );
-    expect(next).not.toHaveBeenCalled();
+    expectValidationError({ body: { headline: 'x'.repeat(121) } }, validateTalentProfile, 'headline');
   });
 
   it('allows headline of exactly 120 characters', () => {
-    const req = { body: { headline: 'x'.repeat(120) } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(next).toHaveBeenCalled();
+    expectNextCalled({ body: { headline: 'x'.repeat(120) } }, validateTalentProfile);
   });
 
   it('rejects bio longer than 1000 characters', () => {
-    const req = { body: { bio: 'a'.repeat(1001) } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    const body = res.json.mock.calls[0][0];
-    expect(body.errors.some(e => e.field === 'bio')).toBe(true);
+    expectValidationError({ body: { bio: 'a'.repeat(1001) } }, validateTalentProfile, 'bio');
   });
 
   it('rejects invalid availability value', () => {
-    const req = { body: { availability: 'next-year' } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    const body = res.json.mock.calls[0][0];
-    expect(body.errors.some(e => e.field === 'availability')).toBe(true);
+    expectValidationError({ body: { availability: 'next-year' } }, validateTalentProfile, 'availability');
   });
 
-  it('accepts all valid availability values', () => {
-    for (const val of ['immediately', '2weeks', '1month', 'not-available']) {
-      const req = { body: { availability: val } };
-      const res = mockRes();
-      const next = jest.fn();
-
-      validateTalentProfile(req, res, next);
-
-      expect(next).toHaveBeenCalled();
-    }
+  it.each(['immediately', '2weeks', '1month', 'not-available'])('accepts availability=%s', (val) => {
+    expectNextCalled({ body: { availability: val } }, validateTalentProfile);
   });
 
   it('rejects invalid visibility value', () => {
-    const req = { body: { visibility: 'hidden' } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
+    expectValidationError({ body: { visibility: 'hidden' } }, validateTalentProfile, 'visibility');
   });
 
-  it('accepts all valid visibility values', () => {
-    for (const val of ['public', 'network', 'private']) {
-      const req = { body: { visibility: val } };
-      const res = mockRes();
-      const next = jest.fn();
-
-      validateTalentProfile(req, res, next);
-
-      expect(next).toHaveBeenCalled();
-    }
+  it.each(['public', 'network', 'private'])('accepts visibility=%s', (val) => {
+    expectNextCalled({ body: { visibility: val } }, validateTalentProfile);
   });
 
   it('rejects invalid skill level', () => {
-    const req = { body: { skills: [{ level: 'pro' }] } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    const body = res.json.mock.calls[0][0];
-    expect(body.errors.some(e => e.field === 'skills[0].level')).toBe(true);
+    expectValidationError({ body: { skills: [{ level: 'pro' }] } }, validateTalentProfile, 'skills[0].level');
   });
 
-  it('accepts all valid skill levels', () => {
-    for (const level of ['beginner', 'intermediate', 'advanced', 'expert']) {
-      const req = { body: { skills: [{ level }] } };
-      const res = mockRes();
-      const next = jest.fn();
-
-      validateTalentProfile(req, res, next);
-
-      expect(next).toHaveBeenCalled();
-    }
+  it.each(['beginner', 'intermediate', 'advanced', 'expert'])('accepts skill level=%s', (level) => {
+    expectNextCalled({ body: { skills: [{ level }] } }, validateTalentProfile);
   });
 
   it('rejects invalid openTo value', () => {
-    const req = { body: { openTo: ['contract'] } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    const body = res.json.mock.calls[0][0];
-    expect(body.errors.some(e => e.field === 'openTo[0]')).toBe(true);
+    expectValidationError({ body: { openTo: ['contract'] } }, validateTalentProfile, 'openTo[0]');
   });
 
   it('accepts all valid openTo values', () => {
     const valid = ['internship', 'fulltime', 'parttime', 'freelance', 'mentorship', 'investment'];
-    const req = { body: { openTo: valid } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(next).toHaveBeenCalled();
+    expectNextCalled({ body: { openTo: valid } }, validateTalentProfile);
   });
 
   it('rejects invalid social link URLs', () => {
-    const req = { body: { socialLinks: { linkedin: 'not-a-url' } } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    const body = res.json.mock.calls[0][0];
-    expect(body.errors.some(e => e.field === 'socialLinks.linkedin')).toBe(true);
+    expectValidationError(
+      { body: { socialLinks: { linkedin: 'not-a-url' } } },
+      validateTalentProfile,
+      'socialLinks.linkedin'
+    );
   });
 
   it('accepts valid social link URLs', () => {
-    const req = {
+    expectNextCalled({
       body: {
         socialLinks: {
           linkedin: 'https://linkedin.com/in/user',
@@ -197,41 +85,22 @@ describe('middleware/validateTalentProfile', () => {
           website: 'https://example.com',
         },
       },
-    };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(next).toHaveBeenCalled();
+    }, validateTalentProfile);
   });
 
   it('skips URL validation for empty social link fields', () => {
-    const req = { body: { socialLinks: { linkedin: '', github: null } } };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(next).toHaveBeenCalled();
+    expectNextCalled({ body: { socialLinks: { linkedin: '', github: null } } }, validateTalentProfile);
   });
 
   it('collects multiple errors at once', () => {
-    const req = {
+    const body = expectValidationError({
       body: {
         headline: 'x'.repeat(121),
         bio: 'b'.repeat(1001),
         availability: 'wrong',
         visibility: 'wrong',
       },
-    };
-    const res = mockRes();
-    const next = jest.fn();
-
-    validateTalentProfile(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(422);
-    const body = res.json.mock.calls[0][0];
+    }, validateTalentProfile);
     expect(body.errors.length).toBeGreaterThanOrEqual(4);
   });
 });
