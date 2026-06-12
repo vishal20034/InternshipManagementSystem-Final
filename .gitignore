@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Environment files (may contain secrets)
+.env
+.env.local
+.env.save
+.env.production
+.env.*.local
+
+# Uploads
+uploads/
+
+# Local/Replit state
+.local/
+.replit
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime
+pids/
+*.pid
+*.seed
+*.pid.lock
+node_modules/
+.env

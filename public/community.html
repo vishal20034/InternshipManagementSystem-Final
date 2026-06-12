@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Community — TEN Platform</title>
+  <link rel="stylesheet" href="/css/design-system.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <script src="/js/theme-toggle.js" defer></script>
+  <script src="/js/components.js" defer></script>
+  <script src="/js/coming-soon-modal.js" defer></script>
+</head>
+<body class="dashboard-layout">
+
+  <aside class="sidebar">
+    <a class="sidebar__logo" href="/dashboard">⚡ TEN</a>
+    <nav class="sidebar__nav">
+      <a href="/dashboard"      class="nav-item">🏠 Dashboard</a>
+      <a href="/founder-os"     class="nav-item nav-item--new" data-roles="founder,admin">🚀 Founder OS</a>
+      <a href="/talent-network" class="nav-item nav-item--new">🌐 Talent Network</a>
+      <a href="/programs"       class="nav-item nav-item--new">📋 Programs</a>
+      <a href="/community"      class="nav-item nav-item--new nav-item--active">👥 Community</a>
+    </nav>
+    <div class="sidebar__footer">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm" style="width:100%">🌙 Dark Mode</button>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <button class="btn btn--ghost btn--sm" data-sidebar-toggle>☰</button>
+    <input class="topbar__search" type="search" placeholder="Search community…" />
+    <div class="topbar__actions">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm">🌙</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-header__title">👥 TEN Community</h1>
+      <p class="page-header__subtitle">Connect, collaborate, and grow with the TEN ecosystem</p>
+    </div>
+
+    <!-- Channel Cards -->
+    <h2 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-4);">Channels</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--space-4);margin-bottom:var(--space-8);">
+
+      <div class="card card--bordered">
+        <div style="font-size:2.5rem;margin-bottom:var(--space-3);">🚀</div>
+        <h3 style="font-size:var(--text-base);font-weight:700;">Founders Hub</h3>
+        <p style="color:var(--text-secondary);font-size:var(--text-sm);margin:var(--space-2) 0 var(--space-4);">Connect with fellow founders, share learnings, and find collaborators.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">👥 248 members</span>
+          <button class="btn btn--secondary btn--sm" data-coming-soon="Founders Hub" data-phase="Phase 2">Join</button>
+        </div>
+      </div>
+
+      <div class="card card--bordered">
+        <div style="font-size:2.5rem;margin-bottom:var(--space-3);">🌐</div>
+        <h3 style="font-size:var(--text-base);font-weight:700;">Talent Pool</h3>
+        <p style="color:var(--text-secondary);font-size:var(--text-sm);margin:var(--space-2) 0 var(--space-4);">Network with interns, students, and professionals across domains.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">👥 1,420 members</span>
+          <button class="btn btn--secondary btn--sm" data-coming-soon="Talent Pool" data-phase="Phase 2">Join</button>
+        </div>
+      </div>
+
+      <div class="card card--bordered">
+        <div style="font-size:2.5rem;margin-bottom:var(--space-3);">💰</div>
+        <h3 style="font-size:var(--text-base);font-weight:700;">Investor Circle</h3>
+        <p style="color:var(--text-secondary);font-size:var(--text-sm);margin:var(--space-2) 0 var(--space-4);">Private channel for investors to discover deals and discuss market trends.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:var(--text-xs);color:var(--text-muted);">👥 87 members</span>
+          <button class="btn btn--secondary btn--sm" data-coming-soon="Investor Circle" data-phase="Phase 2">Join</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upcoming Events -->
+    <h2 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-4);">Upcoming Events</h2>
+    <div style="display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-8);">
+
+      <div class="card card--bordered" style="flex-direction:row;align-items:center;gap:var(--space-4);">
+        <div style="background:rgba(99,102,241,.1);color:var(--color-primary);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);text-align:center;min-width:60px;flex-shrink:0;">
+          <div style="font-size:var(--text-xl);font-weight:800;">15</div>
+          <div style="font-size:var(--text-xs);font-weight:600;">JUL</div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:600;margin-bottom:2px;">Founder Demo Day — Q3 2026</div>
+          <div style="font-size:var(--text-sm);color:var(--text-secondary);">Live pitches from TEN's top early-stage startups to investor panel</div>
+        </div>
+        <span class="badge badge--primary">Virtual</span>
+      </div>
+
+      <div class="card card--bordered" style="flex-direction:row;align-items:center;gap:var(--space-4);">
+        <div style="background:rgba(16,185,129,.1);color:var(--color-success);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);text-align:center;min-width:60px;flex-shrink:0;">
+          <div style="font-size:var(--text-xl);font-weight:800;">22</div>
+          <div style="font-size:var(--text-xs);font-weight:600;">JUL</div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:600;margin-bottom:2px;">Intern Skills Bootcamp — Web Dev</div>
+          <div style="font-size:var(--text-sm);color:var(--text-secondary);">Weekend intensive for current interns on modern frontend development</div>
+        </div>
+        <span class="badge badge--success">Workshop</span>
+      </div>
+
+      <div class="card card--bordered" style="flex-direction:row;align-items:center;gap:var(--space-4);">
+        <div style="background:rgba(245,158,11,.1);color:var(--color-warning);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);text-align:center;min-width:60px;flex-shrink:0;">
+          <div style="font-size:var(--text-xl);font-weight:800;">05</div>
+          <div style="font-size:var(--text-xs);font-weight:600;">AUG</div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:600;margin-bottom:2px;">Mentor-Mentee Speed Networking</div>
+          <div style="font-size:var(--text-sm);color:var(--text-secondary);">Match mentors with interns and founders in 10-min speed sessions</div>
+        </div>
+        <span class="badge badge--warning">Networking</span>
+      </div>
+    </div>
+
+    <!-- Coming Soon Banner -->
+    <div style="background:var(--bg-elevated);border:2px dashed var(--border-default);border-radius:var(--radius-xl);padding:var(--space-8);text-align:center;">
+      <div style="font-size:3rem;margin-bottom:var(--space-3);">🚧</div>
+      <h2 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-2);">Full Community Features — Coming in Phase 2</h2>
+      <p style="color:var(--text-secondary);max-width:480px;margin:0 auto var(--space-4);">Live chat, post feeds, event RSVPs, and direct messaging between ecosystem members are actively being built.</p>
+      <button class="btn btn--primary" data-coming-soon="Full Community" data-phase="Phase 2">🔔 Notify Me When Live</button>
+    </div>
+  </main>
+</body>
+</html>

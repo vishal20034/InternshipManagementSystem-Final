@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register — TEN Ecosystem</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:sans-serif;background:#0f172a;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;}
+    .card{background:#1e293b;padding:2rem;border-radius:1rem;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+    h1{font-size:1.5rem;margin-bottom:1.5rem;text-align:center;}
+    label{display:block;font-size:.875rem;color:#94a3b8;margin-bottom:.25rem;}
+    select,input{width:100%;padding:.65rem .875rem;background:#0f172a;border:1px solid #334155;border-radius:.5rem;color:#f8fafc;font-size:1rem;margin-bottom:1rem;}
+    button{width:100%;padding:.75rem;background:#6366f1;border:none;border-radius:.5rem;color:#fff;font-size:1rem;cursor:pointer;font-weight:600;}
+    button:hover{background:#4f46e5;}
+    .back{text-align:center;margin-top:1rem;font-size:.875rem;}
+    .back a{color:#6366f1;text-decoration:none;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Join TEN Ecosystem</h1>
+    <form id="regForm">
+      <label>I am a...</label>
+      <select name="role" id="roleSelect" required>
+        <option value="">Select your role</option>
+        <option value="student">Student / Intern</option>
+        <option value="founder">Founder</option>
+        <option value="mentor">Mentor</option>
+        <option value="investor">Investor</option>
+        <option value="contractor">Contractor</option>
+      </select>
+      <label>Full Name</label>
+      <input type="text" name="fullName" placeholder="Your full name" required/>
+      <label>Email</label>
+      <input type="email" name="email" placeholder="you@example.com" required/>
+      <label>Password</label>
+      <input type="password" name="password" placeholder="Min 8 characters" required/>
+      <button type="submit">Create Account</button>
+    </form>
+    <div class="back"><a href="/">Already have an account? Log in</a></div>
+  </div>
+  <script>
+    document.getElementById("regForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      const res = await fetch("/api/register-hub/register", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data) });
+      const json = await res.json();
+      if (json.success) { alert("Registration successful! Please log in."); window.location.href = "/"; }
+      else { alert("Error: " + (json.error || "Registration failed")); }
+    });
+  </script>
+</body>
+</html>
