@@ -190,54 +190,30 @@ router.post("/certificates/claim/:type", requireStudent, async (req, res) => {
         // Check for existing cert record
         let certRecord = await StudentCertificate.findOne({ studentId: student._id, certificateType: type });
 
-        // Payment gate
-        if (!paymentConfig.PAYMENT_ENABLED) {
-            if (!certRecord) {
-                certRecord = await StudentCertificate.create({
-                    studentId:       student._id,
-                    certificateType: type,
-                    domain:          student.domain,
-                    paymentStatus:   "pending"
-                });
-            }
-            return res.json({
-                success: true,
-                status:  "payment_coming_soon",
-                message: "Payment coming soon — we will notify you by email when this is ready.",
-                paymentEnabled: false
-            });
-        }
-
-        // ── PAYMENT_ENABLED=true path — PaymentSetu ──
-        const axios  = require("axios");
+        // ── Payment redirect — send student to internal UPI payment page ──
         const orderId = `CERT_${student._id}_${type}_${Date.now()}`;
-        const price   = paymentConfig.CERT_PRICES_PAISE ? paymentConfig.CERT_PRICES_PAISE[type] : (paymentConfig.CERT_PRICES[type] * 100);
+        const priceRs = paymentConfig.CERT_PRICES[type] || 0;
 
-        const psRes = await axios.post(`${paymentConfig.PAYMENTSETU_BASE_URL}/create_order`, {
-            order_id:        orderId,
-            amount:          price,
-            redirect_url:    `${process.env.BASE_URL || ""}/payment/success?certType=${type}&empId=${student.employeeId}`,
-            customer_name:   student.name || "",
-            customer_email:  student.email || "",
-            customer_mobile: student.whatsapp || "",
-            remarks:         `TEN ${type} certificate — ${student.employeeId}`
-        }, {
-            headers: {
-                "Authorization": `Bearer ${paymentConfig.PAYMENTSETU_API_KEY || process.env.PAYMENTSETU_API_KEY}`,
-                "Content-Type":  "application/json"
-            }
-        });
-
-        if (!psRes.data.status) {
-            return res.status(500).json({ success: false, message: psRes.data.msg || "Payment gateway error" });
+        if (!certRecord) {
+            certRecord = await StudentCertificate.create({
+                studentId:       student._id,
+                certificateType: type,
+                domain:          student.domain || "",
+                paymentStatus:   "pending",
+                orderId
+            });
+        } else if (!certRecord.orderId) {
+            certRecord.orderId = orderId;
+            await certRecord.save();
         }
 
+        const paymentUrl = `/payment.html?type=${type}&amount=${priceRs}&orderId=${orderId}&empId=${student.employeeId}`;
         res.json({
             success:        true,
             status:         "payment_redirect",
-            paymentUrl:     psRes.data.payment_url,
+            paymentUrl,
             orderId,
-            amount:         price,
+            amount:         priceRs * 100,
             paymentEnabled: true
         });
     } catch (err) {
