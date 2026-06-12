@@ -1,12 +1,13 @@
 'use strict';
 
 const EcosystemNotification = require('../models/EcosystemNotification');
-const { parsePagination } = require('../utils/pagination');
 
 async function getMyNotifications(req, res) {
   try {
     const userId  = req.user._id || req.user.id;
-    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 20, maxLimit: 100 });
+    const page    = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit   = Math.min(100, parseInt(req.query.limit, 10) || 20);
+    const skip    = (page - 1) * limit;
     const filter  = { userId };
     if (req.query.unreadOnly === 'true') filter.isRead = false;
     if (req.query.type) filter.type = req.query.type;
