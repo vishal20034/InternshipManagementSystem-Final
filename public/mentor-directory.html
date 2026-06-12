@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mentor Directory — TEN Portal</title>
+<link rel="stylesheet" href="/ten-theme.css">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg-base:#05070e;--bg-surface:#090d1a;--bg-card:#0e1428;--border:rgba(212,175,55,0.08);--border-strong:rgba(212,175,55,0.18);--accent-gold:#D4AF37;--text-primary:#F0EEE8;--text-secondary:#9a9080;--accent-green:#10b981;--accent-blue:#3b82f6;}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-base);color:var(--text-primary);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;padding:24px;}
+.top-bar{display:flex;align-items:center;gap:16px;margin-bottom:32px;}
+.back-btn{background:var(--bg-card);border:1px solid var(--border-strong);color:var(--text-primary);padding:10px 20px;border-radius:10px;cursor:pointer;font-size:14px;text-decoration:none;transition:.2s;}
+.back-btn:hover{border-color:var(--accent-gold);color:var(--accent-gold);}
+.hero{text-align:center;padding:48px 24px 40px;}
+.hero-badge{display:inline-block;padding:6px 16px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);border-radius:20px;font-size:13px;color:var(--accent-green);margin-bottom:16px;}
+.hero h1{font-size:40px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,#F0EEE8,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero p{color:var(--text-secondary);font-size:16px;max-width:560px;margin:0 auto 24px;}
+.search-bar{max-width:500px;margin:0 auto;display:flex;gap:12px;}
+.search-bar input{flex:1;background:var(--bg-card);border:1px solid var(--border-strong);color:var(--text-primary);padding:13px 18px;border-radius:12px;font-size:14px;outline:none;}
+.search-bar input:focus{border-color:var(--accent-green);}
+.search-bar button{padding:13px 22px;background:var(--accent-green);color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer;}
+.expertise-filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:24px 0;}
+.chip{padding:7px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text-secondary);cursor:pointer;transition:.2s;}
+.chip.active,.chip:hover{border-color:var(--accent-green);color:var(--accent-green);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;max-width:1200px;margin:0 auto;}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:24px;transition:.3s;}
+.card:hover{border-color:var(--border-strong);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3);}
+.card-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;}
+.name{font-size:17px;font-weight:700;}
+.title{font-size:13px;color:var(--accent-green);}
+.company{font-size:12px;color:var(--text-secondary);margin-top:2px;}
+.stars{color:#f59e0b;font-size:14px;margin-bottom:12px;}
+.desc{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.expertise{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.exp-tag{padding:3px 10px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;font-size:11px;color:#10b981;}
+.stats-row{display:flex;gap:16px;margin-bottom:14px;font-size:12px;color:var(--text-secondary);}
+.book-btn{width:100%;padding:10px;background:var(--accent-green);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;transition:.2s;}
+.book-btn:hover{opacity:.85;transform:translateY(-1px);}
+.verified-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);padding:3px 8px;border-radius:10px;font-size:11px;color:#10b981;margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="index.html" class="back-btn">← Home</a>
+</div>
+<div class="hero">
+  <div class="hero-badge">🎓 Expert Mentors</div>
+  <h1>Find Your Mentor</h1>
+  <p>Get 1:1 mentorship from industry experts, startup founders, and tech leaders who have been where you want to go.</p>
+  <div class="search-bar">
+    <input id="searchInput" type="text" placeholder="Search by name, expertise, or company...">
+    <button onclick="search()">Search</button>
+  </div>
+</div>
+
+<div class="expertise-filters">
+  <div class="chip active" onclick="filter('all',this)">All Expertise</div>
+  <div class="chip" onclick="filter('tech',this)">Tech & Engineering</div>
+  <div class="chip" onclick="filter('product',this)">Product</div>
+  <div class="chip" onclick="filter('startup',this)">Startup & VC</div>
+  <div class="chip" onclick="filter('data',this)">Data & AI</div>
+  <div class="chip" onclick="filter('hr',this)">HR & People</div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const MENTORS = [
+  {name:'Dr. Rajesh Kumar',title:'CTO & Co-Founder',company:'InnovateTech',avatar:'RK',cat:'tech',expertise:['System Design','Microservices','Cloud Architecture','Team Leadership'],bio:'20+ years in tech. Ex-Microsoft, Ex-Google. Helped 200+ engineers grow from junior to staff.',rating:4.9,sessions:312,reviews:89,verified:true},
+  {name:'Meena Kapoor',title:'VP of Product',company:'Flipkart',avatar:'MK',cat:'product',expertise:['Product Strategy','User Research','Roadmap Planning','OKRs'],bio:'10 years building products at scale. Mentored 50+ PMs. Passionate about first-principles thinking.',rating:4.8,sessions:247,reviews:71,verified:true},
+  {name:'Aditya Singh',title:'Founder & Managing Partner',company:'Surge Capital',avatar:'AS',cat:'startup',expertise:['Fundraising','Pitch Decks','Term Sheets','Go-to-Market'],bio:'Invested in 40+ startups. 3x founder. Helped raise $15M+ across portfolio.',rating:4.9,sessions:189,reviews:55,verified:true},
+  {name:'Pooja Menon',title:'Lead Data Scientist',company:'Swiggy',avatar:'PM',cat:'data',expertise:['Machine Learning','Python','Statistics','MLOps'],bio:'Building ML systems at scale. Kaggle Master. PhD in Computer Science from IISc.',rating:4.7,sessions:156,reviews:44,verified:true},
+  {name:'Rahul Sharma',title:'CHRO',company:'Zomato',avatar:'RS',cat:'hr',expertise:['Talent Strategy','Culture Building','Executive Coaching','L&D'],bio:'Built HR from 0-2000 employees. Forbes HR leadership award 2023.',rating:4.8,sessions:134,reviews:38,verified:true},
+  {name:'Kavya Nair',title:'Engineering Manager',company:'Amazon',avatar:'KN',cat:'tech',expertise:['Backend Engineering','Distributed Systems','Career Growth','Interviews'],bio:'EM at Amazon Payments. Ex-Uber. Mentoring aspiring engineers to crack FAANG.',rating:4.9,sessions:278,reviews:82,verified:true},
+];
+
+let allMentors = [...MENTORS];
+let activeCat = 'all';
+
+function render(mentors) {
+  document.getElementById('grid').innerHTML = mentors.map(m => `
+    <div class="card">
+      <div class="card-top">
+        <div class="avatar">${m.avatar}</div>
+        <div>
+          <div class="name">${m.name}</div>
+          <div class="title">${m.title}</div>
+          <div class="company">${m.company}</div>
+          ${m.verified ? '<div class="verified-badge">✓ Verified</div>' : ''}
+        </div>
+      </div>
+      <div class="stars">${'★'.repeat(Math.floor(m.rating))} <span style="color:var(--text-secondary);font-size:12px">${m.rating} (${m.reviews} reviews)</span></div>
+      <div class="desc">${m.bio}</div>
+      <div class="expertise">${m.expertise.map(e=>`<span class="exp-tag">${e}</span>`).join('')}</div>
+      <div class="stats-row">
+        <span>📅 ${m.sessions} sessions</span>
+        <span>⭐ Top Mentor</span>
+        <span>🌍 Remote</span>
+      </div>
+      <button class="book-btn" onclick="book('${m.name}')">Book a Session</button>
+    </div>`).join('');
+}
+
+function search() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const filtered = allMentors.filter(m =>
+    m.name.toLowerCase().includes(q) || m.company.toLowerCase().includes(q) ||
+    m.expertise.some(e => e.toLowerCase().includes(q)) || m.bio.toLowerCase().includes(q)
+  );
+  render(activeCat === 'all' ? filtered : filtered.filter(m => m.cat === activeCat));
+}
+
+function filter(cat, el) {
+  activeCat = cat;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  render(cat === 'all' ? allMentors : allMentors.filter(m => m.cat === cat));
+}
+
+function book(name) {
+  alert('Booking system coming soon! ' + name + ' will be available for 1:1 sessions shortly.');
+}
+
+document.getElementById('searchInput').addEventListener('keyup', e => { if(e.key==='Enter') search(); });
+render(allMentors);
+</script>
+</body>
+</html>

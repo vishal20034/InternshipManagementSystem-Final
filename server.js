@@ -16,8 +16,8 @@ if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDat
 if(!Student.schema.path("v2Onboarded"))    Student.schema.add({ v2Onboarded:    { type: Boolean, default: false } });
 if(!Student.schema.path("v2DurationType")) Student.schema.add({ v2DurationType: { type: String,  default: null  } });
 const DocumentHistory = require("./models/DocumentHistory");
-const { generateDocumentNumber, normalizeDocumentNumber } = require("./utils/documentNumber");
 const MailHistory = require("./models/MailHistory");
+const { generateDocumentNumber, normalizeDocumentNumber } = require("./utils/documentNumber");
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
 const Attendance = require("./models/Attendance");
@@ -27,7 +27,6 @@ const Coordinator = require("./models/Coordinator");
 const Promotion = require("./models/Promotion");
 const BadgeAward = require("./models/BadgeAward");
 const BlockList = require("./models/BlockList");
-const EcosystemUser = require("./models/EcosystemUser");
 
 const autoMailLogSchema = new mongoose.Schema({
   studentName:  String,
@@ -170,70 +169,10 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-if(process.env.EMAIL_USER && process.env.EMAIL_PASS){
-    transporter.verify((error)=>{
-        if(error){ console.log("Email verify error:", error.message); }
-        else{ console.log("Email Server Ready"); }
-    });
-} else {
-    console.log("Email not configured — skipping SMTP verify.");
-}
-
-// Sends one activity-cycle HR mail (appreciation or re-engagement), records it
-// in MailHistory and mirrors it as an in-app student notification.
-const ACTIVITY_MAILS = {
-    "active-appreciation": {
-        subject: "Keep it up! You're doing great 🌟",
-        html: (name) => `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${name||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`,
-        notifTitle: "🌟 Appreciation from HR",
-        notifMessage: (name) => `Hi ${name || "Intern"}, great work staying active this week. Keep it up! — TEN HR Team`,
-        notifType: "success"
-    },
-    "inactive-reengagement": {
-        subject: "We miss you! Come back and keep growing 💪",
-        html: (name) => `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${name||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`,
-        notifTitle: "💪 Inactivity Alert",
-        notifMessage: (name) => `Hi ${name || "Intern"}, we noticed you haven't been active recently. Jump back in whenever you're ready — we're here to help you keep growing. — TEN HR Team`,
-        notifType: "warning"
-    }
-};
-
-async function sendActivityMail(student, studentName, mailType){
-    const spec = ACTIVITY_MAILS[mailType];
-    const email = student.email;
-    let mailStatus = "sent";
-    let mailError = "";
-    try {
-        await transporter.sendMail({
-            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-            to: email,
-            subject: spec.subject,
-            html: spec.html(studentName)
-        });
-    } catch (err) {
-        mailStatus = "failed";
-        mailError = err && err.message ? String(err.message) : "";
-    } finally {
-        try {
-            await MailHistory.create({
-                recipientEmail: email,
-                recipientName: studentName || "Intern",
-                studentId: student._id,
-                subject: spec.subject,
-                mailType,
-                sentAt: new Date(),
-                status: mailStatus,
-                errorMessage: mailError
-            });
-        } catch (_) {}
-    }
-    await Notification.notifyStudent(student, {
-        title: spec.notifTitle,
-        message: spec.notifMessage(studentName),
-        type: spec.notifType
-    });
-    await AutoMailLog.create({ studentName, studentEmail: email, employeeId: student.employeeId || "", mailType });
-}
+transporter.verify((error)=>{
+    if(error){ console.log(error); }
+    else{ console.log("Email Server Ready"); }
+});
 
 async function runActivityMailer(){
     try{
@@ -249,10 +188,63 @@ async function runActivityMailer(){
                 if(!email) continue;
                 const lastActive = student.lastActiveDate ? new Date(student.lastActiveDate) : null;
                 const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
+                const employeeId = student.employeeId || "";
                 if(lastActive && lastActive >= sevenDaysAgo){
-                    await sendActivityMail(student, studentName, "active-appreciation");
+                    let mailStatus = "sent";
+                    let mailError = "";
+                    try {
+                        await transporter.sendMail({
+                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+                            to: email,
+                            subject: "Keep it up! You're doing great 🌟",
+                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`
+                        });
+                    } catch (err) {
+                        mailStatus = "failed";
+                        mailError = err && err.message ? String(err.message) : "";
+                    } finally {
+                        try {
+                            await MailHistory.create({
+                                recipientEmail: email,
+                                recipientName: studentName || "Intern",
+                                studentId: student._id,
+                                subject: "Keep it up! You're doing great 🌟",
+                                mailType: "active-appreciation",
+                                sentAt: new Date(),
+                                status: mailStatus,
+                                errorMessage: mailError
+                            });
+                        } catch (_) {}
+                    }
+                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
                 } else if(!lastActive || lastActive < fourteenDaysAgo){
-                    await sendActivityMail(student, studentName, "inactive-reengagement");
+                    let mailStatus = "sent";
+                    let mailError = "";
+                    try {
+                        await transporter.sendMail({
+                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+                            to: email,
+                            subject: "We miss you! Come back and keep growing 💪",
+                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`
+                        });
+                    } catch (err) {
+                        mailStatus = "failed";
+                        mailError = err && err.message ? String(err.message) : "";
+                    } finally {
+                        try {
+                            await MailHistory.create({
+                                recipientEmail: email,
+                                recipientName: studentName || "Intern",
+                                studentId: student._id,
+                                subject: "We miss you! Come back and keep growing 💪",
+                                mailType: "inactive-reengagement",
+                                sentAt: new Date(),
+                                status: mailStatus,
+                                errorMessage: mailError
+                            });
+                        } catch (_) {}
+                    }
+                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
                 }
             }catch(error){
                 console.log(error);
@@ -283,23 +275,123 @@ function getInternshipEndDate(joiningDate, tenure) {
     return end;
 }
 
-async function sendAutoDocumentsToStudent(student, docType, sentBy = "System") {
+async function sendAutoDocumentsToStudent(student, docType) {
     try {
-        const v2Certificates = require("./routes/v2/certificates");
-        if (docType === 'offer') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student, sentBy);
-        } else if (docType === 'loc') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student, sentBy);
-        } else if (docType === 'lor') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student, sentBy);
-        } else if (docType === 'star') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'STAR', student, sentBy);
-        } else if (docType === 'all') {
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student, sentBy);
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student, sentBy);
-            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student, sentBy);
+        const name       = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
+        const empId      = student.employeeId || '—';
+        const domain     = student.domain || '—';
+        const college    = student.collegeName || student.college || '—';
+        const email      = student.email;
+        const tenure     = student.tenure || '1 Month';
+        const joining    = student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
+        const endDate    = getInternshipEndDate(student.joiningDate, student.tenure);
+        const endStr     = endDate ? endDate.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
+        const issuedDate = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
+        const docKeyMap = { offer: "offer_letter", loc: "loc", lor: "lor", star: "star", all: "internship_documents" };
+        const uniqueDocId = normalizeDocumentNumber(generateDocumentNumber(docKeyMap[docType] || "doc"));
+        const verifyUrl   = BASE_URL + '/verify-document?id=' + uniqueDocId;
+
+        const docTypeLabels = { offer:'Offer Letter', loc:'Letter of Completion', lor:'Letter of Recommendation', star:'Star Performer Certificate', all:'Internship Documents' };
+        const docTypeLabel  = docTypeLabels[docType] || 'Internship Documents';
+
+        await Student.findByIdAndUpdate(student._id, {
+            documentsAutoSent:   true,
+            documentsAutoSentAt: new Date(),
+            autoDocUniqueId:     uniqueDocId,
+            documentVerified:    true,
+            documentVerifiedAt:  new Date(),
+            documentNumber:      uniqueDocId
+        });
+
+        const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+            body{font-family:'Times New Roman',serif;background:#f5f5f5;margin:0;padding:20px}
+            .wrap{max-width:680px;margin:0 auto;background:#fff;border:2px solid #D4AF37;border-radius:8px;overflow:hidden}
+            .hdr{background:linear-gradient(135deg,#1a1a2e,#0f3460);padding:32px;text-align:center}
+            .hdr .inf{font-size:48px;color:#D4AF37}.hdr h1{color:#D4AF37;font-size:18px;letter-spacing:3px;text-transform:uppercase;margin:8px 0 4px}
+            .hdr p{color:#a08040;font-size:12px;margin:0}.bd{padding:32px 36px}
+            .bd h2{color:#1a1a2e;font-size:22px;margin-bottom:8px}.bd p{font-size:14px;line-height:1.8;color:#333}
+            .dc{background:#fffbf0;border:1px solid #D4AF37;border-radius:8px;padding:18px 22px;margin:16px 0}
+            .dc h3{color:#b8860b;font-size:15px;margin:0 0 6px}.dc p{margin:0;font-size:13px;color:#555}
+            .vb{background:#f0f8ff;border:1px solid #4a90d9;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:center}
+            .vb p{font-size:13px;color:#333;margin:0 0 8px}.vb a{color:#1a5fb4;font-weight:700;word-break:break-all}
+            .did{font-family:'Courier New',monospace;font-size:13px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:6px 12px;display:inline-block;color:#333;margin:8px 0}
+            .ft{background:#1a1a2e;padding:20px;text-align:center}.ft p{color:#a08040;font-size:11px;margin:0}
+            table.inf{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+            table.inf td{padding:7px 10px;border-bottom:1px solid #f0e8d0}
+            table.inf td:first-child{font-weight:700;color:#b8860b;width:40%}
+        </style></head><body>
+        <div class="wrap">
+          <div class="hdr"><div class="inf">∞</div><h1>The Entrepreneurship Network</h1><p>Internship Completion — Official Documents</p></div>
+          <div class="bd">
+            <h2>Dear ${name},</h2>
+            <p>Congratulations on completing your internship with <strong>The Entrepreneurship Network</strong>! Your internship period of <strong>${tenure}</strong> has now concluded.</p>
+            <table class="inf">
+              <tr><td>Employee ID</td><td>${empId}</td></tr>
+              <tr><td>Domain</td><td>${domain}</td></tr>
+              <tr><td>College / University</td><td>${college}</td></tr>
+              <tr><td>Internship Period</td><td>${joining} — ${endStr}</td></tr>
+              <tr><td>Duration</td><td>${tenure}</td></tr>
+              <tr><td>Date of Issue</td><td>${issuedDate}</td></tr>
+            </table>
+            <div class="dc"><h3>📄 Offer Letter</h3><p>Your official internship offer letter from The Entrepreneurship Network.</p></div>
+            <div class="dc"><h3>🎓 Letter of Completion (LOC)</h3><p>Certifies successful completion of your ${domain} internship tenure.</p></div>
+            <div class="dc"><h3>📝 Letter of Recommendation (LOR)</h3><p>Official recommendation letter from the Director, The Entrepreneurship Network.</p></div>
+            <div class="vb">
+              <p><strong>🔐 Document Verification</strong></p>
+              <p>Your unique Document ID:</p>
+              <div class="did">${uniqueDocId}</div>
+              <p>Verify authenticity at:</p>
+              <a href="${verifyUrl}">${verifyUrl}</a>
+            </div>
+            <p>Log in to your student portal at <a href="${BASE_URL}">${BASE_URL}</a> to download your full PDF documents.</p>
+            <p>For queries: <a href="mailto:hr@entrepreneurshipnetwork.net">hr@entrepreneurshipnetwork.net</a></p>
+            <p>Best Regards,<br><strong>HR Department</strong><br>The Entrepreneurship Network</p>
+          </div>
+          <div class="ft"><p>© The Entrepreneurship Network — Limitless Technologies LLP</p><p style="margin-top:4px">Document ID: ${uniqueDocId}</p></div>
+        </div></body></html>`;
+
+        let mailStatus = "sent";
+        let mailError = "";
+        try {
+            await transporter.sendMail({
+                from:    '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+                to:      email,
+                subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
+                html:    emailHtml
+            });
+        } catch (err) {
+            mailStatus = "failed";
+            mailError = err && err.message ? String(err.message) : "";
         }
-        console.log(`[AUTO-DOCS] Successfully generated and synced document type ${docType} for student ${student._id} (sentBy: ${sentBy})`);
+
+        await DocumentHistory.create({
+            studentId:      student._id,
+            studentName:    name,
+            studentEmail:   email,
+            employeeId:     empId,
+            college:        college,
+            domain:         domain,
+            documentType:   docTypeLabel,
+            documentKey:    docKeyMap[docType] || "internship_documents",
+            documentNumber: uniqueDocId,
+            sentBy:         'HR System',
+            sentToEmail:    email,
+            sentAt:         new Date()
+        });
+
+        try {
+            await MailHistory.create({
+                recipientEmail: email,
+                recipientName: name,
+                studentId: student._id,
+                subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
+                mailType: docKeyMap[docType] || "internship_documents",
+                sentAt: new Date(),
+                status: mailStatus,
+                errorMessage: mailError
+            });
+        } catch (_) {}
+        console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
     } catch(err) {
         console.error('[AUTO-DOCS] Error:', err.message);
     }
@@ -314,7 +406,7 @@ async function runAutoDocumentCheck() {
             if (!student.joiningDate || !student.tenure || !student.email) continue;
             const endDate = getInternshipEndDate(student.joiningDate, student.tenure);
             if (endDate && now >= endDate) {
-                await sendAutoDocumentsToStudent(student, 'all', "System Automation");
+                await sendAutoDocumentsToStudent(student, 'all');
                 count++;
                 await new Promise(r => setTimeout(r, 2000));
             }
@@ -330,9 +422,12 @@ setInterval(runAutoDocumentCheck, 6 * 60 * 60 * 1000);
 
 // ================= MONGODB =================
 
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(
+    process.env.MONGODB_URI ||
+    "mongodb://nagbishal07_db_user:_DXMzR6bkF!7Bc9@ac-kbv0ma9-shard-00-00.dtg7de6.mongodb.net:27017,ac-kbv0ma9-shard-00-01.dtg7de6.mongodb.net:27017,ac-kbv0ma9-shard-00-02.dtg7de6.mongodb.net:27017/?ssl=true&replicaSet=atlas-ekamxn-shard-0&authSource=admin&appName=Cluster0"
+)
 .then(()=>console.log("MongoDB Connected"))
-.catch((err)=>console.log(err));
+.catch((err)=>console.log("MongoDB error:", err.message));
 
 // ================= SCHEMAS =================
 
@@ -421,16 +516,107 @@ const TestResult = mongoose.model("TestResult", testResultSchema);
 
 // ================= ROUTES =================
 
-// Phase-1 multi-role registration hub
-app.use("/api/register-hub", require("./routes/registerHub"));
-
 app.get("/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","dashboard.html")); });
 app.get("/groups", (req,res)=>{ res.sendFile(path.join(__dirname,"public","groups.html")); });
 app.get("/edit.html", (req,res)=>{ res.sendFile(path.join(__dirname,"public","edit.html")); });
 app.get("/hr-portal", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
 app.get("/hr-login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-login.html")); });
+
+// ── Page routes (GET) ──────────────────────────────────────────────────────
+app.get("/login",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","login.html")); });
 app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","register.html")); });
-app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coming-soon.html")); });
+app.get("/hr/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
+app.get("/my-internships", (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-internships.html")); });
+app.get("/talent-network", (req,res)=>{ res.sendFile(path.join(__dirname,"public","talent-network.html")); });
+app.get("/programs", (req,res)=>{ res.sendFile(path.join(__dirname,"public","programs.html")); });
+app.get("/founder/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
+app.get("/mentor/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-directory.html")); });
+app.get("/investor/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-directory.html")); });
+app.get("/payment/success", (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-success.html")); });
+
+// ── PaymentSetu — Create Order ────────────────────────────────────────────
+app.post("/api/payment/create-order", async (req, res) => {
+    try {
+        const { certType, employeeId } = req.body;
+        if (!certType || !employeeId) return res.status(400).json({ success: false, message: "certType and employeeId required" });
+
+        const CERT_PRICES = { expert: 10000, nano_degree: 100000, fellowship: 250000 }; // paise
+        const price = CERT_PRICES[certType];
+        if (!price) return res.status(400).json({ success: false, message: "Invalid certificate type" });
+
+        const student = await Student.findOne({ employeeId: String(employeeId) });
+        if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+        const orderId = `CERT_${student._id}_${certType}_${Date.now()}`;
+        const redirectUrl = (process.env.BASE_URL || `https://${req.headers.host}`) + "/payment/success?orderId=" + orderId + "&certType=" + certType + "&empId=" + employeeId;
+
+        const axios = require("axios");
+        const response = await axios.post("https://paymentsetu.com/api/create_order", {
+            order_id:        orderId,
+            amount:          price,
+            redirect_url:    redirectUrl,
+            customer_name:   student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
+            customer_email:  student.email || "",
+            customer_mobile: student.whatsapp || "",
+            remarks:         `TEN ${certType} certificate — ${student.employeeId}`
+        }, {
+            headers: { "Authorization": `Bearer ${process.env.PAYMENTSETU_API_KEY}`, "Content-Type": "application/json" }
+        });
+
+        if (!response.data.status) {
+            return res.status(500).json({ success: false, message: response.data.msg || "Payment order creation failed" });
+        }
+
+        res.json({ success: true, paymentUrl: response.data.payment_url, orderId });
+    } catch (err) {
+        console.error("[PaymentSetu] create-order error:", err.message);
+        res.status(500).json({ success: false, message: "Payment service error: " + err.message });
+    }
+});
+
+// ── PaymentSetu — Webhook (auto-approve on success) ──────────────────────
+app.post("/api/payment/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+    try {
+        const signature = req.headers["x-paymentsetu-signature"] || "";
+        const timestamp = req.headers["x-paymentsetu-timestamp"] || "";
+        const rawBody   = req.body ? req.body.toString() : "";
+
+        const expected = crypto.createHmac("sha256", process.env.PAYMENTSETU_API_KEY || "")
+            .update(timestamp + "." + rawBody)
+            .digest("hex");
+
+        if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+            return res.status(401).json({ error: "Invalid signature" });
+        }
+
+        const payload = JSON.parse(rawBody);
+        if (payload.status !== "success") return res.status(200).json({ received: true });
+
+        const orderId = payload.order_id || "";
+        const parts   = orderId.split("_");
+        if (parts.length >= 4 && parts[0] === "CERT") {
+            const certType   = parts[2];
+            const employeeId = payload.customer_email ? null : null;
+            const StudentCertificate = require("./models/new/StudentCertificate");
+
+            const studentIdHex = parts[1];
+            let certRecord = await StudentCertificate.findOne({ studentId: studentIdHex, certificateType: certType });
+            if (!certRecord) {
+                certRecord = new StudentCertificate({ studentId: studentIdHex, certificateType: certType, paymentStatus: "pending" });
+            }
+            certRecord.paymentStatus = "paid";
+            certRecord.paymentTxnId  = payload.txn_utr || "";
+            certRecord.paymentPaidAt = new Date(payload.txn_time || Date.now());
+            await certRecord.save();
+            console.log(`[PaymentSetu] Payment verified & cert unlocked: ${orderId}`);
+        }
+
+        res.status(200).json({ received: true });
+    } catch (err) {
+        console.error("[PaymentSetu] webhook error:", err.message);
+        res.status(500).json({ error: "Webhook processing failed" });
+    }
+});
 
 // ================= EMPLOYEE ID =================
 
@@ -619,16 +805,11 @@ try{
                         errorMessage: mailError
                     });
                 } catch (_) {}
-                await Notification.notifyStudent({ employeeId, domain }, {
-                    title: "🎉 Welcome to TEN!",
-                    message: `Hello ${newStudent.name.trim()}, your internship registration was successful. Your Employee ID is ${employeeId} (${domain}). A welcome email has been sent to ${emailLc}.`,
-                    type: "success"
-                });
             }
         }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
     }
 
-    res.json({ success:true, employeeId, password, secondDomain: !isFirstRegistration });
+    res.json({ success:true, employeeId, secondDomain: !isFirstRegistration });
 
 }catch(error){ console.log(error); res.status(500).json({ success:false, message:"Server Error" }); }
 });
@@ -1179,7 +1360,7 @@ app.post('/hr/send-documents-now', async(req, res) => {
         if (!student.email) return res.json({ success: false, message: 'Student has no email' });
         student.documentsAutoSent = false;
         await student.save();
-        await sendAutoDocumentsToStudent(student, docType || 'all', "HR Portal");
+        await sendAutoDocumentsToStudent(student, docType || 'all');
         res.json({ success: true, message: 'Documents sent to ' + student.email });
     } catch(err) {
         console.error('[MANUAL-DOCS]', err);
@@ -1664,12 +1845,7 @@ try{
             internshipEnd: computedEndDate ? computedEndDate.toISOString() : null,
             endDate: computedEndDate ? computedEndDate.toISOString() : null,
 
-            linkedDomains: student.linkedDomains || [],
-
-            // FEATURE 1 — one-time popup flags
-            onboardingPopupSeen: student.onboardingPopupSeen || false,
-            joinerTypeSelected:  student.joinerTypeSelected  || false,
-            joinerType:          student.joinerType           || null
+            linkedDomains: student.linkedDomains || []
         }
     });
 }catch(error){
@@ -2709,11 +2885,6 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
                 status: "sent"
             });
         } catch (_) {}
-        await Notification.notifyStudent({ employeeId, domain }, {
-            title: "🎉 You've been promoted!",
-            message: `Congratulations ${name}! You have been promoted from ${fromRoleLabel} to ${toRoleLabel}. Check your email for the registration link (valid 48 hours).`,
-            type: "success"
-        });
         return { ok: true };
     } catch(e){
         console.log("Promotion email failed:", e.message);
@@ -3327,13 +3498,6 @@ app.post("/auth/forgot-password", async(req,res)=>{
                             errorMessage: mailError
                         });
                     } catch (_) {}
-                    if (role === "student") {
-                        await Notification.notifyStudent(user, {
-                            title: "🔐 Password Reset Requested",
-                            message: "A password reset link was sent to your registered email. It expires in 1 hour. If you did not request this, you can ignore the email.",
-                            type: "warning"
-                        });
-                    }
                 }
             }catch(e){ console.log("forgot-password mail error:", e && e.message); }
         }
@@ -4412,59 +4576,11 @@ try {
 }
 
 try {
-    app.use('/api/v2/certificates', require('./routes/v2/certificates'));
-    console.log('[V2] Certificate routes mounted at /api/v2/certificates');
-} catch(e) {
-    console.error('[V2] Failed to mount certificate routes:', e.message);
-}
-
-try {
     const v2HR = require("./routes/v2/hr");
     app.use("/api/v2/hr", v2HR);
     console.log("[V2] HR routes mounted at /api/v2/hr");
 } catch(e) {
     console.error("[V2] Failed to mount HR routes:", e.message);
-}
-
-// PAYMENT GATEWAY — PaymentSetu UPI integration
-try {
-    const v2Payment = require('./routes/v2/payment');
-    app.use('/api/v2/payment', v2Payment);
-    console.log('[V2] Payment routes mounted at /api/v2/payment');
-} catch(e) {
-    console.error('[V2] Failed to mount payment routes:', e.message);
-}
-
-// AI CHATBOT SYSTEM — Task Bot, Query Bot, Voice Bot (Gemini 2.0 Flash)
-try {
-    const v2Bots = require('./routes/v2/bots');
-    app.use('/api/v2/bots', v2Bots);
-    console.log('[V2] Bots routes mounted at /api/v2/bots');
-} catch(e) {
-    console.error('[V2] Failed to mount bots routes:', e.message);
-}
-
-// ── PHASE 2: Ecosystem Platform Routes ────────────────────────────────────
-try {
-    const founderProfileRoutes  = require('./routes/founderProfileRoutes');
-    const mentorProfileRoutes   = require('./routes/mentorProfileRoutes');
-    const investorProfileRoutes = require('./routes/investorProfileRoutes');
-    const notificationRoutes    = require('./routes/notificationRoutes');
-    const verificationRoutes    = require('./routes/verificationRoutes');
-    const hrDashboardRoutes     = require('./routes/hrDashboardRoutes');
-    const programApiRoutes      = require('./routes/programApiRoutes');
-
-    app.use('/api/founder', founderProfileRoutes);
-    app.use('/api/mentor', mentorProfileRoutes);
-    app.use('/api/investor', investorProfileRoutes);
-    app.use('/api/ecosystem-notifications', notificationRoutes);
-    app.use('/api/verification', verificationRoutes);
-    app.use('/api/hr', hrDashboardRoutes);
-    app.use('/api', programApiRoutes);
-
-    console.log('[Phase2] Ecosystem routes mounted successfully');
-} catch(e) {
-    console.error('[Phase2] Failed to mount ecosystem routes:', e.message);
 }
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
