@@ -6,34 +6,7 @@ const DomainTask = require("../../models/new/DomainTask");
 const StudentTaskProgress = require("../../models/new/StudentTaskProgress");
 const QuizQuestion = require("../../models/new/QuizQuestion");
 const coinService = require("./coinService");
-
-// NEW FEATURE: Quiz System
-async function tryUnlockNextWeekNoCoins(student, approvedTaskDoc) {
-    const { domain, durationType, weekNumber: currentWeek } = approvedTaskDoc;
-
-    const currentWeekTasks = await DomainTask.find({ domain, durationType, weekNumber: currentWeek }).lean();
-    const currentWeekIds = currentWeekTasks.map(t => t._id);
-    if (!currentWeekIds.length) return { unlocked: 0 };
-
-    const approvedCount = await StudentTaskProgress.countDocuments({
-        studentId: student._id,
-        taskId: { $in: currentWeekIds },
-        status: "approved"
-    });
-
-    if (approvedCount < currentWeekIds.length) return { unlocked: 0 };
-
-    const nextWeekTasks = await DomainTask.find({ domain, durationType, weekNumber: currentWeek + 1 }).lean();
-    if (!nextWeekTasks.length) return { unlocked: 0 };
-
-    const nextWeekIds = nextWeekTasks.map(t => t._id);
-    const res = await StudentTaskProgress.updateMany(
-        { studentId: student._id, taskId: { $in: nextWeekIds }, status: "locked" },
-        { $set: { status: "available" } }
-    );
-
-    return { unlocked: res.modifiedCount, weekCompleted: currentWeek };
-}
+const { tryUnlockNextWeek } = require("./taskEngine");
 
 // NEW FEATURE: Quiz System
 async function getBankCountForTask(taskId) {
@@ -134,7 +107,7 @@ async function completeTaskViaFallback(student, taskId) {
         coinsAwarded = coinRes.awarded;
     }
 
-    const unlock = await tryUnlockNextWeekNoCoins(student, task);
+    const unlock = await tryUnlockNextWeek(student, task._id, { awardCoins: false });
     nextWeekUnlocked = !!unlock.unlocked;
 
     await progress.save();
@@ -320,7 +293,7 @@ async function submitQuiz(student, taskId, answers, meta) {
             coinsAwarded = coinRes.awarded;
         }
 
-        const unlock = await tryUnlockNextWeekNoCoins(student, task);
+        const unlock = await tryUnlockNextWeek(student, task._id, { awardCoins: false });
         nextWeekUnlocked = !!unlock.unlocked;
     } else {
         progress.quiz_attempts = (progress.quiz_attempts || 0) + 1;

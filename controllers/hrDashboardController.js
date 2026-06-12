@@ -7,13 +7,11 @@ const MentorProfile         = require('../models/MentorProfile');
 const InvestorProfile       = require('../models/InvestorProfile');
 const EcosystemNotification = require('../models/EcosystemNotification');
 const PaymentTransaction    = require('../models/PaymentTransaction');
-const { ROLES }             = require('../config/roles');
-
-const ALLOWED_ROLES = [ROLES.ADMIN, ROLES.HR, ROLES.COORDINATOR];
+const { VERIFY_ROLES }      = require('../config/roles');
 
 async function getEcosystemOverview(req, res) {
   try {
-    if (!ALLOWED_ROLES.includes(req.user.role)) {
+    if (!VERIFY_ROLES.includes(req.user.role)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 

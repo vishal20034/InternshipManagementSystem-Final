@@ -3,6 +3,7 @@
 const DocumentHistory = require("../../models/DocumentHistory");
 const PDFDocument = require("pdfkit");
 const fs          = require("fs");
+const { COLORS, A4_WIDTH, renderHeader, renderTitle, renderRefDate, renderSignatureBlock, renderFooter } = require("./pdfHelpers");
 
 /**
  * Generates a Letter of Completion (LOC) PDF for a student.
@@ -18,35 +19,13 @@ async function generateLOCPDF(data, outputPath) {
             const stream = fs.createWriteStream(outputPath);
             doc.pipe(stream);
 
-            const W       = 595.28;
-            const gold    = "#C9A84C";
-            const navy    = "#0A1628";
-            const white   = "#FFFFFF";
-            const cream   = "#F8F5ED";
-            const textDark = "#1A1A2E";
+            const W       = A4_WIDTH;
+            const { gold, cream, textDark } = COLORS;
             const green   = "#065F46";
 
-            // Header band
-            doc.rect(0, 0, W, 90).fill(navy);
-            doc.rect(0, 90, W, 4).fill(gold);
-
-            doc.fillColor(gold).font("Helvetica-Bold").fontSize(18)
-                .text("THE ENTREPRENEURSHIP NETWORK", 50, 28, { width: W - 100, align: "center" });
-            doc.fillColor(white).font("Helvetica").fontSize(10)
-                .text("TEN — Shaping Tomorrow's Entrepreneurs", 50, 52, { width: W - 100, align: "center" });
-            doc.fillColor(gold).font("Helvetica").fontSize(9)
-                .text("hr@entrepreneurshipnetwork.net  |  www.entrepreneurshipnetwork.net", 50, 70, { width: W - 100, align: "center" });
-
-            // Title
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(15)
-                .text("LETTER OF COMPLETION", 50, 110, { width: W - 100, align: "center" });
-            doc.moveTo(100, 132).lineTo(W - 100, 132).lineWidth(0.8).strokeColor(gold).stroke();
-
-            // Reference & Date
-            const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-            doc.fillColor("#555").font("Helvetica").fontSize(9)
-                .text(`Date: ${data.dateIssued || today}`, 50, 142);
-            doc.text(`Ref: ${data.documentNumber || "TEN/LOC/" + Date.now().toString().slice(-6)}`, 50, 156);
+            renderHeader(doc);
+            renderTitle(doc, "LETTER OF COMPLETION");
+            renderRefDate(doc, data, "TEN/LOC/");
 
             // Congratulations banner
             doc.rect(50, 174, W - 100, 50).fillAndStroke("rgba(6,95,70,0.1)", green);
@@ -109,26 +88,8 @@ async function generateLOCPDF(data, outputPath) {
                     .text(`Document Number: ${data.documentNumber || "TEN/LOC/N/A"}`, 62, badgeY + 24, { width: W - 124, align: "center" });
             }
 
-            // Signature area
-            const sigY = 710;
-            doc.moveTo(50, sigY).lineTo(220, sigY).lineWidth(0.8).strokeColor("#333").stroke();
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(9.5).text(director, 50, sigY + 5);
-            doc.font("Helvetica").fontSize(8.5).fillColor("#555")
-                .text("Director", 50, sigY + 18)
-                .text("The Entrepreneurship Network", 50, sigY + 30);
-
-            doc.moveTo(W - 220, sigY).lineTo(W - 50, sigY).lineWidth(0.8).strokeColor("#333").stroke();
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(9.5).text("HR Department", W - 220, sigY + 5);
-            doc.font("Helvetica").fontSize(8.5).fillColor("#555")
-                .text("Human Resources", W - 220, sigY + 18)
-                .text("The Entrepreneurship Network", W - 220, sigY + 30);
-
-            // Footer
-            doc.rect(0, 800, W, 42).fill(navy);
-            doc.fillColor(gold).font("Helvetica").fontSize(8)
-                .text("The Entrepreneurship Network  ·  hr@entrepreneurshipnetwork.net  ·  www.entrepreneurshipnetwork.net", 0, 816, { width: W, align: "center" });
-            doc.fillColor(white).font("Helvetica").fontSize(7)
-                .text("This is a digitally generated Letter of Completion. For verification contact hr@entrepreneurshipnetwork.net", 0, 828, { width: W, align: "center" });
+            renderSignatureBlock(doc, { directorName: director });
+            renderFooter(doc, "Letter of Completion");
 
             doc.end();
             stream.on("finish", () => resolve(outputPath));

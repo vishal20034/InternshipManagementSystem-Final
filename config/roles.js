@@ -33,7 +33,10 @@ const ECOSYSTEM_ROLES = Object.freeze([
   ROLES.CONTRACTOR,
 ]);
 
+/** Roles permitted to verify / approve profiles */
+const VERIFY_ROLES = Object.freeze([ROLES.ADMIN, ROLES.HR, ROLES.COORDINATOR]);
+
 /** All valid roles */
 const ALL_ROLES = Object.freeze([...LEGACY_ROLES, ...ECOSYSTEM_ROLES]);
 
-module.exports = { ROLES, LEGACY_ROLES, ECOSYSTEM_ROLES, ALL_ROLES };
+module.exports = { ROLES, LEGACY_ROLES, ECOSYSTEM_ROLES, VERIFY_ROLES, ALL_ROLES };
