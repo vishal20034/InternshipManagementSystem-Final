@@ -212,10 +212,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
   // Countdown timer — 15 min
   let secs = 15 * 60;
+  window._sessionExpired = false;
   const timerEl = document.getElementById('timerDisplay');
   const interval = setInterval(() => {
     secs--;
-    if (secs <= 0) { clearInterval(interval); timerEl.textContent = 'Expired'; return; }
+    if (secs <= 0) {
+      clearInterval(interval);
+      timerEl.textContent = 'Expired';
+      window._sessionExpired = true;
+      document.getElementById('submitBtn').disabled = true;
+      document.getElementById('submitBtn').textContent = 'Session Expired';
+      document.getElementById('utrInput').disabled = true;
+      return;
+    }
     const m = String(Math.floor(secs/60)).padStart(2,'0');
     const s = String(secs % 60).padStart(2,'0');
     timerEl.textContent = `${m}:${s}`;
@@ -246,6 +255,11 @@ async function verifyUTR() {
   successEl.style.display = 'none';
   errorEl.style.display   = 'none';
 
+  if (window._sessionExpired) {
+    errorEl.textContent = 'Session expired. Please go back and start the payment process again.';
+    errorEl.style.display = 'block';
+    return;
+  }
   if (!utr || utr.length < 8) {
     errorEl.textContent = 'Please enter a valid UTR or Transaction ID (at least 8 characters).';
     errorEl.style.display = 'block';
@@ -263,7 +277,7 @@ async function verifyUTR() {
   try {
     const res = await fetch('/api/payment/verify-utr', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
       body: JSON.stringify({ utr, certType: type, empId, orderId })
     });
     const data = await res.json();
