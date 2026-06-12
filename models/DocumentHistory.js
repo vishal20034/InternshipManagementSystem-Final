@@ -69,4 +69,4 @@ documentHistorySchema.statics.logSend = async function (entry = {}, method = 'ma
   }
 };
 
-module.exports = mongoose.model('DocumentHistory', documentHistorySchema);
+module.exports = mongoose.models.DocumentHistory || mongoose.model('DocumentHistory', documentHistorySchema);

@@ -20,6 +20,5 @@ const studentCertificateSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 studentCertificateSchema.index({ studentId: 1, certificateType: 1 }, { unique: true });
-studentCertificateSchema.index({ certificateId: 1 });
 
 module.exports = mongoose.model("StudentCertificate", studentCertificateSchema);

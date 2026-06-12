@@ -24,7 +24,6 @@ const studentDocumentSchema = new mongoose.Schema({
     locDocumentNumber:{ type: String, default: null }
 }, { timestamps: true });
 
-studentDocumentSchema.index({ studentId: 1 });
 studentDocumentSchema.index({ uploadStatus: 1 });
 
 module.exports = mongoose.model("StudentDocument", studentDocumentSchema);

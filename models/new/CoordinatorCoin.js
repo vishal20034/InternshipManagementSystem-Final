@@ -17,7 +17,6 @@ const coordinatorCoinSchema = new mongoose.Schema({
     lastUpdated:          { type: Date, default: Date.now }
 }, { timestamps: true });
 
-coordinatorCoinSchema.index({ coordinatorId: 1 });
 coordinatorCoinSchema.index({ performanceScore: -1 });
 
 module.exports = mongoose.model("CoordinatorCoin", coordinatorCoinSchema);

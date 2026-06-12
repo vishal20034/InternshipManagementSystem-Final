@@ -1,0 +1,282 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=Merriweather:wght@300;400;700;900&family=Source+Sans+3:wght@300;400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Sovereign Palette - Primary Tokens */
+  --bg-color: #FBF7EE;
+  --accent-color: #CB5534;
+  --accent-hover: #B24629;
+  
+  --text-primary: #1E1A17;
+  --text-secondary: #5C524C;
+  --text-muted: #8E8279;
+  
+  --surface-card: #FFFFFF;
+  --surface-alt: #F5EFEB;
+  --border-color: #E2D9CD;
+  --border-strong: #CB5534;
+
+  --success: #2E7D32;
+  --danger: #C62828;
+  --warning: #EF6C00;
+  --info: #0288D1;
+
+  --font-display: 'Merriweather', Georgia, serif;
+  --font-body: 'DM Sans', 'Inter', sans-serif;
+  --font-serif: 'Merriweather', Georgia, serif;
+
+  /* Radius */
+  --r-sm: 14px;
+  --r-md: 20px;
+  --r-lg: 28px;
+  --r-xl: 36px;
+
+  /* Radius overrides for legacy variables */
+  --ten-r-sm: var(--r-sm);
+  --ten-r-md: var(--r-md);
+  --ten-r-lg: var(--r-lg);
+  --ten-r-xl: var(--r-xl);
+
+  /* Legacy layout mapping to Sovereign */
+  --ten-bg: var(--bg-color);
+  --ten-surface: var(--surface-alt);
+  --ten-card: var(--surface-card);
+  --ten-card2: var(--surface-alt);
+  
+  --ten-gold: var(--accent-color);
+  --ten-gold-light: #F08467;
+  --ten-gold-dim: var(--accent-hover);
+  --ten-gold-glow: rgba(203, 85, 52, 0.12);
+  --ten-gold-bg: rgba(203, 85, 52, 0.06);
+  
+  --ten-cyan: var(--info);
+  --ten-cyan-glow: rgba(2, 136, 209, 0.12);
+  
+  --ten-border: var(--border-color);
+  --ten-border-strong: var(--border-strong);
+  --ten-border-dim: rgba(30, 26, 23, 0.08);
+
+  --ten-text: var(--text-primary);
+  --ten-text-sub: var(--text-secondary);
+  --ten-text-muted: var(--text-muted);
+
+  --ten-success: var(--success);
+  --ten-danger: var(--danger);
+  --ten-warning: var(--warning);
+  --ten-blue: var(--info);
+
+  --ten-font-display: var(--font-display);
+  --ten-font-body: var(--font-body);
+}
+
+/* Base styles */
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-color);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+a {
+  color: var(--accent-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Decorative Canvas Background */
+.ten-grid-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: 
+    radial-gradient(at 0% 0%, rgba(253, 252, 247, 0.8) 0, transparent 50%),
+    radial-gradient(at 50% 0%, rgba(245, 239, 235, 0.5) 0, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(203, 85, 52, 0.03) 0, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(251, 247, 238, 0.9) 0, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Glow Orbs */
+.ten-orb {
+  position: fixed; border-radius: 50%; pointer-events: none;
+  filter: blur(140px); opacity: 0.15; z-index: 0;
+}
+.ten-orb-1 {
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, var(--accent-color), transparent 70%);
+  top: -250px; right: -250px;
+}
+.ten-orb-2 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--info), transparent 70%);
+  bottom: -200px; left: -200px;
+}
+
+/* Utility Elements */
+.ten-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-xl);
+  box-shadow: 0 20px 45px -15px rgba(30, 26, 23, 0.05), 0 0 0 1px rgba(226, 217, 205, 0.2);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.ten-card-gold-top {
+  position: relative;
+}
+.ten-card-gold-top::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+}
+
+.ten-btn-gold {
+  background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+  color: #FFFFFF;
+  font-family: var(--font-display);
+  font-weight: 700;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ten-btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(203, 85, 52, 0.25);
+}
+
+.ten-badge {
+  background: var(--ten-gold-bg);
+  border: 1px solid rgba(203, 85, 52, 0.2);
+  color: var(--accent-color);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.ten-input {
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(30, 26, 23, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ten-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(203, 85, 52, 0.1);
+  background: #FFFFFF;
+}
+.ten-input::placeholder { color: var(--text-muted); }
+
+/* Keyframes */
+@keyframes ten-fadeUp {
+  from { opacity:0; transform:translateY(28px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+@keyframes ten-fadeIn {
+  from { opacity:0; } to { opacity:1; }
+}
+@keyframes ten-slideLeft {
+  from { opacity:0; transform:translateX(-32px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes ten-slideRight {
+  from { opacity:0; transform:translateX(32px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+@keyframes ten-scaleIn {
+  from { opacity:0; transform:scale(0.88); }
+  to   { opacity:1; transform:scale(1); }
+}
+@keyframes ten-glowPulse {
+  0%,100% { box-shadow: 0 0 20px rgba(203, 85, 52, 0.15); }
+  50%      { box-shadow: 0 0 45px rgba(203, 85, 52, 0.35), 0 0 80px rgba(203, 85, 52, 0.08); }
+}
+@keyframes ten-float {
+  0%,100% { transform: translateY(0px) rotate(0deg); }
+  33%      { transform: translateY(-12px) rotate(1deg); }
+  66%      { transform: translateY(-6px) rotate(-1deg); }
+}
+@keyframes ten-spinSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes ten-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+@keyframes ten-radarPulse {
+  0%   { opacity:0.7; transform:scale(1); }
+  100% { opacity:0; transform:scale(1.18); }
+}
+
+/* Animation utilities */
+.ten-fade-up      { animation: ten-fadeUp    0.6s cubic-bezier(0.22,1,0.36,1) both; }
+.ten-fade-in      { animation: ten-fadeIn    0.5s ease both; }
+.ten-slide-left   { animation: ten-slideLeft 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+.ten-slide-right  { animation: ten-slideRight 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+.ten-scale-in     { animation: ten-scaleIn   0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+.ten-glow-pulse   { animation: ten-glowPulse 3s ease-in-out infinite; }
+.ten-float        { animation: ten-float     6s ease-in-out infinite; }
+.ten-spin-slow    { animation: ten-spinSlow  12s linear infinite; }
+
+.ten-d1  { animation-delay: 0.1s; }
+.ten-d2  { animation-delay: 0.2s; }
+.ten-d3  { animation-delay: 0.3s; }
+.ten-d4  { animation-delay: 0.4s; }
+.ten-d5  { animation-delay: 0.5s; }
+.ten-d6  { animation-delay: 0.6s; }
+
+.ten-card-hover {
+  transition: transform 0.3s cubic-bezier(0.22,1,0.36,1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.ten-card-hover:hover {
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 16px 48px rgba(30, 26, 23, 0.08);
+  border-color: var(--accent-color) !important;
+}
+
+.ten-input-glow {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.ten-input-glow:focus {
+  outline: none;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px rgba(203, 85, 52, 0.1);
+}
+
+.ten-glass {
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--border-color);
+}

@@ -1,0 +1,50 @@
+{
+  "name": "new_pro",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "next build",
+    "start": "node server.js",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.5.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
+    "lucide-react": "^1.17.0",
+    "mongoose": "^9.7.0",
+    "multer": "^2.1.1",
+    "next": "16.2.9",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.11",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.19.1",
+    "postcss": "^8.5.15",
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "socket.io": "^4.8.3",
+    "tailwindcss": "^3.4.19",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^22",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pdfkit": "^0.17.6",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "typescript": "^5"
+  }
+}

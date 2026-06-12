@@ -14,7 +14,6 @@ const studentCoinSchema = new mongoose.Schema({
     lastUpdated:  { type: Date, default: Date.now }
 }, { timestamps: true });
 
-studentCoinSchema.index({ studentId: 1 });
 studentCoinSchema.index({ totalCoins: -1 });
 
 module.exports = mongoose.model("StudentCoin", studentCoinSchema);
