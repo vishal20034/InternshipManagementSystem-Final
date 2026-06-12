@@ -2,80 +2,52 @@
 
 const crypto = require('crypto');
 
-// Mock the PaymentTransaction model before requiring the module
-jest.mock('../../../models/PaymentTransaction', () => {
-  const mockModel = {
-    PAYMENT_STATUSES: {
-      CREATED: 'CREATED',
-      PENDING: 'PENDING',
-      PAID: 'PAID',
-      FAILED: 'FAILED',
-      REFUNDED: 'REFUNDED',
-    },
-    findOne: jest.fn(),
-    findById: jest.fn(),
-  };
-  return mockModel;
-});
+jest.mock('../../../models/PaymentTransaction', () => ({
+  PAYMENT_STATUSES: { CREATED: 'CREATED', PENDING: 'PENDING', PAID: 'PAID', FAILED: 'FAILED', REFUNDED: 'REFUNDED' },
+  findOne: jest.fn(),
+  findById: jest.fn(),
+}));
 
 const { verifyWebhookSignature, webhookEmitter } = require('../../../services/payment/PaymentWebhookService');
 
 describe('services/payment/PaymentWebhookService', () => {
+  const SECRET = 'webhook-test-key';
+  const RAW_BODY = '{"event":"payment.captured","payload":{}}';
+
+  function sign(body, key) {
+    return crypto.createHmac('sha256', key).update(body).digest('hex');
+  }
+
   describe('verifyWebhookSignature', () => {
-    const secret = 'test-secret-key';
-    const rawBody = '{"event":"payment.captured","payload":{}}';
-
-    function computeSignature(body, key) {
-      return crypto.createHmac('sha256', key).update(body).digest('hex');
-    }
-
     it('returns true for a valid HMAC-SHA256 signature', () => {
-      const signature = computeSignature(rawBody, secret);
-      const result = verifyWebhookSignature({ rawBody, signature, secret });
-      expect(result).toBe(true);
+      expect(verifyWebhookSignature({ rawBody: RAW_BODY, signature: sign(RAW_BODY, SECRET), secret: SECRET })).toBe(true);
     });
 
     it('returns false for an invalid signature', () => {
-      const result = verifyWebhookSignature({
-        rawBody,
-        signature: 'deadbeef'.repeat(8),
-        secret,
-      });
-      expect(result).toBe(false);
+      expect(verifyWebhookSignature({ rawBody: RAW_BODY, signature: 'a'.repeat(64), secret: SECRET })).toBe(false);
     });
 
-    it('returns false when secret is missing', () => {
-      expect(verifyWebhookSignature({ rawBody, signature: 'abc', secret: '' })).toBe(false);
-      expect(verifyWebhookSignature({ rawBody, signature: 'abc', secret: null })).toBe(false);
-    });
-
-    it('returns false when signature is missing', () => {
-      expect(verifyWebhookSignature({ rawBody, signature: '', secret })).toBe(false);
-      expect(verifyWebhookSignature({ rawBody, signature: null, secret })).toBe(false);
-    });
-
-    it('returns false when rawBody is missing', () => {
-      expect(verifyWebhookSignature({ rawBody: '', signature: 'abc', secret })).toBe(false);
-      expect(verifyWebhookSignature({ rawBody: null, signature: 'abc', secret })).toBe(false);
+    it.each([
+      ['secret', { rawBody: RAW_BODY, signature: 'abc', secret: '' }],
+      ['signature', { rawBody: RAW_BODY, signature: '', secret: SECRET }],
+      ['rawBody', { rawBody: '', signature: 'abc', secret: SECRET }],
+    ])('returns false when %s is missing', (_label, params) => {
+      expect(verifyWebhookSignature(params)).toBe(false);
     });
 
     it('works with a Buffer rawBody', () => {
-      const bufBody = Buffer.from(rawBody, 'utf8');
-      const signature = computeSignature(rawBody, secret);
-      const result = verifyWebhookSignature({ rawBody: bufBody, signature, secret });
-      expect(result).toBe(true);
+      const buf = Buffer.from(RAW_BODY, 'utf8');
+      expect(verifyWebhookSignature({ rawBody: buf, signature: sign(RAW_BODY, SECRET), secret: SECRET })).toBe(true);
     });
 
     it('returns false for signature with wrong length', () => {
-      const result = verifyWebhookSignature({ rawBody, signature: 'short', secret });
-      expect(result).toBe(false);
+      expect(verifyWebhookSignature({ rawBody: RAW_BODY, signature: 'short', secret: SECRET })).toBe(false);
     });
   });
 
   describe('webhookEmitter', () => {
     it('is an EventEmitter instance', () => {
-      const { EventEmitter } = require('events');
-      expect(webhookEmitter).toBeInstanceOf(EventEmitter);
+      expect(webhookEmitter).toBeInstanceOf(require('events').EventEmitter);
     });
 
     it('can emit and listen for webhook events', (done) => {
