@@ -19,18 +19,6 @@
   --radius:16px;
 }
 body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;}
-/* Replit watermark removal */
-[data-replit-badge],.replit-ui-theme-root>div:last-child,iframe[src*="replit.com/badge"]{display:none!important;}
-/* Mystery fellowship card */
-.mystery-card{background:linear-gradient(135deg,#100a20 0%,#0a0818 100%);border:1px dashed rgba(139,92,246,0.3);border-radius:var(--radius);overflow:hidden;position:relative;cursor:default;}
-.mystery-card:hover{transform:translateY(-2px);}
-.mystery-preview{min-height:140px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;background:linear-gradient(135deg,rgba(139,92,246,0.06),rgba(10,8,24,0.9));}
-.mystery-orb{font-size:40px;animation:pulse-glow 3s ease-in-out infinite;}
-@keyframes pulse-glow{0%,100%{filter:drop-shadow(0 0 8px rgba(139,92,246,0.4))}50%{filter:drop-shadow(0 0 20px rgba(139,92,246,0.8))}}
-.mystery-qmarks{font-size:28px;font-weight:800;color:rgba(139,92,246,0.6);letter-spacing:8px;}
-.mystery-sub{font-size:12px;color:rgba(139,92,246,0.5);font-style:italic;text-align:center;}
-.mystery-rank-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px;}
-.mystery-locked-badge{display:inline-block;padding:10px 16px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:10px;color:rgba(139,92,246,0.6);font-size:12px;font-weight:600;width:100%;text-align:center;}
 .topbar{display:flex;align-items:center;gap:14px;padding:18px 32px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:50;}
 .back-btn{background:rgba(212,175,55,0.08);border:1px solid var(--border-strong);border-radius:10px;color:var(--gold);padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
 .back-btn:hover{background:rgba(212,175,55,0.15);}
@@ -228,22 +216,25 @@ function renderError(msg) {
 }
 
 function renderCerts(d) {
-  const types = ['expert', 'nano_degree'];
+  const types = ['expert', 'nano_degree', 'fellowship'];
   let html = '';
 
   for (const type of types) {
+    // Hide fellowship from non-top-10%
+    if (type === 'fellowship' && !d.fellowship?.unlocked) continue;
+
     const info     = CERT_LABELS[type];
     const certInfo = d[type];
     const unlocked = certInfo?.unlocked;
-    const pct      = certInfo?.completionPct || 0;
-    const threshold= type === 'expert' ? 30 : 70;
+    const pct      = certInfo?.completionPct || certInfo?.cohortRankPct || 0;
+    const threshold= certInfo?.threshold || (type === 'fellowship' ? 10 : type === 'expert' ? 30 : 70);
     const record   = certInfo?.record;
     const price    = d.prices?.[type] || 0;
 
-    // Preview area
+    // Preview area content
     let previewHtml = '';
     if (unlocked) {
-      previewHtml = `<div class="cert-name-preview">✨ Your Certificate</div>`;
+      previewHtml = `<div class="cert-name-preview">${EMP_ID ? '✨ Your Certificate' : 'Unlocked!'}</div>`;
     } else {
       previewHtml = `
         <div class="cert-blur">THE ENTREPRENEURSHIP NETWORK<br>Certificate of Excellence<br>This certifies that<br>[Your Name]<br>has completed the program</div>
@@ -253,7 +244,10 @@ function renderCerts(d) {
     // Action button
     let actionBtn = '';
     if (!unlocked) {
-      actionBtn = `<button class="cert-action-btn locked">🔒 Locked — ${threshold}% completion needed (${Math.min(100,pct)}% done)</button>`;
+      const need = type === 'fellowship'
+        ? `Top 10% of cohort (currently ${type === 'fellowship' && d.fellowship ? d.fellowship.cohortRankPct : 50}% rank)`
+        : `${threshold}% completion needed (${Math.min(100,pct)}% done)`;
+      actionBtn = `<button class="cert-action-btn locked">🔒 Locked — ${need}</button>`;
     } else if (record?.pdfUrl) {
       actionBtn = `<button class="cert-action-btn claimed-btn" onclick="downloadCert('${record.pdfUrl}','${type}')">⬇ Download Certificate</button>`;
     } else {
@@ -261,7 +255,10 @@ function renderCerts(d) {
       actionBtn = `<button class="cert-action-btn claim-btn" onclick="claimCert('${type}')">🎉 ${payLabel}</button>`;
     }
 
-    const barPct = Math.min(100, Math.round((pct / threshold) * 100));
+    // Progress bar
+    const barPct = type === 'fellowship'
+      ? Math.max(0, 100 - (d.fellowship?.cohortRankPct || 50))
+      : Math.min(100, Math.round((pct / threshold) * 100));
 
     html += `
     <div class="cert-card ${type}">
@@ -275,67 +272,15 @@ function renderCerts(d) {
         <div class="cert-name">${unlocked ? '🎉 ' : ''}${info.name}</div>
         <div class="cert-desc">${info.desc}</div>
         <div class="cert-prog-wrap">
-          <div class="cert-prog-label"><span>Progress</span><span>${pct}% / ${threshold}%</span></div>
-          <div class="cert-prog-track"><div class="cert-prog-fill" style="width:${barPct}%"></div></div>
+          <div class="cert-prog-label">
+            <span>${type === 'fellowship' ? 'Cohort ranking' : 'Progress'}</span>
+            <span>${pct}${type === 'fellowship' ? '% rank' : '% complete'}</span>
+          </div>
+          <div class="cert-prog-track">
+            <div class="cert-prog-fill" style="width:${barPct}%"></div>
+          </div>
         </div>
         ${actionBtn}
-      </div>
-    </div>`;
-  }
-
-  // Fellowship — always show (mystery if ineligible, full if eligible)
-  const fw        = d.fellowship || {};
-  const fwEligible = fw.unlocked;
-  const fwRecord   = fw.record;
-  const rankPct    = fw.cohortRankPct ?? 50;
-  const fwPrice    = d.prices?.fellowship || 2500;
-
-  if (fwEligible) {
-    // Full fellowship card
-    let fwAction = '';
-    if (fwRecord?.pdfUrl) {
-      fwAction = `<button class="cert-action-btn claimed-btn" onclick="downloadCert('${fwRecord.pdfUrl}','fellowship')">⬇ Download Certificate</button>`;
-    } else {
-      const fwLabel = d.paymentEnabled ? `Claim It → ₹${fwPrice}` : `Claim It (Payment coming soon)`;
-      fwAction = `<button class="cert-action-btn claim-btn" onclick="claimCert('fellowship')">✨ ${fwLabel}</button>`;
-    }
-    const fwBar = Math.max(0, 100 - rankPct);
-    html += `
-    <div class="cert-card fellowship">
-      <div class="cert-card-header"><div class="cert-tier-badge">TIER 3 — ₹${fwPrice}</div></div>
-      <div class="cert-preview-area">
-        <div class="cert-preview-bg">
-          <div class="cert-name-preview">✨ Fellowship Unlocked</div>
-        </div>
-      </div>
-      <div class="cert-body">
-        <div class="cert-name">🎉 Fellowship</div>
-        <div class="cert-desc">Top 10% of cohort — a title, not just a certificate</div>
-        <div class="cert-prog-wrap">
-          <div class="cert-prog-label"><span>Cohort ranking</span><span>Top ${rankPct}% ✓</span></div>
-          <div class="cert-prog-track"><div class="cert-prog-fill" style="width:${fwBar}%"></div></div>
-        </div>
-        ${fwAction}
-      </div>
-    </div>`;
-  } else {
-    // Mystery card — Zeigarnik Effect: show locked card to create curiosity
-    const rankDisplay = rankPct < 100 ? `${Math.round(rankPct)}% rank` : 'Calculating...';
-    html += `
-    <div class="mystery-card">
-      <div class="mystery-preview">
-        <div class="mystery-orb">🔮</div>
-        <div class="mystery-qmarks">? ? ?</div>
-        <div class="mystery-sub">Something rare awaits the best performers</div>
-      </div>
-      <div class="cert-body">
-        <div class="cert-name" style="color:rgba(139,92,246,0.7);">? ? ?</div>
-        <div class="cert-desc">Reserved for top performers only</div>
-        <div class="cert-prog-wrap">
-          <div class="mystery-rank-row"><span>Your rank</span><span id="cohort-rank-display">${rankDisplay}</span></div>
-          <div class="cert-prog-track"><div class="cert-prog-fill" style="width:0%;background:rgba(139,92,246,0.3)"></div></div>
-        </div>
-        <div class="mystery-locked-badge">🔒 Keep going — top performers unlock this</div>
       </div>
     </div>`;
   }
@@ -356,41 +301,27 @@ async function claimCert(type) {
       Swal.fire({ icon: 'info', title: '🎉 You Qualified!', text: 'Payment is coming soon — we will notify you by email when it is ready to claim!', background: '#0e1428', color: '#F0EEE8', confirmButtonColor: '#D4AF37' });
       // Trigger the reveal animation anyway
       triggerRevealAnimation(type);
-    } else if (d.status === 'payment_initiated') {
-      // Razorpay checkout (runs only when PAYMENT_ENABLED=true)
-      openRazorpay(d, type);
+    } else if (d.status === 'payment_redirect') {
+      // PaymentSetu — redirect to hosted payment page
+      if (d.paymentUrl) {
+        Swal.fire({
+          icon: 'info',
+          title: '🔒 Secure Payment',
+          html: `You will be redirected to our secure payment page.<br><br><b>Amount: ₹${(d.amount/100).toLocaleString('en-IN')}</b>`,
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37',
+          confirmButtonText: 'Proceed to Pay →',
+          showCancelButton: true,
+          cancelButtonText: 'Cancel'
+        }).then(result => {
+          if (result.isConfirmed) window.location.href = d.paymentUrl;
+        });
+      }
     }
   } catch(e) {
     Swal.fire({ icon: 'error', title: 'Error', text: 'Network error. Please try again.', background: '#0e1428', color: '#F0EEE8' });
   }
-}
-
-function openRazorpay(orderData, type) {
-  const options = {
-    key:         orderData.keyId,
-    amount:      orderData.amount,
-    currency:    orderData.currency,
-    order_id:    orderData.orderId,
-    name:        'The Entrepreneurship Network',
-    description: CERT_LABELS[type]?.name + ' Certificate',
-    handler: async function(response) {
-      // Payment successful — generate PDF
-      const r = await fetch(`/api/v2/certificates/generate-pdf/${type}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-employee-id': EMP_ID },
-        body: JSON.stringify({ paymentId: response.razorpay_payment_id })
-      });
-      const d = await r.json();
-      if (d.success) {
-        currentPdfUrl = d.pdfUrl;
-        triggerRevealAnimation(type);
-        loadCerts(); // Refresh
-      }
-    },
-    theme: { color: '#D4AF37' }
-  };
-  const rzp = new Razorpay(options);
-  rzp.open();
 }
 
 async function downloadCert(pdfUrl, type) {
