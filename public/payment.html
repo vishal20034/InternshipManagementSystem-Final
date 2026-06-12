@@ -166,15 +166,15 @@ textarea{resize:none;height:70px;}
     </div>
 
     <div class="upi-id-box">
-      💳 Pay to: <span id="upiIdDisplay">8595986120@ptyes</span>
+      💳 Pay to: <span id="upiIdDisplay">paytmqr5k0ods@ptys</span> · <span style="color:var(--muted);font-size:12px;">LIMITLESS TECHNOLOGI</span>
     </div>
 
-    <!-- QR Code -->
+    <!-- QR Code — Paytm static QR -->
     <div class="qr-wrap">
       <div class="qr-box">
-        <div id="qrCanvas"></div>
+        <img id="paytmQrImg" src="/paytm-qr.jpeg" alt="Paytm QR Code" style="width:200px;height:200px;display:block;border-radius:6px;">
       </div>
-      <div class="qr-hint">📷 Scan with any UPI app (GPay, PhonePe, Paytm, BHIM…)</div>
+      <div class="qr-hint">📷 Scan with Paytm · UPI: paytmqr5k0ods@ptys</div>
     </div>
 
     <!-- UPI app deep-link buttons -->
@@ -215,8 +215,8 @@ textarea{resize:none;height:70px;}
 
 <script>
 // ── Config ──────────────────────────────────────────────────────────────
-const MERCHANT_UPI = '8595986120@ptyes';
-const MERCHANT_NAME = 'TEN Internship';
+const MERCHANT_UPI = 'paytmqr5k0ods@ptys';
+const MERCHANT_NAME = 'LIMITLESS TECHNOLOGI';
 
 // ── Init session ─────────────────────────────────────────────────────────
 const empId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
@@ -259,19 +259,7 @@ function showPaymentStep() {
   document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
   document.getElementById('upiIdDisplay').textContent  = MERCHANT_UPI;
 
-  // Build UPI URL
-  const upiUrl = buildUpiUrl(MERCHANT_UPI, MERCHANT_NAME, amount.toFixed(2), currentNote);
-
-  // Generate QR
-  document.getElementById('qrCanvas').innerHTML = '';
-  qrInstance = new QRCode(document.getElementById('qrCanvas'), {
-    text:          upiUrl,
-    width:         200,
-    height:        200,
-    colorDark:     '#000000',
-    colorLight:    '#ffffff',
-    correctLevel:  QRCode.CorrectLevel.H
-  });
+  // Static Paytm QR is always shown — no dynamic generation needed
 
   // Switch steps
   document.getElementById('step-form').style.display = 'none';
