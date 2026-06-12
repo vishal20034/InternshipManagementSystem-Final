@@ -3,330 +3,291 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TEN — Make Payment</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- QR code library (pure JS, no server needed) -->
-<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<title>Pay for Certificate — TEN Portal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-:root {
-  --bg-base:       #05070e;
-  --bg-card:       #0e1428;
-  --bg-input:      #0b1222;
-  --border:        rgba(212,175,55,0.08);
-  --border-strong: rgba(212,175,55,0.18);
-  --gold:          #D4AF37;
-  --green:         #10b981;
-  --red:           #ef4444;
-  --text:          #F0EEE8;
-  --muted:         #9a9080;
-  --dim:           #4E4840;
-  --radius:        16px;
-}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg-base);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
-body::before{content:'';position:fixed;top:-200px;left:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(212,175,55,0.06) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
-[data-replit-badge],.replit-ui-theme-root>div:last-child,iframe[src*="replit.com/badge"]{display:none!important;}
+:root{
+  --bg:#07090f;
+  --card:#0e1428;
+  --card2:#131b35;
+  --border:rgba(212,175,55,0.12);
+  --gold:#D4AF37;
+  --gold2:#b8960c;
+  --text:#F0EEE8;
+  --muted:#8a8070;
+  --green:#10b981;
+  --red:#ef4444;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 60px;}
+.header{text-align:center;margin-bottom:28px;}
+.header .logo{font-size:13px;letter-spacing:3px;color:var(--gold);font-weight:600;text-transform:uppercase;margin-bottom:6px;}
+.header h1{font-size:22px;font-weight:700;color:var(--text);}
+.header .amount-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(212,175,55,0.1);border:1px solid var(--border);border-radius:100px;padding:8px 20px;margin-top:10px;font-size:18px;font-weight:700;color:var(--gold);}
+.cert-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-top:6px;}
 
-.card{background:var(--bg-card);border:1px solid var(--border-strong);border-radius:22px;padding:36px;width:100%;max-width:480px;box-shadow:0 4px 40px rgba(0,0,0,0.45);}
-.back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--dim);text-decoration:none;margin-bottom:22px;transition:color .2s;}
-.back-link:hover{color:var(--muted);}
-.logo-row{display:flex;align-items:center;gap:12px;margin-bottom:26px;}
-.brand{font-size:18px;font-weight:700;color:var(--gold);}
-.sub-brand{font-size:12px;color:var(--dim);}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:100%;max-width:440px;margin-bottom:16px;}
 
-/* ── Step 1 ── */
-h1{font-size:22px;font-weight:700;margin-bottom:6px;}
-.subtitle{font-size:14px;color:var(--muted);margin-bottom:22px;}
-.student-info{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
-.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#b8962c);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#05070e;flex-shrink:0;}
-.s-name{font-size:15px;font-weight:600;}
-.s-id{font-size:12px;color:var(--dim);font-family:'DM Mono',monospace;}
-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px;}
-.input-wrap{position:relative;margin-bottom:18px;}
-.rupee{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;font-weight:700;color:var(--gold);pointer-events:none;}
-input[type="number"],textarea{width:100%;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:var(--radius);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;padding:13px 16px;outline:none;transition:border-color .2s;}
-input[type="number"]{padding-left:36px;}
-input[type="number"]:focus,textarea:focus{border-color:var(--gold);}
-input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;}
-textarea{resize:none;height:70px;}
-.btn-pay{width:100%;padding:16px;background:linear-gradient(135deg,var(--gold),#b8962c);color:#05070e;font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;border:none;border-radius:var(--radius);cursor:pointer;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px;}
-.btn-pay:hover{opacity:.9;}
-.btn-pay:disabled{opacity:.5;cursor:not-allowed;}
-.spinner{width:18px;height:18px;border:2px solid rgba(0,0,0,.3);border-top-color:#05070e;border-radius:50%;animation:spin .7s linear infinite;display:none;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--radius);padding:14px 16px;margin-top:14px;font-size:14px;color:#fca5a5;display:none;line-height:1.5;}
+/* QR section */
+.qr-wrapper{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.qr-box{background:#fff;border-radius:16px;padding:12px;width:200px;height:200px;display:flex;align-items:center;justify-content:center;}
+.qr-box canvas{display:block;}
+.qr-label{font-size:13px;color:var(--muted);text-align:center;}
+.qr-label strong{color:var(--text);}
+.upi-id-box{background:rgba(212,175,55,0.07);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--gold);font-family:monospace;letter-spacing:0.5px;cursor:pointer;transition:background 0.2s;}
+.upi-id-box:hover{background:rgba(212,175,55,0.14);}
+.copy-hint{font-size:11px;color:var(--muted);text-align:center;}
 
-/* ── Step 2: UPI payment ── */
-#step-upi{display:none;}
-.amount-hero{text-align:center;margin-bottom:22px;}
-.amount-hero .rupees{font-size:40px;font-weight:800;color:var(--gold);}
-.amount-hero .label{font-size:13px;color:var(--muted);margin-top:4px;}
-
-.upi-id-box{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(212,175,55,.06);border:1px solid rgba(212,175,55,.2);border-radius:12px;padding:10px 16px;margin-bottom:22px;font-size:14px;font-weight:600;color:var(--gold);font-family:'DM Mono',monospace;}
-
-/* QR */
-.qr-wrap{display:flex;flex-direction:column;align-items:center;margin-bottom:22px;}
-.qr-box{background:#fff;border-radius:14px;padding:14px;display:inline-block;box-shadow:0 4px 20px rgba(0,0,0,.3);}
-#qrCanvas{display:block;}
-.qr-hint{font-size:12px;color:var(--dim);margin-top:10px;text-align:center;}
-
-/* UPI app buttons */
-.upi-label-row{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;}
-.upi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-.upi-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px 10px;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:var(--radius);cursor:pointer;text-decoration:none;color:var(--text);font-size:13px;font-weight:600;transition:all .2s;}
-.upi-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.3);}
-.upi-btn .icon{font-size:26px;line-height:1;}
-.upi-btn .hint{font-size:11px;color:var(--dim);}
-.upi-btn.gpay:hover{background:rgba(59,130,246,.07);border-color:rgba(59,130,246,.4);}
-.upi-btn.phonepe:hover{background:rgba(107,33,168,.07);border-color:rgba(107,33,168,.4);}
-.upi-btn.paytm:hover{background:rgba(6,182,212,.07);border-color:rgba(6,182,212,.4);}
-.upi-btn.other{grid-column:1/-1;}
-.upi-btn.other:hover{background:rgba(212,175,55,.07);border-color:rgba(212,175,55,.4);}
-
-.divider{display:flex;align-items:center;gap:12px;margin:14px 0;color:var(--dim);font-size:12px;}
+/* Divider */
+.divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
 
-/* After-payment confirm */
-.confirm-section{margin-top:20px;border-top:1px solid var(--border);padding-top:18px;}
-.confirm-section p{font-size:13px;color:var(--muted);margin-bottom:10px;}
-.utr-input{width:100%;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:var(--radius);color:var(--text);font-family:'DM Mono',monospace;font-size:14px;padding:12px 14px;outline:none;transition:border-color .2s;margin-bottom:10px;}
-.utr-input:focus{border-color:var(--green);}
-.btn-confirm{width:100%;padding:14px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);border-radius:var(--radius);color:var(--green);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;}
-.btn-confirm:hover{background:rgba(16,185,129,.2);}
-.btn-confirm:disabled{opacity:.5;cursor:not-allowed;}
-.btn-cancel-back{width:100%;padding:11px;background:transparent;border:1px solid var(--border);border-radius:var(--radius);color:var(--muted);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;cursor:pointer;margin-top:8px;transition:all .2s;}
-.btn-cancel-back:hover{border-color:rgba(239,68,68,.3);color:var(--red);}
+/* UPI app grid */
+.apps-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.app-btn{display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:18px 12px;cursor:pointer;text-decoration:none;color:var(--text);transition:border-color 0.2s,background 0.2s;}
+.app-btn:hover{border-color:rgba(212,175,55,0.35);background:rgba(212,175,55,0.05);}
+.app-btn .app-icon{font-size:28px;}
+.app-btn .app-name{font-size:13px;font-weight:600;}
+.app-btn .app-sub{font-size:11px;color:var(--muted);}
 
-.success-box{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:var(--radius);padding:16px;text-align:center;display:none;}
-.success-box .check{font-size:36px;margin-bottom:8px;}
-.success-box h3{font-size:18px;font-weight:700;color:var(--green);margin-bottom:6px;}
-.success-box p{font-size:13px;color:var(--muted);}
+/* UTR section */
+.utr-section h3{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.utr-note{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5;}
+.utr-note strong{color:var(--gold);}
+.utr-input{width:100%;background:rgba(255,255,255,0.04);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;font-size:15px;color:var(--text);font-family:monospace;outline:none;transition:border-color 0.2s;}
+.utr-input:focus{border-color:var(--gold);}
+.utr-input::placeholder{color:var(--muted);}
+.submit-btn{width:100%;margin-top:14px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a0600;font-size:15px;font-weight:700;border:none;border-radius:12px;padding:16px;cursor:pointer;transition:opacity 0.2s,transform 0.15s;}
+.submit-btn:hover:not(:disabled){opacity:0.9;transform:translateY(-1px);}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
 
-.footer-note{text-align:center;font-size:12px;color:var(--dim);margin-top:18px;}
-.footer-note a{color:var(--muted);text-decoration:none;}
+/* Status messages */
+.msg{text-align:center;padding:14px 16px;border-radius:12px;font-size:14px;font-weight:500;display:none;}
+.msg.success{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--green);}
+.msg.error{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--red);}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(10,6,0,0.3);border-top-color:#0a0600;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Back link */
+.back-link{font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:20px;display:inline-flex;align-items:center;gap:6px;transition:color 0.2s;}
+.back-link:hover{color:var(--text);}
+
+/* Timer */
+.timer-bar{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:20px;max-width:440px;width:100%;}
+.timer-val{color:var(--gold);font-weight:600;font-family:monospace;}
+
+/* Steps */
+.steps{display:flex;gap:0;margin-bottom:20px;max-width:440px;width:100%;}
+.step{flex:1;text-align:center;position:relative;}
+.step::after{content:'';position:absolute;top:13px;left:50%;right:-50%;height:2px;background:var(--border);}
+.step:last-child::after{display:none;}
+.step-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin:0 auto 6px;position:relative;z-index:1;}
+.step.done .step-dot{background:var(--green);border-color:var(--green);color:#fff;}
+.step.active .step-dot{background:var(--gold);border-color:var(--gold);color:#0a0600;}
+.step-label{font-size:10px;color:var(--muted);letter-spacing:0.5px;}
+.step.active .step-label{color:var(--gold);}
+.step.done .step-label{color:var(--green);}
 </style>
 </head>
 <body>
+
+<a href="/my-certificates.html" class="back-link">← Back to Certificates</a>
+
+<!-- Steps indicator -->
+<div class="steps">
+  <div class="step done"><div class="step-dot">✓</div><div class="step-label">QUALIFY</div></div>
+  <div class="step active"><div class="step-dot">2</div><div class="step-label">PAY</div></div>
+  <div class="step"><div class="step-dot">3</div><div class="step-label">DOWNLOAD</div></div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">TEN — Certificate Payment</div>
+  <h1 id="pageTitle">Complete Your Payment</h1>
+  <div class="amount-badge">₹<span id="amountDisplay">—</span></div>
+  <div class="cert-label" id="certLabel">Loading...</div>
+</div>
+
+<!-- Timer -->
+<div class="timer-bar">
+  <span>Session expires in</span>
+  <span class="timer-val" id="timerDisplay">15:00</span>
+</div>
+
+<!-- QR Card -->
 <div class="card">
-  <a href="student-dashboard.html" class="back-link">← Back to Dashboard</a>
-
-  <div class="logo-row">
-    <img src="ten-logo.png" alt="TEN" width="40" height="40" style="border-radius:10px;" onerror="this.style.display='none'">
-    <div>
-      <div class="brand">TEN Portal</div>
-      <div class="sub-brand">Secure UPI Payment</div>
+  <div class="qr-wrapper">
+    <div class="qr-box"><div id="qrCanvas"></div></div>
+    <div class="qr-label">Scan with any UPI app<br><strong>UPI ID: <span id="upiIdDisplay">loading...</span></strong></div>
+    <div class="upi-id-box" id="upiIdCopyBox" onclick="copyUPI()" title="Click to copy">
+      <span id="upiIdText">loading...</span>
     </div>
+    <div class="copy-hint" id="copyHint">📋 Click UPI ID to copy</div>
   </div>
 
-  <!-- ════════════════ STEP 1 — Enter amount ════════════════ -->
-  <div id="step-form">
-    <h1>Make a Payment</h1>
-    <p class="subtitle">Pay securely to TEN via any UPI app — scan QR or use app deep-links.</p>
+  <div class="divider">or open directly in your upi app</div>
 
-    <div class="student-info">
-      <div class="avatar" id="avatarInitial">?</div>
-      <div>
-        <div class="s-name" id="studentName">Loading...</div>
-        <div class="s-id"   id="studentId">—</div>
-      </div>
-    </div>
-
-    <div>
-      <label for="amount">Amount (₹)</label>
-      <div class="input-wrap">
-        <span class="rupee">₹</span>
-        <input type="number" id="amount" placeholder="0" min="1" step="1">
-      </div>
-    </div>
-
-    <div>
-      <label for="description">Remarks (optional)</label>
-      <div class="input-wrap">
-        <textarea id="description" placeholder="e.g. Internship registration fee"></textarea>
-      </div>
-    </div>
-
-    <button class="btn-pay" id="payBtn" onclick="showPaymentStep()">
-      <div class="spinner" id="spinner"></div>
-      <span id="btnText">Generate Payment QR</span>
-    </button>
-    <div class="error-box" id="errorBox"></div>
-
-    <p class="footer-note" style="margin-top:14px;">
-      <a href="student-dashboard.html">Cancel &amp; go back</a>
-    </p>
-  </div>
-
-  <!-- ════════════════ STEP 2 — QR + UPI apps ════════════════ -->
-  <div id="step-upi">
-
-    <div class="amount-hero">
-      <div class="rupees">₹<span id="displayAmount">0</span></div>
-      <div class="label">Amount to pay</div>
-    </div>
-
-    <div class="upi-id-box">
-      💳 Pay to: <span id="upiIdDisplay">paytmqr5k0ods@ptys</span> · <span style="color:var(--muted);font-size:12px;">LIMITLESS TECHNOLOGI</span>
-    </div>
-
-    <!-- QR Code — Paytm static QR -->
-    <div class="qr-wrap">
-      <div class="qr-box">
-        <img id="paytmQrImg" src="/paytm-qr.jpeg" alt="Paytm QR Code" style="width:200px;height:200px;display:block;border-radius:6px;">
-      </div>
-      <div class="qr-hint">📷 Scan with Paytm · UPI: paytmqr5k0ods@ptys</div>
-    </div>
-
-    <!-- UPI app deep-link buttons -->
-    <div class="upi-label-row">Or open directly in your UPI app</div>
-    <div class="upi-grid">
-      <a id="gpayBtn"    class="upi-btn gpay"    href="#" onclick="openUpi('gpay');   return false;">
-        <span class="icon">G</span><span>Google Pay</span><span class="hint">Tap to open</span>
-      </a>
-      <a id="phonepeBtn" class="upi-btn phonepe"  href="#" onclick="openUpi('phonepe'); return false;">
-        <span class="icon">📱</span><span>PhonePe</span><span class="hint">Tap to open</span>
-      </a>
-      <a id="paytmBtn"   class="upi-btn paytm"   href="#" onclick="openUpi('paytm');  return false;">
-        <span class="icon">💳</span><span>Paytm</span><span class="hint">Tap to open</span>
-      </a>
-      <a id="otherBtn"   class="upi-btn other"   href="#" onclick="openUpi('upi');    return false;">
-        <span class="icon">🔗</span><span>Any UPI / BHIM</span><span class="hint">Universal UPI link</span>
-      </a>
-    </div>
-
-    <!-- Post-payment UTR entry -->
-    <div class="confirm-section" id="confirmSection">
-      <p>✅ After paying, enter your <strong>UTR / Transaction ID</strong> here to confirm:</p>
-      <input type="text" class="utr-input" id="utrInput" placeholder="e.g. 425123456789 or T2506XXXXXXX">
-      <button class="btn-confirm" id="confirmBtn" onclick="confirmPayment()">Submit Payment Confirmation</button>
-      <div class="success-box" id="successBox">
-        <div class="check">✅</div>
-        <h3>Payment Submitted!</h3>
-        <p>Your UTR has been recorded. Our team will verify and update your account shortly.</p>
-      </div>
-      <button class="btn-cancel-back" onclick="goBack()">✕ Cancel &amp; enter different amount</button>
-    </div>
-
-    <p class="footer-note">
-      Powered by UPI · <a href="student-dashboard.html">Back to Dashboard</a>
-    </p>
+  <div class="apps-grid" id="appsGrid">
+    <a class="app-btn" id="gpayBtn" href="#" target="_blank">
+      <span class="app-icon">G</span>
+      <span class="app-name">Google Pay</span>
+      <span class="app-sub">Tap to open</span>
+    </a>
+    <a class="app-btn" id="phonepeBtn" href="#" target="_blank">
+      <span class="app-icon">📱</span>
+      <span class="app-name">PhonePe</span>
+      <span class="app-sub">Tap to open</span>
+    </a>
+    <a class="app-btn" id="paytmBtn" href="#" target="_blank">
+      <span class="app-icon">💳</span>
+      <span class="app-name">Paytm</span>
+      <span class="app-sub">Tap to open</span>
+    </a>
+    <a class="app-btn" id="bhimBtn" href="#" target="_blank">
+      <span class="app-icon">🔗</span>
+      <span class="app-name">Any UPI / BHIM</span>
+      <span class="app-sub">Universal UPI link</span>
+    </a>
   </div>
 </div>
 
+<!-- UTR Entry Card -->
+<div class="card utr-section">
+  <h3>✅ After paying, enter your UTR / Transaction ID here to confirm:</h3>
+  <div class="utr-note">Your UTR (12-digit number) or Transaction ID is shown in your UPI app after payment. Example: <strong>425123456789</strong> or <strong>T2506XXXXXXXX</strong></div>
+  <input type="text" class="utr-input" id="utrInput" placeholder="e.g. 425123456789 or T2506XXXXXXXX" maxlength="40" autocomplete="off" spellcheck="false">
+  <button class="submit-btn" id="submitBtn" onclick="verifyUTR()">Confirm Payment</button>
+  <div class="msg success" id="successMsg"></div>
+  <div class="msg error" id="errorMsg"></div>
+</div>
+
 <script>
-// ── Config ──────────────────────────────────────────────────────────────
-const MERCHANT_UPI = 'paytmqr5k0ods@ptys';
-const MERCHANT_NAME = 'LIMITLESS TECHNOLOGI';
+(async () => {
+  const params  = new URLSearchParams(location.search);
+  const type    = params.get('type')    || '';
+  const amount  = params.get('amount')  || '0';
+  const orderId = params.get('orderId') || '';
+  const empId   = params.get('empId')   || '';
 
-// ── Init session ─────────────────────────────────────────────────────────
-const empId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-const sName = localStorage.getItem('studentName') || sessionStorage.getItem('studentName') || 'Student';
+  const CERT_NAMES = { expert: 'Expert Certificate', nano_degree: 'Nano Degree Certificate', fellowship: 'Fellowship Certificate' };
+  document.getElementById('amountDisplay').textContent = Number(amount).toLocaleString('en-IN');
+  document.getElementById('certLabel').textContent = CERT_NAMES[type] || type || 'Certificate';
+  document.getElementById('pageTitle').textContent = 'Pay for ' + (CERT_NAMES[type] || 'Certificate');
 
-if (!empId) { window.location.href = 'login.html'; }
-document.getElementById('studentName').textContent   = sName;
-document.getElementById('studentId').textContent     = empId || '—';
-document.getElementById('avatarInitial').textContent = sName.charAt(0).toUpperCase();
-
-// ── Helpers ───────────────────────────────────────────────────────────────
-function showError(msg) {
-  const b = document.getElementById('errorBox');
-  b.innerHTML = msg; b.style.display = 'block';
-}
-function hideError() { document.getElementById('errorBox').style.display = 'none'; }
-
-function buildUpiUrl(pa, pn, am, tn) {
-  return 'upi://pay?pa=' + encodeURIComponent(pa) +
-         '&pn=' + encodeURIComponent(pn) +
-         '&am=' + encodeURIComponent(am) +
-         '&cu=INR' +
-         '&tn=' + encodeURIComponent(tn);
-}
-
-let currentAmount = 0;
-let currentNote   = '';
-let qrInstance    = null;
-
-// ── Step 1 → Step 2 ───────────────────────────────────────────────────────
-function showPaymentStep() {
-  hideError();
-  const amount = parseFloat(document.getElementById('amount').value);
-  if (!amount || amount < 1 || isNaN(amount)) {
-    showError('Please enter a valid amount (minimum ₹1).'); return;
-  }
-  currentAmount = amount;
-  currentNote   = (document.getElementById('description').value.trim() || 'TEN Internship Payment');
-
-  document.getElementById('displayAmount').textContent = amount.toLocaleString('en-IN');
-  document.getElementById('upiIdDisplay').textContent  = MERCHANT_UPI;
-
-  // Static Paytm QR is always shown — no dynamic generation needed
-
-  // Switch steps
-  document.getElementById('step-form').style.display = 'none';
-  document.getElementById('step-upi').style.display  = 'block';
-  document.getElementById('successBox').style.display = 'none';
-  document.getElementById('confirmBtn').disabled       = false;
-  document.getElementById('utrInput').value            = '';
-
-  // Save to DB
-  saveOrderRecord(amount, currentNote);
-}
-
-function openUpi(app) {
-  const upiUrl = buildUpiUrl(MERCHANT_UPI, MERCHANT_NAME, currentAmount.toFixed(2), currentNote);
-  let link = upiUrl;
-  if (app === 'gpay')    link = 'gpay://upi/pay?pa=' + encodeURIComponent(MERCHANT_UPI) + '&pn=' + encodeURIComponent(MERCHANT_NAME) + '&am=' + currentAmount.toFixed(2) + '&cu=INR&tn=' + encodeURIComponent(currentNote);
-  else if (app === 'phonepe') link = 'phonepe://pay?pa=' + encodeURIComponent(MERCHANT_UPI) + '&pn=' + encodeURIComponent(MERCHANT_NAME) + '&am=' + currentAmount.toFixed(2) + '&cu=INR&tn=' + encodeURIComponent(currentNote);
-  else if (app === 'paytm')   link = 'paytmmp://pay?pa=' + encodeURIComponent(MERCHANT_UPI) + '&pn=' + encodeURIComponent(MERCHANT_NAME) + '&am=' + currentAmount.toFixed(2) + '&cu=INR&tn=' + encodeURIComponent(currentNote);
-  window.location.href = link;
-}
-
-function goBack() {
-  document.getElementById('step-upi').style.display  = 'none';
-  document.getElementById('step-form').style.display = 'block';
-}
-
-// ── Save pending order to backend ─────────────────────────────────────────
-async function saveOrderRecord(amount, note) {
+  // Fetch UPI config from backend
+  let upiId   = 'paytmqr5k0ods@ptys';
+  let upiName = 'TEN Network';
   try {
-    await fetch('/api/v2/payment/create-order', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-      body:    JSON.stringify({
-        amount,
-        invoiceRef:  'INV-' + empId + '-' + Date.now(),
-        description: note,
-        directUpi:   true
-      })
-    });
+    const cfg = await fetch('/api/payment/config').then(r => r.json());
+    upiId   = cfg.upiId   || upiId;
+    upiName = cfg.upiName || upiName;
   } catch(_) {}
+
+  document.getElementById('upiIdDisplay').textContent = upiId;
+  document.getElementById('upiIdText').textContent    = upiId;
+
+  // Build UPI payment string
+  const upiStr = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(upiName)}&am=${amount}&cu=INR&tn=${encodeURIComponent('TEN ' + (CERT_NAMES[type] || 'Certificate'))}`;
+
+  // Generate QR code using qrcodejs
+  try {
+    const qrContainer = document.getElementById('qrCanvas');
+    qrContainer.innerHTML = '';
+    new QRCode(qrContainer, {
+      text:         upiStr,
+      width:        176,
+      height:       176,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) { console.warn('QR error', e); }
+
+  // Deep links for UPI apps
+  const tn = encodeURIComponent('TEN Certificate');
+  const pa = encodeURIComponent(upiId);
+  const pn = encodeURIComponent(upiName);
+  document.getElementById('gpayBtn').href   = `tez://upi/pay?pa=${pa}&pn=${pn}&am=${amount}&cu=INR&tn=${tn}`;
+  document.getElementById('phonepeBtn').href= `phonepe://pay?pa=${pa}&pn=${pn}&am=${amount}&cu=INR&tn=${tn}`;
+  document.getElementById('paytmBtn').href  = `paytmmp://pay?pa=${pa}&pn=${pn}&am=${amount}&cu=INR&tn=${tn}`;
+  document.getElementById('bhimBtn').href   = `upi://pay?pa=${pa}&pn=${pn}&am=${amount}&cu=INR&tn=${tn}`;
+
+  // Countdown timer — 15 min
+  let secs = 15 * 60;
+  const timerEl = document.getElementById('timerDisplay');
+  const interval = setInterval(() => {
+    secs--;
+    if (secs <= 0) { clearInterval(interval); timerEl.textContent = 'Expired'; return; }
+    const m = String(Math.floor(secs/60)).padStart(2,'0');
+    const s = String(secs % 60).padStart(2,'0');
+    timerEl.textContent = `${m}:${s}`;
+    if (secs < 60) timerEl.style.color = 'var(--red)';
+  }, 1000);
+
+  // Store for verify function
+  window._payParams = { type, amount, orderId, empId };
+})();
+
+function copyUPI() {
+  const upiId = document.getElementById('upiIdText').textContent;
+  navigator.clipboard.writeText(upiId).then(() => {
+    document.getElementById('copyHint').textContent = '✅ Copied!';
+    setTimeout(() => { document.getElementById('copyHint').textContent = '📋 Click UPI ID to copy'; }, 2000);
+  }).catch(() => {
+    document.getElementById('upiIdCopyBox').textContent = upiId + ' (copy manually)';
+  });
 }
 
-// ── UTR confirmation ──────────────────────────────────────────────────────
-async function confirmPayment() {
+async function verifyUTR() {
   const utr = document.getElementById('utrInput').value.trim();
-  if (!utr || utr.length < 6) {
-    alert('Please enter a valid UTR / Transaction ID.'); return;
+  const btn = document.getElementById('submitBtn');
+  const successEl = document.getElementById('successMsg');
+  const errorEl   = document.getElementById('errorMsg');
+  const { type, orderId, empId } = window._payParams || {};
+
+  successEl.style.display = 'none';
+  errorEl.style.display   = 'none';
+
+  if (!utr || utr.length < 8) {
+    errorEl.textContent = 'Please enter a valid UTR or Transaction ID (at least 8 characters).';
+    errorEl.style.display = 'block';
+    return;
   }
-  document.getElementById('confirmBtn').disabled = true;
-  document.getElementById('confirmBtn').textContent = 'Submitting...';
+  if (!empId || !type) {
+    errorEl.textContent = 'Session error — please go back and click Claim Certificate again.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Verifying...';
 
   try {
-    await fetch('/api/v2/payment/utr-confirm', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-      body:    JSON.stringify({
-        utr,
-        amount:      currentAmount,
-        description: currentNote
-      })
+    const res = await fetch('/api/payment/verify-utr', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ utr, certType: type, empId, orderId })
     });
-  } catch(_) {}
-
-  document.getElementById('confirmSection').querySelector('p').style.display  = 'none';
-  document.getElementById('utrInput').style.display       = 'none';
-  document.getElementById('confirmBtn').style.display     = 'none';
-  document.getElementById('successBox').style.display     = 'block';
+    const data = await res.json();
+    if (data.success) {
+      successEl.textContent = '🎉 Payment confirmed! Your certificate is now ready to download.';
+      successEl.style.display = 'block';
+      btn.textContent = '✓ Confirmed';
+      btn.style.background = 'var(--green)';
+      // Redirect to download page after 2s
+      setTimeout(() => {
+        window.location.href = '/payment/success?certType=' + type + '&empId=' + empId;
+      }, 2000);
+    } else {
+      errorEl.textContent = data.message || 'Could not verify payment. Please try again.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Confirm Payment';
+    }
+  } catch(e) {
+    errorEl.textContent = 'Network error — please check your connection and try again.';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Confirm Payment';
+  }
 }
 </script>
 </body>
