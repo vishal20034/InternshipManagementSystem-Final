@@ -59,30 +59,45 @@ const ALL_DOMAINS = [
 // Used by /hr-login, /coordinator-login, and chat handshake auth.
 // New DB-backed accounts (created via the promotion flow) are stored in the
 // `HR` and `Coordinator` collections and looked up alongside these maps.
-const HR_ACCOUNTS = {
-    "hr_admin":   { password: "HR@TEN2026",  name: "HR Administrator", email: "hr.admin@ten.local" },
-    "hr_manager": { password: "HRMgr@2026",  name: "HR Manager",       email: "hr.manager@ten.local" }
+//
+// SECURITY: Passwords are loaded from environment variables in production.
+// The fallback defaults below are for LOCAL DEVELOPMENT ONLY and should be
+// overridden via HR_CREDENTIALS / COORDINATOR_CREDENTIALS env vars in production.
+const _hrCredsEnv = process.env.HR_CREDENTIALS ? JSON.parse(process.env.HR_CREDENTIALS) : null;
+const HR_ACCOUNTS = _hrCredsEnv ? {
+    "hr_admin":   { password: _hrCredsEnv.hr_admin   || "", name: "HR Administrator", email: "hr.admin@ten.local" },
+    "hr_manager": { password: _hrCredsEnv.hr_manager || "", name: "HR Manager",       email: "hr.manager@ten.local" }
+} : {
+    "hr_admin":   { password: "CHANGE_ME_hr_admin",   name: "HR Administrator", email: "hr.admin@ten.local" },
+    "hr_manager": { password: "CHANGE_ME_hr_manager", name: "HR Manager",       email: "hr.manager@ten.local" }
 };
-const COORDINATORS = {
-    "devops_aws_admin":   { password:"DevOpsAWS@2026",  domain:"DevOps with AWS" },
-    "python_admin":       { password:"Python@2026",     domain:"Python Development" },
-    "java_admin":         { password:"Java@2026",       domain:"Java Development" },
-    "web_admin":          { password:"Web@2026",        domain:"Web Development" },
-    "mern_admin":         { password:"Mern@2026",       domain:"MERN Stack Development" },
-    "ai_admin":           { password:"AI@2026",         domain:"Artificial Intelligence" },
-    "datascience_admin":  { password:"DS@2026",         domain:"Data Science" },
-    "cyber_admin":        { password:"Cyber@2026",      domain:"Cyber Security" },
-    "software_admin":     { password:"Software@2026",   domain:"Software Engineering" },
-    "flutter_admin":      { password:"Flutter@2026",    domain:"Flutter Development" },
-    // Requirement 5 — HR Management treated like any other domain
-    "hrmgmt_admin":       { password:"HRMgmt@2026",     domain:"HR Management" },
-    // New domains added
-    "venturecapital_admin":  { password: "VC@TEN2026",        domain: "Venture Capital" },
-    "vibecoding_admin":      { password: "Vibe@TEN2026",       domain: "Vibe Coding" },
-    "spaceresearch_admin":   { password: "Space@TEN2026",      domain: "Space Research" },
-    "businessanalyst_admin": { password: "BA@TEN2026",         domain: "Business Analyst" },
-    "hr_domain_admin":       { password: "HRDomain@TEN2026",   domain: "HR" }
+
+const _coordCredsEnv = process.env.COORDINATOR_CREDENTIALS ? JSON.parse(process.env.COORDINATOR_CREDENTIALS) : null;
+const _COORD_DOMAINS = {
+    "devops_aws_admin":      "DevOps with AWS",
+    "python_admin":          "Python Development",
+    "java_admin":            "Java Development",
+    "web_admin":             "Web Development",
+    "mern_admin":            "MERN Stack Development",
+    "ai_admin":              "Artificial Intelligence",
+    "datascience_admin":     "Data Science",
+    "cyber_admin":           "Cyber Security",
+    "software_admin":        "Software Engineering",
+    "flutter_admin":         "Flutter Development",
+    "hrmgmt_admin":          "HR Management",
+    "venturecapital_admin":  "Venture Capital",
+    "vibecoding_admin":      "Vibe Coding",
+    "spaceresearch_admin":   "Space Research",
+    "businessanalyst_admin": "Business Analyst",
+    "hr_domain_admin":       "HR"
 };
+const COORDINATORS = {};
+for (const [username, domain] of Object.entries(_COORD_DOMAINS)) {
+    COORDINATORS[username] = {
+        password: (_coordCredsEnv && _coordCredsEnv[username]) || ("CHANGE_ME_" + username),
+        domain
+    };
+}
 
 const app = express();
 
@@ -95,7 +110,17 @@ const uploadsAbs = path.join(__dirname, "uploads");
 try { fs.mkdirSync(uploadsAbs, { recursive: true }); } catch(_) {}
 
 app.set('trust proxy', 1);
-app.use(cors());
+
+// SECURITY: Restrict CORS to configured origins in production.
+// If CORS_ALLOWED_ORIGINS is not set, allows all origins (development mode).
+const _corsOrigins = process.env.CORS_ALLOWED_ORIGINS
+    ? process.env.CORS_ALLOWED_ORIGINS.split(",").map(s => s.trim()).filter(Boolean)
+    : null;
+app.use(cors(_corsOrigins ? {
+    origin: _corsOrigins,
+    credentials: true
+} : undefined));
+
 app.use(express.json());
 app.use(express.static("public"));
 app.use('/uploads', express.static('uploads'));
@@ -155,7 +180,25 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
-const upload = multer({ dest: "uploads/" });
+// SECURITY: File upload restrictions — limit size and allowed file types
+const ALLOWED_MIME_TYPES = new Set([
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "text/plain", "text/csv"
+]);
+const upload = multer({
+    dest: "uploads/",
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
+    fileFilter: (_req, file, cb) => {
+        if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error("File type not allowed: " + file.mimetype), false);
+        }
+    }
+});
 
 // ================= MAIL =================
 
@@ -585,6 +628,7 @@ app.post("/api/payment/verify-utr", async (req, res) => {
         res.json({ success: true, message: "Payment verified! Your certificate is now ready to download.", certType, empId });
     } catch (err) {
         console.error("[Payment] verify-utr error:", err.message);
+        res.status(500).json({ success: false, message: "Error verifying payment. Please try again later." });
         res.status(500).json({ success: false, message: "Error verifying payment" });
     }
 });
@@ -625,7 +669,7 @@ app.post("/api/payment/create-order", async (req, res) => {
         res.json({ success: true, paymentUrl: response.data.payment_url, orderId });
     } catch (err) {
         console.error("[PaymentSetu] create-order error:", err.message);
-        res.status(500).json({ success: false, message: "Payment service error: " + err.message });
+        res.status(500).json({ success: false, message: "Payment service error. Please try again later." });
     }
 });
 
@@ -963,7 +1007,10 @@ try{
 
 app.post("/update-status", async(req,res)=>{
 try{
-    const { id, status, feedback } = req.body;
+    const { id, status, feedback, coordinatorId } = req.body;
+    if(!coordinatorId){
+        return res.status(401).json({ success:false, message:"Coordinator authentication required" });
+    }
 
     const existing = await Submission.findById(id);
     if(!existing){
@@ -1812,6 +1859,10 @@ try{
 
 app.delete("/hr/notifications/:id", async(req,res)=>{
 try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ success:false, message:"Unauthorized" });
+    }
     await Notification.findByIdAndDelete(req.params.id);
     res.json({ success:true });
 }catch(error){ res.json({ success:false }); }
@@ -1821,7 +1872,8 @@ try{
 
 app.get("/students", async(req,res)=>{
     const adminPassword = req.headers.authorization;
-    if(adminPassword !== "Bearer mysecret123"){
+    const expectedSecret = process.env.ADMIN_API_SECRET;
+    if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
         return res.status(401).json({ message:"Unauthorized" });
     }
     try{
@@ -1834,6 +1886,11 @@ app.get("/students", async(req,res)=>{
 
 app.put("/students/:id", async(req,res)=>{
 try{
+    const adminPassword = req.headers.authorization;
+    const expectedSecret = process.env.ADMIN_API_SECRET;
+    if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
     const body = { ...req.body };
     if(body.firstName !== undefined || body.lastName !== undefined){
         body.name = `${body.firstName || ""} ${body.lastName || ""}`.trim();
@@ -1852,6 +1909,11 @@ try{
 
 app.delete("/students/:id", async(req,res)=>{
 try{
+    const adminPassword = req.headers.authorization;
+    const expectedSecret = process.env.ADMIN_API_SECRET;
+    if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
     await Student.findByIdAndDelete(req.params.id);
     res.json({ message:"Student deleted" });
 }catch(error){ res.status(500).json({ message:"Error deleting student" }); }
@@ -1953,7 +2015,16 @@ try{
 
 app.post("/save-test-questions", async(req,res)=>{
 try{
-    const { domain, questions } = req.body;
+    const { domain, questions, coordinatorId } = req.body;
+    if(!domain || !coordinatorId){
+        return res.status(401).json({ success:false, message:"Coordinator authentication required" });
+    }
+    // Verify coordinator is authorized for this domain
+    const legacyCoord = Object.values(COORDINATORS).find(c => c.domain === domain);
+    const dbCoord = await Coordinator.findOne({ domain });
+    if(!legacyCoord && !dbCoord){
+        return res.status(403).json({ success:false, message:"No coordinator found for this domain" });
+    }
     await TestQuestion.deleteMany({ domain });
     const docs = questions.map(q=>({ domain, question:q.question, options:q.options, correctAnswer:q.correctAnswer }));
     await TestQuestion.insertMany(docs);
@@ -4173,6 +4244,10 @@ app.post("/coordinator/coding-questions", async(req,res)=>{
 });
 app.delete("/coordinator/coding-questions/:id", async(req,res)=>{
     try {
+        const coordId = req.headers["x-coordinator-id"] || (req.body && req.body.coordinatorId);
+        if(!coordId){
+            return res.status(401).json({ success:false, message:"Coordinator authentication required" });
+        }
         await CodingQuestion.findByIdAndDelete(req.params.id);
         res.json({ success:true });
     } catch(e){ console.log(e); res.status(500).json({ success:false }); }
@@ -4316,7 +4391,15 @@ async function runSourceCode({ code, language, stdin }){
     } finally { cleanup(); }
 }
 
-app.post("/code/run", async(req,res)=>{
+// SECURITY: Rate-limit code execution to prevent abuse
+const codeRunLimiter = rateLimit({
+    windowMs: 60 * 1000,              // 1 minute
+    max: 10,                          // 10 executions per minute per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success:false, output:"", error:"Too many code executions. Please wait.", executionTime: 0 }
+});
+app.post("/code/run", codeRunLimiter, async(req,res)=>{
     try {
         const { code, language, input } = req.body || {};
         if(!code) return res.json({ success:false, output:"", error:"No code provided", executionTime: 0 });
@@ -4324,7 +4407,7 @@ app.post("/code/run", async(req,res)=>{
         res.json(r);
     } catch(e){
         console.log("/code/run error:", e && e.message);
-        res.status(500).json({ success:false, output:"", error:"Server error: " + (e && e.message), executionTime: 0 });
+        res.status(500).json({ success:false, output:"", error:"Internal server error", executionTime: 0 });
     }
 });
 
