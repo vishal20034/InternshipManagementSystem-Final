@@ -167,7 +167,7 @@ async function tryAutoGenerateLOC(student) {
                 html:        `<p>Dear ${student.name},</p><p>🎉 Congratulations on completing 100% of your internship programme!</p><p>Your Letter of Completion is now available in your Student Portal under <strong>My Documents</strong>.</p><p>Best regards,<br>HR Team<br>The Entrepreneurship Network</p>`,
                 attachments: [{ filename: "TEN_Letter_of_Completion.pdf", path: outPath }]
             });
-        } catch (_) {}
+        } catch (mailErr) { console.error("[DOCS] LOC email failed:", mailErr.message); }
         await Notification.notifyStudent(student, {
             title: "🎓 Letter of Completion Issued",
             message: `Congratulations ${student.name}! You completed 100% of your internship programme. Your Letter of Completion (${docNumber}) is available under My Documents and has been emailed to you.`,
@@ -326,7 +326,7 @@ router.post("/documents/submit", requireStudent, async (req, res) => {
                     status: "failed",
                     errorMessage: err && err.message ? String(err.message) : ""
                 });
-            } catch (_) {}
+            } catch (histErr) { console.error("[DOCS] mail-history save failed:", histErr.message); }
         }
 
         res.json({ success: true, status: "pending", message: "Documents submitted for HR review" });
@@ -489,7 +489,7 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                         status: mailStatus,
                         errorMessage: mailError
                     });
-                } catch (_) {}
+                } catch (histErr) { console.error("[DOCS] mail-history save failed:", histErr.message); }
                 await Notification.notifyStudent(student, {
                     title: "📄 Offer Letter Sent",
                     message: `Congratulations ${studentName}! Your Internship Offer Letter (${docNumber}) has been generated and emailed to ${student.email || "your registered email"}. You can also download it from My Documents.`,
@@ -676,7 +676,7 @@ router.patch("/admin/documents/reject/:studentId", requireHR, async (req, res) =
                     html:    `<p>Dear ${student.name},</p><p>Your submitted documents have been reviewed and require re-submission.</p><p><strong>Reason:</strong> ${doc.rejectionReason}</p><p>Please log in to your student portal and re-upload your documents.</p>`
                 });
             }
-        } catch (_) {}
+        } catch (mailErr) { console.error("[DOCS] rejection email failed:", mailErr.message); }
 
         res.json({ success: true, message: "Documents rejected", rejectionReason: doc.rejectionReason });
     } catch (err) {
