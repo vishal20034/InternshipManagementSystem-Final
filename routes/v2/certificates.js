@@ -202,7 +202,7 @@ router.post("/certificates/claim/:type", requireStudent, async (req, res) => {
                 paymentStatus:   "pending",
                 orderId
             });
-        } else if (!certRecord.orderId) {
+        } else if (certRecord.paymentStatus !== "paid") {
             certRecord.orderId = orderId;
             await certRecord.save();
         }
