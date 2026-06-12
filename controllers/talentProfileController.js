@@ -4,9 +4,10 @@
  * @fileoverview TalentProfile CRUD, search, and verification controller.
  */
 
-const TalentProfile = require('../models/TalentProfile');
-
-const VERIFY_ROLES = ['admin', 'hr', 'coordinator'];
+const TalentProfile   = require('../models/TalentProfile');
+const { VERIFY_ROLES } = require('../config/roles');
+const { trimFields }   = require('../utils/sanitize');
+const { parsePagination, paginatedResponse } = require('../utils/pagination');
 
 /**
  * Sanitize string fields by trimming whitespace.
@@ -14,13 +15,7 @@ const VERIFY_ROLES = ['admin', 'hr', 'coordinator'];
  * @returns {object}
  */
 function sanitizeBody(body) {
-  const sanitized = { ...body };
-  ['headline', 'bio'].forEach((field) => {
-    if (typeof sanitized[field] === 'string') {
-      sanitized[field] = sanitized[field].trim();
-    }
-  });
-  return sanitized;
+  return trimFields(body, ['headline', 'bio']);
 }
 
 /**
@@ -101,10 +96,8 @@ async function getPublicProfile(req, res) {
  */
 async function searchTalents(req, res) {
   try {
-    const page       = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const limit      = Math.min(50, parseInt(req.query.limit, 10) || 12);
-    const skip       = (page - 1) * limit;
-    const filter     = { visibility: 'public' };
+    const { page, limit, skip } = parsePagination(req.query);
+    const filter = { visibility: 'public' };
 
     if (req.query.availability) {
       filter.availability = req.query.availability;
@@ -128,14 +121,7 @@ async function searchTalents(req, res) {
       TalentProfile.countDocuments(filter),
     ]);
 
-    return res.status(200).json({
-      success:    true,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      profiles,
-    });
+    return res.status(200).json({ ...paginatedResponse({ page, limit, total, data: profiles }), profiles });
   } catch (err) {
     return res.status(500).json({ success: false, error: 'Search failed.' });
   }

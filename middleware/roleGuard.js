@@ -43,15 +43,16 @@ function requireRole(...roles) {
 
 /**
  * Middleware that attaches the authenticated ecosystem user to req.user.
- * Reads the 'x-ecosystem-user-id' header set by upstream auth middleware
- * or falls back to a simple session check.
+ * Uses session-based lookup only — never trusts client-supplied role headers.
  *
  * NOTE: For Phase 2 replace with proper JWT verification.
  */
 function attachEcosystemUser(req, res, next) {
-  const userId = req.headers['x-ecosystem-user-id'] || (req.session && req.session.ecosystemUserId);
-  if (userId) {
-    req.user = req.user || { _id: userId, role: req.headers['x-ecosystem-user-role'] || ROLES.FOUNDER };
+  // Only trust session data for authentication — never raw client headers
+  const sessionUserId = req.session && req.session.ecosystemUserId;
+  const sessionRole   = req.session && req.session.ecosystemUserRole;
+  if (sessionUserId && !req.user) {
+    req.user = { _id: sessionUserId, role: sessionRole || ROLES.FOUNDER };
   }
   return next();
 }

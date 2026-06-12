@@ -575,7 +575,7 @@ app.get("/programs", (req,res)=>{ res.sendFile(path.join(__dirname,"public","pro
 app.get("/founder/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
 app.get("/mentor/directory",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-directory.html")); });
 app.get("/investor/directory",(req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-directory.html")); });
-app.get("/founder-os",        (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
+app.get("/founder-os",        (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-os.html")); });
 app.get("/payment",           (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
 app.get("/payment.html",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
 app.get("/payment/success",   (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-success.html")); });
@@ -596,23 +596,32 @@ app.post("/api/payment/verify-utr", async (req, res) => {
         if (!utr || !certType || !empId)
             return res.status(400).json({ success: false, message: "utr, certType and empId are required" });
 
+        // Authentication: require x-employee-id header to match the empId being verified
+        const headerEmpId = req.headers["x-employee-id"];
+        if (!headerEmpId || String(headerEmpId) !== String(empId)) {
+            return res.status(401).json({ success: false, message: "Authentication required. Please log in again." });
+        }
+
         const student = await Student.findOne({ employeeId: String(empId) });
         if (!student) return res.status(404).json({ success: false, message: "Student not found" });
 
         const StudentCertificate = require("./models/new/StudentCertificate");
-        let certRecord = await StudentCertificate.findOne({ studentId: student._id, certificateType: certType });
-        if (!certRecord) {
-            certRecord = new StudentCertificate({
-                studentId:       student._id,
-                certificateType: certType,
-                domain:          student.domain || "",
-                paymentStatus:   "pending"
-            });
+
+        // Security: require a matching pending cert record with the provided orderId
+        if (!orderId) {
+            return res.status(400).json({ success: false, message: "orderId is required" });
         }
+        let certRecord = await StudentCertificate.findOne({ studentId: student._id, certificateType: certType, orderId: orderId });
+        if (!certRecord) {
+            return res.status(404).json({ success: false, message: "No pending payment found for this certificate. Please initiate the claim flow again." });
+        }
+        if (certRecord.paymentStatus === "paid") {
+            return res.status(409).json({ success: false, message: "This certificate payment has already been verified." });
+        }
+
         certRecord.paymentStatus = "paid";
         certRecord.paymentTxnId  = String(utr).trim();
         certRecord.paymentPaidAt = new Date();
-        if (orderId) certRecord.orderId = orderId;
         await certRecord.save();
 
         console.log(`[Payment] UTR verified & cert unlocked: ${certType} for ${empId}, UTR: ${utr}`);
@@ -620,6 +629,7 @@ app.post("/api/payment/verify-utr", async (req, res) => {
     } catch (err) {
         console.error("[Payment] verify-utr error:", err.message);
         res.status(500).json({ success: false, message: "Error verifying payment. Please try again later." });
+        res.status(500).json({ success: false, message: "Error verifying payment" });
     }
 });
 
@@ -674,7 +684,9 @@ app.post("/api/payment/webhook", express.raw({ type: "application/json" }), asyn
             .update(timestamp + "." + rawBody)
             .digest("hex");
 
-        if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+        const sigBuf = Buffer.from(signature);
+        const expBuf = Buffer.from(expected);
+        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(expBuf, sigBuf)) {
             return res.status(401).json({ error: "Invalid signature" });
         }
 
@@ -684,11 +696,11 @@ app.post("/api/payment/webhook", express.raw({ type: "application/json" }), asyn
         const orderId = payload.order_id || "";
         const parts   = orderId.split("_");
         if (parts.length >= 4 && parts[0] === "CERT") {
-            const certType   = parts[2];
-            const employeeId = payload.customer_email ? null : null;
-            const StudentCertificate = require("./models/new/StudentCertificate");
-
+            // Format: CERT_<studentId>_<certType>_<timestamp>
+            // certType may contain underscores (e.g. "nano_degree"), so rejoin middle parts
             const studentIdHex = parts[1];
+            const certType     = parts.slice(2, -1).join("_");
+            const StudentCertificate = require("./models/new/StudentCertificate");
             let certRecord = await StudentCertificate.findOne({ studentId: studentIdHex, certificateType: certType });
             if (!certRecord) {
                 certRecord = new StudentCertificate({ studentId: studentIdHex, certificateType: certType, paymentStatus: "pending" });
