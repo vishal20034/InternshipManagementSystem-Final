@@ -883,7 +883,7 @@ router.post("/student/quiz-result", requireStudent, async (req, res) => {
                     { studentId: student._id, taskId },
                     { $set: { status: "approved", quizPassed: true, approvedAt: new Date(), coinsAwarded: coins || 0 } }
                 );
-            } catch(e) { console.error("[V2] quiz task-progress update failed:", e.message); }
+            } catch(e) { /* silent */ }
         }
 
         const { totalCoins, rupeeValue } = await coinService.getBalance(student._id);

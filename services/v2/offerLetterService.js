@@ -5,7 +5,6 @@ const DocumentHistory = require("../../models/DocumentHistory");
 const PDFDocument = require("pdfkit");
 const fs          = require("fs");
 const path        = require("path");
-const { COLORS, A4_WIDTH, renderHeader, renderTitle, renderRefDate, renderSignatureBlock, renderFooter } = require("./pdfHelpers");
 
 /**
  * Generates an offer letter PDF for a student.
@@ -20,12 +19,35 @@ async function generateOfferLetterPDF(data, outputPath) {
             const stream = fs.createWriteStream(outputPath);
             doc.pipe(stream);
 
-            const W = A4_WIDTH;
-            const { gold, cream, textDark } = COLORS;
+            const W = 595.28; // A4 width in pts
+            const gold   = "#C9A84C";
+            const navy   = "#0A1628";
+            const white  = "#FFFFFF";
+            const cream  = "#F8F5ED";
+            const textDark = "#1A1A2E";
 
-            renderHeader(doc);
-            renderTitle(doc, "INTERNSHIP OFFER LETTER");
-            renderRefDate(doc, data, "TEN/OL/");
+            // ── Header band ──
+            doc.rect(0, 0, W, 90).fill(navy);
+            doc.rect(0, 90, W, 4).fill(gold);
+
+            // Org name
+            doc.fillColor(gold).font("Helvetica-Bold").fontSize(18)
+                .text("THE ENTREPRENEURSHIP NETWORK", 50, 28, { width: W - 100, align: "center" });
+            doc.fillColor(white).font("Helvetica").fontSize(10)
+                .text("TEN — Shaping Tomorrow's Entrepreneurs", 50, 52, { width: W - 100, align: "center" });
+            doc.fillColor(gold).font("Helvetica").fontSize(9)
+                .text("hr@entrepreneurshipnetwork.net  |  www.entrepreneurshipnetwork.net", 50, 70, { width: W - 100, align: "center" });
+
+            // ── Title ──
+            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(15)
+                .text("INTERNSHIP OFFER LETTER", 50, 110, { width: W - 100, align: "center" });
+            doc.moveTo(100, 132).lineTo(W - 100, 132).lineWidth(0.8).strokeColor(gold).stroke();
+
+            // ── Reference & Date ──
+            const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+            doc.fillColor("#555").font("Helvetica").fontSize(9)
+                .text(`Date: ${data.dateIssued || today}`, 50, 142);
+            doc.text(`Ref: ${data.documentNumber || "TEN/OL/" + Date.now().toString().slice(-6)}`, 50, 156);
 
             // ── Addressee box ──
             doc.rect(50, 174, W - 100, 70).fillAndStroke(cream, gold);
@@ -92,10 +114,25 @@ async function generateOfferLetterPDF(data, outputPath) {
             }
 
             // ── Signature area ──
-            renderSignatureBlock(doc, { y: 720 });
+            const sigY = 720;
+            doc.moveTo(50, sigY).lineTo(200, sigY).lineWidth(0.8).strokeColor("#333").stroke();
+            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(9.5).text("Kamlesh Gupta", 50, sigY + 5);
+            doc.font("Helvetica").fontSize(8.5).fillColor("#555")
+                .text("Director", 50, sigY + 18)
+                .text("The Entrepreneurship Network", 50, sigY + 30);
+
+            doc.moveTo(W - 200, sigY).lineTo(W - 50, sigY).lineWidth(0.8).strokeColor("#333").stroke();
+            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(9.5).text("HR Department", W - 200, sigY + 5);
+            doc.font("Helvetica").fontSize(8.5).fillColor("#555")
+                .text("Human Resources", W - 200, sigY + 18)
+                .text("The Entrepreneurship Network", W - 200, sigY + 30);
 
             // ── Footer ──
-            renderFooter(doc, "offer letter");
+            doc.rect(0, 800, W, 42).fill(navy);
+            doc.fillColor(gold).font("Helvetica").fontSize(8)
+                .text("The Entrepreneurship Network  ·  hr@entrepreneurshipnetwork.net  ·  www.entrepreneurshipnetwork.net", 0, 816, { width: W, align: "center" });
+            doc.fillColor(white).font("Helvetica").fontSize(7)
+                .text("This is a digitally generated offer letter. For verification contact hr@entrepreneurshipnetwork.net", 0, 828, { width: W, align: "center" });
 
             doc.end();
             stream.on("finish", () => resolve(outputPath));

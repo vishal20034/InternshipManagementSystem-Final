@@ -1,129 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Investor Directory — TEN Portal</title>
-<link rel="stylesheet" href="/ten-theme.css">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root{--bg-base:#05070e;--bg-surface:#090d1a;--bg-card:#0e1428;--border:rgba(212,175,55,0.08);--border-strong:rgba(212,175,55,0.18);--accent-gold:#D4AF37;--text-primary:#F0EEE8;--text-secondary:#9a9080;--accent-blue:#3b82f6;}
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg-base);color:var(--text-primary);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;padding:24px;}
-.top-bar{display:flex;align-items:center;gap:16px;margin-bottom:32px;}
-.back-btn{background:var(--bg-card);border:1px solid var(--border-strong);color:var(--text-primary);padding:10px 20px;border-radius:10px;cursor:pointer;font-size:14px;text-decoration:none;transition:.2s;}
-.back-btn:hover{border-color:var(--accent-gold);color:var(--accent-gold);}
-.hero{text-align:center;padding:48px 24px 40px;}
-.hero-badge{display:inline-block;padding:6px 16px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);border-radius:20px;font-size:13px;color:var(--accent-blue);margin-bottom:16px;}
-.hero h1{font-size:40px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,#F0EEE8,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.hero p{color:var(--text-secondary);font-size:16px;max-width:560px;margin:0 auto 24px;}
-.search-bar{max-width:500px;margin:0 auto;display:flex;gap:12px;}
-.search-bar input{flex:1;background:var(--bg-card);border:1px solid var(--border-strong);color:var(--text-primary);padding:13px 18px;border-radius:12px;font-size:14px;outline:none;}
-.search-bar input:focus{border-color:var(--accent-blue);}
-.search-bar button{padding:13px 22px;background:var(--accent-blue);color:#fff;border:none;border-radius:12px;font-weight:700;cursor:pointer;}
-.stage-filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:24px 0;}
-.chip{padding:7px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text-secondary);cursor:pointer;transition:.2s;}
-.chip.active,.chip:hover{border-color:var(--accent-blue);color:var(--accent-blue);}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;max-width:1200px;margin:0 auto;}
-.card{background:var(--bg-card);border:1px solid var(--border);border-radius:18px;padding:24px;transition:.3s;}
-.card:hover{border-color:var(--border-strong);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3);}
-.card-top{display:flex;align-items:center;gap:14px;margin-bottom:14px;}
-.avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;}
-.name{font-size:17px;font-weight:700;}
-.firm{font-size:13px;color:var(--accent-blue);}
-.type{font-size:12px;color:var(--text-secondary);margin-top:2px;}
-.desc{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-.thesis{background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.1);border-radius:10px;padding:12px;margin-bottom:14px;}
-.thesis-label{font-size:11px;color:var(--accent-blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
-.thesis-text{font-size:13px;color:var(--text-primary);}
-.focus{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
-.focus-tag{padding:3px 10px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);border-radius:12px;font-size:11px;color:#3b82f6;}
-.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
-.stat-box{background:rgba(255,255,255,.03);border-radius:8px;padding:8px;text-align:center;}
-.stat-val{font-size:16px;font-weight:700;color:var(--accent-gold);}
-.stat-label{font-size:10px;color:var(--text-secondary);}
-.pitch-btn{width:100%;padding:10px;background:var(--accent-blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;transition:.2s;}
-.pitch-btn:hover{opacity:.85;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investor Directory — TEN Platform</title>
+  <link rel="stylesheet" href="/css/design-system.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <script src="/js/theme-toggle.js" defer></script>
+  <script src="/js/components.js" defer></script>
+  <style>
+    .profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
+    .profile-card { background: var(--bg-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-default); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); transition: box-shadow 0.2s, transform 0.2s; }
+    .profile-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .investor-avatar { width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; flex-shrink: 0; }
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+    .badge-type    { background: #fef3c7; color: #92400e; }
+    .badge-stage   { background: #dbeafe; color: #1e40af; }
+    .badge-sector  { background: #ede9fe; color: #5b21b6; }
+    .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .filters select, .filters input { padding: 8px 12px; border: 1.5px solid var(--border-default); border-radius: var(--radius-md); background: var(--bg-surface); color: var(--text-primary); font: inherit; outline: none; min-width: 140px; }
+    .filters select:focus, .filters input:focus { border-color: var(--color-primary); }
+  </style>
 </head>
-<body>
-<div class="top-bar">
-  <a href="index.html" class="back-btn">← Home</a>
-</div>
-<div class="hero">
-  <div class="hero-badge">💼 Investor Network</div>
-  <h1>Investor Directory</h1>
-  <p>Connect with angel investors, VCs, and family offices actively investing in early-stage startups from TEN's ecosystem.</p>
-  <div class="search-bar">
-    <input id="searchInput" type="text" placeholder="Search investors, firms, or sectors...">
-    <button onclick="search()">Search</button>
-  </div>
-</div>
+<body class="dashboard-layout">
+  <aside class="sidebar">
+    <a class="sidebar__logo" href="/dashboard">⚡ TEN</a>
+    <nav class="sidebar__nav">
+      <a href="/dashboard"          class="nav-item">🏠 Dashboard</a>
+      <a href="/founder/directory"  class="nav-item">🚀 Founders</a>
+      <a href="/mentor/directory"   class="nav-item">🎓 Mentors</a>
+      <a href="/investor/directory" class="nav-item nav-item--active">💼 Investors</a>
+      <a href="/talent-network"     class="nav-item">🌐 Talent Network</a>
+      <a href="/programs"           class="nav-item">📋 Programs</a>
+    </nav>
+    <div class="sidebar__footer">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm" style="width:100%">🌙 Dark Mode</button>
+    </div>
+  </aside>
 
-<div class="stage-filters">
-  <div class="chip active" onclick="filter('all',this)">All Stages</div>
-  <div class="chip" onclick="filter('angel',this)">Angel</div>
-  <div class="chip" onclick="filter('pre-seed',this)">Pre-Seed</div>
-  <div class="chip" onclick="filter('seed',this)">Seed</div>
-  <div class="chip" onclick="filter('series-a',this)">Series A+</div>
-</div>
+  <header class="topbar">
+    <button class="btn btn--ghost btn--sm" data-sidebar-toggle>☰</button>
+    <input class="topbar__search" type="search" placeholder="Search investors…" />
+    <div class="topbar__actions">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm">🌙</button>
+    </div>
+  </header>
 
-<div class="grid" id="grid"></div>
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-header__title">💼 Investor Directory</h1>
+      <p class="page-header__subtitle">Connect with verified investors funding the next generation of startups</p>
+    </div>
 
-<script>
-const INVESTORS = [
-  {name:'Vikram Patel',firm:'Spark Ventures',avatar:'VP',type:'Angel Investor',stage:'angel',cat:'angel',desc:'Serial entrepreneur turned angel. 60+ investments. Focused on B2B SaaS and deep tech.',thesis:'Backing founders who are 10x more obsessed with the problem than the solution.',focus:['B2B SaaS','Deep Tech','AI','FinTech'],portfolio:60,avgTicket:'₹25L',exits:8},
-  {name:'Nandita Krishnan',firm:'Matrix Partners India',avatar:'NK',type:'Partner',stage:'Series A',cat:'series-a',desc:'Consumer tech and marketplace specialist. Led investments in 3 unicorns.',thesis:'Consumer internet at the next billion users opportunity.',focus:['Consumer Tech','Marketplace','D2C','HealthTech'],portfolio:34,avgTicket:'$3M',exits:12},
-  {name:'Rohit Agarwal',firm:'100X.VC',avatar:'RA',type:'Managing Director',stage:'Pre-Seed',cat:'pre-seed',desc:'India-focused pre-seed fund. Invested in 100+ companies annually.',thesis:'India-first founders solving real Indian problems.',focus:['All Sectors','India-First','Pre-PMF'],portfolio:200,avgTicket:'₹50L',exits:22},
-  {name:'Sheetal Bhatia',firm:'Accel Partners',avatar:'SB',type:'Principal',stage:'Seed/Series A',cat:'seed',desc:'Enterprise SaaS and developer tools expert. Stanford MBA.',thesis:'Global SaaS from India — $1B+ ARR potential.',focus:['Enterprise SaaS','Dev Tools','Infra','Security'],portfolio:28,avgTicket:'$2M',exits:6},
-  {name:'Anand Jha',firm:'Blume Ventures',avatar:'AJ',type:'Partner',stage:'Seed',cat:'seed',desc:'Deep tech and climate investor. IIT Bombay. Author of Indian startup ecosystem reports.',thesis:'Climate tech and deep science startups solving existential problems.',focus:['CleanTech','DeepTech','Space','BioTech'],portfolio:45,avgTicket:'₹2Cr',exits:9},
-  {name:'Preethi Nair',firm:'Stellaris Venture Partners',avatar:'PN',type:'General Partner',stage:'Seed/Series A',cat:'seed',desc:'B2B and FinTech focus. Ex-WhatsApp. Backed multiple unicorns early.',thesis:'Technology-first businesses with strong network effects.',focus:['FinTech','B2B','APIs','Payments'],portfolio:32,avgTicket:'$1.5M',exits:7},
-];
+    <div class="filters">
+      <input type="search" id="searchInput" placeholder="🔍 Search investors…" style="flex:1;min-width:200px;">
+      <select id="typeFilter">
+        <option value="">All Types</option>
+        <option value="angel">Angel</option>
+        <option value="vc">VC</option>
+        <option value="accelerator">Accelerator</option>
+        <option value="individual">Individual</option>
+      </select>
+      <select id="stageFilter">
+        <option value="">All Stages</option>
+        <option value="pre_seed">Pre-Seed</option>
+        <option value="seed">Seed</option>
+        <option value="series_a">Series A</option>
+        <option value="series_b">Series B</option>
+      </select>
+      <button class="btn btn--primary btn--sm" onclick="loadInvestors()">Search</button>
+    </div>
 
-let allInvestors = [...INVESTORS];
-let activeCat = 'all';
+    <div id="investorGrid" class="profile-grid">
+      ${Array(6).fill('<div style="background:var(--bg-surface);border-radius:14px;border:1px solid var(--border-default);padding:20px;"><div style="background:#f0f0f0;height:52px;width:52px;border-radius:14px;margin-bottom:12px;"></div><div style="background:#f0f0f0;height:16px;width:70%;margin-bottom:8px;border-radius:4px;"></div><div style="background:#f0f0f0;height:13px;width:50%;border-radius:4px;"></div></div>').join('')}
+    </div>
+    <div style="text-align:center;margin-top:32px;">
+      <button class="btn btn--outline btn--sm" id="loadMoreBtn" onclick="loadMore()" style="display:none;">Load More</button>
+    </div>
+  </main>
 
-function render(investors) {
-  document.getElementById('grid').innerHTML = investors.map(i => `
-    <div class="card">
-      <div class="card-top">
-        <div class="avatar">${i.avatar}</div>
-        <div><div class="name">${i.name}</div><div class="firm">${i.firm}</div><div class="type">${i.type} · ${i.stage}</div></div>
-      </div>
-      <div class="desc">${i.desc}</div>
-      <div class="thesis"><div class="thesis-label">Investment Thesis</div><div class="thesis-text">"${i.thesis}"</div></div>
-      <div class="focus">${i.focus.map(f=>`<span class="focus-tag">${f}</span>`).join('')}</div>
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-val">${i.portfolio}+</div><div class="stat-label">Portfolio</div></div>
-        <div class="stat-box"><div class="stat-val">${i.avgTicket}</div><div class="stat-label">Avg Ticket</div></div>
-        <div class="stat-box"><div class="stat-val">${i.exits}</div><div class="stat-label">Exits</div></div>
-      </div>
-      <button class="pitch-btn" onclick="pitch('${i.name}')">Send Pitch Deck</button>
-    </div>`).join('');
-}
+  <script>
+  let page = 1, loading = false;
 
-function search() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  const filtered = allInvestors.filter(i =>
-    i.name.toLowerCase().includes(q) || i.firm.toLowerCase().includes(q) ||
-    i.focus.some(f => f.toLowerCase().includes(q)) || i.desc.toLowerCase().includes(q)
-  );
-  render(activeCat === 'all' ? filtered : filtered.filter(i => i.cat === activeCat));
-}
-
-function filter(cat, el) {
-  activeCat = cat;
-  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');
-  render(cat === 'all' ? allInvestors : allInvestors.filter(i => i.cat === cat));
-}
-
-function pitch(name) {
-  alert('Pitch submission coming soon! ' + name + ' will review your pitch deck shortly.');
-}
-
-document.getElementById('searchInput').addEventListener('keyup', e => { if(e.key==='Enter') search(); });
-render(allInvestors);
-</script>
+  async function loadInvestors(reset = true) {
+    if (reset) page = 1;
+    if (loading) return;
+    loading = true;
+    const token    = localStorage.getItem('ten_auth_token') || localStorage.getItem('authToken') || '';
+    const search   = document.getElementById('searchInput').value.trim();
+    const type     = document.getElementById('typeFilter').value;
+    const stage    = document.getElementById('stageFilter').value;
+    const params   = new URLSearchParams({ page, limit: 12 });
+    if (search) params.set('search', search);
+    if (type)   params.set('investorType', type);
+    if (stage)  params.set('stagePreference', stage);
+    try {
+      const res  = await fetch('/api/investor/directory?' + params, { headers: token ? { 'Authorization': 'Bearer ' + token } : {} });
+      const data = await res.json();
+      const investors = data.data || [];
+      const grid = document.getElementById('investorGrid');
+      if (reset) grid.innerHTML = '';
+      if (!investors.length && reset) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px 20px;"><div style="font-size:64px;margin-bottom:16px;">💼</div><h2 style="font-size:20px;font-weight:700;margin-bottom:8px;">No investors found</h2><p style="color:var(--text-muted);">Adjust your filters or check back soon.</p></div>';
+      } else {
+        grid.innerHTML += investors.map(inv => `
+          <div class="profile-card">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+              <div class="investor-avatar">${((inv.fundName || (inv.userId && inv.userId.fullName)) || 'I').charAt(0)}</div>
+              <div>
+                <div style="font-size:16px;font-weight:700;">${inv.fundName || (inv.userId && inv.userId.fullName) || 'Investor'}</div>
+                <div style="font-size:13px;color:var(--text-muted);">${inv.investorType ? inv.investorType.replace('_',' ').toUpperCase() : ''}</div>
+              </div>
+            </div>
+            ${inv.thesis ? `<div style="font-size:13px;color:var(--text-secondary);line-height:1.5;">${inv.thesis.slice(0,120)}${inv.thesis.length>120?'…':''}</div>` : ''}
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+              ${inv.investorType ? `<span class="badge badge-type">${inv.investorType.replace('_',' ')}</span>` : ''}
+              ${(inv.stagePreference||[]).slice(0,2).map(s=>`<span class="badge badge-stage">${s.replace('_',' ')}</span>`).join('')}
+              ${(inv.sectorFocus||[]).slice(0,1).map(s=>`<span class="badge badge-sector">${s}</span>`).join('')}
+            </div>
+            ${inv.portfolioSize > 0 ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Portfolio: ${inv.portfolioSize} companies</div>` : ''}
+            ${inv.investmentRange && (inv.investmentRange.min||inv.investmentRange.max) ? `<div style="font-size:12px;color:var(--text-muted);">Ticket: ₹${(inv.investmentRange.min/100000).toFixed(0)}L – ₹${(inv.investmentRange.max/100000).toFixed(0)}L</div>` : ''}
+          </div>`).join('');
+      }
+      document.getElementById('loadMoreBtn').style.display = (data.page < data.totalPages) ? '' : 'none';
+    } catch(e) {
+      document.getElementById('investorGrid').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Could not load investors. Please try again.</div>';
+    }
+    loading = false;
+  }
+  function loadMore() { page++; loadInvestors(false); }
+  document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') loadInvestors(); });
+  loadInvestors();
+  </script>
 </body>
 </html>

@@ -544,7 +544,7 @@ async function initiateCertificateApproval(student) {
                 subject: `[TEN] Certificate Approval Required — ${student.name} (${student.domain})`,
                 html:    `<p>The internship for <strong>${student.name}</strong> (Employee ID: ${student.employeeId}, Domain: ${student.domain}) has ended.</p><p>Please review and approve the certificate request via the TEN HR Portal or the coordinator portal.</p><p>Request ID: ${req._id}</p><p>Deadline: 24 hours from now.</p>`
             });
-        } catch (mailErr) { console.error("[AUTO-CRON] certificate-approval email failed:", mailErr.message); }
+        } catch (_) {}
 
         console.log(`[AUTO-CRON] Certificate approval initiated for ${student.employeeId}`);
     } catch (err) {
