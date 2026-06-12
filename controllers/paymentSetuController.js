@@ -8,6 +8,7 @@
 const PaymentSetuProvider     = require('../services/payment/PaymentSetuProvider');
 const { verifyWebhookSignature, processWebhookEvent } = require('../services/payment/PaymentWebhookService');
 const PaymentTransaction      = require('../models/PaymentTransaction');
+const { parsePagination, paginatedResponse } = require('../utils/pagination');
 
 const setuProvider = new PaymentSetuProvider();
 
@@ -140,9 +141,7 @@ async function getTransactionStatus(req, res) {
  */
 async function getUserTransactions(req, res) {
   try {
-    const page  = Math.max(1, parseInt(req.query.page, 10)  || 1);
-    const limit = Math.min(50, parseInt(req.query.limit, 10) || 10);
-    const skip  = (page - 1) * limit;
+    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 10 });
 
     const [transactions, total] = await Promise.all([
       PaymentTransaction.find({ initiatedBy: req.user._id })
@@ -154,14 +153,7 @@ async function getUserTransactions(req, res) {
       PaymentTransaction.countDocuments({ initiatedBy: req.user._id }),
     ]);
 
-    return res.status(200).json({
-      success:    true,
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      transactions,
-    });
+    return res.status(200).json({ ...paginatedResponse({ page, limit, total, data: transactions }), transactions });
   } catch (err) {
     return res.status(500).json({ success: false, error: 'Could not fetch transactions.' });
   }

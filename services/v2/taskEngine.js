@@ -54,17 +54,15 @@ async function assignTasksForStudent(student) {
  * Called after a task is marked approved.
  * Returns { unlocked: number }
  */
-async function tryUnlockNextWeek(student, approvedTaskId) {
+async function tryUnlockNextWeek(student, approvedTaskId, { awardCoins: shouldAwardCoins = true } = {}) {
     const approvedTaskDoc = await DomainTask.findById(approvedTaskId).lean();
     if (!approvedTaskDoc) return { unlocked: 0 };
 
     const { domain, durationType, weekNumber: currentWeek } = approvedTaskDoc;
 
-    // All tasks in the current week for this student
     const currentWeekTasks = await DomainTask.find({ domain, durationType, weekNumber: currentWeek }).lean();
     const currentWeekIds   = currentWeekTasks.map(t => t._id);
 
-    // Check if all tasks in this week are approved for the student
     const approvedCount = await StudentTaskProgress.countDocuments({
         studentId: student._id,
         taskId:    { $in: currentWeekIds },
@@ -73,7 +71,6 @@ async function tryUnlockNextWeek(student, approvedTaskId) {
 
     if (approvedCount < currentWeekIds.length) return { unlocked: 0 };
 
-    // Unlock next week
     const nextWeekTasks = await DomainTask.find({ domain, durationType, weekNumber: currentWeek + 1 }).lean();
     if (!nextWeekTasks.length) return { unlocked: 0 };
 
@@ -83,8 +80,7 @@ async function tryUnlockNextWeek(student, approvedTaskId) {
         { $set: { status: "available" } }
     );
 
-    // Award week-completion bonus
-    if (res.modifiedCount > 0) {
+    if (res.modifiedCount > 0 && shouldAwardCoins) {
         await coinService.awardCoins(student._id, "WEEK_COMPLETE", currentWeek);
     }
 
