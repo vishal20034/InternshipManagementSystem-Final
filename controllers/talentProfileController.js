@@ -115,7 +115,7 @@ async function searchTalents(req, res) {
     if (req.query.skills) {
       const skillArr = req.query.skills.split(',').map((s) => s.trim()).filter(Boolean);
       if (skillArr.length > 0) {
-        filter['skills.name'] = { $in: skillArr };
+        filter['skills.name'] = { $in: skillArr.map((s) => new RegExp(s, 'i')) };
       }
     }
 

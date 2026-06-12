@@ -4444,23 +4444,28 @@ try {
     console.error('[V2] Failed to mount bots routes:', e.message);
 }
 
-// ===== PHASE 1 PR6: NAVIGATION EXPANSION =====
+// ── PHASE 2: Ecosystem Platform Routes ────────────────────────────────────
 try {
-    app.use('/founder-os',         require('./routes/founderOS'));
-    app.use('/api/founder-os',     require('./routes/founderOS'));
-    app.use('/talent-network',     require('./routes/talentNetwork'));
-    app.use('/api/talent-network', require('./routes/talentNetwork'));
-    app.use('/programs',           require('./routes/programs'));
-    app.use('/community',          require('./routes/community'));
-    console.log('[Phase1] Navigation routes mounted: founder-os, talent-network, programs, community');
-} catch(e){ console.error('[Phase1] navigationRoutes:', e.message); }
-// ===== PHASE 1 PR5: PAYMENT SETU SERVICE LAYER =====
-try {
-    app.use('/api/payment/setu', require('./routes/paymentSetuRoutes'));
-    console.log('[Phase1] PaymentSetu routes mounted at /api/payment/setu');
-} catch(e){ console.error('[Phase1] paymentSetuRoutes:', e.message); }
-// ===== PHASE 1 PR3: TALENT PROFILE =====
-try { app.use('/api/talent', require('./routes/talentProfile')); console.log('[Phase1] talent routes mounted at /api/talent'); } catch(e){ console.error('[Phase1] talentProfile:',e.message); }
+    const founderProfileRoutes  = require('./routes/founderProfileRoutes');
+    const mentorProfileRoutes   = require('./routes/mentorProfileRoutes');
+    const investorProfileRoutes = require('./routes/investorProfileRoutes');
+    const notificationRoutes    = require('./routes/notificationRoutes');
+    const verificationRoutes    = require('./routes/verificationRoutes');
+    const hrDashboardRoutes     = require('./routes/hrDashboardRoutes');
+    const programApiRoutes      = require('./routes/programApiRoutes');
+
+    app.use('/api/founder', founderProfileRoutes);
+    app.use('/api/mentor', mentorProfileRoutes);
+    app.use('/api/investor', investorProfileRoutes);
+    app.use('/api/ecosystem-notifications', notificationRoutes);
+    app.use('/api/verification', verificationRoutes);
+    app.use('/api/hr', hrDashboardRoutes);
+    app.use('/api', programApiRoutes);
+
+    console.log('[Phase2] Ecosystem routes mounted successfully');
+} catch(e) {
+    console.error('[Phase2] Failed to mount ecosystem routes:', e.message);
+}
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
 const expressModule = require("express");
