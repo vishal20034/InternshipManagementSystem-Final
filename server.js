@@ -2,13 +2,42 @@
 require("dotenv").config();
 
 const path = require("path");
+const fs = require("fs");
+
+// ===== AUTOMATIC CASING REPAIR FOR CASE-SENSITIVE LINUX ENVIRONMENTS =====
+const modelsDir = path.join(__dirname, "models");
+if (fs.existsSync(modelsDir)) {
+    try {
+        const files = fs.readdirSync(modelsDir);
+        const expectedModels = [
+            "Student", "Attendance", "BadgeAward", "BlockList", "BotQuery", 
+            "CertificateRequest", "Coordinator", "DocumentHistory", "EcosystemNotification", 
+            "EcosystemUser", "FounderProfile", "HR", "InvestorProfile", "MailHistory", 
+            "MentorProfile", "Message", "Notice", "Notification", "Payment", 
+            "PaymentTransaction", "Promotion", "SystemKnowledge", "TalentProfile", "UserRole"
+        ];
+        for (const model of expectedModels) {
+            const found = files.find(f => f.toLowerCase() === `${model.toLowerCase()}.js`);
+            if (found && found !== `${model}.js`) {
+                console.log(`[Casing Auto-Repair] Renaming ${found} to ${model}.js for Linux compatibility.`);
+                try {
+                    fs.renameSync(path.join(modelsDir, found), path.join(modelsDir, `${model}.js`));
+                } catch (err) {
+                    console.error(`[Casing Auto-Repair Failed] Could not rename ${found}:`, err.message);
+                }
+            }
+        }
+    } catch (e) {
+        console.error("[Casing Auto-Repair Error]", e.message);
+    }
+}
+
 const cors = require("cors");
 const express = require("express");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const nodemailer = require("nodemailer");
-const fs = require("fs");
 
 const Student = require("./models/Student");
 if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDate:    { type: Date } });

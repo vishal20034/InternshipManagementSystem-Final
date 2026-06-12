@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "ten-portal",
       script: "server.js",
-      cwd: "./",
+      cwd: __dirname,
       instances: 1,
       autorestart: true,
       watch: false,
