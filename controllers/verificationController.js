@@ -4,16 +4,19 @@ const TalentProfile   = require('../models/TalentProfile');
 const FounderProfile  = require('../models/FounderProfile');
 const MentorProfile   = require('../models/MentorProfile');
 const InvestorProfile = require('../models/InvestorProfile');
-const { ROLES, VERIFY_ROLES } = require('../config/roles');
-const { parsePagination }     = require('../utils/pagination');
+const { ROLES }       = require('../config/roles');
+
+const ALLOWED_ROLES = [ROLES.ADMIN, ROLES.HR, ROLES.COORDINATOR];
 
 async function getPendingProfiles(req, res) {
   try {
     const role = req.user.role;
-    if (!VERIFY_ROLES.includes(role)) return res.status(403).json({ success: false, error: 'Access denied.' });
+    if (!ALLOWED_ROLES.includes(role)) return res.status(403).json({ success: false, error: 'Access denied.' });
 
     const type  = req.query.type || 'all';
-    const { page, limit, skip } = parsePagination(req.query, { defaultLimit: 20 });
+    const page  = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, parseInt(req.query.limit, 10) || 20);
+    const skip  = (page - 1) * limit;
 
     const pendingFilter = { verificationStatus: 'pending' };
     const popOpts       = { path: 'userId', select: 'fullName email role createdAt' };
@@ -55,7 +58,7 @@ async function getPendingProfiles(req, res) {
 async function getVerificationStats(req, res) {
   try {
     const role = req.user.role;
-    if (!VERIFY_ROLES.includes(role)) return res.status(403).json({ success: false, error: 'Access denied.' });
+    if (![ROLES.ADMIN, ROLES.HR].includes(role)) return res.status(403).json({ success: false, error: 'Access denied.' });
 
     const statuses = ['pending','approved','rejected'];
 

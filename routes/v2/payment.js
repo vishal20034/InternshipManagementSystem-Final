@@ -209,7 +209,7 @@ router.post('/webhook',
           targetType:       'student',
           targetEmployeeId: payment.employeeId
         }).save();
-      } catch (notifErr) { console.error('[PAYMENT WEBHOOK] notification save failed:', notifErr.message); }
+      } catch (_) {}
 
       console.log('[PAYMENT WEBHOOK] Marked success for orderId:', order_id);
     } catch (err) {
@@ -283,7 +283,7 @@ router.post('/utr-confirm', async (req, res) => {
         from:             'System',
         targetType:       'hr'
       }).save();
-    } catch (notifErr) { console.error('[PAYMENT] notification save failed:', notifErr.message); }
+    } catch (_) {}
 
     console.log('[PAYMENT] UTR confirm submitted by', employeeId, '| UTR:', utr, '| amount:', amount);
     return res.json({ success: true, message: 'Payment confirmation received. Our team will verify shortly.' });

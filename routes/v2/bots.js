@@ -226,7 +226,7 @@ router.post('/hr/answer', async (req, res) => {
         targetType:       'student',
         targetEmployeeId: query.userId,
       });
-    } catch (_e) { console.error("[bots] notification save failed:", _e.message); }
+    } catch (_e) { /* Notification model may differ — skip silently */ }
 
     return res.json({ success: true });
   } catch (e) {
