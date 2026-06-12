@@ -2,42 +2,13 @@
 require("dotenv").config();
 
 const path = require("path");
-const fs = require("fs");
-
-// ===== AUTOMATIC CASING REPAIR FOR CASE-SENSITIVE LINUX ENVIRONMENTS =====
-const modelsDir = path.join(__dirname, "models");
-if (fs.existsSync(modelsDir)) {
-    try {
-        const files = fs.readdirSync(modelsDir);
-        const expectedModels = [
-            "Student", "Attendance", "BadgeAward", "BlockList", "BotQuery", 
-            "CertificateRequest", "Coordinator", "DocumentHistory", "EcosystemNotification", 
-            "EcosystemUser", "FounderProfile", "HR", "InvestorProfile", "MailHistory", 
-            "MentorProfile", "Message", "Notice", "Notification", "Payment", 
-            "PaymentTransaction", "Promotion", "SystemKnowledge", "TalentProfile", "UserRole"
-        ];
-        for (const model of expectedModels) {
-            const found = files.find(f => f.toLowerCase() === `${model.toLowerCase()}.js`);
-            if (found && found !== `${model}.js`) {
-                console.log(`[Casing Auto-Repair] Renaming ${found} to ${model}.js for Linux compatibility.`);
-                try {
-                    fs.renameSync(path.join(modelsDir, found), path.join(modelsDir, `${model}.js`));
-                } catch (err) {
-                    console.error(`[Casing Auto-Repair Failed] Could not rename ${found}:`, err.message);
-                }
-            }
-        }
-    } catch (e) {
-        console.error("[Casing Auto-Repair Error]", e.message);
-    }
-}
-
 const cors = require("cors");
 const express = require("express");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
 const multer = require("multer");
 const nodemailer = require("nodemailer");
+const fs = require("fs");
 
 const Student = require("./models/Student");
 if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDate:    { type: Date } });
@@ -45,8 +16,8 @@ if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDat
 if(!Student.schema.path("v2Onboarded"))    Student.schema.add({ v2Onboarded:    { type: Boolean, default: false } });
 if(!Student.schema.path("v2DurationType")) Student.schema.add({ v2DurationType: { type: String,  default: null  } });
 const DocumentHistory = require("./models/DocumentHistory");
-const MailHistory = require("./models/MailHistory");
 const { generateDocumentNumber, normalizeDocumentNumber } = require("./utils/documentNumber");
+const MailHistory = require("./models/MailHistory");
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
 const Attendance = require("./models/Attendance");
@@ -56,6 +27,7 @@ const Coordinator = require("./models/Coordinator");
 const Promotion = require("./models/Promotion");
 const BadgeAward = require("./models/BadgeAward");
 const BlockList = require("./models/BlockList");
+const EcosystemUser = require("./models/EcosystemUser");
 
 const autoMailLogSchema = new mongoose.Schema({
   studentName:  String,
@@ -66,7 +38,7 @@ const autoMailLogSchema = new mongoose.Schema({
 });
 const AutoMailLog = mongoose.model('AutoMailLog', autoMailLogSchema);
 
-const bcrypt = require("bcryptjs");
+const bcrypt = require("bcrypt");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const QRCode = require("qrcode");
@@ -88,75 +60,35 @@ const ALL_DOMAINS = [
 // Used by /hr-login, /coordinator-login, and chat handshake auth.
 // New DB-backed accounts (created via the promotion flow) are stored in the
 // `HR` and `Coordinator` collections and looked up alongside these maps.
-//
-// SECURITY: Passwords are loaded from environment variables in production.
-// The fallback defaults below are for LOCAL DEVELOPMENT ONLY and should be
-// overridden via HR_CREDENTIALS / COORDINATOR_CREDENTIALS env vars in production.
-let _hrCredsEnv = null;
-if (process.env.HR_CREDENTIALS) {
-    try {
-        _hrCredsEnv = JSON.parse(process.env.HR_CREDENTIALS);
-    } catch (e) {
-        console.warn("Warning: HR_CREDENTIALS is not valid JSON. Using as raw default password for hr_admin and hr_manager.", e.message);
-        _hrCredsEnv = {
-            "hr_admin": process.env.HR_CREDENTIALS,
-            "hr_manager": process.env.HR_CREDENTIALS
-        };
-    }
-}
-
-const HR_ACCOUNTS = _hrCredsEnv ? {
-    "hr_admin":   { password: _hrCredsEnv.hr_admin   || "", name: "HR Administrator", email: "hr.admin@ten.local" },
-    "hr_manager": { password: _hrCredsEnv.hr_manager || "", name: "HR Manager",       email: "hr.manager@ten.local" }
-} : {
-    "hr_admin":   { password: "CHANGE_ME_hr_admin",   name: "HR Administrator", email: "hr.admin@ten.local" },
-    "hr_manager": { password: "CHANGE_ME_hr_manager", name: "HR Manager",       email: "hr.manager@ten.local" }
+const HR_ACCOUNTS = {
+    "hr_admin":   { password: "HR@TEN2026",  name: "HR Administrator", email: "hr.admin@ten.local" },
+    "hr_manager": { password: "HRMgr@2026",  name: "HR Manager",       email: "hr.manager@ten.local" }
 };
-
-const _COORD_DOMAINS = {
-    "devops_aws_admin":      "DevOps with AWS",
-    "python_admin":          "Python Development",
-    "java_admin":            "Java Development",
-    "web_admin":             "Web Development",
-    "mern_admin":            "MERN Stack Development",
-    "ai_admin":              "Artificial Intelligence",
-    "datascience_admin":     "Data Science",
-    "cyber_admin":           "Cyber Security",
-    "software_admin":        "Software Engineering",
-    "flutter_admin":         "Flutter Development",
-    "hrmgmt_admin":          "HR Management",
-    "venturecapital_admin":  "Venture Capital",
-    "vibecoding_admin":      "Vibe Coding",
-    "spaceresearch_admin":   "Space Research",
-    "businessanalyst_admin": "Business Analyst",
-    "hr_domain_admin":       "HR"
+const COORDINATORS = {
+    "devops_aws_admin":   { password:"DevOpsAWS@2026",  domain:"DevOps with AWS" },
+    "python_admin":       { password:"Python@2026",     domain:"Python Development" },
+    "java_admin":         { password:"Java@2026",       domain:"Java Development" },
+    "web_admin":          { password:"Web@2026",        domain:"Web Development" },
+    "mern_admin":         { password:"Mern@2026",       domain:"MERN Stack Development" },
+    "ai_admin":           { password:"AI@2026",         domain:"Artificial Intelligence" },
+    "datascience_admin":  { password:"DS@2026",         domain:"Data Science" },
+    "cyber_admin":        { password:"Cyber@2026",      domain:"Cyber Security" },
+    "software_admin":     { password:"Software@2026",   domain:"Software Engineering" },
+    "flutter_admin":      { password:"Flutter@2026",    domain:"Flutter Development" },
+    // Requirement 5 — HR Management treated like any other domain
+    "hrmgmt_admin":       { password:"HRMgmt@2026",     domain:"HR Management" },
+    // New domains added
+    "venturecapital_admin":  { password: "VC@TEN2026",        domain: "Venture Capital" },
+    "vibecoding_admin":      { password: "Vibe@TEN2026",       domain: "Vibe Coding" },
+    "spaceresearch_admin":   { password: "Space@TEN2026",      domain: "Space Research" },
+    "businessanalyst_admin": { password: "BA@TEN2026",         domain: "Business Analyst" },
+    "hr_domain_admin":       { password: "HRDomain@TEN2026",   domain: "HR" }
 };
-
-let _coordCredsEnv = null;
-if (process.env.COORDINATOR_CREDENTIALS) {
-    try {
-        _coordCredsEnv = JSON.parse(process.env.COORDINATOR_CREDENTIALS);
-    } catch (e) {
-        console.warn("Warning: COORDINATOR_CREDENTIALS is not valid JSON. Using as raw default password for coordinators.", e.message);
-        _coordCredsEnv = {};
-        for (const username of Object.keys(_COORD_DOMAINS)) {
-            _coordCredsEnv[username] = process.env.COORDINATOR_CREDENTIALS;
-        }
-    }
-}
-
-const COORDINATORS = {};
-for (const [username, domain] of Object.entries(_COORD_DOMAINS)) {
-    COORDINATORS[username] = {
-        password: (_coordCredsEnv && _coordCredsEnv[username]) || ("CHANGE_ME_" + username),
-        domain
-    };
-}
 
 const app = express();
 
 // ===== Production config =====
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const BASE_URL = process.env.BASE_URL || "https://virtualinternships.entrepreneurshipnetwork.net";
 
 // Ensure uploads directory exists (multer writes to it)
@@ -164,19 +96,9 @@ const uploadsAbs = path.join(__dirname, "uploads");
 try { fs.mkdirSync(uploadsAbs, { recursive: true }); } catch(_) {}
 
 app.set('trust proxy', 1);
-
-// SECURITY: Restrict CORS to configured origins in production.
-// If CORS_ALLOWED_ORIGINS is not set, allows all origins (development mode).
-const _corsOrigins = process.env.CORS_ALLOWED_ORIGINS
-    ? process.env.CORS_ALLOWED_ORIGINS.split(",").map(s => s.trim()).filter(Boolean)
-    : null;
-app.use(cors(_corsOrigins ? {
-    origin: _corsOrigins,
-    credentials: true
-} : undefined));
-
+app.use(cors());
 app.use(express.json());
-app.use(express.static("public", { extensions: ["html"] }));
+app.use(express.static("public"));
 app.use('/uploads', express.static('uploads'));
 
 
@@ -234,57 +156,83 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
-// SECURITY: File upload restrictions — limit size and allowed file types
-const ALLOWED_MIME_TYPES = new Set([
-    "image/jpeg", "image/png", "image/gif", "image/webp",
-    "application/pdf",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-excel",
-    "text/plain", "text/csv"
-]);
-const upload = multer({
-    dest: "uploads/",
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
-    fileFilter: (_req, file, cb) => {
-        if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error("File type not allowed: " + file.mimetype), false);
-        }
-    }
-});
+const upload = multer({ dest: "uploads/" });
 
 // ================= MAIL =================
 
-const hasEmailCreds = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const transporter = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
 
-let transporter;
-if (hasEmailCreds) {
-    transporter = nodemailer.createTransport({
-        host: "smtp-relay.brevo.com",
-        port: 587,
-        secure: false,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        }
-    });
-
+if(process.env.EMAIL_USER && process.env.EMAIL_PASS){
     transporter.verify((error)=>{
-        if(error){
-            console.warn("Email transporter verification warning:", error.message);
-        } else {
-            console.log("Email Server Ready");
-        }
+        if(error){ console.log("Email verify error:", error.message); }
+        else{ console.log("Email Server Ready"); }
     });
 } else {
-    console.log("Email credentials not fully configured. Email sending will be logged to console instead.");
-    transporter = {
-        sendMail: async (options) => {
-            console.log(`[MOCK EMAIL] To: ${options.to}, Subject: ${options.subject}`);
-            return { messageId: "mock-id-" + Date.now() };
-        }
-    };
+    console.log("Email not configured — skipping SMTP verify.");
+}
+
+// Sends one activity-cycle HR mail (appreciation or re-engagement), records it
+// in MailHistory and mirrors it as an in-app student notification.
+const ACTIVITY_MAILS = {
+    "active-appreciation": {
+        subject: "Keep it up! You're doing great 🌟",
+        html: (name) => `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${name||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`,
+        notifTitle: "🌟 Appreciation from HR",
+        notifMessage: (name) => `Hi ${name || "Intern"}, great work staying active this week. Keep it up! — TEN HR Team`,
+        notifType: "success"
+    },
+    "inactive-reengagement": {
+        subject: "We miss you! Come back and keep growing 💪",
+        html: (name) => `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${name||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`,
+        notifTitle: "💪 Inactivity Alert",
+        notifMessage: (name) => `Hi ${name || "Intern"}, we noticed you haven't been active recently. Jump back in whenever you're ready — we're here to help you keep growing. — TEN HR Team`,
+        notifType: "warning"
+    }
+};
+
+async function sendActivityMail(student, studentName, mailType){
+    const spec = ACTIVITY_MAILS[mailType];
+    const email = student.email;
+    let mailStatus = "sent";
+    let mailError = "";
+    try {
+        await transporter.sendMail({
+            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
+            to: email,
+            subject: spec.subject,
+            html: spec.html(studentName)
+        });
+    } catch (err) {
+        mailStatus = "failed";
+        mailError = err && err.message ? String(err.message) : "";
+    } finally {
+        try {
+            await MailHistory.create({
+                recipientEmail: email,
+                recipientName: studentName || "Intern",
+                studentId: student._id,
+                subject: spec.subject,
+                mailType,
+                sentAt: new Date(),
+                status: mailStatus,
+                errorMessage: mailError
+            });
+        } catch (_) {}
+    }
+    await Notification.notifyStudent(student, {
+        title: spec.notifTitle,
+        message: spec.notifMessage(studentName),
+        type: spec.notifType
+    });
+    await AutoMailLog.create({ studentName, studentEmail: email, employeeId: student.employeeId || "", mailType });
 }
 
 async function runActivityMailer(){
@@ -301,70 +249,17 @@ async function runActivityMailer(){
                 if(!email) continue;
                 const lastActive = student.lastActiveDate ? new Date(student.lastActiveDate) : null;
                 const studentName = (student.name || ((student.firstName||"") + " " + (student.lastName||"")).trim()).trim();
-                const employeeId = student.employeeId || "";
                 if(lastActive && lastActive >= sevenDaysAgo){
-                    let mailStatus = "sent";
-                    let mailError = "";
-                    try {
-                        await transporter.sendMail({
-                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                            to: email,
-                            subject: "Keep it up! You're doing great 🌟",
-                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>Great work staying active this week. Keep it up!<br><br>— TEN HR Team</div>`
-                        });
-                    } catch (err) {
-                        mailStatus = "failed";
-                        mailError = err && err.message ? String(err.message) : "";
-                    } finally {
-                        try {
-                            await MailHistory.create({
-                                recipientEmail: email,
-                                recipientName: studentName || "Intern",
-                                studentId: student._id,
-                                subject: "Keep it up! You're doing great 🌟",
-                                mailType: "active-appreciation",
-                                sentAt: new Date(),
-                                status: mailStatus,
-                                errorMessage: mailError
-                            });
-                        } catch (histErr) { console.error("[mail-history] failed to log active-appreciation:", histErr.message); }
-                    }
-                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "active-appreciation" });
+                    await sendActivityMail(student, studentName, "active-appreciation");
                 } else if(!lastActive || lastActive < fourteenDaysAgo){
-                    let mailStatus = "sent";
-                    let mailError = "";
-                    try {
-                        await transporter.sendMail({
-                            from: '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                            to: email,
-                            subject: "We miss you! Come back and keep growing 💪",
-                            html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6">Hi ${studentName||"Intern"},<br><br>We noticed you haven’t been active recently. Jump back in whenever you’re ready — we’re here to help you keep growing.<br><br>— TEN HR Team</div>`
-                        });
-                    } catch (err) {
-                        mailStatus = "failed";
-                        mailError = err && err.message ? String(err.message) : "";
-                    } finally {
-                        try {
-                            await MailHistory.create({
-                                recipientEmail: email,
-                                recipientName: studentName || "Intern",
-                                studentId: student._id,
-                                subject: "We miss you! Come back and keep growing 💪",
-                                mailType: "inactive-reengagement",
-                                sentAt: new Date(),
-                                status: mailStatus,
-                                errorMessage: mailError
-                            });
-                        } catch (histErr) { console.error("[mail-history] failed to log inactive-reengagement:", histErr.message); }
-                    }
-                    await AutoMailLog.create({ studentName, studentEmail: email, employeeId, mailType: "inactive-reengagement" });
+                    await sendActivityMail(student, studentName, "inactive-reengagement");
                 }
             }catch(error){
-                console.error(error);
+                console.log(error);
             }
         }
     }catch(error){
-        console.error(error);
+        console.log(error);
     }
 }
 cron.schedule('0 9 * * 1', runActivityMailer);
@@ -388,123 +283,23 @@ function getInternshipEndDate(joiningDate, tenure) {
     return end;
 }
 
-async function sendAutoDocumentsToStudent(student, docType) {
+async function sendAutoDocumentsToStudent(student, docType, sentBy = "System") {
     try {
-        const name       = student.name || ((student.firstName||'') + ' ' + (student.lastName||'')).trim();
-        const empId      = student.employeeId || '—';
-        const domain     = student.domain || '—';
-        const college    = student.collegeName || student.college || '—';
-        const email      = student.email;
-        const tenure     = student.tenure || '1 Month';
-        const joining    = student.joiningDate ? new Date(student.joiningDate).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
-        const endDate    = getInternshipEndDate(student.joiningDate, student.tenure);
-        const endStr     = endDate ? endDate.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) : '—';
-        const issuedDate = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'});
-        const docKeyMap = { offer: "offer_letter", loc: "loc", lor: "lor", star: "star", all: "internship_documents" };
-        const uniqueDocId = normalizeDocumentNumber(generateDocumentNumber(docKeyMap[docType] || "doc"));
-        const verifyUrl   = BASE_URL + '/verify-document?id=' + uniqueDocId;
-
-        const docTypeLabels = { offer:'Offer Letter', loc:'Letter of Completion', lor:'Letter of Recommendation', star:'Star Performer Certificate', all:'Internship Documents' };
-        const docTypeLabel  = docTypeLabels[docType] || 'Internship Documents';
-
-        await Student.findByIdAndUpdate(student._id, {
-            documentsAutoSent:   true,
-            documentsAutoSentAt: new Date(),
-            autoDocUniqueId:     uniqueDocId,
-            documentVerified:    true,
-            documentVerifiedAt:  new Date(),
-            documentNumber:      uniqueDocId
-        });
-
-        const emailHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-            body{font-family:'Times New Roman',serif;background:#f5f5f5;margin:0;padding:20px}
-            .wrap{max-width:680px;margin:0 auto;background:#fff;border:2px solid #D4AF37;border-radius:8px;overflow:hidden}
-            .hdr{background:linear-gradient(135deg,#1a1a2e,#0f3460);padding:32px;text-align:center}
-            .hdr .inf{font-size:48px;color:#D4AF37}.hdr h1{color:#D4AF37;font-size:18px;letter-spacing:3px;text-transform:uppercase;margin:8px 0 4px}
-            .hdr p{color:#a08040;font-size:12px;margin:0}.bd{padding:32px 36px}
-            .bd h2{color:#1a1a2e;font-size:22px;margin-bottom:8px}.bd p{font-size:14px;line-height:1.8;color:#333}
-            .dc{background:#fffbf0;border:1px solid #D4AF37;border-radius:8px;padding:18px 22px;margin:16px 0}
-            .dc h3{color:#b8860b;font-size:15px;margin:0 0 6px}.dc p{margin:0;font-size:13px;color:#555}
-            .vb{background:#f0f8ff;border:1px solid #4a90d9;border-radius:8px;padding:16px 20px;margin:20px 0;text-align:center}
-            .vb p{font-size:13px;color:#333;margin:0 0 8px}.vb a{color:#1a5fb4;font-weight:700;word-break:break-all}
-            .did{font-family:'Courier New',monospace;font-size:13px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;padding:6px 12px;display:inline-block;color:#333;margin:8px 0}
-            .ft{background:#1a1a2e;padding:20px;text-align:center}.ft p{color:#a08040;font-size:11px;margin:0}
-            table.inf{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
-            table.inf td{padding:7px 10px;border-bottom:1px solid #f0e8d0}
-            table.inf td:first-child{font-weight:700;color:#b8860b;width:40%}
-        </style></head><body>
-        <div class="wrap">
-          <div class="hdr"><div class="inf">∞</div><h1>The Entrepreneurship Network</h1><p>Internship Completion — Official Documents</p></div>
-          <div class="bd">
-            <h2>Dear ${name},</h2>
-            <p>Congratulations on completing your internship with <strong>The Entrepreneurship Network</strong>! Your internship period of <strong>${tenure}</strong> has now concluded.</p>
-            <table class="inf">
-              <tr><td>Employee ID</td><td>${empId}</td></tr>
-              <tr><td>Domain</td><td>${domain}</td></tr>
-              <tr><td>College / University</td><td>${college}</td></tr>
-              <tr><td>Internship Period</td><td>${joining} — ${endStr}</td></tr>
-              <tr><td>Duration</td><td>${tenure}</td></tr>
-              <tr><td>Date of Issue</td><td>${issuedDate}</td></tr>
-            </table>
-            <div class="dc"><h3>📄 Offer Letter</h3><p>Your official internship offer letter from The Entrepreneurship Network.</p></div>
-            <div class="dc"><h3>🎓 Letter of Completion (LOC)</h3><p>Certifies successful completion of your ${domain} internship tenure.</p></div>
-            <div class="dc"><h3>📝 Letter of Recommendation (LOR)</h3><p>Official recommendation letter from the Director, The Entrepreneurship Network.</p></div>
-            <div class="vb">
-              <p><strong>🔐 Document Verification</strong></p>
-              <p>Your unique Document ID:</p>
-              <div class="did">${uniqueDocId}</div>
-              <p>Verify authenticity at:</p>
-              <a href="${verifyUrl}">${verifyUrl}</a>
-            </div>
-            <p>Log in to your student portal at <a href="${BASE_URL}">${BASE_URL}</a> to download your full PDF documents.</p>
-            <p>For queries: <a href="mailto:hr@entrepreneurshipnetwork.net">hr@entrepreneurshipnetwork.net</a></p>
-            <p>Best Regards,<br><strong>HR Department</strong><br>The Entrepreneurship Network</p>
-          </div>
-          <div class="ft"><p>© The Entrepreneurship Network — Limitless Technologies LLP</p><p style="margin-top:4px">Document ID: ${uniqueDocId}</p></div>
-        </div></body></html>`;
-
-        let mailStatus = "sent";
-        let mailError = "";
-        try {
-            await transporter.sendMail({
-                from:    '"TEN HR Department" <hr@entrepreneurshipnetwork.net>',
-                to:      email,
-                subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
-                html:    emailHtml
-            });
-        } catch (err) {
-            mailStatus = "failed";
-            mailError = err && err.message ? String(err.message) : "";
+        const v2Certificates = require("./routes/v2/certificates");
+        if (docType === 'offer') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student, sentBy);
+        } else if (docType === 'loc') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student, sentBy);
+        } else if (docType === 'lor') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student, sentBy);
+        } else if (docType === 'star') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'STAR', student, sentBy);
+        } else if (docType === 'all') {
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'OFFER', student, sentBy);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOC', student, sentBy);
+            await v2Certificates.generateAndSaveCert(student._id.toString(), 'LOR', student, sentBy);
         }
-
-        await DocumentHistory.create({
-            studentId:      student._id,
-            studentName:    name,
-            studentEmail:   email,
-            employeeId:     empId,
-            college:        college,
-            domain:         domain,
-            documentType:   docTypeLabel,
-            documentKey:    docKeyMap[docType] || "internship_documents",
-            documentNumber: uniqueDocId,
-            sentBy:         'HR System',
-            sentToEmail:    email,
-            sentAt:         new Date()
-        });
-
-        try {
-            await MailHistory.create({
-                recipientEmail: email,
-                recipientName: name,
-                studentId: student._id,
-                subject: `🎓 Your TEN ${docTypeLabel} — ${name} (${empId})`,
-                mailType: docKeyMap[docType] || "internship_documents",
-                sentAt: new Date(),
-                status: mailStatus,
-                errorMessage: mailError
-            });
-        } catch (histErr) { console.error("[AUTO-DOCS] document-history save failed:", histErr.message); }
-        console.log('[AUTO-DOCS] Emailed to ' + email + ' | ID: ' + uniqueDocId);
+        console.log(`[AUTO-DOCS] Successfully generated and synced document type ${docType} for student ${student._id} (sentBy: ${sentBy})`);
     } catch(err) {
         console.error('[AUTO-DOCS] Error:', err.message);
     }
@@ -519,7 +314,7 @@ async function runAutoDocumentCheck() {
             if (!student.joiningDate || !student.tenure || !student.email) continue;
             const endDate = getInternshipEndDate(student.joiningDate, student.tenure);
             if (endDate && now >= endDate) {
-                await sendAutoDocumentsToStudent(student, 'all');
+                await sendAutoDocumentsToStudent(student, 'all', "System Automation");
                 count++;
                 await new Promise(r => setTimeout(r, 2000));
             }
@@ -535,12 +330,9 @@ setInterval(runAutoDocumentCheck, 6 * 60 * 60 * 1000);
 
 // ================= MONGODB =================
 
-mongoose.connect(
-    process.env.MONGODB_URI ||
-    "mongodb://nagbishal07_db_user:_DXMzR6bkF!7Bc9@ac-kbv0ma9-shard-00-00.dtg7de6.mongodb.net:27017,ac-kbv0ma9-shard-00-01.dtg7de6.mongodb.net:27017,ac-kbv0ma9-shard-00-02.dtg7de6.mongodb.net:27017/?ssl=true&replicaSet=atlas-ekamxn-shard-0&authSource=admin&appName=Cluster0"
-)
+mongoose.connect(process.env.MONGODB_URI)
 .then(()=>console.log("MongoDB Connected"))
-.catch((err)=>console.error("MongoDB connection error:", err.message));
+.catch((err)=>console.log(err));
 
 // ================= SCHEMAS =================
 
@@ -629,235 +421,30 @@ const TestResult = mongoose.model("TestResult", testResultSchema);
 
 // ================= ROUTES =================
 
+// Phase-1 multi-role registration hub
+app.use("/api/register-hub", require("./routes/registerHub"));
+
 app.get("/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","dashboard.html")); });
 app.get("/groups", (req,res)=>{ res.sendFile(path.join(__dirname,"public","groups.html")); });
 app.get("/edit.html", (req,res)=>{ res.sendFile(path.join(__dirname,"public","edit.html")); });
 app.get("/hr-portal", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
 app.get("/hr-login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-login.html")); });
-
-// ── Page routes (GET) ──────────────────────────────────────────────────────
-app.get("/login",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","login.html")); });
 app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","register.html")); });
-app.get("/hr/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
-app.get("/hr/login",     (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-login.html")); });
-app.get("/my-internships", (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-internships.html")); });
-app.get("/talent-network", (req,res)=>{ res.sendFile(path.join(__dirname,"public","talent-network.html")); });
-app.get("/programs", (req,res)=>{ res.sendFile(path.join(__dirname,"public","programs.html")); });
-app.get("/community", (req,res)=>{ res.sendFile(path.join(__dirname,"public","community.html")); });
-app.get("/student/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-dashboard.html")); });
-app.get("/student-dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-dashboard.html")); });
-app.get("/coordinator/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coordinator-dashboard.html")); });
-app.get("/coordinator/login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coordinator-login.html")); });
-app.get("/my-certificates", (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-certificates.html")); });
-app.get("/my-documents",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-documents.html")); });
-app.get("/v2-tasks",        (req,res)=>{ res.sendFile(path.join(__dirname,"public","v2-tasks.html")); });
-app.get("/register-hub",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","register-hub.html")); });
+app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coming-soon.html")); });
+
+// ── Phase 2 page routes ─────────────────────────────────────────────────────
+app.get("/login",             (req,res)=>{ res.sendFile(path.join(__dirname,"public","login.html")); });
+app.get("/my-internships",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-internships.html")); });
+app.get("/talent-network",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","talent-network.html")); });
+app.get("/programs",          (req,res)=>{ res.sendFile(path.join(__dirname,"public","programs.html")); });
 app.get("/founder/directory", (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-directory.html")); });
 app.get("/mentor/directory",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-directory.html")); });
 app.get("/investor/directory",(req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-directory.html")); });
+app.get("/hr/dashboard",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-ecosystem.html")); });
 app.get("/founder-os",        (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-os.html")); });
+app.get("/community",         (req,res)=>{ res.sendFile(path.join(__dirname,"public","community.html")); });
 app.get("/payment",           (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
-app.get("/payment.html",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
-app.get("/payment/success",   (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-success.html")); });
 app.get("/payment-return",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-return.html")); });
-
-// ── Mount ecosystem API routes ──────────────────────────────────────────────
-try { app.use("/api/founder",    require("./routes/founderRoutes"));       } catch(e) { console.error("[Routes] founderRoutes:", e.message); }
-try { app.use("/api/mentor",     require("./routes/mentorRoutes"));        } catch(e) { console.error("[Routes] mentorRoutes:", e.message); }
-try { app.use("/api/investor",   require("./routes/investorRoutes"));      } catch(e) { console.error("[Routes] investorRoutes:", e.message); }
-try { app.use("/api/contractor", require("./routes/contractorRoutes"));    } catch(e) { console.error("[Routes] contractorRoutes:", e.message); }
-try { app.use("/api/hr-dashboard", require("./routes/hrDashboardRoutes")); } catch(e) { console.error("[Routes] hrDashboardRoutes:", e.message); }
-try { app.use("/api/founder",    require("./routes/founderProfileRoutes"));} catch(e) { console.error("[Routes] founderProfileRoutes:", e.message); }
-try { app.use("/api/mentor",     require("./routes/mentorProfileRoutes")); } catch(e) { console.error("[Routes] mentorProfileRoutes:", e.message); }
-try { app.use("/api/investor",   require("./routes/investorProfileRoutes"));} catch(e) { console.error("[Routes] investorProfileRoutes:", e.message); }
-try { app.use("/api/talent-network", require("./routes/talentNetwork"));   } catch(e) { console.error("[Routes] talentNetwork:", e.message); }
-try { app.use("/api/talent-profile", require("./routes/talentProfile"));   } catch(e) { console.error("[Routes] talentProfile:", e.message); }
-try { app.use("/api",            require("./routes/programApiRoutes"));    } catch(e) { console.error("[Routes] programApiRoutes:", e.message); }
-try { app.use("/api/founder-os", require("./routes/founderOS"));           } catch(e) { console.error("[Routes] founderOS:", e.message); }
-try { app.use("/api/community",  require("./routes/community"));           } catch(e) { console.error("[Routes] community:", e.message); }
-try { app.use("/api/register-hub", require("./routes/registerHub"));       } catch(e) { console.error("[Routes] registerHub:", e.message); }
-try { app.use("/api/notifications", require("./routes/notificationRoutes"));} catch(e) { console.error("[Routes] notificationRoutes:", e.message); }
-try { app.use("/api/verification", require("./routes/verificationRoutes"));} catch(e) { console.error("[Routes] verificationRoutes:", e.message); }
-try { app.use("/api/payment-setu", require("./routes/paymentSetuRoutes")); } catch(e) { console.error("[Routes] paymentSetuRoutes:", e.message); }
-
-// ── Public talent network profiles (limited fields for directory display) ────
-app.get("/api/talent-network/profiles", async (req, res) => {
-    try {
-        const students = await Student.find()
-            .select("name firstName lastName employeeId domain tenure joiningDate")
-            .sort({ createdAt: -1 })
-            .limit(100)
-            .lean();
-        res.json(students);
-    } catch (e) {
-        console.error("[talent-network] profiles error:", e.message);
-        res.json([]);
-    }
-});
-
-// ── Public payment config (safe — no secrets) ─────────────────────────────
-app.get("/api/payment/config", (req, res) => {
-    res.json({
-        upiId:   process.env.UPI_ID   || "paytmqr5k0ods@ptys",
-        upiName: process.env.UPI_NAME || "TEN Entrepreneurship Network",
-        currency: "INR"
-    });
-});
-
-// ── Verify UTR and auto-approve certificate ────────────────────────────────
-app.post("/api/payment/verify-utr", async (req, res) => {
-    try {
-        const { utr, certType, empId, orderId } = req.body;
-        if (!utr || !certType || !empId)
-            return res.status(400).json({ success: false, message: "utr, certType and empId are required" });
-
-        // Authentication: require x-employee-id header to match the empId being verified
-        const headerEmpId = req.headers["x-employee-id"];
-        if (!headerEmpId || String(headerEmpId) !== String(empId)) {
-            return res.status(401).json({ success: false, message: "Authentication required. Please log in again." });
-        }
-
-        const student = await Student.findOne({ employeeId: String(empId) });
-        if (!student) return res.status(404).json({ success: false, message: "Student not found" });
-
-        const StudentCertificate = require("./models/new/StudentCertificate");
-
-        // Security: require a matching pending cert record with the provided orderId
-        if (!orderId) {
-            return res.status(400).json({ success: false, message: "orderId is required" });
-        }
-        let certRecord = await StudentCertificate.findOne({ studentId: student._id, certificateType: certType, orderId: orderId });
-        if (!certRecord) {
-            return res.status(404).json({ success: false, message: "No pending payment found for this certificate. Please initiate the claim flow again." });
-        }
-        if (certRecord.paymentStatus === "paid") {
-            return res.status(409).json({ success: false, message: "This certificate payment has already been verified." });
-        }
-
-        certRecord.paymentStatus = "paid";
-        certRecord.paymentTxnId  = String(utr).trim();
-        certRecord.paymentPaidAt = new Date();
-        await certRecord.save();
-
-        console.log(`[Payment] UTR verified & cert unlocked: ${certType} for ${empId}, UTR: ${utr}`);
-        res.json({ success: true, message: "Payment verified! Your certificate is now ready to download.", certType, empId });
-    } catch (err) {
-        console.error("[Payment] verify-utr error:", err.message);
-        res.status(500).json({ success: false, message: "Error verifying payment" });
-    }
-});
-
-// ── PaymentSetu — Create Order ────────────────────────────────────────────
-app.post("/api/payment/create-order", async (req, res) => {
-    try {
-        const { certType, employeeId } = req.body;
-        if (!certType || !employeeId) return res.status(400).json({ success: false, message: "certType and employeeId required" });
-
-        const CERT_PRICES = { expert: 10000, nano_degree: 100000, fellowship: 250000 }; // paise
-        const price = CERT_PRICES[certType];
-        if (!price) return res.status(400).json({ success: false, message: "Invalid certificate type" });
-
-        const student = await Student.findOne({ employeeId: String(employeeId) });
-        if (!student) return res.status(404).json({ success: false, message: "Student not found" });
-
-        const orderId = `CERT_${student._id}_${certType}_${Date.now()}`;
-        const redirectUrl = (process.env.BASE_URL || `https://${req.headers.host}`) + "/payment/success?orderId=" + orderId + "&certType=" + certType + "&empId=" + employeeId;
-
-        const axios = require("axios");
-        const response = await axios.post("https://paymentsetu.com/api/create_order", {
-            order_id:        orderId,
-            amount:          price,
-            redirect_url:    redirectUrl,
-            customer_name:   student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
-            customer_email:  student.email || "",
-            customer_mobile: student.whatsapp || "",
-            remarks:         `TEN ${certType} certificate — ${student.employeeId}`
-        }, {
-            headers: { "Authorization": `Bearer ${process.env.PAYMENTSETU_API_KEY}`, "Content-Type": "application/json" }
-        });
-
-        if (!response.data.status) {
-            return res.status(500).json({ success: false, message: response.data.msg || "Payment order creation failed" });
-        }
-
-        res.json({ success: true, paymentUrl: response.data.payment_url, orderId });
-    } catch (err) {
-        console.error("[PaymentSetu] create-order error:", err.message);
-        res.status(500).json({ success: false, message: "Payment service error. Please try again later." });
-    }
-});
-
-// ── PaymentSetu — Webhook (auto-approve on success) ──────────────────────
-app.post("/api/payment/webhook", express.raw({ type: "application/json" }), async (req, res) => {
-    try {
-        const signature = req.headers["x-paymentsetu-signature"] || "";
-        const timestamp = req.headers["x-paymentsetu-timestamp"] || "";
-        const rawBody   = req.body ? req.body.toString() : "";
-
-        const expected = crypto.createHmac("sha256", process.env.PAYMENTSETU_API_KEY || "")
-            .update(timestamp + "." + rawBody)
-            .digest("hex");
-
-        const sigBuf = Buffer.from(signature);
-        const expBuf = Buffer.from(expected);
-        if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(expBuf, sigBuf)) {
-            return res.status(401).json({ error: "Invalid signature" });
-        }
-
-        const payload = JSON.parse(rawBody);
-        if (payload.status !== "success") return res.status(200).json({ received: true });
-
-        const orderId = payload.order_id || "";
-        const parts   = orderId.split("_");
-        if (parts.length >= 4 && parts[0] === "CERT") {
-            // Format: CERT_<studentId>_<certType>_<timestamp>
-            // certType may contain underscores (e.g. "nano_degree"), so rejoin middle parts
-            const studentIdHex = parts[1];
-            const certType     = parts.slice(2, -1).join("_");
-            const StudentCertificate = require("./models/new/StudentCertificate");
-            let certRecord = await StudentCertificate.findOne({ studentId: studentIdHex, certificateType: certType });
-            if (!certRecord) {
-                certRecord = new StudentCertificate({ studentId: studentIdHex, certificateType: certType, paymentStatus: "pending" });
-            }
-            certRecord.paymentStatus = "paid";
-            certRecord.paymentTxnId  = payload.txn_utr || "";
-            certRecord.paymentPaidAt = new Date(payload.txn_time || Date.now());
-            await certRecord.save();
-            console.log(`[PaymentSetu] Payment verified & cert unlocked: ${orderId}`);
-        }
-
-        res.status(200).json({ received: true });
-    } catch (err) {
-        console.error("[PaymentSetu] webhook error:", err.message);
-        res.status(500).json({ error: "Webhook processing failed" });
-    }
-});
-
-// ── Payment status check (used by payment-return page polling) ────────────
-app.get("/api/v2/payment/status/:orderId", async (req, res) => {
-    try {
-        const orderId = req.params.orderId;
-        const StudentCertificate = require("./models/new/StudentCertificate");
-        const cert = await StudentCertificate.findOne({ orderId }).lean();
-        if (!cert) {
-            // Try parsing orderId to find by studentId + certType
-            const parts = orderId.split("_");
-            if (parts.length >= 4 && parts[0] === "CERT") {
-                const studentIdHex = parts[1];
-                const certType = parts.slice(2, -1).join("_");
-                const found = await StudentCertificate.findOne({ studentId: studentIdHex, certificateType: certType }).lean();
-                if (found && found.paymentStatus === "paid") return res.json({ status: "success", certType: found.certificateType });
-            }
-            return res.json({ status: "pending" });
-        }
-        if (cert.paymentStatus === "paid") return res.json({ status: "success", certType: cert.certificateType });
-        if (cert.paymentStatus === "failed") return res.json({ status: "failed" });
-        return res.json({ status: "pending" });
-    } catch (err) {
-        console.error("[Payment Status]", err.message);
-        res.json({ status: "pending" });
-    }
-});
 
 // ================= EMPLOYEE ID =================
 
@@ -1045,14 +632,19 @@ try{
                         status: mailStatus,
                         errorMessage: mailError
                     });
-                } catch (histErr) { console.error("[register] mail-history save failed:", histErr.message); }
+                } catch (_) {}
+                await Notification.notifyStudent({ employeeId, domain }, {
+                    title: "🎉 Welcome to TEN!",
+                    message: `Hello ${newStudent.name.trim()}, your internship registration was successful. Your Employee ID is ${employeeId} (${domain}). A welcome email has been sent to ${emailLc}.`,
+                    type: "success"
+                });
             }
-        }catch(mailError){ console.error("[register] welcome email failed:", mailError && mailError.message); }
+        }catch(mailError){ console.log("MAIL ERROR:", mailError && mailError.message); }
     }
 
-    res.json({ success:true, employeeId, secondDomain: !isFirstRegistration });
+    res.json({ success:true, employeeId, password, secondDomain: !isFirstRegistration });
 
-}catch(error){ console.error(error); res.status(500).json({ success:false, message:"Server Error" }); }
+}catch(error){ console.log(error); res.status(500).json({ success:false, message:"Server Error" }); }
 });
 
 // ================= LOGIN =================
@@ -1064,7 +656,7 @@ try{
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
     await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
     res.json({ success:true, student });
-}catch(error){ console.error(error); res.status(500).json({ success:false, message:"Server Error" }); }
+}catch(error){ res.status(500).json({ success:false, message:"Server Error" }); }
 });
 
 // ================= SUBMIT TASK =================
@@ -1112,8 +704,8 @@ try{
     await recomputeBadgesFor(employeeId);
     res.json({ success:true, message:"Task Submitted Successfully" });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, message:"Submission Failed" });
+    console.log(error);
+    res.json({ success:false, message:"Submission Failed" });
 }
 });
 
@@ -1125,8 +717,8 @@ try{
     const submissions = await Submission.find({ employeeId }).sort({ submittedAt:-1 });
     res.json({ success:true, submissions });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, submissions:[] });
+    console.log(error);
+    res.json({ success:false, submissions:[] });
 }
 });
 
@@ -1138,8 +730,8 @@ try{
     const submissions = await Submission.find({ domain }).sort({ submittedAt:-1 });
     res.json(submissions);
 }catch(error){
-    console.error(error);
-    res.status(500).json([]);
+    console.log(error);
+    res.json([]);
 }
 });
 
@@ -1147,10 +739,7 @@ try{
 
 app.post("/update-status", async(req,res)=>{
 try{
-    const { id, status, feedback, coordinatorId } = req.body;
-    if(!coordinatorId){
-        return res.status(401).json({ success:false, message:"Coordinator authentication required" });
-    }
+    const { id, status, feedback } = req.body;
 
     const existing = await Submission.findById(id);
     if(!existing){
@@ -1200,8 +789,8 @@ try{
 
     res.json({ success:true, message:"Status Updated Successfully" });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false });
+    console.log(error);
+    res.json({ success:false });
 }
 });
 
@@ -1260,8 +849,8 @@ try{
 
     res.json({ success:true, message:"Attendance Submitted", thresholdMsg, attendanceCount: count });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, message:"Attendance Failed" });
+    console.log(error);
+    res.json({ success:false, message:"Attendance Failed" });
 }
 });
 
@@ -1285,7 +874,7 @@ function removeSSEClient(key, res){
 }
 
 function sendSSE(res, data){
-    try{ res.write(`data: ${JSON.stringify(data)}\n\n`); } catch(e){ /* SSE write may fail if client disconnected */ }
+    try{ res.write(`data: ${JSON.stringify(data)}\n\n`); } catch(e){}
 }
 
 function broadcastNotification(domain, employeeId, notif){
@@ -1383,7 +972,7 @@ try{
 
     res.json({ success:true });
 }catch(error){
-    console.error(error);
+    console.log(error);
     res.status(500).json({ success:false });
 }
 });
@@ -1394,7 +983,7 @@ app.get("/get-notice/:domain", async(req,res)=>{
 try{
     const notice = await Notice.findOne({ domain:req.params.domain });
     res.json(notice || {});
-}catch(error){ console.error(error); res.status(500).json({ success:false }); }
+}catch(error){ res.json({ success:false }); }
 });
 
 // ================= NOTIFICATIONS - GET FOR STUDENT =================
@@ -1418,8 +1007,8 @@ try{
     
     res.json({ success:true, notifications:notifs, unread });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, notifications:[], unread:0 });
+    console.log(error);
+    res.json({ success:false, notifications:[], unread:0 });
 }
 });
 
@@ -1442,8 +1031,8 @@ try{
     
     res.json({ success:true, notifications:notifs, unread });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, notifications:[], unread:0 });
+    console.log(error);
+    res.json({ success:false, notifications:[], unread:0 });
 }
 });
 
@@ -1457,8 +1046,7 @@ try{
     });
     res.json({ success:true });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false });
+    res.json({ success:false });
 }
 });
 
@@ -1509,8 +1097,8 @@ try{
     }
     res.json({ success:true, hr:{ username: identifier, email: hr.email || "", name:hr.name, role:"hr" } });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, message:"Server Error" });
+    console.log(error);
+    res.json({ success:false, message:"Server Error" });
 }
 });
 
@@ -1572,8 +1160,8 @@ try{
     
     res.json({ success:true, message:"Notification sent successfully" });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, message:"Failed to send notification" });
+    console.log(error);
+    res.json({ success:false, message:"Failed to send notification" });
 }
 });
 
@@ -1587,7 +1175,7 @@ try{
     }
     const students = await Student.find().sort({ createdAt:-1 });
     res.json({ success:true, students });
-}catch(error){ console.error(error); res.status(500).json({ message:"Error fetching students" }); }
+}catch(error){ res.status(500).json({ message:"Error fetching students" }); }
 });
 
 // ================= HR - SEND DOCUMENTS NOW =================
@@ -1605,7 +1193,7 @@ app.post('/hr/send-documents-now', async(req, res) => {
         if (!student.email) return res.json({ success: false, message: 'Student has no email' });
         student.documentsAutoSent = false;
         await student.save();
-        await sendAutoDocumentsToStudent(student, docType || 'all');
+        await sendAutoDocumentsToStudent(student, docType || 'all', "HR Portal");
         res.json({ success: true, message: 'Documents sent to ' + student.email });
     } catch(err) {
         console.error('[MANUAL-DOCS]', err);
@@ -1644,7 +1232,7 @@ try{
     });
     res.json({ records: mapped, total, page });
 }catch(error){
-    console.error(error);
+    console.log(error);
     res.status(500).json({ records:[], total:0, page:1 });
 }
 });
@@ -1709,8 +1297,8 @@ try{
         verifiedAt:  s.documentVerifiedAt || null
     });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ verified: false, message: "Server error" });
+    console.log(error);
+    res.json({ verified: false, message: "Student not found" });
 }
 });
 
@@ -1725,7 +1313,7 @@ try{
     const out = await verifyByDocumentNumber(documentNumber);
     res.json(out);
 }catch(error){
-    console.error(error);
+    console.log(error);
     res.status(500).json({ verified: false, message: "Server error during verification" });
 }
 });
@@ -1743,28 +1331,8 @@ try{
     const records = await AutoMailLog.find().sort({ sentAt: -1 }).skip(skip).limit(limit);
     res.json({ records, total, page });
 }catch(error){
-    console.error(error);
+    console.log(error);
     res.status(500).json({ records:[], total:0, page:1 });
-}
-});
-
-app.get("/api/hr/intern-list", async(req,res)=>{
-try{
-    const auth = req.headers.authorization;
-    if(!auth || !auth.startsWith("Bearer hr_")){
-        return res.status(401).json({ message:"Unauthorized" });
-    }
-    const type = req.query.type || "total";
-    const now = new Date();
-    const cutoff30 = new Date(now); cutoff30.setDate(cutoff30.getDate() - 30);
-    let filter = {};
-    if(type === "active") filter = { lastActiveDate: { $gte: cutoff30 } };
-    else if(type === "inactive") filter = { $or: [{ lastActiveDate: { $exists: false } }, { lastActiveDate: null }, { lastActiveDate: { $lt: cutoff30 } }] };
-    const students = await Student.find(filter).select("name employeeId domain lastActiveDate joiningDate").lean();
-    res.json({ students });
-}catch(error){
-    console.error(error);
-    res.status(500).json({ students: [] });
 }
 });
 
@@ -1797,7 +1365,7 @@ try{
     }
     res.json({ totalInterns, activeThisMonth, inactiveInterns, newJoinsThisMonth });
 }catch(error){
-    console.error(error);
+    console.log(error);
     res.status(500).json({ totalInterns:0, activeThisMonth:0, inactiveInterns:0, newJoinsThisMonth:0 });
 }
 });
@@ -1833,7 +1401,7 @@ try{
     }
     res.json(months.map(x => ({ month: x.month, count: x.count })));
 }catch(error){
-    console.error(error);
+    console.log(error);
     res.status(500).json([]);
 }
 });
@@ -1876,7 +1444,7 @@ app.get('/api/hr/intern-list', async (req, res) => {
       college: s.collegeName || s.college
     }))});
   }catch(e){
-    console.error(e);
+    console.log(e);
     res.status(500).json({ students: [] });
   }
 });
@@ -1893,7 +1461,7 @@ try{
     const students = await Student.find({ domain }).sort({ createdAt:-1 });
     res.json({ success:true, students });
 }catch(error){ 
-    console.error(error);
+    console.log(error);
     res.status(500).json({ message:"Error fetching domain students" }); 
 }
 });
@@ -1939,7 +1507,7 @@ try{
 
     res.json({ success:true, coordinators: out });
 }catch(error){
-    console.error("Error fetching coordinators:", error.message);
+    console.log("Error fetching coordinators:", error);
     res.status(500).json({ success:false, message:"Error fetching coordinators" });
 }
 });
@@ -1954,7 +1522,7 @@ try{
     }
     const submissions = await Submission.find().sort({ submittedAt:-1 });
     res.json({ success:true, submissions: await attachStudentDetailsToSubmissions(submissions) });
-}catch(error){ console.error(error); res.status(500).json({ message:"Error" }); }
+}catch(error){ res.status(500).json({ message:"Error" }); }
 });
 
 app.get("/hr/submissions/filter", async(req,res)=>{
@@ -1967,7 +1535,7 @@ try{
     const query = status ? { status } : {};
     const submissions = await Submission.find(query).sort({ submittedAt:-1 });
     res.json({ success:true, submissions: await attachStudentDetailsToSubmissions(submissions) });
-}catch(error){ console.error(error); res.status(500).json({ message:"Error" }); }
+}catch(error){ res.status(500).json({ message:"Error" }); }
 });
 
 // ================= HR - GET STATS =================
@@ -2000,7 +1568,7 @@ try{
         domainStats,
         notifications
     });
-}catch(error){ console.error(error); res.status(500).json({ message:"Error" }); }
+}catch(error){ res.status(500).json({ message:"Error" }); }
 });
 
 // ================= HR - GET ALL NOTIFICATIONS SENT =================
@@ -2013,66 +1581,35 @@ try{
     }
     const notifs = await Notification.find().sort({ createdAt:-1 }).limit(100);
     res.json({ success:true, notifications:notifs });
-}catch(error){ console.error(error); res.status(500).json({ success:false }); }
+}catch(error){ res.status(500).json({ success:false }); }
 });
 
 // ================= HR - DELETE NOTIFICATION =================
 
 app.delete("/hr/notifications/:id", async(req,res)=>{
 try{
-    const auth = req.headers.authorization;
-    if(!auth || !auth.startsWith("Bearer hr_")){
-        return res.status(401).json({ success:false, message:"Unauthorized" });
-    }
     await Notification.findByIdAndDelete(req.params.id);
     res.json({ success:true });
-}catch(error){ console.error(error); res.status(500).json({ success:false }); }
+}catch(error){ res.json({ success:false }); }
 });
 
-// ── Student notifications mark-all-read (legacy endpoint for student-dashboard) ──
-app.post("/notifications/mark-all-read", async(req,res)=>{
-    try{
-        const { readerId } = req.body;
-        if (!readerId) return res.json({ success: true });
-        await Notification.updateMany(
-            { targetEmployeeId: readerId, read: { $ne: true } },
-            { $set: { read: true } }
-        );
-        res.json({ success: true });
-    }catch(error){ console.error(error); res.json({ success: false }); }
-});
-
-// ================= ALL STUDENTS (legacy admin OR session-based) =================
+// ================= ALL STUDENTS (legacy admin) =================
 
 app.get("/students", async(req,res)=>{
+    const adminPassword = req.headers.authorization;
+    if(adminPassword !== "Bearer mysecret123"){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
     try{
-        const empId = req.query.empId;
-        // If empId query param present — allow student self-lookup (no admin secret needed)
-        if (empId) {
-            const student = await Student.findOne({ employeeId: String(empId) }).lean();
-            if (!student) return res.json([]);
-            return res.json([student]);
-        }
-        // Otherwise require admin secret for full list
-        const adminPassword = req.headers.authorization;
-        const expectedSecret = process.env.ADMIN_API_SECRET;
-        if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
-            return res.status(401).json({ message:"Unauthorized" });
-        }
         const students = await Student.find().sort({ createdAt:-1 });
         res.json(students);
-    }catch(error){ console.error(error); res.status(500).json({ message:"Error fetching students" }); }
+    }catch(error){ res.status(500).json({ message:"Error fetching students" }); }
 });
 
 // ================= UPDATE STUDENT =================
 
 app.put("/students/:id", async(req,res)=>{
 try{
-    const adminPassword = req.headers.authorization;
-    const expectedSecret = process.env.ADMIN_API_SECRET;
-    if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
-        return res.status(401).json({ message:"Unauthorized" });
-    }
     const body = { ...req.body };
     if(body.firstName !== undefined || body.lastName !== undefined){
         body.name = `${body.firstName || ""} ${body.lastName || ""}`.trim();
@@ -2084,21 +1621,16 @@ try{
     }
     await Student.findByIdAndUpdate(req.params.id, body, { new:true });
     res.json({ message:"Student Updated" });
-}catch(error){ console.error(error); res.status(500).json({ message:"Update Failed" }); }
+}catch(error){ res.status(500).json({ message:"Update Failed" }); }
 });
 
 // ================= DELETE STUDENT =================
 
 app.delete("/students/:id", async(req,res)=>{
 try{
-    const adminPassword = req.headers.authorization;
-    const expectedSecret = process.env.ADMIN_API_SECRET;
-    if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
-        return res.status(401).json({ message:"Unauthorized" });
-    }
     await Student.findByIdAndDelete(req.params.id);
     res.json({ message:"Student deleted" });
-}catch(error){ console.error(error); res.status(500).json({ message:"Error deleting student" }); }
+}catch(error){ res.status(500).json({ message:"Error deleting student" }); }
 });
 
 // ================= STUDENT LOGIN =================
@@ -2146,12 +1678,17 @@ try{
             internshipEnd: computedEndDate ? computedEndDate.toISOString() : null,
             endDate: computedEndDate ? computedEndDate.toISOString() : null,
 
-            linkedDomains: student.linkedDomains || []
+            linkedDomains: student.linkedDomains || [],
+
+            // FEATURE 1 — one-time popup flags
+            onboardingPopupSeen: student.onboardingPopupSeen || false,
+            joinerTypeSelected:  student.joinerTypeSelected  || false,
+            joinerType:          student.joinerType           || null
         }
     });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, message:"Server Error" });
+    console.log(error);
+    res.json({ success:false, message:"Server Error" });
 }
 });
 
@@ -2188,8 +1725,8 @@ try{
     }
     return res.json({ success:false });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false });
+    console.log(error);
+    res.json({ success:false });
 }
 });
 
@@ -2197,23 +1734,14 @@ try{
 
 app.post("/save-test-questions", async(req,res)=>{
 try{
-    const { domain, questions, coordinatorId } = req.body;
-    if(!domain || !coordinatorId){
-        return res.status(401).json({ success:false, message:"Coordinator authentication required" });
-    }
-    // Verify coordinator is authorized for this domain
-    const legacyCoord = Object.values(COORDINATORS).find(c => c.domain === domain);
-    const dbCoord = await Coordinator.findOne({ domain });
-    if(!legacyCoord && !dbCoord){
-        return res.status(403).json({ success:false, message:"No coordinator found for this domain" });
-    }
+    const { domain, questions } = req.body;
     await TestQuestion.deleteMany({ domain });
     const docs = questions.map(q=>({ domain, question:q.question, options:q.options, correctAnswer:q.correctAnswer }));
     await TestQuestion.insertMany(docs);
     res.json({ success:true, message:"Test questions saved" });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, message:"Failed to save questions" });
+    console.log(error);
+    res.json({ success:false, message:"Failed to save questions" });
 }
 });
 
@@ -2225,8 +1753,8 @@ try{
     const questions = await TestQuestion.find({ domain }, { correctAnswer:0 });
     res.json({ success:true, questions });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, questions:[] });
+    console.log(error);
+    res.json({ success:false, questions:[] });
 }
 });
 
@@ -2256,8 +1784,8 @@ try{
 
     res.json({ success:true, score, totalQuestions:questions.length, percentage });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, message:"Test submission failed" });
+    console.log(error);
+    res.json({ success:false, message:"Test submission failed" });
 }
 });
 
@@ -2269,8 +1797,8 @@ try{
     const results = await TestResult.find({ domain }).sort({ percentage:-1, submittedAt:1 });
     res.json({ success:true, leaderboard:results });
 }catch(error){
-    console.error(error);
-    res.status(500).json({ success:false, leaderboard:[] });
+    console.log(error);
+    res.json({ success:false, leaderboard:[] });
 }
 });
 
@@ -2475,7 +2003,7 @@ try{
     res.json({ success:true, message:"Attendance marked for today", attendance:att });
 }catch(e){
     if(e.code === 11000) return res.json({ success:false, alreadyMarked:true, message:"Already marked for today" });
-    console.error("[attendance self] error:", e.message); res.status(500).json({ success:false, message:"Failed to mark attendance" });
+    console.log(e); res.json({ success:false, message:"Failed to mark attendance" });
 }
 });
 
@@ -2510,7 +2038,7 @@ try{
             });
             await notif.save();
             broadcastNotification(student.domain, employeeId, notif);
-        }catch(notifErr){ console.error("[notification] attendance-update notification failed:", notifErr.message); }
+        }catch(_){}
         return res.json({ success:true, updated:true, message:"Attendance updated", attendance:att });
     }
 
@@ -2530,11 +2058,11 @@ try{
         });
         await notif.save();
         broadcastNotification(student.domain, employeeId, notif);
-    }catch(notifErr){ console.error("[notification] attendance-mark notification failed:", notifErr.message); }
+    }catch(_){}
     res.json({ success:true, message:"Attendance marked", attendance:att });
 }catch(e){
     if(e.code === 11000) return res.json({ success:false, message:"Already marked for this date" });
-    console.error("[coordinator mark attendance] error:", e.message); res.status(500).json({ success:false, message:"Failed to mark attendance" });
+    console.log(e); res.json({ success:false, message:"Failed to mark attendance" });
 }
 });
 
@@ -2551,7 +2079,7 @@ try{
     if(coordinatorId) att.coordinatorId = coordinatorId;
     await att.save();
     res.json({ success:true, message:"Attendance updated", attendance:att });
-}catch(e){ console.error("[attendance PUT] error:", e.message); res.status(500).json({ success:false, message:"Failed to update" }); }
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to update" }); }
 });
 
 // ---- GET attendance history + stats for one student ----
@@ -2564,7 +2092,7 @@ try{
     const today = toDateKey(new Date());
     const markedToday = records.some(r => r.markedBy === "self" && r.dateKey === today);
     res.json({ success:true, attendance:records, stats, markedToday });
-}catch(e){ console.error("[attendance GET] error:", e.message); res.status(500).json({ success:false, attendance:[], stats:null }); }
+}catch(e){ console.log(e); res.json({ success:false, attendance:[], stats:null }); }
 });
 
 // ---- HR: attendance monitor (all students summary) ----
@@ -2586,7 +2114,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.error("[attendance monitor] error:", e.message); res.status(500).json({ success:false, students:[] }); }
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
 });
 
 // ---- COORDINATOR: student overview for their domain ----
@@ -2630,7 +2158,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.error("[coordinator student-overview] error:", e.message); res.status(500).json({ success:false, students:[] }); }
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
 });
 
 // ---- COORDINATOR: all attendance records for a domain (optionally one date) ----
@@ -2641,7 +2169,7 @@ try{
     if(req.query.date) query.dateKey = req.query.date;
     const records = await Attendance.find(query).sort({ date:-1 });
     res.json({ success:true, records });
-}catch(e){ console.error("[coordinator attendance records] error:", e.message); res.status(500).json({ success:false, records:[] }); }
+}catch(e){ console.log(e); res.json({ success:false, records:[] }); }
 });
 
 // ---- COORDINATOR: approve student for certificate consideration ----
@@ -2673,7 +2201,7 @@ try{
     broadcastNotification(student.domain, student.employeeId, notif);
 
     res.json({ success:true, message:"Student approved and sent to HR for review" });
-}catch(e){ console.error("[coordinator approve] error:", e.message); res.status(500).json({ success:false, message:"Failed to approve" }); }
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to approve" }); }
 });
 
 // ---- COORDINATOR: revoke a previously given approval ----
@@ -2692,7 +2220,7 @@ try{
     await student.save();
 
     res.json({ success:true, message:"Approval revoked" });
-}catch(e){ console.error("[coordinator revoke] error:", e.message); res.status(500).json({ success:false, message:"Failed to revoke" }); }
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to revoke" }); }
 });
 
 // ---- HR: list students approved by coordinator & awaiting HR review ----
@@ -2724,7 +2252,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.error("[HR pending list] error:", e.message); res.status(500).json({ success:false, students:[] }); }
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
 });
 
 // ---- HR: final approval ----
@@ -2759,7 +2287,7 @@ try{
     broadcastNotification(student.domain, student.employeeId, notif);
 
     res.json({ success:true, message:"Student fully approved for certificates" });
-}catch(e){ console.error("[HR final approve] error:", e.message); res.status(500).json({ success:false, message:"Failed to approve" }); }
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to approve" }); }
 });
 
 // ---- HR: reject (sends student back to coordinator with a reason) ----
@@ -2789,7 +2317,7 @@ try{
     await notif.save();
 
     res.json({ success:true, message:"Student rejected and returned to coordinator" });
-}catch(e){ console.error("[HR reject] error:", e.message); res.status(500).json({ success:false, message:"Failed to reject" }); }
+}catch(e){ console.log(e); res.json({ success:false, message:"Failed to reject" }); }
 });
 
 // ---- HR: list fully approved (certificate-eligible) students ----
@@ -2813,7 +2341,7 @@ try{
         });
     }
     res.json({ success:true, students:result });
-}catch(e){ console.error("[HR approved list] error:", e.message); res.status(500).json({ success:false, students:[] }); }
+}catch(e){ console.log(e); res.json({ success:false, students:[] }); }
 });
 
 // ==================================================================
@@ -2852,7 +2380,7 @@ try{
     await Submission.findByIdAndDelete(id);
     res.json({ success:true, message:"Submission deleted" });
 }catch(e){
-    console.error(e);
+    console.log(e);
     res.status(500).json({ success:false, message:"Failed to delete submission" });
 }
 });
@@ -2963,7 +2491,7 @@ try{
     const messages = await Message.find({ chatRoom: room }).sort({ timestamp: -1 }).limit(50);
     messages.reverse();   // chronological for the UI
     res.json({ success:true, messages });
-}catch(e){ console.error(e); res.status(500).json({ success:false, messages:[] }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false, messages:[] }); }
 });
 
 // REST fallback for delete (Socket.IO event is the primary path)
@@ -2981,7 +2509,7 @@ try{
     await Message.findByIdAndDelete(msg._id);
     if(io){ io.to(msg.chatRoom).emit("message_deleted", { messageId: String(msg._id), room: msg.chatRoom }); }
     res.json({ success:true });
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3074,7 +2602,7 @@ try{
     if(!student) return res.status(404).json({ success:false, message:"Student not found" });
     const perf = await calculatePerformance(student);
     res.json({ success:true, performance: perf });
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3194,10 +2722,15 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
                 sentAt: new Date(),
                 status: "sent"
             });
-        } catch (histErr) { console.error("[promotion] mail-history save failed:", histErr.message); }
+        } catch (_) {}
+        await Notification.notifyStudent({ employeeId, domain }, {
+            title: "🎉 You've been promoted!",
+            message: `Congratulations ${name}! You have been promoted from ${fromRoleLabel} to ${toRoleLabel}. Check your email for the registration link (valid 48 hours).`,
+            type: "success"
+        });
         return { ok: true };
     } catch(e){
-        console.error("[promotion] email failed:", e.message);
+        console.log("Promotion email failed:", e.message);
         try {
             await MailHistory.create({
                 recipientEmail: to,
@@ -3209,7 +2742,7 @@ async function sendPromotionEmail({ to, name, fromRoleLabel, toRoleLabel, employ
                 status: "failed",
                 errorMessage: e && e.message ? String(e.message) : ""
             });
-        } catch (histErr) { console.error("[promotion] mail-history (failed) save failed:", histErr.message); }
+        } catch (_) {}
         return { ok: false, error: e.message };
     }
 }
@@ -3263,7 +2796,7 @@ try{
     });
 
     res.json({ success:true, message:`Promotion email sent to ${student.email}`, emailSent: !!mail.ok, promotion:{ _id: record._id } });
-}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
 });
 
 // ---- HR: promote coordinator -> HR ----
@@ -3333,7 +2866,7 @@ try{
     });
 
     res.json({ success:true, message:`Promotion email sent to ${resolvedEmail}`, emailSent: !!mail.ok, promotion:{ _id: record._id } });
-}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to promote" }); }
 });
 
 // ---- HR: list promotions ----
@@ -3349,7 +2882,7 @@ try{
         domain:p.domain, tempPasswordExpiresAt:p.tempPasswordExpiresAt,
         promotedByHRId:p.promotedByHRId
     })) });
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ---- Promoted user: verify temp credentials ----
@@ -3364,7 +2897,7 @@ try{
     const ok = await bcrypt.compare(tempPassword, rec.hashedTempPassword);
     if(!ok) return res.json({ valid:false, message:"Invalid temporary password" });
     res.json({ valid:true, name:rec.name, employeeId:rec.employeeId, newRole:rec.toRole, domain:rec.domain });
-}catch(e){ console.error(e); res.status(500).json({ valid:false, message:"Server error" }); }
+}catch(e){ console.log(e); res.status(500).json({ valid:false, message:"Server error" }); }
 });
 
 // ---- Promoted user: complete registration ----
@@ -3420,7 +2953,7 @@ try{
     await rec.save();
 
     res.json({ success:true, message:"Registration complete! Welcome to your new role.", redirect, role:rec.toRole });
-}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 // ==================================================================
@@ -3475,11 +3008,11 @@ async function awardBadgeIfNew(student, badgeId){
             });
             await notif.save();
             broadcastNotification(student.domain, student.employeeId, notif);
-        }catch(notifErr){ console.error("[notification] badge-award notification failed:", notifErr.message); }
+        }catch(_){}
         return award;
     }catch(e){
         if(e.code === 11000) return null;        // already awarded — ignore
-        console.error("awardBadgeIfNew error:", e.message);
+        console.log("awardBadgeIfNew error:", e.message);
         return null;
     }
 }
@@ -3540,7 +3073,7 @@ async function recomputeBadgesFor(employeeId){
             const lb = await buildDomainLeaderboard(student.domain, 1);
             if(lb.length && lb[0].employeeId === employeeId)          await awardBadgeIfNew(student, "top_performer");
         }
-    }catch(e){ console.error("recomputeBadgesFor error:", e.message); }
+    }catch(e){ console.log("recomputeBadgesFor error:", e.message); }
 }
 
 // Update streak + milestones on a self-attendance mark. Called inline by
@@ -3580,7 +3113,7 @@ async function bumpStreakAndMilestones(student){
         }
 
         await student.save();
-    }catch(e){ console.error("bumpStreakAndMilestones error:", e.message); }
+    }catch(e){ console.log("bumpStreakAndMilestones error:", e.message); }
 }
 
 // Async-safe milestone setter — mark a single milestone with a date if not set.
@@ -3593,7 +3126,7 @@ async function setMilestone(employeeId, key, when){
             s.milestones[key] = when || new Date();
             await s.save();
         }
-    }catch(err){ console.error("[setMilestone] error:", err.message); }
+    }catch(_){}
 }
 
 // Eligibility: combined attendance >= 75% AND ≥ 5 approved tasks.
@@ -3606,7 +3139,7 @@ async function checkCertificateEligibility(employeeId){
         if((stats.combinedPct || 0) >= 75 && approved >= 5){
             await setMilestone(employeeId, "certificateEligible");
         }
-    }catch(err){ console.error("[checkCertificateEligibility] error:", err.message); }
+    }catch(_){}
 }
 
 // ---- Build leaderboard entries for a domain or globally ----
@@ -3644,13 +3177,13 @@ app.get("/leaderboard/domain/:domain", async(req,res)=>{
         const domain = decodeURIComponent(req.params.domain);
         const rows = await buildDomainLeaderboard(domain, 10);
         res.json({ success:true, leaderboard: rows, domain });
-    }catch(e){ console.error(e); res.status(500).json({ success:false, leaderboard:[] }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false, leaderboard:[] }); }
 });
 app.get("/leaderboard/overall", async(req,res)=>{
     try{
         const rows = await buildOverallLeaderboard(20);
         res.json({ success:true, leaderboard: rows });
-    }catch(e){ console.error(e); res.status(500).json({ success:false, leaderboard:[] }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false, leaderboard:[] }); }
 });
 
 // Feature 6 — badges
@@ -3668,7 +3201,7 @@ app.get("/badges/student/:employeeId", async(req,res)=>{
             return { ...b, earned: owned, awardedAt: e ? e.awardedAt : null };
         });
         res.json({ success:true, badges: out, earnedCount: earned.length, totalCount: BADGE_CATALOG.length });
-    }catch(e){ console.error(e); res.status(500).json({ success:false, badges:[] }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false, badges:[] }); }
 });
 
 // Feature 7 — streak
@@ -3682,7 +3215,7 @@ app.get("/students/:employeeId/streak", async(req,res)=>{
             bestStreak: s.bestStreak || 0,
             lastAttendanceDate: s.lastAttendanceDate
         });
-    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // Feature 11 — timeline (returns the milestones object)
@@ -3709,7 +3242,7 @@ app.get("/students/:employeeId/timeline", async(req,res)=>{
             certificateApprovedByCoordinator: !!s.certificateApprovedByCoordinator,
             certificateApprovedByHR: !!s.certificateApprovedByHR
         });
-    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3807,12 +3340,19 @@ app.post("/auth/forgot-password", async(req,res)=>{
                             status: mailStatus,
                             errorMessage: mailError
                         });
-                    } catch (histErr) { console.error("[forgot-password] mail-history save failed:", histErr.message); }
+                    } catch (_) {}
+                    if (role === "student") {
+                        await Notification.notifyStudent(user, {
+                            title: "🔐 Password Reset Requested",
+                            message: "A password reset link was sent to your registered email. It expires in 1 hour. If you did not request this, you can ignore the email.",
+                            type: "warning"
+                        });
+                    }
                 }
-            }catch(e){ console.error("[forgot-password] mail error:", e && e.message); }
+            }catch(e){ console.log("forgot-password mail error:", e && e.message); }
         }
         res.json({ success:true, message:"If that account exists, a reset link has been sent to its email." });
-    }catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 app.post("/auth/reset-password", async(req,res)=>{
@@ -3842,7 +3382,7 @@ app.post("/auth/reset-password", async(req,res)=>{
         user.passwordResetExpiry = null;
         await user.save();
         res.json({ success:true, message:"Password updated! Please log in with your new password." });
-    }catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 // ==================================================================
@@ -3875,7 +3415,7 @@ try{
         }});
     }
     res.json({ success:true, assigned:false });
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3898,7 +3438,7 @@ try{
         college: getStudentCollege(target),
         collegeName: getStudentCollege(target)
     }});
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3947,11 +3487,11 @@ try{
                 });
                 await notif.save();
                 broadcastNotification(s.domain, s.employeeId, notif);
-            }catch(notifErr){ console.error("[notification] bulk-attendance notification failed:", notifErr.message); }
+            }catch(_){}
         }catch(e){ failed++; }
     }
     res.json({ success:true, created, updated, failed, total: students.length });
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -3979,7 +3519,7 @@ try{
         deleted++;
     }
     res.json({ success:true, deleted, skipped });
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -4015,14 +3555,14 @@ try{
             });
             await notif.save();
             broadcastNotification(sub.domain, sub.employeeId, notif);
-        }catch(notifErr){ console.error("[notification] submission-review notification failed:", notifErr.message); }
+        }catch(_){}
         if(status === "Approved") await setMilestone(sub.employeeId, "firstTaskApproved");
         await checkCertificateEligibility(sub.employeeId);
         await recomputeBadgesFor(sub.employeeId);
         updated++;
     }
     res.json({ success:true, updated, skipped });
-}catch(e){ console.error(e); res.status(500).json({ success:false }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -4040,7 +3580,7 @@ try{
     const url  = host + "/qr-attendance.html?domain=" + encodeURIComponent(domain) + "&coordinatorId=" + encodeURIComponent(coordinatorId);
     const dataUrl = await QRCode.toDataURL(url, { errorCorrectionLevel: "M", margin: 2, width: 360, color: { dark:"#0c1220", light:"#ffffff" } });
     res.json({ success:true, url, dataUrl });
-}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Failed to generate QR" }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Failed to generate QR" }); }
 });
 
 // Verify-and-mark from the QR scan landing page.
@@ -4081,10 +3621,10 @@ try{
         });
         await notif.save();
         broadcastNotification(student.domain, student.employeeId, notif);
-    }catch(notifErr){ console.error("[notification] qr-attendance notification failed:", notifErr.message); }
+    }catch(_){}
 
     res.json({ success:true, message:`Attendance marked successfully for ${dateKey}. Have a great day!` });
-}catch(e){ console.error(e); res.status(500).json({ success:false, message:"Server error" }); }
+}catch(e){ console.log(e); res.status(500).json({ success:false, message:"Server error" }); }
 });
 
 // ==================================================================
@@ -4129,7 +3669,7 @@ app.post("/chat/block", async(req,res)=>{
             { upsert: true, new: true }
         );
         res.json({ success:true, message:"User blocked in this chat" });
-    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 app.post("/chat/unblock", async(req,res)=>{
@@ -4143,7 +3683,7 @@ app.post("/chat/unblock", async(req,res)=>{
             return res.status(403).json({ success:false, message:"Only the blocker (or HR) can unblock" });
         await BlockList.findOneAndDelete({ chatRoom, blockedUser });
         res.json({ success:true, message:"User unblocked" });
-    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 app.get("/chat/blocked-list", async(req,res)=>{
@@ -4153,7 +3693,7 @@ app.get("/chat/blocked-list", async(req,res)=>{
         const filter = actor.role === "hr" ? {} : { blockedBy: actor.id };
         const list = await BlockList.find(filter).sort({ blockedAt: -1 });
         res.json({ success:true, blocked: list });
-    }catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ==================================================================
@@ -4393,7 +3933,7 @@ app.get("/coordinator/coding-questions/:domain", async(req,res)=>{
         const domain = decodeURIComponent(req.params.domain);
         const list = await CodingQuestion.find({ domain }).sort({ createdAt:-1 });
         res.json({ success:true, questions:list });
-    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 app.post("/coordinator/coding-questions", async(req,res)=>{
     try {
@@ -4422,17 +3962,13 @@ app.post("/coordinator/coding-questions", async(req,res)=>{
             testCases: cleanCases
         });
         res.json({ success:true, question:q });
-    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 app.delete("/coordinator/coding-questions/:id", async(req,res)=>{
     try {
-        const coordId = req.headers["x-coordinator-id"] || (req.body && req.body.coordinatorId);
-        if(!coordId){
-            return res.status(401).json({ success:false, message:"Coordinator authentication required" });
-        }
         await CodingQuestion.findByIdAndDelete(req.params.id);
         res.json({ success:true });
-    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ----- Student-facing -----
@@ -4447,7 +3983,7 @@ app.get("/student/coding-questions/:domain", async(req,res)=>{
             return obj;
         });
         res.json({ success:true, questions:safe });
-    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 app.get("/student/coding-questions/question/:id", async(req,res)=>{
     try {
@@ -4456,14 +3992,14 @@ app.get("/student/coding-questions/question/:id", async(req,res)=>{
         const obj = q.toObject();
         obj.testCases = (obj.testCases || []).filter(t => !t.isHidden);
         res.json({ success:true, question:obj });
-    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 app.get("/student/coding-submissions/:employeeId", async(req,res)=>{
     try {
         const employeeId = decodeURIComponent(req.params.employeeId);
         const list = await CodingSubmission.find({ employeeId }).sort({ submittedAt:-1 });
         res.json({ success:true, submissions:list });
-    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ----- Local code runner (child_process) -----
@@ -4573,15 +4109,7 @@ async function runSourceCode({ code, language, stdin }){
     } finally { cleanup(); }
 }
 
-// SECURITY: Rate-limit code execution to prevent abuse
-const codeRunLimiter = rateLimit({
-    windowMs: 60 * 1000,              // 1 minute
-    max: 10,                          // 10 executions per minute per IP
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success:false, output:"", error:"Too many code executions. Please wait.", executionTime: 0 }
-});
-app.post("/code/run", codeRunLimiter, async(req,res)=>{
+app.post("/code/run", async(req,res)=>{
     try {
         const { code, language, input } = req.body || {};
         if(!code) return res.json({ success:false, output:"", error:"No code provided", executionTime: 0 });
@@ -4589,7 +4117,7 @@ app.post("/code/run", codeRunLimiter, async(req,res)=>{
         res.json(r);
     } catch(e){
         console.log("/code/run error:", e && e.message);
-        res.status(500).json({ success:false, output:"", error:"Internal server error", executionTime: 0 });
+        res.status(500).json({ success:false, output:"", error:"Server error: " + (e && e.message), executionTime: 0 });
     }
 });
 
@@ -4754,7 +4282,7 @@ app.get("/coordinator/coding-submissions/:domain", async(req,res)=>{
         const domain = decodeURIComponent(req.params.domain);
         const list = await CodingSubmission.find({ domain }).sort({ submittedAt:-1 }).limit(200);
         res.json({ success:true, submissions:list });
-    } catch(e){ console.error(e); res.status(500).json({ success:false }); }
+    } catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
 
 // ================= PUBLIC DOCUMENT VERIFICATION =================
@@ -4898,11 +4426,59 @@ try {
 }
 
 try {
+    app.use('/api/v2/certificates', require('./routes/v2/certificates'));
+    console.log('[V2] Certificate routes mounted at /api/v2/certificates');
+} catch(e) {
+    console.error('[V2] Failed to mount certificate routes:', e.message);
+}
+
+try {
     const v2HR = require("./routes/v2/hr");
     app.use("/api/v2/hr", v2HR);
     console.log("[V2] HR routes mounted at /api/v2/hr");
 } catch(e) {
     console.error("[V2] Failed to mount HR routes:", e.message);
+}
+
+// PAYMENT GATEWAY — PaymentSetu UPI integration
+try {
+    const v2Payment = require('./routes/v2/payment');
+    app.use('/api/v2/payment', v2Payment);
+    console.log('[V2] Payment routes mounted at /api/v2/payment');
+} catch(e) {
+    console.error('[V2] Failed to mount payment routes:', e.message);
+}
+
+// AI CHATBOT SYSTEM — Task Bot, Query Bot, Voice Bot (Gemini 2.0 Flash)
+try {
+    const v2Bots = require('./routes/v2/bots');
+    app.use('/api/v2/bots', v2Bots);
+    console.log('[V2] Bots routes mounted at /api/v2/bots');
+} catch(e) {
+    console.error('[V2] Failed to mount bots routes:', e.message);
+}
+
+// ── PHASE 2: Ecosystem Platform Routes ────────────────────────────────────
+try {
+    const founderProfileRoutes  = require('./routes/founderProfileRoutes');
+    const mentorProfileRoutes   = require('./routes/mentorProfileRoutes');
+    const investorProfileRoutes = require('./routes/investorProfileRoutes');
+    const notificationRoutes    = require('./routes/notificationRoutes');
+    const verificationRoutes    = require('./routes/verificationRoutes');
+    const hrDashboardRoutes     = require('./routes/hrDashboardRoutes');
+    const programApiRoutes      = require('./routes/programApiRoutes');
+
+    app.use('/api/founder', founderProfileRoutes);
+    app.use('/api/mentor', mentorProfileRoutes);
+    app.use('/api/investor', investorProfileRoutes);
+    app.use('/api/ecosystem-notifications', notificationRoutes);
+    app.use('/api/verification', verificationRoutes);
+    app.use('/api/hr', hrDashboardRoutes);
+    app.use('/api', programApiRoutes);
+
+    console.log('[Phase2] Ecosystem routes mounted successfully');
+} catch(e) {
+    console.error('[Phase2] Failed to mount ecosystem routes:', e.message);
 }
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
@@ -4954,7 +4530,7 @@ io.on("connection", (socket) => {
                     if(ack) ack({ success:false, blocked:true, message:"You have been restricted from sending messages in this chat" });
                     return;
                 }
-            }catch(blkErr){ console.error("[chat] block-check error:", blkErr.message); }
+            }catch(_){}
 
             const doc = await Message.create({
                 chatRoom:     room,
@@ -4989,4 +4565,4 @@ io.on("connection", (socket) => {
 });
 
 
-server.listen(PORT, "0.0.0.0", ()=>{ console.log(`Server running on port ${PORT}`); });
+server.listen(PORT, ()=>{ console.log(`Server running on port ${PORT}`); });

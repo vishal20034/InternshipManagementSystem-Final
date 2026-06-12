@@ -3,270 +3,185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pay for Certificate — TEN Portal</title>
+<title>TEN — Make Payment</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-:root{
-  --bg:#07090f;
-  --card:#0e1428;
-  --border:rgba(212,175,55,0.12);
-  --gold:#D4AF37;
-  --gold2:#b8960c;
-  --text:#F0EEE8;
-  --muted:#8a8070;
-  --green:#10b981;
-  --red:#ef4444;
+:root {
+  --bg-base:       #05070e;
+  --bg-card:       #0e1428;
+  --bg-input:      #0b1222;
+  --border:        rgba(212,175,55,0.08);
+  --border-strong: rgba(212,175,55,0.18);
+  --gold:          #D4AF37;
+  --green:         #10b981;
+  --red:           #ef4444;
+  --text:          #F0EEE8;
+  --muted:         #9a9080;
+  --dim:           #4E4840;
+  --radius:        16px;
 }
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;}
-.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px 32px;width:100%;max-width:440px;text-align:center;}
-.logo{font-size:13px;letter-spacing:3px;color:var(--gold);font-weight:600;text-transform:uppercase;margin-bottom:12px;}
-h1{font-size:22px;font-weight:700;margin-bottom:8px;}
-.amount-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(212,175,55,0.1);border:1px solid var(--border);border-radius:100px;padding:8px 20px;margin:12px 0;font-size:18px;font-weight:700;color:var(--gold);}
-.cert-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:24px;}
-.spinner{width:48px;height:48px;border:3px solid rgba(212,175,55,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 20px;}
-@keyframes spin{to{transform:rotate(360deg)}}
-.status-text{font-size:15px;color:var(--muted);line-height:1.6;margin-bottom:20px;}
-.status-text strong{color:var(--text);}
-.btn{display:inline-block;padding:14px 28px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#0a0600;font-size:15px;font-weight:700;border:none;border-radius:12px;cursor:pointer;text-decoration:none;transition:opacity 0.2s,transform 0.15s;}
-.btn:hover{opacity:0.9;transform:translateY(-1px);}
-.msg{text-align:center;padding:14px 16px;border-radius:12px;font-size:14px;font-weight:500;margin-top:16px;display:none;}
-.msg.error{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--red);display:block;}
-.msg.success{background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--green);display:block;}
-.back-link{font-size:13px;color:var(--muted);text-decoration:none;margin-top:20px;display:inline-flex;align-items:center;gap:6px;transition:color 0.2s;}
-.back-link:hover{color:var(--text);}
-.steps{display:flex;gap:0;margin-bottom:24px;width:100%;max-width:440px;}
-.step{flex:1;text-align:center;position:relative;}
-.step::after{content:'';position:absolute;top:13px;left:50%;right:-50%;height:2px;background:var(--border);}
-.step:last-child::after{display:none;}
-.step-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin:0 auto 6px;position:relative;z-index:1;}
-.step.done .step-dot{background:var(--green);border-color:var(--green);color:#fff;}
-.step.active .step-dot{background:var(--gold);border-color:var(--gold);color:#0a0600;}
-.step-label{font-size:10px;color:var(--muted);letter-spacing:0.5px;}
-.step.active .step-label{color:var(--gold);}
-.step.done .step-label{color:var(--green);}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-base);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+body::before{content:'';position:fixed;top:-200px;left:-200px;width:600px;height:600px;background:radial-gradient(circle,rgba(212,175,55,0.06) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
+[data-replit-badge],.replit-ui-theme-root>div:last-child,iframe[src*="replit.com/badge"]{display:none!important;}
 
-/* Enhanced selection list */
-.cert-list {text-align: left; margin-top: 24px; display: flex; flex-direction: column; gap: 14px;}
-.cert-item {background: rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:12px; padding:16px; display: flex; flex-direction: column; gap: 8px;}
-.cert-item.unlocked {border-color: rgba(212,175,55,0.3); background: rgba(212,175,55,0.03);}
-.cert-item.paid {border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.03);}
-.cert-item-title {font-weight: 700; font-size: 15px; color: var(--text); display: flex; justify-content: space-between; align-items: center;}
-.cert-item-badge {font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 800; text-transform: uppercase;}
-.cert-item-badge.unlocked {background: rgba(212,175,55,0.15); color: var(--gold);}
-.cert-item-badge.paid {background: rgba(16,185,129,0.15); color: var(--green);}
-.cert-item-badge.locked {background: rgba(255,255,255,0.05); color: var(--muted);}
-.cert-item-desc {font-size: 12.5px; color: var(--muted); line-height: 1.4;}
-.cert-item-btn {padding: 10px 14px; font-size: 13px; font-weight: 700; border: none; border-radius: 8px; text-align: center; text-decoration: none; cursor: pointer; transition: transform 0.15s, opacity 0.2s;}
-.cert-item-btn:hover {opacity: 0.9;}
-.cert-item-btn.btn-pay {background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #0a0600;}
-.cert-item-btn.btn-download {background: transparent; border: 1px solid var(--green); color: var(--green);}
-.cert-item-btn.btn-locked {background: rgba(255,255,255,0.05); color: var(--muted); cursor: not-allowed; border: 1px dashed rgba(255,255,255,0.1);}
+.card{background:var(--bg-card);border:1px solid var(--border-strong);border-radius:22px;padding:36px;width:100%;max-width:440px;box-shadow:0 4px 40px rgba(0,0,0,0.45);}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--dim);text-decoration:none;margin-bottom:22px;transition:color .2s;}
+.back-link:hover{color:var(--muted);}
+.logo-row{display:flex;align-items:center;gap:12px;margin-bottom:26px;}
+.brand{font-size:18px;font-weight:700;color:var(--gold);}
+
+h1{font-size:22px;font-weight:700;margin-bottom:6px;}
+.subtitle{font-size:14px;color:var(--muted);margin-bottom:22px;}
+
+.student-info{background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:22px;display:flex;align-items:center;gap:12px;}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#b8962c);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#05070e;flex-shrink:0;}
+.s-name{font-size:15px;font-weight:600;}
+.s-id{font-size:12px;color:var(--dim);font-family:'DM Mono',monospace;}
+
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.6px;}
+.input-wrap{position:relative;margin-bottom:18px;}
+.rupee{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:17px;font-weight:700;color:var(--gold);pointer-events:none;}
+input[type="number"],textarea{width:100%;background:var(--bg-input);border:1px solid var(--border-strong);border-radius:var(--radius);color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;padding:13px 16px;outline:none;transition:border-color .2s;}
+input[type="number"]{padding-left:36px;}
+input[type="number"]:focus,textarea:focus{border-color:var(--gold);}
+input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;}
+textarea{resize:none;height:70px;}
+
+.btn-pay{width:100%;padding:16px;background:linear-gradient(135deg,var(--gold),#b8962c);color:#05070e;font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;border:none;border-radius:var(--radius);cursor:pointer;transition:opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+.btn-pay:hover{opacity:.9;}
+.btn-pay:disabled{opacity:.5;cursor:not-allowed;}
+.spinner{width:18px;height:18px;border:2px solid rgba(0,0,0,.3);border-top-color:#05070e;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:var(--radius);padding:14px 16px;margin-top:14px;font-size:14px;color:#fca5a5;display:none;line-height:1.5;}
+
+/* QR section */
+.qr-section{margin-top:28px;padding-top:24px;border-top:1px solid var(--border);text-align:center;}
+.qr-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px;}
+.qr-box{display:inline-block;background:#fff;border-radius:14px;padding:12px;box-shadow:0 4px 20px rgba(0,0,0,.3);}
+.qr-box img{width:200px;height:200px;display:block;border-radius:6px;}
+.qr-upi{font-size:13px;color:var(--muted);margin-top:10px;font-family:'DM Mono',monospace;}
+.qr-name{font-size:12px;color:var(--dim);margin-top:4px;}
+
+.footer-note{text-align:center;font-size:12px;color:var(--dim);margin-top:20px;}
+.footer-note a{color:var(--muted);text-decoration:none;}
+.footer-note a:hover{color:var(--gold);}
 </style>
 </head>
 <body>
-
-<!-- Steps indicator -->
-<div class="steps">
-  <div class="step done"><div class="step-dot">✓</div><div class="step-label">QUALIFY</div></div>
-  <div class="step active"><div class="step-dot">2</div><div class="step-label">PAY</div></div>
-  <div class="step"><div class="step-dot">3</div><div class="step-label">DOWNLOAD</div></div>
-</div>
-
 <div class="card">
-  <div class="logo">TEN — Certificate Payment</div>
-  
-  <div id="paymentContent">
-    <h1 id="pageTitle">Redirecting to Payment...</h1>
-    <div class="amount-badge" id="amountBadgeWrap" style="display:none;">₹<span id="amountDisplay">—</span></div>
-    <div class="cert-label" id="certLabel">Loading...</div>
+  <a class="back-link" href="student-dashboard.html">← Back to Dashboard</a>
 
-    <div class="spinner" id="loadingSpinner"></div>
-    <div class="status-text" id="statusText">
-      <strong>Please wait</strong> — retrieving session context and setting up your secure checkout session.
+  <div class="logo-row">
+    <div style="width:36px;height:36px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.3);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">💳</div>
+    <div><div class="brand">TEN</div><div style="font-size:11px;color:var(--dim);">Secure Payment</div></div>
+  </div>
+
+  <h1>Make a Payment</h1>
+  <p class="subtitle">Powered by PaymentSetu UPI gateway</p>
+
+  <div class="student-info">
+    <div class="avatar" id="avatarInitial">S</div>
+    <div>
+      <div class="s-name" id="studentName">Student</div>
+      <div class="s-id" id="studentId">Loading…</div>
     </div>
   </div>
 
-  <div id="errorMsg" class="msg" style="display:none;"></div>
-  <div id="successMsg" class="msg" style="display:none;"></div>
+  <div>
+    <label for="amount">Amount (₹)</label>
+    <div class="input-wrap">
+      <span class="rupee">₹</span>
+      <input type="number" id="amount" placeholder="Enter amount" min="1" step="1" autofocus>
+    </div>
 
-  <a href="/my-certificates.html" class="back-link" id="backLink" style="display:none;">← Back to Certificates</a>
+    <label for="description">Purpose / Description (optional)</label>
+    <div class="input-wrap">
+      <textarea id="description" placeholder="e.g. Registration fee, Course fee…"></textarea>
+    </div>
+
+    <button class="btn-pay" id="payBtn" onclick="initiatePayment()">
+      🔒 Pay Securely
+    </button>
+
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <!-- Static QR Fallback -->
+  <div class="qr-section">
+    <div class="qr-label">Or scan directly with Paytm / BHIM UPI</div>
+    <div class="qr-box">
+      <img src="/paytm-qr.jpeg" alt="Paytm QR Code">
+    </div>
+    <div class="qr-upi">UPI: paytmqr5k0ods@ptys</div>
+    <div class="qr-name">LIMITLESS TECHNOLOGI · 8595986120</div>
+  </div>
+
+  <p class="footer-note">Payments are processed securely · <a href="student-dashboard.html">Back to Dashboard</a></p>
 </div>
 
 <script>
-(async () => {
-  const params  = new URLSearchParams(location.search);
-  const type    = params.get('type')    || '';
-  const amount  = params.get('amount')  || '';
-  const orderId = params.get('orderId') || '';
-  
-  // Try retrieving active employeeId from URL, fallback to local storage
-  let empId = params.get('empId') || localStorage.getItem('employeeId') || '';
-  if (!empId) {
-    const studentData = localStorage.getItem('student');
-    if (studentData) {
-      try {
-        const parsed = JSON.parse(studentData);
-        if (parsed.employeeId) empId = parsed.employeeId;
-      } catch(e) {}
-    }
-  }
+const empId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+const sName = localStorage.getItem('studentName') || sessionStorage.getItem('studentName') || 'Student';
 
-  // Not logged in error
-  if (!empId) {
-    showError('Session missing. Please log in first to pay for your certificates.');
-    setTimeout(() => { window.location.href = '/login.html'; }, 2500);
+if (!empId) { window.location.href = 'login.html'; }
+document.getElementById('studentName').textContent   = sName;
+document.getElementById('studentId').textContent     = empId || '—';
+document.getElementById('avatarInitial').textContent = sName.charAt(0).toUpperCase();
+
+function showError(msg) {
+  const b = document.getElementById('errorBox');
+  b.innerHTML = msg;
+  b.style.display = 'block';
+}
+function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+
+async function initiatePayment() {
+  hideError();
+  const amount = parseFloat(document.getElementById('amount').value);
+  if (!amount || amount < 1 || isNaN(amount)) {
+    showError('Please enter a valid amount (minimum ₹1).');
     return;
   }
+  const description = document.getElementById('description').value.trim() || 'TEN Internship Payment';
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Creating payment link…';
 
-  const CERT_NAMES = { expert: 'Expert Certificate', nano_degree: 'Nano Degree Certificate', fellowship: 'Fellowship Certificate' };
-
-  // FLOW A: Explicit parameter check (Direct redirect path)
-  if (type) {
-    const defaultPrices = { expert: '100', nano_degree: '1,000', fellowship: '2,500' };
-    const displayAmt = amount && amount !== '0' ? Number(amount).toLocaleString('en-IN') : (defaultPrices[type] || '—');
-    
-    document.getElementById('amountBadgeWrap').style.display = 'inline-flex';
-    document.getElementById('amountDisplay').textContent = displayAmt;
-    document.getElementById('certLabel').textContent = CERT_NAMES[type] || type || 'Certificate';
-    document.getElementById('pageTitle').textContent = 'Pay for ' + (CERT_NAMES[type] || 'Certificate');
-    document.getElementById('statusText').innerHTML = '<strong>Please wait</strong> — you are being redirected to our secure payment gateway to complete your payment.';
-
-    try {
-      const res = await fetch(`/api/v2/certificates/claim/${type}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-        body: JSON.stringify({ employeeId: empId })
-      });
-      const data = await res.json();
-
-      if (data.success && data.paymentUrl) {
-        document.getElementById('statusText').innerHTML = '<strong>Redirecting...</strong> Opening secure payments...';
-        setTimeout(() => { window.location.href = data.paymentUrl; }, 800);
-      } else {
-        showError(data.message || 'Could not initiate certificate claim order. Please try again.');
-      }
-    } catch(e) {
-      showError('Network error — please check your connection and try again.');
-    }
-    return;
-  }
-
-  // FLOW B: Workspace Selection Path (Missing parameter -> Render highly polished certificates menu list)
-  document.getElementById('pageTitle').textContent = 'My Certificate Checkout';
-  document.getElementById('certLabel').textContent = 'Select Certificate';
-  
   try {
-    const res = await fetch('/api/v2/certificates/my-certs', {
-      headers: { 'x-employee-id': empId }
+    const res = await fetch('/api/v2/payment/create-order', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
+      body:    JSON.stringify({
+        amount,
+        invoiceRef:  'INV-' + empId + '-' + Date.now(),
+        description,
+        directUpi:   false
+      })
     });
-    const d = await res.json();
-    
-    if (!d.success) {
-      showError(d.message || 'Failed to load eligible certificates.');
+    const data = await res.json();
+
+    if (data.success && data.paymentUrl) {
+      btn.innerHTML = '✅ Redirecting to payment page…';
+      window.location.href = data.paymentUrl;
       return;
     }
 
-    document.getElementById('loadingSpinner').style.display = 'none';
-    document.getElementById('statusText').style.display = 'none';
-
-    // Build the dynamic UI list of certificates
-    const certTiers = [
-      { key: 'expert', name: 'Expert Certificate', desc: 'Accelerated skill milestones. Requires at least 30% approved internship tasks.', price: d.prices?.expert || 100 },
-      { key: 'nano_degree', name: 'Nano Degree Certificate', desc: 'Comprehensive domain specialization. Requires at least 70% approved internship tasks.', price: d.prices?.nano_degree || 1000 },
-      { key: 'fellowship', name: 'Fellowship Certificate', desc: 'Elite cohort standing. Granted to top 10% high-performing domains.', price: d.prices?.fellowship || 2500 }
-    ];
-
-    let html = `<p style="font-size: 14.5px; color: var(--muted); margin-bottom: 20px; line-height: 1.6;">Below are your TEN certification pathways. You can pay and claim any unlocked certificate.</p>`;
-    html += `<div class="cert-list">`;
-
-    certTiers.forEach(t => {
-      const status = d[t.key] || {};
-      const unlocked = status.unlocked;
-      const record = status.record;
-      const isPaid = record && (record.paymentStatus === 'paid' || record.pdfUrl);
-
-      let badge = `<span class="cert-item-badge locked">Locked</span>`;
-      let actionHtml = `<button class="cert-item-btn btn-locked" disabled>🔒 Locked</button>`;
-      let itemClass = '';
-
-      if (isPaid) {
-        badge = `<span class="cert-item-badge paid">Claimed</span>`;
-        actionHtml = `<a href="my-certificates.html" class="cert-item-btn btn-download">View / Download →</a>`;
-        itemClass = 'paid';
-      } else if (unlocked) {
-        badge = `<span class="cert-item-badge unlocked">Ready</span>`;
-        actionHtml = `<button class="cert-item-btn btn-pay" onclick="initiateCheckout('${t.key}', '${t.price}')">Pay ₹${t.price} &amp; Claim →</button>`;
-        itemClass = 'unlocked';
-      }
-
-      html += `
-        <div class="cert-item ${itemClass}">
-          <div class="cert-item-title">
-            <span>${t.name}</span>
-            ${badge}
-          </div>
-          <p class="cert-item-desc">${t.desc}</p>
-          ${actionHtml}
-        </div>
-      `;
-    });
-
-    html += `</div>`;
-    document.getElementById('paymentContent').innerHTML = html;
-    document.getElementById('backLink').style.display = 'inline-flex';
-
-  } catch (e) {
-    showError('Could not render certificate workspace menu.');
-  }
-})();
-
-// Action triggered when selecting a certificate inside Flow B
-async function initiateCheckout(type, amount) {
-  const container = document.getElementById('paymentContent');
-  container.innerHTML = `
-    <h1 id="pageTitle">Redirecting to Payment...</h1>
-    <div class="amount-badge">₹<span>${Number(amount).toLocaleString('en-IN')}</span></div>
-    <div class="spinner"></div>
-    <div class="status-text">
-      <strong>Redirecting...</strong> You are now going to the secure PaymentSetu page.
-    </div>
-  `;
-  
-  let empId = localStorage.getItem('employeeId') || '';
-  if (!empId) {
-    const studentData = localStorage.getItem('student');
-    if (studentData) {
-      try { empId = JSON.parse(studentData).employeeId; } catch(e) {}
+    if (data.alreadyPaid) {
+      showError('✅ This order was already paid successfully.');
+      btn.disabled = false;
+      btn.innerHTML = '🔒 Pay Securely';
+      return;
     }
+
+    showError(data.message || 'Could not create payment link. Please try again.');
+  } catch (err) {
+    showError('Network error. Please check your connection and try again.');
   }
 
-  try {
-    const res = await fetch(`/api/v2/certificates/claim/${type}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-      body: JSON.stringify({ employeeId: empId })
-    });
-    const data = await res.json();
-    if (data.success && data.paymentUrl) {
-      window.location.href = data.paymentUrl;
-    } else {
-      alert(data.message || 'Payment initiation failed.');
-      window.location.reload();
-    }
-  } catch(e) {
-    alert('Network error initiating gateway checkout.');
-    window.location.reload();
-  }
-}
-
-function showError(msg) {
-  document.getElementById('loadingSpinner').style.display = 'none';
-  if (document.getElementById('statusText')) document.getElementById('statusText').style.display = 'none';
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg;
-  el.className = 'msg error';
-  el.style.display = 'block';
-  document.getElementById('backLink').style.display = 'inline-flex';
+  btn.disabled = false;
+  btn.innerHTML = '🔒 Pay Securely';
 }
 </script>
 </body>

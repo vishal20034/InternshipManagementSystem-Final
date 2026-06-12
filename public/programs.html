@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Programs — TEN Platform</title>
+  <link rel="stylesheet" href="/css/design-system.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <script src="/js/theme-toggle.js" defer></script>
+  <script src="/js/components.js" defer></script>
+</head>
+<body class="dashboard-layout">
+
+  <aside class="sidebar">
+    <a class="sidebar__logo" href="/dashboard">⚡ TEN</a>
+    <nav class="sidebar__nav">
+      <a href="/dashboard"      class="nav-item">🏠 Dashboard</a>
+      <a href="/founder-os"     class="nav-item nav-item--new" data-roles="founder,admin">🚀 Founder OS</a>
+      <a href="/talent-network" class="nav-item nav-item--new">🌐 Talent Network</a>
+      <a href="/programs"       class="nav-item nav-item--new nav-item--active">📋 Programs</a>
+      <a href="/community"      class="nav-item nav-item--new">👥 Community</a>
+    </nav>
+    <div class="sidebar__footer">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm" style="width:100%">🌙 Dark Mode</button>
+    </div>
+  </aside>
+
+  <header class="topbar">
+    <button class="btn btn--ghost btn--sm" data-sidebar-toggle>☰</button>
+    <input class="topbar__search" type="search" placeholder="Search programs…" />
+    <div class="topbar__actions">
+      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm">🌙</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 class="page-header__title">📋 Programs</h1>
+      <p class="page-header__subtitle">Discover internships, bootcamps, and fellowship opportunities</p>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="tabs" data-tabs-container>
+      <div class="tab tab--active" data-tab="tab-all">All</div>
+      <div class="tab" data-tab="tab-internship">Internship</div>
+      <div class="tab" data-tab="tab-bootcamp">Bootcamp</div>
+      <div class="tab" data-tab="tab-fellowship">Fellowship</div>
+    </div>
+
+    <!-- All Programs (shown by default) -->
+    <div id="tab-all" class="tab-panel tab-panel--active">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-6);">
+
+        <div class="card card--bordered">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-3);">
+            <span class="badge badge--primary">Internship</span>
+            <span class="badge badge--success">Open</span>
+          </div>
+          <h3 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-2);">TEN Summer Internship Program</h3>
+          <p style="color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:var(--space-4);">Work on real projects with top startups across Web, Data Science, and more. Mentorship included.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4);font-size:var(--text-sm);">
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DURATION</div><div>3 Months</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">STIPEND</div><div>₹5,000 / mo</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">SEATS</div><div>50</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DEADLINE</div><div>July 31, 2026</div></div>
+          </div>
+          <a href="/register" class="btn btn--primary btn--sm">Apply Now →</a>
+        </div>
+
+        <div class="card card--bordered">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-3);">
+            <span class="badge badge--secondary">Fellowship</span>
+            <span class="badge badge--warning">Limited Seats</span>
+          </div>
+          <h3 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-2);">Founder Accelerator Cohort</h3>
+          <p style="color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:var(--space-4);">6-week intensive for early-stage founders. Mentorship, investor access, and go-to-market support.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4);font-size:var(--text-sm);">
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DURATION</div><div>6 Weeks</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">STIPEND</div><div>Equity-based</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">SEATS</div><div>15</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DEADLINE</div><div>Aug 15, 2026</div></div>
+          </div>
+          <a href="/register-hub" class="btn btn--primary btn--sm">Apply as Founder →</a>
+        </div>
+
+        <div class="card card--bordered">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--space-3);">
+            <span class="badge badge--info">Mentorship</span>
+            <span class="badge badge--success">Open</span>
+          </div>
+          <h3 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-2);">Mentor-in-Residence</h3>
+          <p style="color:var(--text-secondary);font-size:var(--text-sm);margin-bottom:var(--space-4);">Experienced professionals guide TEN's intern cohort for a semester. Flexible commitment. Paid engagement.</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);margin-bottom:var(--space-4);font-size:var(--text-sm);">
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DURATION</div><div>1 Semester</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">COMP</div><div>₹15,000 / mo</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">SEATS</div><div>10</div></div>
+            <div><div style="color:var(--text-muted);font-size:var(--text-xs);font-weight:600;">DEADLINE</div><div>Rolling</div></div>
+          </div>
+          <a href="/register-hub" class="btn btn--primary btn--sm">Apply as Mentor →</a>
+        </div>
+
+      </div>
+    </div>
+    <div id="tab-internship" class="tab-panel"></div>
+    <div id="tab-bootcamp"   class="tab-panel"></div>
+    <div id="tab-fellowship" class="tab-panel"></div>
+
+    <!-- CTA Banner -->
+    <div style="background:linear-gradient(135deg,#6366F1,#06B6D4);border-radius:var(--radius-xl);padding:var(--space-8);text-align:center;margin-top:var(--space-8);color:#fff;">
+      <h2 style="font-size:var(--text-2xl);font-weight:800;color:#fff;margin-bottom:var(--space-2);">Have a program to list?</h2>
+      <p style="opacity:0.9;margin-bottom:var(--space-4);">Partner with TEN to reach thousands of talented students and founders.</p>
+      <a href="mailto:programs@ten-platform.dev" class="btn" style="background:#fff;color:#6366F1;font-weight:600;">Contact Us</a>
+    </div>
+  </main>
+
+  <script>
+    // Tab filter content
+    document.addEventListener('DOMContentLoaded', function() {
+      var internHTML = document.getElementById('tab-all').querySelector('.card--bordered:first-child');
+      document.getElementById('tab-internship').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-6);">' + (internHTML ? internHTML.outerHTML : '') + '</div>';
+      document.getElementById('tab-bootcamp').innerHTML   = '<div class="empty-state"><div class="empty-state__icon">🏗️</div><div class="empty-state__title">Coming Soon</div><div class="empty-state__desc">Bootcamp listings will be available in Phase 2.</div></div>';
+      document.getElementById('tab-fellowship').innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-6);">' + (document.querySelectorAll('.card--bordered')[1] ? document.querySelectorAll('.card--bordered')[1].outerHTML : '') + '</div>';
+    });
+  </script>
+</body>
+</html>
