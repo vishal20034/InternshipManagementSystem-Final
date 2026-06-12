@@ -579,6 +579,41 @@ app.get("/founder-os",        (req,res)=>{ res.sendFile(path.join(__dirname,"pub
 app.get("/payment",           (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
 app.get("/payment.html",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment.html")); });
 app.get("/payment/success",   (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-success.html")); });
+app.get("/payment-return",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","payment-return.html")); });
+
+// ── Mount ecosystem API routes ──────────────────────────────────────────────
+try { app.use("/api/founder",    require("./routes/founderRoutes"));       } catch(e) { console.error("[Routes] founderRoutes:", e.message); }
+try { app.use("/api/mentor",     require("./routes/mentorRoutes"));        } catch(e) { console.error("[Routes] mentorRoutes:", e.message); }
+try { app.use("/api/investor",   require("./routes/investorRoutes"));      } catch(e) { console.error("[Routes] investorRoutes:", e.message); }
+try { app.use("/api/contractor", require("./routes/contractorRoutes"));    } catch(e) { console.error("[Routes] contractorRoutes:", e.message); }
+try { app.use("/api/hr-dashboard", require("./routes/hrDashboardRoutes")); } catch(e) { console.error("[Routes] hrDashboardRoutes:", e.message); }
+try { app.use("/api/founder",    require("./routes/founderProfileRoutes"));} catch(e) { console.error("[Routes] founderProfileRoutes:", e.message); }
+try { app.use("/api/mentor",     require("./routes/mentorProfileRoutes")); } catch(e) { console.error("[Routes] mentorProfileRoutes:", e.message); }
+try { app.use("/api/investor",   require("./routes/investorProfileRoutes"));} catch(e) { console.error("[Routes] investorProfileRoutes:", e.message); }
+try { app.use("/api/talent-network", require("./routes/talentNetwork"));   } catch(e) { console.error("[Routes] talentNetwork:", e.message); }
+try { app.use("/api/talent-profile", require("./routes/talentProfile"));   } catch(e) { console.error("[Routes] talentProfile:", e.message); }
+try { app.use("/api",            require("./routes/programApiRoutes"));    } catch(e) { console.error("[Routes] programApiRoutes:", e.message); }
+try { app.use("/api/founder-os", require("./routes/founderOS"));           } catch(e) { console.error("[Routes] founderOS:", e.message); }
+try { app.use("/api/community",  require("./routes/community"));           } catch(e) { console.error("[Routes] community:", e.message); }
+try { app.use("/api/register-hub", require("./routes/registerHub"));       } catch(e) { console.error("[Routes] registerHub:", e.message); }
+try { app.use("/api/notifications", require("./routes/notificationRoutes"));} catch(e) { console.error("[Routes] notificationRoutes:", e.message); }
+try { app.use("/api/verification", require("./routes/verificationRoutes"));} catch(e) { console.error("[Routes] verificationRoutes:", e.message); }
+try { app.use("/api/payment-setu", require("./routes/paymentSetuRoutes")); } catch(e) { console.error("[Routes] paymentSetuRoutes:", e.message); }
+
+// ── Public talent network profiles (limited fields for directory display) ────
+app.get("/api/talent-network/profiles", async (req, res) => {
+    try {
+        const students = await Student.find()
+            .select("name firstName lastName employeeId domain tenure joiningDate")
+            .sort({ createdAt: -1 })
+            .limit(100)
+            .lean();
+        res.json(students);
+    } catch (e) {
+        console.error("[talent-network] profiles error:", e.message);
+        res.json([]);
+    }
+});
 
 // ── Public payment config (safe — no secrets) ─────────────────────────────
 app.get("/api/payment/config", (req, res) => {
@@ -715,6 +750,32 @@ app.post("/api/payment/webhook", express.raw({ type: "application/json" }), asyn
     } catch (err) {
         console.error("[PaymentSetu] webhook error:", err.message);
         res.status(500).json({ error: "Webhook processing failed" });
+    }
+});
+
+// ── Payment status check (used by payment-return page polling) ────────────
+app.get("/api/v2/payment/status/:orderId", async (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+        const StudentCertificate = require("./models/new/StudentCertificate");
+        const cert = await StudentCertificate.findOne({ orderId }).lean();
+        if (!cert) {
+            // Try parsing orderId to find by studentId + certType
+            const parts = orderId.split("_");
+            if (parts.length >= 4 && parts[0] === "CERT") {
+                const studentIdHex = parts[1];
+                const certType = parts.slice(2, -1).join("_");
+                const found = await StudentCertificate.findOne({ studentId: studentIdHex, certificateType: certType }).lean();
+                if (found && found.paymentStatus === "paid") return res.json({ status: "success", certType: found.certificateType });
+            }
+            return res.json({ status: "pending" });
+        }
+        if (cert.paymentStatus === "paid") return res.json({ status: "success", certType: cert.certificateType });
+        if (cert.paymentStatus === "failed") return res.json({ status: "failed" });
+        return res.json({ status: "pending" });
+    } catch (err) {
+        console.error("[Payment Status]", err.message);
+        res.json({ status: "pending" });
     }
 });
 
@@ -1607,6 +1668,26 @@ try{
 }
 });
 
+app.get("/api/hr/intern-list", async(req,res)=>{
+try{
+    const auth = req.headers.authorization;
+    if(!auth || !auth.startsWith("Bearer hr_")){
+        return res.status(401).json({ message:"Unauthorized" });
+    }
+    const type = req.query.type || "total";
+    const now = new Date();
+    const cutoff30 = new Date(now); cutoff30.setDate(cutoff30.getDate() - 30);
+    let filter = {};
+    if(type === "active") filter = { lastActiveDate: { $gte: cutoff30 } };
+    else if(type === "inactive") filter = { $or: [{ lastActiveDate: { $exists: false } }, { lastActiveDate: null }, { lastActiveDate: { $lt: cutoff30 } }] };
+    const students = await Student.find(filter).select("name employeeId domain lastActiveDate joiningDate").lean();
+    res.json({ students });
+}catch(error){
+    console.error(error);
+    res.status(500).json({ students: [] });
+}
+});
+
 app.get("/api/hr/intern-stats", async(req,res)=>{
 try{
     const auth = req.headers.authorization;
@@ -1868,15 +1949,36 @@ try{
 }catch(error){ console.error(error); res.status(500).json({ success:false }); }
 });
 
-// ================= ALL STUDENTS (legacy admin) =================
+// ── Student notifications mark-all-read (legacy endpoint for student-dashboard) ──
+app.post("/notifications/mark-all-read", async(req,res)=>{
+    try{
+        const { readerId } = req.body;
+        if (!readerId) return res.json({ success: true });
+        await Notification.updateMany(
+            { targetEmployeeId: readerId, read: { $ne: true } },
+            { $set: { read: true } }
+        );
+        res.json({ success: true });
+    }catch(error){ console.error(error); res.json({ success: false }); }
+});
+
+// ================= ALL STUDENTS (legacy admin OR session-based) =================
 
 app.get("/students", async(req,res)=>{
-    const adminPassword = req.headers.authorization;
-    const expectedSecret = process.env.ADMIN_API_SECRET;
-    if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
-        return res.status(401).json({ message:"Unauthorized" });
-    }
     try{
+        const empId = req.query.empId;
+        // If empId query param present — allow student self-lookup (no admin secret needed)
+        if (empId) {
+            const student = await Student.findOne({ employeeId: String(empId) }).lean();
+            if (!student) return res.json([]);
+            return res.json([student]);
+        }
+        // Otherwise require admin secret for full list
+        const adminPassword = req.headers.authorization;
+        const expectedSecret = process.env.ADMIN_API_SECRET;
+        if(!expectedSecret || adminPassword !== "Bearer " + expectedSecret){
+            return res.status(401).json({ message:"Unauthorized" });
+        }
         const students = await Student.find().sort({ createdAt:-1 });
         res.json(students);
     }catch(error){ console.error(error); res.status(500).json({ message:"Error fetching students" }); }

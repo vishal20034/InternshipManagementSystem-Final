@@ -106,7 +106,7 @@ const DOMAIN_SKILLS = {
 
 async function loadStudents() {
   try {
-    const res = await fetch('/students');
+    const res = await fetch('/api/talent-network/profiles');
     const data = await res.json();
     allStudents = (Array.isArray(data) ? data : (data.students || [])).filter(s => s.employeeId);
     render(allStudents);
