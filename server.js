@@ -628,7 +628,6 @@ app.post("/api/payment/verify-utr", async (req, res) => {
         res.json({ success: true, message: "Payment verified! Your certificate is now ready to download.", certType, empId });
     } catch (err) {
         console.error("[Payment] verify-utr error:", err.message);
-        res.status(500).json({ success: false, message: "Error verifying payment. Please try again later." });
         res.status(500).json({ success: false, message: "Error verifying payment" });
     }
 });
