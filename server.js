@@ -1,6 +1,7 @@
 
 require("dotenv").config();
 
+const fs = require("fs");
 const path = require("path");
 const cors = require("cors");
 const express = require("express");
@@ -415,7 +416,6 @@ mongoose.model = function(name, schema, collection) {
 };
 const multer = require("multer");
 const nodemailer = require("nodemailer");
-const fs = require("fs");
 
 const Student = require("./models/Student");
 if(!Student.schema.path("lastActiveDate"))    Student.schema.add({ lastActiveDate:    { type: Date } });
@@ -847,6 +847,7 @@ app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","
 
 // ── Phase 2 page routes ─────────────────────────────────────────────────────
 app.get("/registration-success", (req,res)=>{ res.sendFile(path.join(__dirname,"public","registration-success.html")); });
+app.get("/founder-registration-success", (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-registration-success.html")); });
 app.get("/student-login",     (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-login.html")); });
 app.get("/founder-login",     (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-login.html")); });
 app.get("/mentor-login",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-login.html")); });
