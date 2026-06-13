@@ -10,6 +10,190 @@
   <script src="/js/components.js" defer></script>
   <script src="/js/api-client.js" defer></script>
   <script src="/js/coming-soon-modal.js" defer></script>
+  <style>
+    /* Premium visual styles for Founder OS page */
+    .premium-hero {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #c084fc 100%);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      color: #fff;
+      margin-bottom: var(--space-8);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .premium-hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 400px;
+      height: 400px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      filter: blur(40px);
+    }
+    .profile-banner {
+      background: var(--bg-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-default);
+      padding: var(--space-6);
+      margin-bottom: var(--space-8);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-sm);
+    }
+    .profile-banner:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--color-primary);
+    }
+    .profile-banner-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+    }
+    .profile-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 99px;
+      font-size: var(--text-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .profile-badge--pending {
+      background: #fef3c7;
+      color: #d97706;
+      border: 1px solid #fcd34d;
+    }
+    .profile-badge--approved {
+      background: #d1fae5;
+      color: #059669;
+      border: 1px solid #6ee7b7;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+    }
+    .profile-badge--rejected {
+      background: #fee2e2;
+      color: #dc2626;
+      border: 1px solid #fca5a5;
+    }
+    /* Modal structures */
+    .ten-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+    }
+    .ten-modal--active {
+      display: flex;
+    }
+    .ten-modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-xl);
+      width: 100%;
+      max-width: 650px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalSlide {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .ten-modal-header {
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid var(--border-default);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .ten-modal-body {
+      padding: var(--space-6);
+    }
+    .ten-modal-footer {
+      padding: var(--space-5) var(--space-6);
+      border-top: 1px solid var(--border-default);
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-3);
+    }
+    .form-group-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-4);
+    }
+    @media(max-width: 600px) {
+      .form-group-grid { grid-template-columns: 1fr; }
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: var(--space-4);
+    }
+    .form-group label {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--border-default);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      outline: none;
+      font: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: var(--color-primary);
+    }
+    .tag-checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .tag-checkbox {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      font-size: var(--text-xs);
+      font-weight: 500;
+      user-select: none;
+      transition: all 0.2s;
+      background: var(--bg-surface);
+    }
+    .tag-checkbox input {
+      display: none;
+    }
+    .tag-checkbox:hover {
+      border-color: var(--color-primary);
+    }
+    .tag-checkbox.active {
+      background: rgba(99, 102, 241, 0.1);
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+      font-weight: 600;
+    }
+  </style>
 </head>
 <body class="dashboard-layout">
 
@@ -32,100 +216,461 @@
   <!-- Topbar -->
   <header class="topbar">
     <button class="btn btn--ghost btn--sm" data-sidebar-toggle aria-label="Toggle sidebar">☰</button>
-    <input class="topbar__search" type="search" placeholder="Search…" aria-label="Search" />
+    <div style="flex: 1;"></div>
     <div class="topbar__actions">
-      <button id="theme-toggle-btn" class="btn btn--ghost btn--sm">🌙</button>
+      <button id="theme-toggle-btn-secondary" class="btn btn--ghost btn--sm">🌙</button>
       <a href="/login" class="btn btn--secondary btn--sm">Sign out</a>
     </div>
   </header>
 
   <!-- Main Content -->
   <main class="main-content">
-    <!-- Hero -->
-    <div style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); border-radius: var(--radius-xl); padding: var(--space-8); color: #fff; margin-bottom: var(--space-8);">
-      <h1 style="font-size: var(--text-4xl); font-weight: 800; color: #fff; margin-bottom: var(--space-2);">🚀 Founder OS</h1>
-      <p style="font-size: var(--text-lg); opacity: 0.9;">Run your venture from one place</p>
+    
+    <!-- Hero Block -->
+    <div class="premium-hero">
+      <h1 style="font-size: var(--text-4xl); font-weight: 800; color: #fff; margin-bottom: var(--space-1); letter-spacing: -0.5px;">🚀 Founder OS</h1>
+      <p style="font-size: var(--text-lg); opacity: 0.95; font-weight: 500;">Run, monitor, & scale your venture from a unified portal</p>
     </div>
 
-    <!-- Stats Row -->
-    <div class="stats-grid" id="stats-grid">
+    <!-- Live Startup Connection Status Banner -->
+    <div class="profile-banner">
+      <div class="profile-banner-header">
+        <div>
+          <h2 style="font-size: var(--text-xl); font-weight: 700; margin-bottom: var(--space-1); display: flex; align-items: center; gap: var(--space-2);">
+            💼 Startup Information
+          </h2>
+          <p id="profileBannerSub" style="font-size: var(--text-sm); color: var(--text-secondary);">Your startup directory visibility status.</p>
+        </div>
+        <div id="statusBadgeContainer">
+          <span class="profile-badge profile-badge--pending">⌛ Checking state…</span>
+        </div>
+      </div>
+      
+      <!-- Live Info Fields -->
+      <div id="startupPublicSnippet" style="display: none; padding-top: var(--space-4); border-top: 1px solid var(--border-default);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-5);">
+          <div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Startup name</div>
+            <div id="snippetName" style="font-size: var(--text-base); font-weight: 700; margin-top: 2px;">--</div>
+          </div>
+          <div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Industry / Segment</div>
+            <div id="snippetIndustry" style="font-size: var(--text-base); font-weight: 600; margin-top: 2px;">--</div>
+          </div>
+          <div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Development Stage</div>
+            <div id="snippetStage" style="font-size: var(--text-base); font-weight: 600; margin-top: 2px; text-transform: capitalize;">--</div>
+          </div>
+          <div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Network Views</div>
+            <div id="snippetViews" style="font-size: var(--text-base); font-weight: 600; margin-top: 2px; color: var(--color-primary);">--</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Button Area -->
+      <div style="display: flex; gap: var(--space-3); margin-top: var(--space-2);">
+        <button class="btn btn--primary btn--sm" id="manageProfileBtn" onclick="openProfileModal()">🔧 Manage Startup Profile</button>
+        <a href="/founder/directory" class="btn btn--secondary btn--sm">🌐 View Directory</a>
+      </div>
+    </div>
+
+    <!-- Stats Row (Dynamic) -->
+    <h2 style="font-size: var(--text-lg); font-weight: 700; margin-bottom: var(--space-4);">Real-Time Overview</h2>
+    <div class="stats-grid" id="stats-grid" style="margin-bottom: var(--space-8);">
       <div class="stat-card">
         <div class="stat-card__label">Active Interns</div>
         <div class="stat-card__value" id="stat-interns">--</div>
-        <div class="stat-card__sub">Across all programs</div>
+        <div class="stat-card__sub">Enrolled in talent pool</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__label">Revenue</div>
+        <div class="stat-card__label">Co-investment Revenue</div>
         <div class="stat-card__value" id="stat-revenue">₹--</div>
-        <div class="stat-card__sub">Total collected</div>
+        <div class="stat-card__sub">Total collections</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__label">Mentors Connected</div>
+        <div class="stat-card__label">Connected Mentors</div>
         <div class="stat-card__value" id="stat-mentors">--</div>
-        <div class="stat-card__sub">In your network</div>
+        <div class="stat-card__sub">Approved in network</div>
       </div>
       <div class="stat-card">
-        <div class="stat-card__label">Applications</div>
+        <div class="stat-card__label">Pending Approvals</div>
         <div class="stat-card__value" id="stat-applications">--</div>
-        <div class="stat-card__sub">Pending review</div>
+        <div class="stat-card__sub">Pending audit</div>
       </div>
     </div>
 
     <!-- Quick Actions -->
     <div class="page-header">
-      <h2 class="page-header__title" style="font-size: var(--text-xl);">Quick Actions</h2>
+      <h2 class="page-header__title" style="font-size: var(--text-lg); font-weight: 700;">Phase 2 Core Toolkits</h2>
     </div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-8);">
-      <button class="card card--hover" data-coming-soon="Post Internship" data-phase="Phase 2" style="text-align:center;cursor:pointer;border:none;">
+      <button class="card card--hover" data-coming-soon="Post Internship" data-phase="Phase 2" style="text-align:center;cursor:pointer;border:1px solid var(--border-default);background:var(--bg-surface);">
         <div style="font-size:2rem;margin-bottom:var(--space-2);">📢</div>
-        <div style="font-weight:600;font-size:var(--text-sm);">Post Internship</div>
-        <div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">Phase 2</div>
+        <div style="font-weight:700;font-size:var(--text-sm);">Post Internship</div>
+        <div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">Ecosystem Launch</div>
       </button>
-      <a href="/talent-network" class="card card--hover" style="text-align:center;text-decoration:none;">
+      <a href="/talent-network" class="card card--hover" style="text-align:center;text-decoration:none;border:1px solid var(--border-default);background:var(--bg-surface);">
         <div style="font-size:2rem;margin-bottom:var(--space-2);">🌐</div>
-        <div style="font-weight:600;font-size:var(--text-sm);">Find Talent</div>
+        <div style="font-weight:700;font-size:var(--text-sm);">Find Talent</div>
         <div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">Browse profiles</div>
       </a>
-      <button class="card card--hover" data-coming-soon="Schedule Mentor" data-phase="Phase 2" style="text-align:center;cursor:pointer;border:none;">
+      <button class="card card--hover" data-coming-soon="Schedule Mentor" data-phase="Phase 2" style="text-align:center;cursor:pointer;border:1px solid var(--border-default);background:var(--bg-surface);">
         <div style="font-size:2rem;margin-bottom:var(--space-2);">🧑‍🏫</div>
-        <div style="font-weight:600;font-size:var(--text-sm);">Schedule Mentor</div>
-        <div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">Phase 2</div>
+        <div style="font-weight:700;font-size:var(--text-sm);">Schedule Mentor</div>
+        <div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">Ecosystem Launch</div>
       </button>
-      <a href="/payment" class="card card--hover" style="text-align:center;text-decoration:none;">
+      <a href="/payment" class="card card--hover" style="text-align:center;text-decoration:none;border:1px solid var(--border-default);background:var(--bg-surface);">
         <div style="font-size:2rem;margin-bottom:var(--space-2);">💳</div>
-        <div style="font-weight:600;font-size:var(--text-sm);">View Payments</div>
+        <div style="font-weight:700;font-size:var(--text-sm);">View Payments</div>
         <div style="font-size:var(--text-xs);color:var(--text-muted);margin-top:var(--space-1);">Transactions</div>
       </a>
     </div>
 
     <!-- Recent Activity -->
-    <h2 style="font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-4);">Recent Activity</h2>
-    <div class="card">
-      <div class="empty-state">
+    <h2 style="font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-4);">Founder Feed</h2>
+    <div class="card" style="border: 1px solid var(--border-default); background: var(--bg-surface);">
+      <div class="empty-state" id="feedContainer">
         <div class="empty-state__icon">📭</div>
-        <div class="empty-state__title">No activity yet</div>
-        <div class="empty-state__desc">Your activity feed will appear here once you start using Founder OS features.</div>
-        <div class="empty-state__action">
-          <a href="/register-hub" class="btn btn--primary">Get Started</a>
-        </div>
+        <div class="empty-state__title">No custom alerts yet</div>
+        <div class="empty-state__desc" id="feedPlaceholderText">Your action logs and startup profile updates will appear in this feed.</div>
       </div>
     </div>
   </main>
 
+  <!-- STUNNING STARUP PROFILE EDITOR MODAL -->
+  <div class="ten-modal" id="profileModal" onclick="closeModalOnBackdrop(event)">
+    <div class="ten-modal-card">
+      <div class="ten-modal-header">
+        <h3 id="modalHeading" style="font-size: var(--text-lg); font-weight: 800;">📝 Manage Startup Profile</h3>
+        <button class="btn btn--ghost btn--sm" onclick="closeProfileModal()" aria-label="Close modal" style="font-size: 1.25rem;">✕</button>
+      </div>
+      <form id="profileForm" onsubmit="saveProfileForm(event)">
+        <div class="ten-modal-body">
+          <div class="form-group">
+            <label for="startupName">Company / Startup Name <span style="color:var(--color-danger)">*</span></label>
+            <input type="text" id="startupName" name="startupName" placeholder="e.g. Acme EdTech Inc" required maxlength="100"/>
+          </div>
+          <div class="form-group">
+            <label for="tagline">Sleek Tagline <span style="color:var(--color-danger)">*</span></label>
+            <input type="text" id="tagline" name="tagline" placeholder="e.g. Elevating entrepreneurship through software." required maxlength="160" />
+          </div>
+          <div class="form-group">
+            <label for="description">Full Venture Description</label>
+            <textarea id="description" name="description" placeholder="Specify your mission, product offering, business model, and long-term targets..." rows="4" maxlength="2000"></textarea>
+          </div>
+          
+          <div class="form-group-grid">
+            <div class="form-group">
+              <label for="industry">Industry Segment <span style="color:var(--color-danger)">*</span></label>
+              <select id="industry" name="industry" required>
+                <option value="">Select industry...</option>
+                <option value="EdTech">EdTech</option>
+                <option value="FinTech">FinTech</option>
+                <option value="HealthTech">HealthTech</option>
+                <option value="AgriTech">AgriTech</option>
+                <option value="CleanTech">CleanTech</option>
+                <option value="Logistics">Logistics</option>
+                <option value="E-Commerce">E-Commerce</option>
+                <option value="SaaS">SaaS</option>
+                <option value="Gaming">Gaming</option>
+                <option value="Media">Media</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="stage">Development Stage <span style="color:var(--color-danger)">*</span></label>
+              <select id="stage" name="stage" required>
+                <option value="">Select stage...</option>
+                <option value="idea">Idea Stage</option>
+                <option value="validation">Validation Stage</option>
+                <option value="mvp">MVP Ready</option>
+                <option value="early_revenue">Early Revenue</option>
+                <option value="growth">Growth Stage</option>
+                <option value="scaling">Scaling Stage</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group-grid">
+            <div class="form-group">
+              <label for="teamSize">Core Team Size</label>
+              <input type="number" id="teamSize" name="teamSize" value="1" min="1" required />
+            </div>
+            <div class="form-group">
+              <label for="fundingStatus">Funding Classification</label>
+              <select id="fundingStatus" name="fundingStatus">
+                <option value="bootstrapped">Bootstrapped</option>
+                <option value="pre_seed">Pre-Seed</option>
+                <option value="seed">Seed Phase</option>
+                <option value="series_a">Series A</option>
+                <option value="series_b">Series B</option>
+                <option value="profitable">Profitable</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group-grid">
+            <div class="form-group">
+              <label for="website">Company Website URL</label>
+              <input type="url" id="website" name="website" placeholder="e.g. https://yourstartup.com" />
+            </div>
+            <div class="form-group">
+              <label for="location">Location Headquarters</label>
+              <input type="text" id="location" name="location" placeholder="e.g. Bengaluru, India" />
+            </div>
+          </div>
+
+          <div class="form-group-grid">
+            <div class="form-group">
+              <label for="logoUrl">Brand Logo URL</label>
+              <input type="url" id="logoUrl" name="logoUrl" placeholder="e.g. https://domain.com/logo.png" />
+            </div>
+            <div class="form-group">
+              <label for="pitchDeckUrl">Investor Pitch Deck Link</label>
+              <input type="url" id="pitchDeckUrl" name="pitchDeckUrl" placeholder="e.g. https://drive.google.com/deck..." />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Currently Looking For (Choose up to 4)</label>
+            <div class="tag-checkbox-group">
+              <label class="tag-checkbox" id="lbl-co_founder"><input type="checkbox" name="lookingFor" value="co_founder" onchange="toggleTagClass(this)">🤝 Co-founder</label>
+              <label class="tag-checkbox" id="lbl-developers"><input type="checkbox" name="lookingFor" value="developers" onchange="toggleTagClass(this)">💻 Developers</label>
+              <label class="tag-checkbox" id="lbl-designers"><input type="checkbox" name="lookingFor" value="designers" onchange="toggleTagClass(this)">🎨 Designers</label>
+              <label class="tag-checkbox" id="lbl-marketers"><input type="checkbox" name="lookingFor" value="marketers" onchange="toggleTagClass(this)">📢 Marketers</label>
+              <label class="tag-checkbox" id="lbl-investors"><input type="checkbox" name="lookingFor" value="investors" onchange="toggleTagClass(this)">💼 Investors</label>
+              <label class="tag-checkbox" id="lbl-mentors"><input type="checkbox" name="lookingFor" value="mentors" onchange="toggleTagClass(this)">🧑‍🏫 Mentors</label>
+              <label class="tag-checkbox" id="lbl-interns"><input type="checkbox" name="lookingFor" value="interns" onchange="toggleTagClass(this)">📚 Interns</label>
+            </div>
+          </div>
+        </div>
+        <div class="ten-modal-footer">
+          <button type="button" class="btn btn--outline" onclick="closeProfileModal()">Cancel</button>
+          <button type="submit" class="btn btn--primary" id="saveFormBtn">💾 Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
-    (function() {
-      fetch('/api/founder-os/stats', { credentials: 'include' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-          if (data.success) {
-            document.getElementById('stat-interns').textContent      = data.internships   || 0;
-            document.getElementById('stat-revenue').textContent      = '₹' + (data.revenue || 0);
-            document.getElementById('stat-mentors').textContent      = data.mentors        || 0;
-            document.getElementById('stat-applications').textContent = data.applications   || 0;
+    const token = localStorage.getItem('ten-token') || localStorage.getItem('ten_auth_token') || localStorage.getItem('authToken') || '';
+
+    // Open profile modal
+    function openProfileModal() {
+      document.getElementById('profileModal').classList.add('ten-modal--active');
+    }
+
+    // Close profile modal
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.remove('ten-modal--active');
+    }
+
+    // Close on backdrop
+    function closeModalOnBackdrop(e) {
+      if (e.target.id === 'profileModal') {
+        closeProfileModal();
+      }
+    }
+
+    // Toggle stylesheet classes on visual checkbox labels
+    function toggleTagClass(checkbox) {
+      const label = document.getElementById('lbl-' + checkbox.value);
+      if (label) {
+        if (checkbox.checked) {
+          label.classList.add('active');
+        } else {
+          label.classList.remove('active');
+        }
+      }
+    }
+
+    // Sync form checkbox labels to checked inputs on load
+    function syncCheckboxClasses() {
+      const checkboxes = document.querySelectorAll('input[name="lookingFor"]');
+      checkboxes.forEach(cb => {
+        const lbl = document.getElementById('lbl-' + cb.value);
+        if (lbl) {
+          if (cb.checked) {
+            lbl.classList.add('active');
+          } else {
+            lbl.classList.remove('active');
           }
-        })
-        .catch(function() {});
+        }
+      });
+    }
+
+    // Load Overview Stats
+    function loadStats() {
+      fetch('/api/founder-os/stats', {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('stat-interns').textContent      = data.internships   !== undefined ? data.internships : 0;
+          document.getElementById('stat-revenue').textContent      = '₹' + (data.revenue !== undefined ? data.revenue : 0).toLocaleString();
+          document.getElementById('stat-mentors').textContent      = data.mentors        !== undefined ? data.mentors : 0;
+          document.getElementById('stat-applications').textContent = data.applications   !== undefined ? data.applications : 0;
+        }
+      })
+      .catch(() => {});
+    }
+
+    // Fetch My Active Profile Details
+    function loadProfile() {
+      fetch('/api/founder/profile/me', {
+         headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+      })
+      .then(r => r.json())
+      .then(data => {
+        const badgeContainer = document.getElementById('statusBadgeContainer');
+        const bannerSubText = document.getElementById('profileBannerSub');
+        const snippet = document.getElementById('startupPublicSnippet');
+
+        if (data.success && data.data) {
+          const profile = data.data;
+
+          // Fill form input fields
+          document.getElementById('startupName').value = profile.startupName || '';
+          document.getElementById('tagline').value = profile.tagline || '';
+          document.getElementById('description').value = profile.description || '';
+          document.getElementById('industry').value = profile.industry || '';
+          document.getElementById('stage').value = profile.stage || '';
+          document.getElementById('teamSize').value = profile.teamSize || 1;
+          document.getElementById('fundingStatus').value = profile.fundingStatus || 'bootstrapped';
+          document.getElementById('website').value = profile.website || '';
+          document.getElementById('location').value = profile.location || '';
+          document.getElementById('logoUrl').value = profile.logoUrl || '';
+          document.getElementById('pitchDeckUrl').value = profile.pitchDeckUrl || '';
+
+          // Reset checkboxes
+          const checkboxes = document.querySelectorAll('input[name="lookingFor"]');
+          checkboxes.forEach(cb => cb.checked = false);
+
+          if (profile.lookingFor && profile.lookingFor.length) {
+            profile.lookingFor.forEach(val => {
+              const cb = document.querySelector(`input[name="lookingFor"][value="${val}"]`);
+              if (cb) cb.checked = true;
+            });
+          }
+          syncCheckboxClasses();
+
+          // Render directories widget status
+          let badgeHtml = '';
+          let feedHtml = '';
+          const status = profile.verificationStatus || 'pending';
+
+          if (status === 'approved') {
+            badgeHtml = `<span class="profile-badge profile-badge--approved">🟢 Active Directory Profile</span>`;
+            bannerSubText.textContent = `Setup Approved! Connect with ecosystem operators.`;
+            feedHtml = `
+              <div style="text-align: left; padding: var(--space-4); border-left: 4px solid var(--color-success); background: var(--bg-surface); margin-bottom: 8px; border-radius: var(--radius-sm);">
+                <strong>🎉 Verification Approved</strong>
+                <p style="margin-top: 4px; font-size: var(--text-sm); color: var(--text-secondary);">Your startup profile for <strong>${profile.startupName}</strong> is verified and visible in the public Directory.</p>
+              </div>`;
+          } else if (status === 'rejected') {
+            badgeHtml = `<span class="profile-badge profile-badge--rejected">🔴 Revision Required</span>`;
+            bannerSubText.textContent = `Revision requested. Reason: ${profile.rejectionReason || 'No reason specified.'}`;
+            feedHtml = `
+              <div style="text-align: left; padding: var(--space-4); border-left: 4px solid var(--color-danger); background: var(--bg-surface); margin-bottom: 8px; border-radius: var(--radius-sm);">
+                <strong>⚠️ Revision Requested</strong>
+                <p style="margin-top: 4px; font-size: var(--text-sm); color: var(--text-secondary);">Reason: <em>${profile.rejectionReason || 'No specific reason given.'}</em>. Please fix details and re-submit for auditing.</p>
+              </div>`;
+          } else {
+            badgeHtml = `<span class="profile-badge profile-badge--pending">⌛ Pending Audit</span>`;
+            bannerSubText.textContent = `Your startup information has been submitted. Verification typically takes 24 hours.`;
+            feedHtml = `
+              <div style="text-align: left; padding: var(--space-4); border-left: 4px solid var(--color-warning); background: var(--bg-surface); margin-bottom: 8px; border-radius: var(--radius-sm);">
+                <strong>⌛ Submitted for Verification</strong>
+                <p style="margin-top: 4px; font-size: var(--text-sm); color: var(--text-secondary);">Acme operator team is currently validating your listing fields.</p>
+              </div>`;
+          }
+
+          badgeContainer.innerHTML = badgeHtml;
+          document.getElementById('feedContainer').innerHTML = feedHtml;
+
+          // Render public snippets
+          document.getElementById('snippetName').textContent = profile.startupName || '--';
+          document.getElementById('snippetIndustry').textContent = profile.industry || '--';
+          document.getElementById('snippetStage').textContent = profile.stage ? profile.stage.replace('_', ' ') : '--';
+          document.getElementById('snippetViews').textContent = profile.profileViews || 0;
+          snippet.style.display = 'block';
+
+        } else {
+          // No profile yet
+          badgeContainer.innerHTML = `<span class="profile-badge profile-badge--pending">❌ Profile Missing</span>`;
+          bannerSubText.textContent = 'Create a startup profile to access directories and get matched with interns!';
+          snippet.style.display = 'none';
+        }
+      })
+      .catch(() => {});
+    }
+
+    // Save profile form submission
+    function saveProfileForm(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('saveFormBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      const formData = new FormData(e.target);
+      const lookingFor = [];
+      formData.getAll('lookingFor').forEach(val => lookingFor.push(val));
+
+      const payload = {
+        startupName: document.getElementById('startupName').value.trim(),
+        tagline: document.getElementById('tagline').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        industry: document.getElementById('industry').value,
+        stage: document.getElementById('stage').value,
+        teamSize: parseInt(document.getElementById('teamSize').value, 10) || 1,
+        fundingStatus: document.getElementById('fundingStatus').value,
+        website: document.getElementById('website').value.trim(),
+        location: document.getElementById('location').value.trim(),
+        logoUrl: document.getElementById('logoUrl').value.trim(),
+        pitchDeckUrl: document.getElementById('pitchDeckUrl').value.trim(),
+        lookingFor: lookingFor
+      };
+
+      fetch('/api/founder/profile', {
+        method: 'POST',
+        headers: Object.assign({
+          'Content-Type': 'application/json'
+        }, token ? { 'Authorization': 'Bearer ' + token } : {}),
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.json())
+      .then(res => {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Changes';
+
+        if (res.success) {
+          closeProfileModal();
+          loadProfile();
+          if (window.TEN && window.TEN.Toast) {
+            window.TEN.Toast.show({ message: 'Startup profile saved successfully!', type: 'success' });
+          } else {
+            alert('Startup profile saved successfully!');
+          }
+        } else {
+          alert('Error: ' + (res.error || 'Could not save profile details'));
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.textContent = '💾 Save Changes';
+        alert('Failed to connect to the server.');
+      });
+    }
+
+    // Initialize Page
+    (function init() {
+      loadStats();
+      loadProfile();
     }());
   </script>
 </body>
 </html>
+

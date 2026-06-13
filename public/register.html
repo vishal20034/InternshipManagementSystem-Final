@@ -4,50 +4,399 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Register — TEN Ecosystem</title>
+  <link rel="stylesheet" href="ten-theme.css">
+  <link rel="stylesheet" href="ten-motion.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:sans-serif;background:#0f172a;color:#f8fafc;display:flex;align-items:center;justify-content:center;min-height:100vh;}
-    .card{background:#1e293b;padding:2rem;border-radius:1rem;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.4);}
-    h1{font-size:1.5rem;margin-bottom:1.5rem;text-align:center;}
-    label{display:block;font-size:.875rem;color:#94a3b8;margin-bottom:.25rem;}
-    select,input{width:100%;padding:.65rem .875rem;background:#0f172a;border:1px solid #334155;border-radius:.5rem;color:#f8fafc;font-size:1rem;margin-bottom:1rem;}
-    button{width:100%;padding:.75rem;background:#6366f1;border:none;border-radius:.5rem;color:#fff;font-size:1rem;cursor:pointer;font-weight:600;}
-    button:hover{background:#4f46e5;}
-    .back{text-align:center;margin-top:1rem;font-size:.875rem;}
-    .back a{color:#6366f1;text-decoration:none;}
+    html, body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--ten-bg);
+      color: var(--ten-text);
+      overflow-x: hidden;
+      padding: 40px 16px;
+    }
+    
+    .register-wrap {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 480px;
+      animation: ten-fadeUp 0.6s ease both;
+    }
+
+    /* ── Brand header ── */
+    .brand-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .brand-logo-ring {
+      width: 64px; height: 64px;
+      background: rgba(212,175,55,0.08);
+      backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(212,175,55,0.35);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      box-shadow: 0 0 30px rgba(212,175,55,0.2), inset 0 1px 1px rgba(255,255,255,0.1);
+      animation: ten-pulse-gold 3s ease infinite;
+      transition: all 0.3s ease;
+    }
+    .brand-logo-ring:hover {
+      background: rgba(212,175,55,0.12);
+      border-color: rgba(212,175,55,0.5);
+      transform: translateY(-1px);
+    }
+    .brand-name {
+      font-family: var(--ten-font-display);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: var(--ten-gold);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .brand-full {
+      font-size: 11px;
+      color: var(--ten-text-sub);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Card ── */
+    .register-card {
+      background: var(--ten-card);
+      border: 1px solid var(--ten-border);
+      border-radius: var(--ten-r-xl);
+      padding: 36px;
+      box-shadow: var(--ten-shadow-lg);
+      position: relative;
+      overflow: hidden;
+    }
+    .register-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--ten-gold), transparent);
+    }
+
+    .card-title {
+      font-family: var(--ten-font-display);
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+    .card-sub {
+      font-size: 13.5px;
+      color: var(--ten-text-sub);
+      margin-bottom: 28px;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    /* ── Role visual Selector Grid ── */
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    @media(max-width: 480px){
+      .role-grid { grid-template-columns: 1fr; }
+    }
+    .role-card {
+      background: var(--ten-surface);
+      border: 1px solid var(--ten-border-dim);
+      border-radius: var(--ten-r-sm);
+      padding: 12px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .role-card:hover {
+      border-color: var(--ten-border-strong);
+      transform: translateY(-1px);
+    }
+    .role-card.active {
+      border-color: var(--ten-gold);
+      background: rgba(212,175,55,0.06);
+      box-shadow: 0 0 14px rgba(212,175,55,0.1);
+    }
+    .role-card.active::after {
+      content: '✓';
+      position: absolute;
+      top: 6px; right: 8px;
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--ten-gold);
+    }
+    .role-icon {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+    .role-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ten-text);
+    }
+    .role-desc {
+      font-size: 10.5px;
+      color: var(--ten-text-sub);
+      margin-top: 2px;
+    }
+
+    /* ── Fields ── */
+    .input-group {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .input-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ten-text-sub);
+      margin-bottom: 6px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .form-input {
+      width: 100%;
+      padding: 11px 14px;
+      background: var(--ten-surface);
+      border: 1px solid var(--ten-border-dim);
+      border-radius: var(--ten-r-md);
+      color: var(--ten-text);
+      font-family: var(--ten-font-body);
+      font-size: 14.5px;
+      transition: all 0.2s ease;
+    }
+    .form-input:focus {
+      border-color: var(--ten-gold);
+      box-shadow: 0 0 12px var(--ten-gold-glow);
+      outline: none;
+    }
+    .form-input::placeholder {
+      color: var(--ten-text-muted);
+    }
+
+    /* ── Action triggers ── */
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--ten-gold), var(--ten-gold-dim));
+      color: #05070e;
+      border: none;
+      border-radius: var(--ten-r-md);
+      font-family: var(--ten-font-display);
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 8px;
+    }
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(212,175,55,0.3);
+    }
+    
+    .back-action {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13.5px;
+    }
+    .back-action a {
+      color: var(--ten-gold);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.15s;
+    }
+    .back-action a:hover {
+      color: var(--ten-gold-light);
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Join TEN Ecosystem</h1>
-    <form id="regForm">
-      <label>I am a...</label>
-      <select name="role" id="roleSelect" required>
-        <option value="">Select your role</option>
-        <option value="student">Student / Intern</option>
-        <option value="founder">Founder</option>
-        <option value="mentor">Mentor</option>
-        <option value="investor">Investor</option>
-        <option value="contractor">Contractor</option>
-      </select>
-      <label>Full Name</label>
-      <input type="text" name="fullName" placeholder="Your full name" required/>
-      <label>Email</label>
-      <input type="email" name="email" placeholder="you@example.com" required/>
-      <label>Password</label>
-      <input type="password" name="password" placeholder="Min 8 characters" required/>
-      <button type="submit">Create Account</button>
-    </form>
-    <div class="back"><a href="/">Already have an account? Log in</a></div>
+
+  <!-- Mesh Grid & Ambient Spot Orbs -->
+  <div class="ten-grid-bg"></div>
+  <div class="ten-orb ten-orb-1"></div>
+  <div class="ten-orb ten-orb-2"></div>
+
+  <div class="register-wrap">
+  
+    <!-- Brand badge -->
+    <header class="brand-header">
+      <div class="brand-logo-ring">
+        <svg class="ten-logo-svg" width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="14" stroke="#D4AF37" stroke-width="2.5"></circle>
+          <path d="M15 15 H25 V19 H15" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round"></path>
+          <path d="M20 19 V25" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round"></path>
+        </svg>
+      </div>
+      <div class="brand-name">TEN Ecosystem</div>
+      <div class="brand-full">The Entrepreneurship Network</div>
+    </header>
+
+    <!-- Visual Register Form Container -->
+    <div class="register-card">
+      <h2 class="card-title">Join Ecosystem</h2>
+      <p class="card-sub">Create your unified account and gain access to internships, programs, and networking.</p>
+
+      <form id="regForm">
+        
+        <!-- Role dynamic selection field -->
+        <label class="input-label">I am registering as...</label>
+        <input type="hidden" id="roleInput" name="role" required />
+        
+        <div class="role-grid">
+          <div class="role-card" data-role="student">
+            <div class="role-icon">🎓</div>
+            <div class="role-name">Student</div>
+            <div class="role-desc">Intern &amp; Learn</div>
+          </div>
+          <div class="role-card" data-role="founder">
+            <div class="role-icon">🚀</div>
+            <div class="role-name">Founder</div>
+            <div class="role-desc">Hire &amp; Build</div>
+          </div>
+          <div class="role-card" data-role="mentor">
+            <div class="role-icon">🧑‍🏫</div>
+            <div class="role-name">Mentor</div>
+            <div class="role-desc">Guide Ventures</div>
+          </div>
+          <div class="role-card" data-role="investor">
+            <div class="role-icon">💼</div>
+            <div class="role-name">Investor</div>
+            <div class="role-desc">Explore &amp; Fund</div>
+          </div>
+          <div class="role-card" data-role="contractor" style="grid-column: span 2;">
+            <div class="role-icon">🛠️</div>
+            <div class="role-name">Contractor</div>
+            <div class="role-desc">Offer Professional Skills</div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="fullName">Full Name</label>
+          <input type="text" class="form-input" id="fullName" name="fullName" placeholder="your first and last name" required />
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="email">Email address</label>
+          <input type="email" class="form-input" id="email" name="email" placeholder="you@example.com" required />
+        </div>
+
+        <div class="input-group">
+          <label class="input-label" for="password">Password</label>
+          <input type="password" class="form-input" id="password" name="password" placeholder="At least 8 characters" required />
+        </div>
+
+        <button type="submit" class="btn-submit">Initialize Registration →</button>
+      </form>
+
+      <div class="back-action">
+        <a href="/">Already have an account? Log in</a>
+      </div>
+    </div>
   </div>
+
   <script>
+    // Handle interactive Role selection
+    const roleCards = document.querySelectorAll('.role-card');
+    const roleInput = document.getElementById('roleInput');
+
+    roleCards.forEach(card => {
+      card.addEventListener('click', () => {
+        roleCards.forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        roleInput.value = card.getAttribute('data-role');
+      });
+    });
+
+    // Default select Student role
+    const defaultStudent = document.querySelector('[data-role="student"]');
+    if (defaultStudent) {
+      defaultStudent.click();
+    }
+
+    // Submit Action
     document.getElementById("regForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      
+      const role = roleInput.value;
+      if (!role) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Role Required',
+          text: 'Please select registering role to proceed.',
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37'
+        });
+        return;
+      }
+
       const data = Object.fromEntries(new FormData(e.target));
-      const res = await fetch("/api/register-hub", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(data) });
-      const json = await res.json();
-      if (json.success) { alert("Registration successful! Please log in."); window.location.href = "/"; }
-      else { alert("Error: " + (json.error || "Registration failed")); }
+      
+      // Let user know loading
+      Swal.fire({
+        title: 'Creating Account...',
+        html: 'Registering your details in the TEN Ecosystem...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); },
+        background: '#0e1428',
+        color: '#F0EEE8'
+      });
+
+      try {
+        const res = await fetch("/api/register-hub/register", { 
+          method: "POST", 
+          headers: {"Content-Type":"application/json"}, 
+          body: JSON.stringify(data) 
+        });
+        const json = await res.json();
+        
+        if (json.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Registration Successful!',
+            text: 'Welcome to TEN Ecosystem. Redirecting to login...',
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#10B981',
+            timer: 2000,
+            showConfirmButton: false
+          });
+          setTimeout(() => { window.location.href = "/"; }, 2000);
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Registration Failed',
+            text: json.error || 'Please fill check details or try again later.',
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#D4AF37'
+          });
+        }
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Network Error',
+          text: 'Could not connect to registration server. Please try again.',
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37'
+        });
+      }
     });
   </script>
 </body>
