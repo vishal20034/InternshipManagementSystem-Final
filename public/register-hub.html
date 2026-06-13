@@ -86,8 +86,8 @@
     </form>
 
     <div class="hub-footer">
-      <p>Already have an account? <a href="/login">Sign in</a></p>
-      <p style="margin-top:var(--space-2);">Register as student the old way? <a href="/register">Classic registration</a></p>
+      <p>Already have an account? <a href="login.html">Sign in</a></p>
+      <p style="margin-top:var(--space-2);">Register as student the old way? <a href="register.html">Classic registration</a></p>
     </div>
   </div>
 
@@ -157,7 +157,7 @@
         updateSubmitState();
       }
 
-      fetch('/api/register/hub/roles')
+      fetch('/api/register-hub/roles')
         .then(function(r) { return r.json(); })
         .then(function(data) {
           if (data.success && data.roles) {
@@ -196,7 +196,7 @@
         submitBtn.classList.add('btn--loading');
         submitBtn.disabled = true;
 
-        fetch('/api/register/hub/register', {
+        fetch('/api/register-hub/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ fullName: fullName, email: email, password: password, role: selectedRole, roleSpecificData: roleSpecificData }),
@@ -206,7 +206,7 @@
           submitBtn.classList.remove('btn--loading');
           if (data.success) {
             showSuccess('Account created! Redirecting to login…');
-            setTimeout(function() { window.location.href = '/login'; }, 2000);
+            setTimeout(function() { window.location.href = 'login.html'; }, 2000);
           } else {
             showError(data.error || 'Registration failed. Please try again.');
             submitBtn.disabled = false;
