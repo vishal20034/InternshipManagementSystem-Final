@@ -360,6 +360,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
   <div class="sidebar-nav">
     <div class="nav-section-title">Overview</div>
     <button class="nav-btn active" onclick="showView('overview')" data-view="overview"><span class="icon">📊</span> Dashboard</button>
+    <button class="nav-btn" onclick="showView('ecosystem')" data-view="ecosystem"><span class="icon">🕸️</span> TEN Ecosystem</button>
     <button class="nav-btn" onclick="showView('insights')" data-view="insights"><span class="icon">📊</span> Insights</button>
     <div class="nav-divider"></div>
     <div class="nav-section-title">People</div>
@@ -442,6 +443,288 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
     </div>
     <div class="section-header"><div class="section-title">Recent Notifications Sent</div></div>
     <div class="notif-list" id="recentNotifs"></div>
+  </div>
+
+    <div class="section-header"><div class="section-title">Recent Notifications Sent</div></div>
+    <div class="notif-list" id="recentNotifs"></div>
+  </div>
+
+  <!-- ================= TEN ECOSYSTEM CONTROL CENTER ================= -->
+  <div class="view" id="view-ecosystem" class="space-y-6">
+    
+    <!-- Unified Ecosystem Dashboard Count cards -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+      <div class="stat-card" data-c="gold" onclick="switchEcoTab('all')">
+        <div class="stat-icon">🕸️</div>
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value" id="eco-total-users">0</div>
+        <div class="stat-sub">Across all 10 modules</div>
+      </div>
+      <div class="stat-card" data-c="blue" onclick="switchEcoTab('students')">
+        <div class="stat-icon">🎓</div>
+        <div class="stat-label">Students</div>
+        <div class="stat-value" id="eco-total-students">0</div>
+        <div class="stat-sub">Active profiles</div>
+      </div>
+      <div class="stat-card" data-c="orange" onclick="switchEcoTab('founders')">
+        <div class="stat-icon">🚀</div>
+        <div class="stat-label">Startups / Founders</div>
+        <div class="stat-value" id="eco-total-founders">0</div>
+        <div class="stat-sub">Portfolio ventures</div>
+      </div>
+      <div class="stat-card" data-c="green" onclick="switchEcoTab('mentors')">
+        <div class="stat-icon">🧑‍🏫</div>
+        <div class="stat-label">Mentors</div>
+        <div class="stat-value" id="eco-total-mentors">0</div>
+        <div class="stat-sub">Industry advisors</div>
+      </div>
+      <div class="stat-card" data-c="red" onclick="switchEcoTab('investors')">
+        <div class="stat-icon">💰</div>
+        <div class="stat-label">Investors</div>
+        <div class="stat-value" id="eco-total-investors">0</div>
+        <div class="stat-sub">Angel partners</div>
+      </div>
+      <div class="stat-card" data-c="cyan" onclick="switchEcoTab('contractors')">
+        <div class="stat-icon">🔧</div>
+        <div class="stat-label">Contractors</div>
+        <div class="stat-value" id="eco-total-contractors">0</div>
+        <div class="stat-sub">Freelancer talent</div>
+      </div>
+    </div>
+
+    <!-- Layout Section -->
+    <div style="display:grid; grid-template-columns: 240px 1fr; gap:24px; margin-top:24px; align-items:start;">
+      
+      <!-- Sub-view Navigation Rail -->
+      <div class="table-wrap" style="padding:16px; border-radius:16px;">
+        <div class="nav-section-title" style="margin-bottom:8px;">Sub-Systems</div>
+        <button class="nav-btn active eco-sub-btn" id="eco-btn-queue" onclick="switchEcoTab('queue')" style="margin-bottom:6px;"><span class="icon">🛑</span> Approval Queue</button>
+        <button class="nav-btn eco-sub-btn" id="eco-btn-all" onclick="switchEcoTab('all')" style="margin-bottom:6px;"><span class="icon">👥</span> Users Directory</button>
+        <button class="nav-btn eco-sub-btn" id="eco-btn-students" onclick="switchEcoTab('students')" style="margin-bottom:6px;"><span class="icon">🎓</span> Student tracking</button>
+        <button class="nav-btn eco-sub-btn" id="eco-btn-founders" onclick="switchEcoTab('founders')" style="margin-bottom:6px;"><span class="icon">🚀</span> Founders & Startups</button>
+        <button class="nav-btn eco-sub-btn" id="eco-btn-mentors" onclick="switchEcoTab('mentors')" style="margin-bottom:6px;"><span class="icon">🧑‍🏫</span> Mentors advisory</button>
+        <button class="nav-btn eco-sub-btn" id="eco-btn-investors" onclick="switchEcoTab('investors')" style="margin-bottom:6px;"><span class="icon">💰</span> Investors deals</button>
+        <button class="nav-btn eco-sub-btn" id="eco-btn-contractors" onclick="switchEcoTab('contractors')" style="margin-bottom:6px;"><span class="icon">🔧</span> Contractors hub</button>
+        <button class="nav-btn eco-sub-btn" id="eco-btn-analytics" onclick="switchEcoTab('analytics')" style="margin-bottom:6px;"><span class="icon">📊</span> HR Eco Analytics</button>
+      </div>
+
+      <!-- Detail Work Area -->
+      <div class="table-wrap" style="padding:24px; border-radius:16px; min-height:500px;">
+        
+        <!-- Tab Subview: Queue Onboarding -->
+        <div id="eco-tab-queue" class="eco-tab-panel active">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+            <h3 style="font-size:18px; font-weight:700; color:var(--text);"><span style="color:var(--gold);">🔴</span> Registrations Approval Queue</h3>
+            <div style="display:flex; gap:8px;">
+              <button onclick="filterQueueRole('all')" class="ins-badge active queue-filter">All</button>
+              <button onclick="filterQueueRole('student')" class="ins-badge queue-filter">Student</button>
+              <button onclick="filterQueueRole('founder')" class="ins-badge queue-filter">Founder</button>
+              <button onclick="filterQueueRole('mentor')" class="ins-badge queue-filter">Mentor</button>
+              <button onclick="filterQueueRole('investor')" class="ins-badge queue-filter">Investor</button>
+              <button onclick="filterQueueRole('contractor')" class="ins-badge queue-filter">Contractor</button>
+            </div>
+          </div>
+          <table id="tableEcoQueue">
+            <thead>
+              <tr>
+                <th>Candidate / Contact</th>
+                <th>Desired Role</th>
+                <th>Key Attributes</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ecoQueueBody">
+              <tr><td colspan="4" style="text-align:center; color:var(--muted); padding:30px;">Loading onboarding queue...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab Subview: Users Directory -->
+        <div id="eco-tab-all" class="eco-tab-panel" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+            <h3 style="font-size:18px; font-weight:700; color:var(--text);">👥 Master Users Directory</h3>
+            <input type="text" id="ecoSearchDir" oninput="searchEcoDirectory()" class="search-input" placeholder="Search name, email, role..." style="width:260px;">
+          </div>
+          <table id="tableEcoDir">
+            <thead>
+              <tr>
+                <th>User / Email</th>
+                <th>Core Role</th>
+                <th>Status</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ecoDirBody">
+              <tr><td colspan="4" style="text-align:center; color:var(--muted); padding:30px;">Loading directory list...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab Subview: Student Tracking -->
+        <div id="eco-tab-students" class="eco-tab-panel" style="display:none;">
+          <h3 style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">🎓 Student Placement & Status tracker</h3>
+          <table id="tableEcoStudents">
+            <thead>
+              <tr>
+                <th>Student</th>
+                <th>Institution / Degree</th>
+                <th>Skills & Resume</th>
+                <th>Assigned Startup</th>
+                <th>Assigned Mentor</th>
+                <th>Verification State</th>
+              </tr>
+            </thead>
+            <tbody id="ecoStudentsBody">
+              <!-- Dynamically hydrated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab Subview: Founders & Startups -->
+        <div id="eco-tab-founders" class="eco-tab-panel" style="display:none;">
+          <h3 style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">🚀 Founders & Startup Venture Pipeline</h3>
+          <table id="tableEcoFounders">
+            <thead>
+              <tr>
+                <th>Startup Name</th>
+                <th>Founder Contact</th>
+                <th>Industry / Stage</th>
+                <th>Revenue (₹)</th>
+                <th>Aspirations / Goals</th>
+              </tr>
+            </thead>
+            <tbody id="ecoFoundersBody">
+              <!-- Hydrated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab Subview: Mentors Tracking -->
+        <div id="eco-tab-mentors" class="eco-tab-panel" style="display:none;">
+          <h3 style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">🧑‍🏫 Mentors Tracking & Advisory Allocations</h3>
+          <table id="tableEcoMentors">
+            <thead>
+              <tr>
+                <th>Mentor Name</th>
+                <th>Active Designation</th>
+                <th>Platform Ratings</th>
+                <th>Assigned Portfolio Deals</th>
+              </tr>
+            </thead>
+            <tbody id="ecoMentorsBody">
+              <!-- Hydrated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab Subview: Investors -->
+        <div id="eco-tab-investors" class="eco-tab-panel" style="display:none;">
+          <h3 style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">💰 Investors Deals & Fund Sizing</h3>
+          <table id="tableEcoInvestors">
+            <thead>
+              <tr>
+                <th>Firm / Investor</th>
+                <th>Fund Volume Focus</th>
+                <th>Industry Focus Preference</th>
+                <th>Investment Stage</th>
+              </tr>
+            </thead>
+            <tbody id="ecoInvestorsBody">
+              <!-- Hydrated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab Subview: Contractors -->
+        <div id="eco-tab-contractors" class="eco-tab-panel" style="display:none;">
+          <h3 style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">🔧 Contractor Project Assignments</h3>
+          <table id="tableEcoContractors">
+            <thead>
+              <tr>
+                <th>Freelancer</th>
+                <th>Skills Logged</th>
+                <th>Hourly Charge (₹)</th>
+                <th>Availability Setting</th>
+                <th>Milestones Star rating</th>
+              </tr>
+            </thead>
+            <tbody id="ecoContractorsBody">
+              <!-- Hydrated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Tab Subview: HR Eco Analytics -->
+        <div id="eco-tab-analytics" class="eco-tab-panel" style="display:none; space-y-6">
+          <h3 style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:16px;">📊 Executive HR Ecosystem Growth Analytics</h3>
+          <div style="display:grid; grid-template-columns:1fr 1.2fr; gap:16px;">
+            <div class="glass-panel" style="padding:16px; border-radius:12px; background:rgba(255,255,255,0.01);">
+              <h4 style="font-size:13px; font-weight:600; color:var(--gold); margin-bottom:12px; text-align:center;">Membership Rate by Role Modules</h4>
+              <div style="max-height:220px; overflow:hidden;" class="relative">
+                <canvas id="ecoRolePlotCanvas"></canvas>
+              </div>
+            </div>
+            <div class="glass-panel" style="padding:16px; border-radius:12px; background:rgba(255,255,255,0.01); display:flex; flex-col; justify-content:center;">
+              <h4 style="font-size:13px; font-weight:600; color:var(--gold); margin-bottom:12px; text-align:center;">Key Performance Indicators (KPI)</h4>
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; flex:1; justify-items:center; align-items:center;">
+                <div style="background:var(--card); width:100%; text-align:center; padding:12px; border-radius:10px; border:1px solid var(--border);">
+                  <span style="font-size:10px; color:var(--muted); text-transform:uppercase;">Startup Creation Rate</span>
+                  <span style="font-size:22px; font-weight:800; color:var(--gold); display:block; margin-top:4px;">+14.6%</span>
+                </div>
+                <div style="background:var(--card); width:100%; text-align:center; padding:12px; border-radius:10px; border:1px solid var(--border);">
+                  <span style="font-size:10px; color:var(--muted); text-transform:uppercase;">Hiring Placement</span>
+                  <span style="font-size:22px; font-weight:800; color:var(--gold); display:block; margin-top:4px;">92.4%</span>
+                </div>
+                <div style="background:var(--card); width:100%; text-align:center; padding:12px; border-radius:10px; border:1px solid var(--border);">
+                  <span style="font-size:10px; color:var(--muted); text-transform:uppercase;">Community Activity</span>
+                  <span style="font-size:22px; font-weight:800; color:var(--gold); display:block; margin-top:4px;">+38.2%</span>
+                </div>
+                <div style="background:var(--card); width:100%; text-align:center; padding:12px; border-radius:10px; border:1px solid var(--border);">
+                  <span style="font-size:10px; color:var(--muted); text-transform:uppercase;">Advisory Sessions</span>
+                  <span style="font-size:22px; font-weight:800; color:var(--gold); display:block; margin-top:4px;">248 hrs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- DYNAMIC MODAL FOR EDITING ECOSYSTEM MEMBERS -->
+  <div class="modal-overlay-hr" id="modalEcoEdit">
+    <div class="modal-box-hr" style="max-width:540px;">
+      <div class="modal-title-hr" id="ecoEditTitle">Edit Ecosystem Member</div>
+      <div class="sp-avatar-row" style="margin-bottom:16px;">
+        <div class="sp-avatar" id="editAvatarBox">👥</div>
+        <div>
+          <div class="sp-name-big" id="editNameHeader">Contact Base</div>
+          <div class="sp-emp-id" id="editRoleHeader">STUDENT</div>
+        </div>
+      </div>
+      <form id="formEcoEdit" onsubmit="saveEcoMember(event)">
+        <input type="hidden" id="editUserId">
+        <div class="field-group" style="margin-bottom:12px;">
+          <label class="modal-label">Full Name</label>
+          <input type="text" id="editEcoName" class="modal-input-hr" required>
+        </div>
+        <div class="field-group" style="margin-bottom:12px;">
+          <label class="modal-label">Email Address</label>
+          <input type="email" id="editEcoEmail" class="modal-input-hr" required>
+        </div>
+        <div class="field-group" style="margin-bottom:16px;">
+          <label class="modal-label">Mobile Number</label>
+          <input type="text" id="editEcoPhone" class="modal-input-hr">
+        </div>
+        <div class="modal-actions-hr">
+          <button type="submit" class="btn-save-hr">Save Member</button>
+          <button type="button" class="btn-cancel-hr" onclick="closeEcoEditModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <div class="view" id="view-insights">
@@ -1176,8 +1459,9 @@ function showView(v){
   document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   document.querySelector(`[data-view="${v}"]`)?.classList.add('active');
-  const t={overview:'<span>Dashboard</span> Overview',insights:'<span>Insights</span>',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals',promotions:'<span>Promotions</span>',leaderboard:'<span>Performance</span> Leaderboard'};
+  const t={overview:'<span>Dashboard</span> Overview',ecosystem:'<span>TEN</span> Ecosystem Control Center',insights:'<span>Insights</span>',students:'<span>All</span> Students',tracker:'<span>Internship</span> Tracker',submissions:'<span>Task</span> Submissions',domains:'<span>Domain</span> Analytics',documents:'<span>Generate</span> Documents','send-notif':'<span>Send</span> Notification','notif-history':'<span>Notification</span> History','attendance-monitor':'<span>Attendance</span> Monitor',certificates:'<span>Certificate</span> Approvals',promotions:'<span>Promotions</span>',leaderboard:'<span>Performance</span> Leaderboard'};
   document.getElementById('pageTitle').innerHTML=t[v]||v;
+  if(v==='ecosystem') loadEcosystem();
   if(v==='insights') initInsights();
   if(v==='students') loadStudents();
   if(v==='tracker') loadTracker();
@@ -3638,6 +3922,560 @@ setTimeout(loadPendingDocsBadge, 2000);
 })();
 </script>
 <!-- ══════════════ END AI QUERIES SECTION ══════════════ -->
+
+<!-- ================= TEN ECOSYSTEM MASTER CONTROL CENTER CONTROLLER ================= -->
+<script>
+(function() {
+  let ecoUsers = [];
+  let ecoStats = {};
+  let activeQueueFilter = 'all';
+
+  window.loadEcosystem = async function() {
+    try {
+      const hrToken = localStorage.getItem('hrToken');
+      // 1. Fetch Stats
+      const statsRes = await fetch('/api/ecosystem/stats', { headers: { Authorization: hrToken } });
+      const statsData = await statsRes.json();
+      if (statsData.success) {
+        ecoStats = statsData.stats;
+        document.getElementById('eco-total-users').textContent = ecoStats.totalUsers || 0;
+        document.getElementById('eco-total-students').textContent = ecoStats.breakdown.student || 0;
+        document.getElementById('eco-total-founders').textContent = ecoStats.breakdown.founder || 0;
+        document.getElementById('eco-total-mentors').textContent = ecoStats.breakdown.mentor || 0;
+        document.getElementById('eco-total-investors').textContent = ecoStats.breakdown.investor || 0;
+        document.getElementById('eco-total-contractors').textContent = ecoStats.breakdown.contractor || 0;
+      }
+
+      // 2. Fetch all hydrated users
+      const usersRes = await fetch('/api/ecosystem/users', { headers: { Authorization: hrToken } });
+      const usersData = await usersRes.json();
+      if (usersData.success) {
+        ecoUsers = usersData.users;
+        renderEcosystemViews();
+      }
+    } catch (err) {
+      console.error("Error loading ecosystem data:", err);
+    }
+  };
+
+  function renderEcosystemViews() {
+    renderQueue();
+    renderDirectory();
+    renderStudents();
+    renderFounders();
+    renderMentors();
+    renderInvestors();
+    renderContractors();
+    renderEcosystemCharts();
+  }
+
+  window.switchEcoTab = function(tab) {
+    document.querySelectorAll('.eco-tab-panel').forEach(p => p.style.display = 'none');
+    document.querySelectorAll('.eco-sub-btn').forEach(b => b.classList.remove('active'));
+
+    const targetPanel = document.getElementById('eco-tab-' + tab);
+    if(targetPanel) targetPanel.style.display = 'block';
+    
+    const activeBtn = document.getElementById('eco-btn-' + tab);
+    if (activeBtn) activeBtn.classList.add('active');
+  };
+
+  window.filterQueueRole = function(role) {
+    activeQueueFilter = role;
+    document.querySelectorAll('.queue-filter').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    // Add active to current
+    const currentBtn = Array.from(document.querySelectorAll('.queue-filter')).find(el => el.textContent.toLowerCase().trim() === role.trim());
+    if(currentBtn) currentBtn.classList.add('active');
+    renderQueue();
+  };
+
+  function renderQueue() {
+    const tbody = document.getElementById('ecoQueueBody');
+    if (!tbody) return;
+
+    const pendingUsers = ecoUsers.filter(u => !u.isVerified);
+    const filtered = activeQueueFilter === 'all' ? pendingUsers : pendingUsers.filter(u => u.role === activeQueueFilter);
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted); padding:32px;">No pending registrations found in this category.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(u => {
+      const pf = u.profile || {};
+      let attributes = [];
+      if (u.role === 'student') {
+        attributes = [`Uni: ${pf.university || 'N/A'}`, `Degree: ${pf.degree || 'N/A'}`];
+      } else if (u.role === 'founder') {
+        attributes = [`Startup: ${pf.startupName || 'N/A'}`, `Website: ${pf.website || 'N/A'}`];
+      } else if (u.role === 'mentor') {
+        attributes = [`Company: ${pf.company || 'N/A'}`, `Designation: ${pf.designation || 'N/A'}`];
+      } else if (u.role === 'investor') {
+        attributes = [`Firm: ${pf.fundName || 'N/A'}`, `Pref: ${pf.investmentStage || 'N/A'}`];
+      } else if (u.role === 'contractor') {
+        attributes = [`Rate: ₹${pf.hourlyRate || 0}/hr`, `Avail: ${pf.availability || 'N/A'}`];
+      }
+
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:12px;">
+            <div style="font-weight:700; color:white;">${u.fullName}</div>
+            <div style="font-size:12px; color:var(--muted);">${u.email}</div>
+          </td>
+          <td style="padding:12px;">
+            <span class="ins-badge ${getRoleColorClass(u.role)}">${u.role.toUpperCase()}</span>
+          </td>
+          <td style="font-size:13px; color:var(--muted); padding:12px;">
+            ${attributes.map(attr => `<div>${attr}</div>`).join('')}
+          </td>
+          <td style="text-align:right; padding:12px;">
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+              <button onclick="approveEcosystemUser('${u._id}')" class="btn-edit-hr" style="background:rgba(16,185,129,0.1); border-color:var(--green); color:var(--green);">Approve</button>
+              <button onclick="rejectEcosystemUser('${u._id}')" class="btn-del-hr">Reject</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function getRoleColorClass(role) {
+    if (role === 'student') return 'blue';
+    if (role === 'founder') return 'orange';
+    if (role === 'mentor') return 'green';
+    if (role === 'investor') return 'gold';
+    if (role === 'contractor') return 'cyan';
+    return '';
+  }
+
+  let ecoSearchQuery = "";
+  window.searchEcoDirectory = function() {
+    ecoSearchQuery = document.getElementById('ecoSearchDir').value.toLowerCase();
+    renderDirectory();
+  };
+
+  function renderDirectory() {
+    const tbody = document.getElementById('ecoDirBody');
+    if (!tbody) return;
+
+    const filtered = ecoUsers.filter(u => {
+      return u.fullName.toLowerCase().includes(ecoSearchQuery) ||
+             u.email.toLowerCase().includes(ecoSearchQuery) ||
+             u.role.toLowerCase().includes(ecoSearchQuery);
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted); padding:30px;">No exact match found in ecosystem directory.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(u => {
+      const statusLabel = u.isVerified 
+        ? '<span class="ins-badge green">Verified</span>' 
+        : '<span class="ins-badge amber">Pending</span>';
+
+      const suspendLabel = u.isActive 
+        ? '<span class="ins-badge green">Active</span>' 
+        : '<span class="ins-badge red">Suspended</span>';
+
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:12px;">
+            <div style="font-weight:700; color:white;">${u.fullName}</div>
+            <div style="font-size:12px; color:var(--muted); font-family:monospace;">${u.email}</div>
+          </td>
+          <td style="padding:12px;">
+            <span class="ins-badge ${getRoleColorClass(u.role)}">${u.role.toUpperCase()}</span>
+          </td>
+          <td style="padding:12px;">
+            <div style="display:flex; gap:8px;">
+              ${statusLabel}
+              ${suspendLabel}
+            </div>
+          </td>
+          <td style="text-align:right; padding:12px;">
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+              <button onclick="openEcoEdit('${u._id}')" class="btn-view-hr" style="border:1px solid rgba(255,255,255,0.15); color:white;">Edit</button>
+              <button onclick="suspendEcosystemUser('${u._id}')" class="btn-doc-hr" style="background:rgba(245,158,11,0.1); border-color:var(--amber); color:var(--amber);">${u.isActive ? 'Suspend' : 'Activate'}</button>
+              <button onclick="deleteEcosystemUser('${u._id}')" class="btn-del-hr">Delete</button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderStudents() {
+    const tbody = document.getElementById('ecoStudentsBody');
+    if (!tbody) return;
+
+    const students = ecoUsers.filter(u => u.role === 'student');
+    if (students.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:20px;">No ecosystem students yet.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = students.map(u => {
+      const pf = u.profile || {};
+      const resumeBtn = pf.resume ? `<a href="${pf.resume}" target="_blank" class="ins-badge gold">📄 Resume</a>` : `<span style="color:var(--muted);">None</span>`;
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:12px;">
+            <div style="font-weight:700; color:white;">${u.fullName}</div>
+            <div style="font-size:12px; color:var(--muted);">${u.email}</div>
+          </td>
+          <td style="font-size:13px; color:var(--muted); padding:12px;">
+            <div>${pf.university || 'N/A'}</div>
+            <div style="font-size:11px; color:var(--gold);">${pf.degree || ''} (${pf.graduationYear || 'N/A'})</div>
+          </td>
+          <td style="padding:12px;">
+            <div style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:4px; font-size:12px; color:var(--muted);" title="${pf.skills ? pf.skills.join(', ') : 'N/A'}">
+              ${pf.skills ? pf.skills.join(', ') : 'N/A'}
+            </div>
+            ${resumeBtn}
+          </td>
+          <td style="font-size:12px; color:var(--muted); padding:12px;">${pf.assignedStartup || 'N/A'}</td>
+          <td style="font-size:12px; color:var(--muted); padding:12px;">${pf.assignedMentor || 'N/A'}</td>
+          <td style="padding:12px;">
+            <span class="ins-badge ${u.isVerified ? 'green' : 'amber'}">${u.isVerified ? 'Approved' : 'Pending'}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderFounders() {
+    const tbody = document.getElementById('ecoFoundersBody');
+    if (!tbody) return;
+
+    const founders = ecoUsers.filter(u => u.role === 'founder');
+    if (founders.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted); padding:20px;">No startups found.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = founders.map(u => {
+      const startup = u.startup || {};
+      const pf = u.profile || {};
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:12px;">
+            <div style="font-weight:700; color:var(--gold);">${startup.startupName || 'N/A'}</div>
+            <a href="${startup.website || '#'}" target="_blank" style="font-size:11px; color:var(--blue);">${startup.website || 'No Website'}</a>
+          </td>
+          <td style="padding:12px;">
+            <div style="font-weight:600; color:white;">${u.fullName}</div>
+            <div style="font-size:12px; color:var(--muted);">${u.email}</div>
+          </td>
+          <td style="font-size:13px; color:var(--muted); padding:12px;">
+            <div class="ins-badge blue">${startup.industry || 'N/A'}</div>
+            <div style="font-size:11px; margin-top:2px;">Stage: ${startup.stage || 'N/A'}</div>
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace; color:var(--green); font-weight:600; padding:12px;">
+            ₹${startup.revenue || '0'}
+          </td>
+          <td style="font-size:12px; color:var(--muted); max-width:240px; white-space:normal; padding:12px;">
+            ${(pf.founderGoals || []).join(', ') || 'N/A'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderMentors() {
+    const tbody = document.getElementById('ecoMentorsBody');
+    if (!tbody) return;
+
+    const mentors = ecoUsers.filter(u => u.role === 'mentor');
+    if (mentors.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted); padding:20px;">No mentor directories registered.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = mentors.map(u => {
+      const pf = u.profile || {};
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:12px;">
+            <div style="font-weight:700; color:white;">${u.fullName}</div>
+            <div style="font-size:12px; color:var(--muted);">${u.email}</div>
+          </td>
+          <td style="font-size:13px; color:var(--muted); padding:12px;">
+            <div>${pf.designation || 'Special Advisor'}</div>
+            <div style="font-size:11px; color:var(--gold);">${pf.company || 'TEN Ecosystem'}</div>
+          </td>
+          <td style="padding:12px;">
+            <div style="color:var(--gold); font-size:13px;">★★★★★ <span style="color:var(--muted); font-size:11px;">(5.0)</span></div>
+          </td>
+          <td style="font-size:12px; color:var(--muted); padding:12px;">
+            ${pf.assignedStartups ? pf.assignedStartups.join(', ') : 'N/A'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderInvestors() {
+    const tbody = document.getElementById('ecoInvestorsBody');
+    if (!tbody) return;
+
+    const investors = ecoUsers.filter(u => u.role === 'investor');
+    if (investors.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted); padding:20px;">No investor connections listed yet.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = investors.map(u => {
+      const pf = u.profile || {};
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:12px;">
+            <div style="font-weight:700; color:white;">${pf.fundName || u.fullName}</div>
+            <div style="font-size:12px; color:var(--muted);">${u.email}</div>
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace; color:var(--gold); font-weight:600; padding:12px;">
+            ₹${pf.fundSize || 'N/A'}
+          </td>
+          <td style="padding:12px;">
+            <div style="font-size:12px; color:var(--muted); max-width:180px; overflow:hidden;" title="${pf.industryFocus ? pf.industryFocus.join(', ') : 'N/A'}">
+              ${pf.industryFocus ? pf.industryFocus.join(', ') : 'N/A'}
+            </div>
+          </td>
+          <td style="padding:12px;">
+            <span class="ins-badge purple">${pf.investmentStage || 'Pre-Seed'}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderContractors() {
+    const tbody = document.getElementById('ecoContractorsBody');
+    if (!tbody) return;
+
+    const contractors = ecoUsers.filter(u => u.role === 'contractor');
+    if (contractors.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted); padding:20px;">No freelance contractors listed.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = contractors.map(u => {
+      const pf = u.profile || {};
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:12px;">
+            <div style="font-weight:700; color:white;">${u.fullName}</div>
+            <div style="font-size:12px; color:var(--muted);">${u.email}</div>
+          </td>
+          <td style="font-size:12px; color:var(--muted); padding:12px;">
+            ${pf.skills ? pf.skills.join(', ') : 'N/A'}
+          </td>
+          <td style="font-family:'JetBrains Mono',monospace; color:var(--green); font-weight:600; padding:12px;">
+            ₹${pf.hourlyRate || '0'}/hr
+          </td>
+          <td style="padding:12px;">
+            <span class="ins-badge ${pf.availability === 'Available' ? 'green' : 'amber'}">${pf.availability || 'Available'}</span>
+          </td>
+          <td style="padding:12px;">
+            <div style="color:var(--gold); font-size:13px;">★★★★☆ <span style="color:var(--muted); font-size:11px;">(4.2)</span></div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  window.approveEcosystemUser = async function(id) {
+    try {
+      const hrToken = localStorage.getItem('hrToken');
+      const res = await fetch(`/api/ecosystem/users/${id}/approve`, {
+        method: "POST",
+        headers: { Authorization: hrToken }
+      });
+      const d = await res.json();
+      if (d.success) {
+        showToastHR('Onboarding approved!', 'success');
+        window.loadEcosystem();
+      } else {
+        showToastHR(d.error || 'Approval failed', 'error');
+      }
+    } catch(e) {
+      showToastHR('Network error occurred.', 'error');
+    }
+  };
+
+  window.rejectEcosystemUser = async function(id) {
+    try {
+      const hrToken = localStorage.getItem('hrToken');
+      const res = await fetch(`/api/ecosystem/users/${id}/reject`, {
+        method: "POST",
+        headers: { Authorization: hrToken }
+      });
+      const d = await res.json();
+      if (d.success) {
+        showToastHR('Candidate rejected.', 'success');
+        window.loadEcosystem();
+      } else {
+        showToastHR(d.error || 'Rejection failed', 'error');
+      }
+    } catch(e) {
+      showToastHR('Network error', 'error');
+    }
+  };
+
+  window.suspendEcosystemUser = async function(id) {
+    try {
+      const hrToken = localStorage.getItem('hrToken');
+      const res = await fetch(`/api/ecosystem/users/${id}/suspend`, {
+        method: "POST",
+        headers: { Authorization: hrToken }
+      });
+      const d = await res.json();
+      if (d.success) {
+        showToastHR(d.message, 'success');
+        window.loadEcosystem();
+      } else {
+        showToastHR(d.error || 'Operation failed', 'error');
+      }
+    } catch(e) {
+      showToastHR('Network error', 'error');
+    }
+  };
+
+  window.deleteEcosystemUser = async function(id) {
+    if (!confirm("Are you sure you want to discard this member?")) return;
+    try {
+      const hrToken = localStorage.getItem('hrToken');
+      const res = await fetch(`/api/ecosystem/users/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: hrToken }
+      });
+      const d = await res.json();
+      if (d.success) {
+        showToastHR('User erased permanently.', 'success');
+        window.loadEcosystem();
+      } else {
+        showToastHR(d.error || 'Deletion failed', 'error');
+      }
+    } catch(e) {
+      showToastHR('Network error', 'error');
+    }
+  };
+
+  window.openEcoEdit = function(id) {
+    const user = ecoUsers.find(u => u._id === id);
+    if (!user) return;
+
+    document.getElementById('editUserId').value = user._id;
+    document.getElementById('editEcoName').value = user.fullName;
+    document.getElementById('editEcoEmail').value = user.email;
+    document.getElementById('editEcoPhone').value = user.phone || '';
+
+    document.getElementById('editNameHeader').textContent = user.fullName;
+    document.getElementById('editRoleHeader').textContent = user.role.toUpperCase();
+    document.getElementById('editAvatarBox').textContent = getRoleEmoji(user.role);
+
+    document.getElementById('modalEcoEdit').classList.add('open');
+  };
+
+  window.closeEcoEditModal = function() {
+    document.getElementById('modalEcoEdit').classList.remove('open');
+  };
+
+  window.saveEcoMember = async function(e) {
+    e.preventDefault();
+    const id = document.getElementById('editUserId').value;
+    const fullName = document.getElementById('editEcoName').value;
+    const email = document.getElementById('editEcoEmail').value;
+    const phone = document.getElementById('editEcoPhone').value;
+
+    try {
+      const hrToken = localStorage.getItem('hrToken');
+      const res = await fetch(`/api/ecosystem/users/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: hrToken
+        },
+        body: JSON.stringify({ fullName, email, phone })
+      });
+      const d = await res.json();
+      if (d.success) {
+        showToastHR('Profile updated successfully!', 'success');
+        window.closeEcoEditModal();
+        window.loadEcosystem();
+      } else {
+        showToastHR(d.error || 'Update failed', 'error');
+      }
+    } catch(err) {
+      showToastHR('Network error', 'error');
+    }
+  };
+
+  function showToastHR(msg, type='success') {
+    const toast = document.getElementById('hrToast') || document.querySelector('.hr-toast');
+    if (toast) {
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      toast.className = 'hr-toast ' + type;
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    } else {
+      alert(type.toUpperCase() + ': ' + msg);
+    }
+  }
+
+  let ecoChartInstance = null;
+  function renderEcosystemCharts() {
+    const canvas = document.getElementById('ecoRolePlotCanvas');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (ecoChartInstance) ecoChartInstance.destroy();
+
+    const labels = ['Students', 'Founders', 'Mentors', 'Investors', 'Contractors'];
+    const values = [
+      ecoStats.breakdown?.student || 0,
+      ecoStats.breakdown?.founder || 0,
+      ecoStats.breakdown?.mentor || 0,
+      ecoStats.breakdown?.investor || 0,
+      ecoStats.breakdown?.contractor || 0
+    ];
+
+    ecoChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: [
+            '#3b82f6',
+            '#f97316',
+            '#10b981',
+            '#f5c542',
+            '#06b6d4'
+          ],
+          borderWidth: 1,
+          borderColor: '#080d1a'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: {
+              color: '#f0eee8',
+              font: { family: 'Outfit', size: 10 }
+            }
+          }
+        }
+      }
+    });
+  }
+})();
+</script>
 
 <script src="ten-motion.js"></script>
 </body>

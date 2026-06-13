@@ -840,12 +840,17 @@ app.get("/dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","da
 app.get("/groups", (req,res)=>{ res.sendFile(path.join(__dirname,"public","groups.html")); });
 app.get("/edit.html", (req,res)=>{ res.sendFile(path.join(__dirname,"public","edit.html")); });
 app.get("/hr-portal", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
+app.get("/hr-control-center", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-portal.html")); });
 app.get("/hr-login", (req,res)=>{ res.sendFile(path.join(__dirname,"public","hr-login.html")); });
 app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","register.html")); });
 app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coming-soon.html")); });
 
 // ── Phase 2 page routes ─────────────────────────────────────────────────────
 app.get("/login",             (req,res)=>{ res.sendFile(path.join(__dirname,"public","login.html")); });
+app.get("/student-dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-dashboard.html")); });
+app.get("/mentor-dashboard",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-dashboard.html")); });
+app.get("/investor-dashboard",(req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-dashboard.html")); });
+app.get("/contractor-dashboard",(req,res)=>{ res.sendFile(path.join(__dirname,"public","contractor-dashboard.html")); });
 app.get("/my-internships",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","my-internships.html")); });
 app.get("/talent-network",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","talent-network.html")); });
 app.get("/programs",          (req,res)=>{ res.sendFile(path.join(__dirname,"public","programs.html")); });
@@ -1063,12 +1068,377 @@ try{
 
 app.post("/login", loginLimiter, async(req,res)=>{
 try{
-    const { employeeId, password } = req.body;
-    const student = await Student.findOne({ employeeId, password });
-    if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
-    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
-    res.json({ success:true, student });
-}catch(error){ res.status(500).json({ success:false, message:"Server Error" }); }
+    const { employeeId, password, email } = req.body;
+    const loginId = (employeeId || email || "").trim();
+
+    if (!loginId) {
+        return res.json({ success: false, message: "Please provide your Email or Employee ID." });
+    }
+    if (!password) {
+        return res.json({ success: false, message: "Please enter your password." });
+    }
+
+    const isEmail = loginId.includes("@");
+
+    if (isEmail) {
+        const EcosystemUser = require("./models/EcosystemUser");
+        const user = await EcosystemUser.findOne({ email: loginId.toLowerCase() });
+        if (user) {
+            const match = await bcrypt.compare(password, user.password);
+            if (!match) {
+                return res.json({ success: false, message: "Invalid Password." });
+            }
+            
+            // If student, get legacy student record or mock one
+            let student = null;
+            if (user.role === 'student') {
+                student = await Student.findOne({ email: user.email });
+                if (student) {
+                    await Student.findOneAndUpdate({ email: user.email }, { lastActiveDate: new Date() });
+                }
+            }
+
+            return res.json({
+                success: true,
+                role: user.role,
+                user: {
+                    _id: user._id,
+                    fullName: user.fullName,
+                    email: user.email,
+                    role: user.role,
+                    phone: user.phone
+                },
+                student: student || {
+                    _id: user._id,
+                    employeeId: user._id.toString(),
+                    name: user.fullName,
+                    email: user.email,
+                    domain: 'Web Development'
+                }
+            });
+        }
+
+        // Check legacy Student model by email just in case
+        const student = await Student.findOne({ email: loginId.toLowerCase() });
+        if (student) {
+            let pwdMatch = student.password === password;
+            if (!pwdMatch) {
+                try {
+                    pwdMatch = await bcrypt.compare(password, student.password);
+                } catch(e) {}
+            }
+            if (pwdMatch) {
+                await Student.findOneAndUpdate({ email: loginId.toLowerCase() }, { lastActiveDate: new Date() });
+                return res.json({
+                    success: true,
+                    role: 'student',
+                    student
+                });
+            }
+        }
+
+        // Check HR
+        const hr = await HR.findOne({ email: loginId.toLowerCase() });
+        if (hr) {
+            let pwdMatch = hr.password === password;
+            if (!pwdMatch) {
+                try {
+                    pwdMatch = await bcrypt.compare(password, hr.password);
+                } catch(e) {}
+            }
+            if (pwdMatch) {
+                return res.json({
+                    success: true,
+                    role: 'hr',
+                    hr
+                });
+            }
+        }
+
+        return res.json({ success: false, message: "Invalid credentials." });
+    } else {
+        // Treat as Employee ID
+        const student = await Student.findOne({ employeeId: loginId });
+        if (!student) {
+            return res.json({ success: false, message: "Invalid Employee ID" });
+        }
+        let pwdMatch = student.password === password;
+        if (!pwdMatch) {
+            try {
+                pwdMatch = await bcrypt.compare(password, student.password);
+            } catch(e) {}
+        }
+        if (!pwdMatch) {
+            return res.json({ success: false, message: "Invalid Password" });
+        }
+        await Student.findOneAndUpdate({ employeeId: loginId }, { lastActiveDate: new Date() });
+        return res.json({ success: true, role: 'student', student });
+    }
+}catch(error){
+    console.error("Login route error:", error);
+    res.status(500).json({ success:false, message:"Server Error" });
+}
+});
+
+// ================= TEN ECOSYSTEM ADMIN CONTROLLER APIs =================
+
+app.get("/api/ecosystem/stats", async(req, res) => {
+  try {
+    const EcosystemUser = require("./models/EcosystemUser");
+    const StudentProfile = require("./models/StudentProfile");
+    const StartupProfile = require("./models/StartupProfile");
+    const TalentProfile = require("./models/TalentProfile");
+    const CommunityProfile = require("./models/CommunityProfile");
+
+    const totalUsers = await EcosystemUser.countDocuments();
+    const studentsCount = await EcosystemUser.countDocuments({ role: 'student' });
+    const foundersCount = await EcosystemUser.countDocuments({ role: 'founder' });
+    const mentorsCount = await EcosystemUser.countDocuments({ role: 'mentor' });
+    const investorsCount = await EcosystemUser.countDocuments({ role: 'investor' });
+    const contractorsCount = await EcosystemUser.countDocuments({ role: 'contractor' });
+
+    const totalStartups = await StartupProfile.countDocuments();
+    const totalTalentProfiles = await TalentProfile.countDocuments();
+    const totalCommunityMembers = await CommunityProfile.countDocuments();
+    
+    // Default or mock counts of programs/submissions
+    const Submission = require("./models/Submission");
+    const totalApplications = await Submission.countDocuments();
+    const totalPrograms = 10; // TEN Ecosystem: 10 central modules
+
+    res.json({
+      success: true,
+      stats: {
+        totalUsers,
+        breakdown: {
+          student: studentsCount,
+          founder: foundersCount,
+          mentor: mentorsCount,
+          investor: investorsCount,
+          contractor: contractorsCount
+        },
+        totalStartups,
+        totalTalentProfiles,
+        totalCommunityMembers,
+        totalApplications,
+        totalPrograms
+      }
+    });
+  } catch(err) {
+    console.error("Stats API error:", err);
+    res.status(500).json({ success: false, error: "Failed to load ecosystem stats." });
+  }
+});
+
+app.get("/api/ecosystem/users", async(req, res) => {
+  try {
+    const EcosystemUser     = require("./models/EcosystemUser");
+    const StudentProfile     = require("./models/StudentProfile");
+    const FounderProfile     = require("./models/FounderProfile");
+    const MentorProfile      = require("./models/MentorProfile");
+    const InvestorProfile     = require("./models/InvestorProfile");
+    const ContractorProfile   = require("./models/ContractorProfile");
+    const StartupProfile      = require("./models/StartupProfile");
+
+    const users = await EcosystemUser.find().lean();
+    
+    // Hydrate role profiles for all newcomers
+    const hydratedUsers = await Promise.all(users.map(async (u) => {
+      u.profile = null;
+      if (u.role === 'student') {
+        u.profile = await StudentProfile.findOne({ userId: u._id }).lean();
+      } else if (u.role === 'founder') {
+        u.profile = await FounderProfile.findOne({ userId: u._id }).lean();
+        u.startup = await StartupProfile.findOne({ founderId: u._id }).lean();
+      } else if (u.role === 'mentor') {
+        u.profile = await MentorProfile.findOne({ userId: u._id }).lean();
+      } else if (u.role === 'investor') {
+        u.profile = await InvestorProfile.findOne({ userId: u._id }).lean();
+      } else if (u.role === 'contractor') {
+        u.profile = await ContractorProfile.findOne({ userId: u._id }).lean();
+      }
+      return u;
+    }));
+
+    res.json({ success: true, users: hydratedUsers });
+  } catch(err) {
+    console.error("Users API error:", err);
+    res.status(500).json({ success: false, error: "Failed to retrieve ecosystem directory." });
+  }
+});
+
+app.post("/api/ecosystem/users/:id/approve", async(req, res) => {
+  try {
+    const EcosystemUser     = require("./models/EcosystemUser");
+    const StudentProfile     = require("./models/StudentProfile");
+    const FounderProfile     = require("./models/FounderProfile");
+    const MentorProfile      = require("./models/MentorProfile");
+    const InvestorProfile     = require("./models/InvestorProfile");
+    const ContractorProfile   = require("./models/ContractorProfile");
+
+    const uId = req.params.id;
+    const user = await EcosystemUser.findByIdAndUpdate(uId, { isVerified: true }, { new: true });
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+    // Update corresponding profile status
+    if (user.role === 'student') await StudentProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'approved' });
+    if (user.role === 'founder') await FounderProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'approved' });
+    if (user.role === 'mentor')  await MentorProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'approved' });
+    if (user.role === 'investor') await InvestorProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'approved' });
+    if (user.role === 'contractor') await ContractorProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'approved' });
+
+    res.json({ success: true, message: "User verified and onboarding approved." });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to approve user." });
+  }
+});
+
+app.post("/api/ecosystem/users/:id/reject", async(req, res) => {
+  try {
+    const EcosystemUser     = require("./models/EcosystemUser");
+    const StudentProfile     = require("./models/StudentProfile");
+    const FounderProfile     = require("./models/FounderProfile");
+    const MentorProfile      = require("./models/MentorProfile");
+    const InvestorProfile     = require("./models/InvestorProfile");
+    const ContractorProfile   = require("./models/ContractorProfile");
+
+    const uId = req.params.id;
+    const user = await EcosystemUser.findByIdAndUpdate(uId, { isVerified: false }, { new: true });
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+    if (user.role === 'student') await StudentProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'rejected' });
+    if (user.role === 'founder') await FounderProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'rejected' });
+    if (user.role === 'mentor')  await MentorProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'rejected' });
+    if (user.role === 'investor') await InvestorProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'rejected' });
+    if (user.role === 'contractor') await ContractorProfile.findOneAndUpdate({ userId: uId }, { verificationStatus: 'rejected' });
+
+    res.json({ success: true, message: "Onboarding rejected." });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to reject user." });
+  }
+});
+
+app.post("/api/ecosystem/users/:id/suspend", async(req, res) => {
+  try {
+    const EcosystemUser = require("./models/EcosystemUser");
+    const user = await EcosystemUser.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+    user.isActive = !user.isActive;
+    await user.save();
+
+    res.json({ success: true, isActive: user.isActive, message: `User status changed to ${user.isActive ? 'Active' : 'Suspended'}` });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to suspend user." });
+  }
+});
+
+app.put("/api/ecosystem/users/:id", async(req, res) => {
+  try {
+    const EcosystemUser     = require("./models/EcosystemUser");
+    const StudentProfile     = require("./models/StudentProfile");
+    const FounderProfile     = require("./models/FounderProfile");
+    const StartupProfile      = require("./models/StartupProfile");
+    const MentorProfile      = require("./models/MentorProfile");
+    const InvestorProfile     = require("./models/InvestorProfile");
+    const ContractorProfile   = require("./models/ContractorProfile");
+
+    const uId = req.params.id;
+    const { fullName, email, phone, roleSpecificData = {} } = req.body;
+
+    const user = await EcosystemUser.findByIdAndUpdate(uId, { fullName, email, phone }, { new: true });
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+    if (user.role === 'student') {
+      await StudentProfile.findOneAndUpdate({ userId: uId }, {
+        fullName, email, mobile: phone,
+        country: roleSpecificData.country,
+        state: roleSpecificData.state,
+        city: roleSpecificData.city,
+        university: roleSpecificData.university,
+        degree: roleSpecificData.degree,
+        graduationYear: roleSpecificData.graduationYear,
+        skills: roleSpecificData.skills ? roleSpecificData.skills.split(',').map(s=>s.trim()) : [],
+        resume: roleSpecificData.resume,
+        linkedin: roleSpecificData.linkedin,
+        portfolio: roleSpecificData.portfolio
+      });
+    } else if (user.role === 'founder') {
+      await FounderProfile.findOneAndUpdate({ userId: uId }, {
+        startupName: roleSpecificData.startupName,
+        industry: roleSpecificData.industry,
+        website: roleSpecificData.website,
+        description: roleSpecificData.description
+      });
+      await StartupProfile.findOneAndUpdate({ founderId: uId }, {
+        startupName: roleSpecificData.startupName,
+        industry: roleSpecificData.industry,
+        stage: roleSpecificData.stage,
+        teamSize: roleSpecificData.teamSize,
+        website: roleSpecificData.website,
+        linkedin: roleSpecificData.linkedin,
+        revenue: roleSpecificData.revenue,
+        fundingStage: roleSpecificData.fundingStage,
+        description: roleSpecificData.description
+      });
+    } else if (user.role === 'mentor') {
+      await MentorProfile.findOneAndUpdate({ userId: uId }, {
+        linkedinUrl: roleSpecificData.linkedinUrl
+      });
+    } else if (user.role === 'investor') {
+      await InvestorProfile.findOneAndUpdate({ userId: uId }, {
+        fundName: roleSpecificData.fundName,
+        website: roleSpecificData.website
+      });
+    } else if (user.role === 'contractor') {
+      await ContractorProfile.findOneAndUpdate({ userId: uId }, {
+        skills: roleSpecificData.skills ? roleSpecificData.skills.split(',').map(s=>s.trim()) : [],
+        hourlyRate: roleSpecificData.hourlyRate,
+        availability: roleSpecificData.availability
+      });
+    }
+
+    res.json({ success: true, message: "User profile updated successfully." });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to update profile." });
+  }
+});
+
+app.delete("/api/ecosystem/users/:id", async(req, res) => {
+  try {
+    const EcosystemUser     = require("./models/EcosystemUser");
+    const StudentProfile     = require("./models/StudentProfile");
+    const FounderProfile     = require("./models/FounderProfile");
+    const StartupProfile      = require("./models/StartupProfile");
+    const MentorProfile      = require("./models/MentorProfile");
+    const InvestorProfile     = require("./models/InvestorProfile");
+    const ContractorProfile   = require("./models/ContractorProfile");
+    const CommunityProfile    = require("./models/CommunityProfile");
+    const TalentProfile      = require("./models/TalentProfile");
+
+    const uId = req.params.id;
+    const user = await EcosystemUser.findByIdAndDelete(uId);
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
+
+    // delete linked items
+    await StudentProfile.deleteMany({ userId: uId });
+    await FounderProfile.deleteMany({ userId: uId });
+    await StartupProfile.deleteMany({ founderId: uId });
+    await MentorProfile.deleteMany({ userId: uId });
+    await InvestorProfile.deleteMany({ userId: uId });
+    await ContractorProfile.deleteMany({ userId: uId });
+    await CommunityProfile.deleteMany({ userId: uId });
+    await TalentProfile.deleteMany({ userId: uId });
+
+    res.json({ success: true, message: "User and associated ecosystem records discarded." });
+  } catch(err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to erase user." });
+  }
 });
 
 // ================= SUBMIT TASK =================
