@@ -171,7 +171,11 @@ async function registerUser(req, res) {
     ]);
 
     if (existingEco || existingStudent || existingHR || existingCoord) {
-      return res.status(409).json({ success: false, error: 'An account with this email already exists.' });
+      return res.status(409).json({ 
+        success: false, 
+        message: 'Email already registered. Please login.',
+        error: 'Email already registered. Please login.' 
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
@@ -260,19 +264,55 @@ async function registerUser(req, res) {
     }
 
     else if (role === ROLES.FOUNDER) {
+      // Normalize values to avoid Mongoose enum validation errors
+      const industryEnumList = ['EdTech','FinTech','HealthTech','AgriTech','CleanTech','Logistics','E-Commerce','SaaS','Gaming','Media','Other'];
+      let chosenIndustry = roleSpecificData.industry || "Other";
+      const matchedInd = industryEnumList.find(i => i.toLowerCase() === chosenIndustry.toLowerCase().trim());
+      chosenIndustry = matchedInd || "Other";
+
+      const stageEnumList = ['idea','validation','mvp','early_revenue','growth','scaling'];
+      let chosenStage = (roleSpecificData.stage || "idea").toLowerCase().trim().replace(/[-\s]+/g, '_');
+      if (!stageEnumList.includes(chosenStage)) {
+        chosenStage = "idea";
+      }
+
+      const fundingEnumList = ['bootstrapped','pre_seed','seed','series_a','series_b','profitable'];
+      let chosenFunding = (roleSpecificData.fundingStage || "bootstrapped").toLowerCase().trim().replace(/[-\s]+/g, '_');
+      if (!fundingEnumList.includes(chosenFunding)) {
+        chosenFunding = "bootstrapped";
+      }
+
+      const allowedGoals = ['co_founder','developers','designers','marketers','investors','mentors','interns'];
+      const rawGoals = roleSpecificData.goals ? roleSpecificData.goals.split(',') : [];
+      const chosenLookingFor = [];
+      rawGoals.forEach(g => {
+        let clean = g.trim().toLowerCase().replace(/[-\s]+/g, '_');
+        if (clean === 'hire_talent' || clean === 'interns') clean = 'interns';
+        if (clean === 'build_mvp' || clean === 'developers') clean = 'developers';
+        if (clean === 'raise_funding' || clean === 'investors') clean = 'investors';
+        if (allowedGoals.includes(clean)) {
+          if (!chosenLookingFor.includes(clean)) {
+            chosenLookingFor.push(clean);
+          }
+        }
+      });
+      if (chosenLookingFor.length === 0) {
+        chosenLookingFor.push('developers');
+      }
+
       // Create founder_profiles
       await FounderProfile.create({
         userId: user._id,
         memberId: genMemberId,
         startupName: roleSpecificData.startupName || "My Startup",
-        industry: roleSpecificData.industry || "SaaS",
-        stage: roleSpecificData.stage ? roleSpecificData.stage.toLowerCase().replace(' ', '_') : "idea",
+        industry: chosenIndustry,
+        stage: chosenStage,
         teamSize: roleSpecificData.teamSize || 1,
-        fundingStatus: roleSpecificData.fundingStage ? roleSpecificData.fundingStage.toLowerCase().replace('-', '_') : "bootstrapped",
+        fundingStatus: chosenFunding,
         website: roleSpecificData.website || "",
         description: roleSpecificData.description || "",
         location: "",
-        lookingFor: roleSpecificData.goals ? roleSpecificData.goals.split(',').map(g => g.trim().toLowerCase().replace(' ', '_')).filter(Boolean) : [],
+        lookingFor: chosenLookingFor,
         verificationStatus: 'pending'
       });
 
@@ -280,7 +320,7 @@ async function registerUser(req, res) {
       await StartupProfile.create({
         founderId: user._id,
         startupName: roleSpecificData.startupName || "My Startup",
-        industry: roleSpecificData.industry || "",
+        industry: chosenIndustry,
         stage: roleSpecificData.stage || "",
         teamSize: roleSpecificData.teamSize || 1,
         website: roleSpecificData.website || "",
@@ -393,7 +433,11 @@ async function registerUser(req, res) {
     });
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(409).json({ success: false, error: 'An account with this email already exists.' });
+      return res.status(409).json({ 
+        success: false, 
+        message: 'Email already registered. Please login.',
+        error: 'Email already registered. Please login.' 
+      });
     }
     console.error("Registration error:", err);
     return res.status(500).json({ success: false, error: 'Registration failed. Please try again.' });
