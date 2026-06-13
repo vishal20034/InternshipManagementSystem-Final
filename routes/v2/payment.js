@@ -109,6 +109,9 @@ router.post('/create-order', async (req, res) => {
         invoiceRef,
         studentId:      student._id,
         employeeId,
+        amount:         amount,
+        provider:       'paymentsetu',
+        purpose:        description || 'Internship Payment',
         amountRupees:   amount,
         amountPaisa,
         status:         'pending',
@@ -239,6 +242,60 @@ router.get('/status/:orderId', async (req, res) => {
     });
   } catch (err) {
     console.error('[PAYMENT] status error:', err.message);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /api/v2/payment/utr-confirm  — student submits UTR after direct UPI payment
+router.post('/utr-confirm', async (req, res) => {
+  try {
+    const employeeId = req.headers['x-employee-id'];
+    if (!employeeId) return res.status(401).json({ success: false, message: 'Unauthorised' });
+
+    const { utr, amount, description } = req.body;
+    if (!utr || String(utr).trim().length < 6) {
+      return res.status(400).json({ success: false, message: 'Invalid UTR' });
+    }
+
+    const student = await Student.findOne({ employeeId });
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    const orderId = 'UPIPAY-' + employeeId + '-' + Date.now();
+    const cleanAmount = parseFloat(amount) || 0;
+
+    const payment = new Payment({
+      orderId,
+      invoiceRef:     'UTR-' + String(utr).trim(),
+      studentId:      student._id,
+      employeeId,
+      amount:         cleanAmount,
+      provider:       'manual',
+      purpose:        description || 'Direct UPI Payment',
+      amountRupees:   cleanAmount,
+      amountPaisa:    Math.round(cleanAmount * 100),
+      status:         'pending_verification',
+      txnUtr:         String(utr).trim(),
+      customerName:   student.name  || '',
+      customerEmail:  student.email || '',
+      description:    description   || 'Direct UPI Payment',
+      paymentUrl:     ''
+    });
+    await payment.save();
+
+    try {
+      await new Notification({
+        title:            '💳 Payment Confirmation Received',
+        message:          `Student ${employeeId} submitted UTR ${utr} for ₹${amount}. Please verify.`,
+        type:             'info',
+        from:             'System',
+        targetType:       'hr'
+      }).save();
+    } catch (_) {}
+
+    console.log('[PAYMENT] UTR confirm submitted by', employeeId, '| UTR:', utr, '| amount:', amount);
+    return res.json({ success: true, message: 'Payment confirmation received. Our team will verify shortly.' });
+  } catch (err) {
+    console.error('[PAYMENT] utr-confirm error:', err.message);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
