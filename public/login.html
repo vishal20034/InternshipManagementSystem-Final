@@ -204,30 +204,30 @@ html, body {
     <div class="brand-logo-ring ten-float">
       <img src="ten-logo.png" alt="TEN Logo" style="width:48px;height:48px;object-fit:contain;display:block;filter:drop-shadow(0 0 8px rgba(212,175,55,0.4));" />
     </div>
-    <div class="brand-name">TEN</div>
-    <div class="brand-full">The Entrepreneurship Network</div>
+    <div class="brand-name">TEN ECOSYSTEM</div>
+    <div class="brand-full">Unified Ecosystem Control Center</div>
   </div>
 
   <div class="login-card ten-animated-border">
-    <div class="card-title ten-fade-up ten-d1">Student Login</div>
-    <p class="card-sub ten-fade-up ten-d2">Cloud · DevOps · AI · Cyber Security · Web Dev & more</p>
+    <div class="card-title ten-fade-up ten-d1">Sign In</div>
+    <p class="card-sub ten-fade-up ten-d2">Access Students, Founders, Mentors, Investors, and Contractors hubs</p>
 
     <form id="loginForm" class="ten-fade-up ten-d3">
       <div class="field-group">
-        <label class="field-label">Employee ID</label>
-        <input class="field-input" type="text" id="employeeId" placeholder="Enter your Employee ID" required>
+        <label class="field-label" id="fieldLabel">Email Address or Employee ID</label>
+        <input class="field-input" type="text" id="loginId" placeholder="Enter your Email or Employee ID" required>
       </div>
       <div class="field-group">
         <label class="field-label">Password</label>
         <input class="field-input" type="password" id="password" placeholder="Enter your password" required>
       </div>
-      <button class="login-btn" type="submit">Login to Dashboard</button>
-      <div class="loading-text" id="loadingText">⟳ Verifying credentials...</div>
+      <button class="login-btn" type="submit">Sign In to Dashboard</button>
+      <div class="loading-text" id="loadingText">⟳ Authenticating and loading dashboard...</div>
     </form>
   </div>
 
   <div class="card-nav">
-    <a href="register.html">Register</a>
+    <a href="register-hub.html">Register Account</a>
     <span class="sep">·</span>
     <a href="coordinator-login.html">Coordinator Login</a>
     <span class="sep">·</span>
@@ -248,57 +248,68 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   document.getElementById("loadingText").style.display = "block";
 
-  const employeeId = document.getElementById("employeeId").value;
+  const loginIdInput = document.getElementById("loginId").value.trim();
   const password = document.getElementById("password").value;
 
   try {
-    const response = await fetch("/student-login", {
+    const isEmail = loginIdInput.includes("@");
+    const payload = isEmail ? { email: loginIdInput, password } : { employeeId: loginIdInput, password };
+
+    const response = await fetch("/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeId, password })
+      body: JSON.stringify(payload)
     });
 
     const data = await response.json();
-    console.log(data.student);
     document.getElementById("loadingText").style.display = "none";
 
     if (data.success) {
-      localStorage.setItem("employeeId", data.student.employeeId);
-      // FEATURE 2 — Persistent auto-login: store full student object
-      const studentObj = {
-        name: data.student.name || data.student.fullName || data.student.username || data.student.employeeId,
-        employeeId: data.student.employeeId,
-        domain: data.student.domain,
-        firstName: data.student.firstName || "",
-        lastName:  data.student.lastName  || "",
-        email:     data.student.email     || "",
-        phone:     data.student.phone     || data.student.whatsapp || data.student.mobile || "",
-        college:     data.student.college     || data.student.collegeName || "",
-        collegeName: data.student.collegeName || data.student.college    || "",
-        tenure:    data.student.tenure    || "",
-        joiningDate: data.student.joiningDate || "",
-        internshipEnd: data.student.internshipEnd || "",
-        endDate:   data.student.endDate   || "",
-        linkedDomains: data.student.linkedDomains || [],
-        onboardingPopupSeen: data.student.onboardingPopupSeen || false,
-        joinerTypeSelected:  data.student.joinerTypeSelected  || false,
-        joinerType:          data.student.joinerType           || null
-      };
-      localStorage.setItem("student", JSON.stringify(studentObj));
-      // ten_token / ten_employee_id — used by auto-login check on dashboard and v2-tasks
-      localStorage.setItem("ten_token",       data.student.employeeId);
-      localStorage.setItem("ten_employee_id", data.student.employeeId);
+      const activeRole = data.role || "student";
+      localStorage.setItem("role", activeRole);
+
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("userId", data.user._id);
+      }
+
+      if (data.student) {
+        localStorage.setItem("employeeId", data.student.employeeId);
+        localStorage.setItem("student", JSON.stringify(data.student));
+        localStorage.setItem("ten_token", data.student.employeeId);
+        localStorage.setItem("ten_employee_id", data.student.employeeId);
+      }
 
       Swal.fire({
         icon: "success",
         title: "Login Successful",
-        text: "Welcome to TEN Internship Portal 🚀",
+        text: `Welcome inside the TEN ${activeRole.toUpperCase()} workspace! 🚀`,
         background: "#0e1428",
         color: "#F0EEE8",
-        confirmButtonColor: "#D4AF37"
+        confirmButtonColor: "#D4AF37",
+        timer: 1500,
+        showConfirmButton: false
       });
 
-      window.location.href = "student-dashboard.html";
+      setTimeout(() => {
+        // Dynamic Role-Based Login Redirects
+        if (activeRole === "student") {
+          window.location.href = "student-dashboard.html";
+        } else if (activeRole === "founder") {
+          window.location.href = "founder-os.html";
+        } else if (activeRole === "mentor") {
+          window.location.href = "mentor-dashboard.html";
+        } else if (activeRole === "investor") {
+          window.location.href = "investor-dashboard.html";
+        } else if (activeRole === "contractor") {
+          window.location.href = "contractor-dashboard.html";
+        } else if (activeRole === "hr" || activeRole === "admin") {
+          window.location.href = "hr-portal.html";
+        } else {
+          window.location.href = "student-dashboard.html";
+        }
+      }, 1500);
+
     } else {
       Swal.fire({
         icon: "error",
@@ -311,7 +322,7 @@ form.addEventListener("submit", async (e) => {
     }
   } catch (error) {
     document.getElementById("loadingText").style.display = "none";
-    console.log(error);
+    console.error(error);
     Swal.fire({
       icon: "error",
       title: "Server Error",

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TEN Ecosystem — Investor Dashboard</title>
+  <link rel="stylesheet" href="ten-theme.css">
+  <link rel="stylesheet" href="ten-motion.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <style>
+    :root {
+      --gold: #D4AF37;
+      --gold-dim: rgba(212, 175, 55, 0.15);
+      --dark-bg: #080A12;
+      --card-bg: rgba(13, 17, 33, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+    }
+    body {
+      background-color: var(--dark-bg);
+      color: #F0EEE8;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .glass-panel {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+    .gold-glow {
+      box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="glass-panel border-b border-[rgba(255,255,255,0.08)] sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <img src="ten-logo.png" alt="TEN Logo" class="w-10 h-10 object-contain" />
+      <div>
+        <h1 class="text-lg font-bold tracking-wider text-[#D4AF37] uppercase">TEN Portfolio</h1>
+        <p class="text-xs text-stone-400">Investor Dealflow Portal</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="text-right">
+        <h3 id="investorName" class="text-sm font-semibold">Loading...</h3>
+        <span class="text-xs text-[#D4AF37]" id="investorRole">Venture Partner</span>
+      </div>
+      <button onclick="logout()" class="px-3.5 py-1.5 glass-panel text-xs rounded-lg border border-[rgba(255,255,255,0.15)] hover:bg-[#ef4444]/15 hover:border-[#ef4444]/40 transition duration-300">
+        Sign Out
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar + Main Area Grid -->
+  <div class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    
+    <!-- Left Sidebar: Settings -->
+    <div class="space-y-6">
+      <div class="glass-panel rounded-2xl p-5 space-y-4">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-stone-400">Investment Profile</h2>
+        <div class="space-y-3 text-xs">
+          <div>
+            <span class="text-stone-400 block mb-1">Thesis:</span>
+            <p id="profileThesis" class="font-medium text-stone-250 leading-relaxed text-[11px]">Syncing sectors...</p>
+          </div>
+          <div>
+            <span class="text-stone-400 block mb-1">Firm Name:</span>
+            <p id="firmName" class="font-semibold text-stone-200">Arka Ventures</p>
+          </div>
+          <div>
+            <span class="text-stone-400 block mb-1">Preference:</span>
+            <span class="px-2 py-0.5 rounded-full bg-[#D4AF37]/10 text-[10px] text-[#D4AF37] border border-[#D4AF37]/20">Seed Stage</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="glass-panel rounded-2xl p-5 space-y-3">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-stone-400">Investor Toolkit</h2>
+        <a href="founder-directory.html" class="block w-full py-2 bg-white/5 hover:bg-[#D4AF37]/10 text-center text-xs font-semibold rounded-lg border border-white/10 hover:border-[#D4AF37]/30 transition duration-300">
+          Browse Startups
+        </a>
+      </div>
+    </div>
+
+    <!-- Main Section -->
+    <div class="lg:col-span-3 space-y-6">
+      <!-- Welcome Banner -->
+      <div class="glass-panel rounded-3xl p-6 md:p-8 relative overflow-hidden flex flex-col md:flex-row items-center gap-6 gold-glow">
+        <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-[#D4AF37] to-[#f3e7c4] flex items-center justify-center text-stone-950 font-bold text-3xl shadow-lg border-2 border-[#D4AF37]">
+          💰
+        </div>
+        <div class="text-center md:text-left flex-1 space-y-1">
+          <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] text-[10px] font-semibold uppercase tracking-wider">
+            Verified Angel Network
+          </div>
+          <h2 id="bannerName" class="text-2xl font-bold tracking-tight">Dealflow Management</h2>
+          <p id="bannerTitle" class="text-[#D4AF37] text-sm">Empowering Startups with Strategic Capital</p>
+          <p id="bannerEmail" class="text-xs text-stone-400">Syncing and connecting accounts...</p>
+        </div>
+      </div>
+
+      <!-- Live Deal Room Pipeline / Tabs -->
+      <div class="flex border-b border-[rgba(255,255,255,0.08)] gap-2 overflow-x-auto pb-px">
+        <button onclick="switchTab('deals')" class="tab-btn px-4 py-2 border-b-2 border-transparent hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition text-sm font-medium whitespace-nowrap active" id="tab-deals">Interested Startups</button>
+        <button onclick="switchTab('meetings')" class="tab-btn px-4 py-2 border-b-2 border-transparent hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition text-sm font-medium whitespace-nowrap" id="tab-meetings">Pitch Discuss Board</button>
+        <button onclick="switchTab('portfolio')" class="tab-btn px-4 py-2 border-b-2 border-transparent hover:text-[#D4AF37] hover:border-[#D4AF37]/30 transition text-sm font-medium whitespace-nowrap" id="tab-portfolio">My Capital Portfolio</button>
+      </div>
+
+      <!-- Tab Content: Interested Startups -->
+      <div id="content-deals" class="tab-content block space-y-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-semibold text-[#D4AF37]">Active Venture Pipelines</h3>
+          <span class="text-xs text-stone-400">Startups looking for mentors and investors</span>
+        </div>
+        <div id="startupList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <div class="glass-panel rounded-xl p-5 space-y-3">
+            <div class="flex justify-between items-start">
+              <h4 class="font-bold text-lg text-stone-100">Krypton Solar</h4>
+              <span class="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-[10px] text-amber-400 border border-amber-500/20">Pre-Seed</span>
+            </div>
+            <p class="text-xs text-stone-400">Nanotech coatings designed to increase standard photovoltaic cell yields by 24% under ambient cloudy conditions.</p>
+            <div class="pt-3 border-t border-[rgba(255,255,255,0.06)] flex justify-between items-center text-[11px] text-stone-400">
+              <span>Sector: <b>CleanTech</b></span>
+              <button onclick="startDiscussion('Krypton Solar')" class="text-xs text-[#D4AF37] font-semibold hover:underline">Start discussion →</button>
+            </div>
+          </div>
+
+          <div class="glass-panel rounded-xl p-5 space-y-3">
+            <div class="flex justify-between items-start">
+              <h4 class="font-bold text-lg text-stone-100">Cerebro AI</h4>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-[10px] text-emerald-400 border border-emerald-500/20">MVP Stage</span>
+            </div>
+            <p class="text-xs text-stone-400">Generative model compiler designed for low-power edge computing devices and robotics microcontrollers.</p>
+            <div class="pt-3 border-t border-[rgba(255,255,255,0.06)] flex justify-between items-center text-[11px] text-stone-400">
+              <span>Sector: <b>AI & Robotics</b></span>
+              <button onclick="startDiscussion('Cerebro AI')" class="text-xs text-[#D4AF37] font-semibold hover:underline">Start discussion →</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Tab Content: Meetings/Discussions -->
+      <div id="content-meetings" class="tab-content hidden space-y-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-semibold text-[#D4AF37]">Pitch Discussions & Deal States</h3>
+          <span class="text-xs text-stone-400">Track deal diligence milestones</span>
+        </div>
+        <div class="space-y-3" id="discussionsList">
+          <div class="glass-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h4 class="font-bold text-stone-200">Krypton Solar Pitch Due Diligence</h4>
+              <p class="text-xs text-stone-400">Scheduled: Wed Jun 24th, 11:30 AM · Sharing pitch decks and cap tables</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-[10px] text-amber-400">In Progress</span>
+              <a href="https://meet.google.com" target="_blank" class="px-3 py-1 bg-white/5 hover:bg-[#D4AF37]/20 border border-white/10 rounded-lg text-xs font-semibold transition">Pitch Call</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Portfolio -->
+      <div id="content-portfolio" class="tab-content hidden space-y-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-lg font-semibold text-[#D4AF37]">Capital Portfolio Tracker</h3>
+          <span class="text-xs text-stone-400">Secured shares & investment equity logs</span>
+        </div>
+        <div class="glass-panel rounded-xl p-6 text-center space-y-3">
+          <div class="text-3xl text-stone-400">✨</div>
+          <h4 class="font-bold text-stone-200">Add Portfolio Investment</h4>
+          <p class="text-xs text-stone-400 max-w-sm mx-auto">Create and synchronize share acquisitions, investment currency units, and equity positions across startup pipelines.</p>
+          <button onclick="addPortfolioRow()" class="px-4 py-1.5 bg-[#D4AF37] hover:scale-105 transition text-stone-950 font-bold rounded-lg text-xs">
+            + Log New Investment
+          </button>
+        </div>
+        <div class="space-y-3" id="portfolioList">
+          <!-- User logging list -->
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <footer class="mt-auto glass-panel border-t border-[rgba(255,255,255,0.06)] py-6 text-center text-xs text-stone-500">
+    &copy; 2026 The Entrepreneurship Network. All Rights Reserved.
+  </footer>
+
+  <script>
+    // Security and Session Check
+    const activeUser = JSON.parse(localStorage.getItem('user') || 'null');
+    const activeRole = localStorage.getItem('role');
+
+    if (!activeUser || activeRole !== 'investor') {
+      window.location.href = 'login.html';
+    } else {
+      document.getElementById('investorName').textContent = activeUser.fullName;
+      document.getElementById('bannerName').textContent = activeUser.fullName;
+      document.getElementById('bannerEmail').textContent = activeUser.email;
+      
+      // Load some dynamically mapped values
+      document.getElementById('profileThesis').textContent = `Identifying and supporting high-growth SaaS, AI, CleanTech, and Web development micro-ventures in South Asia.`;
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'login.html';
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      document.getElementById('content-' + tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active', 'border-[#D4AF37]', 'text-[#D4AF37]'));
+      document.getElementById('tab-' + tabId).classList.add('active', 'border-[#D4AF37]', 'text-[#D4AF37]');
+    }
+    document.getElementById('tab-deals').classList.add('border-[#D4AF37]', 'text-[#D4AF37]');
+
+    function startDiscussion(startupName) {
+      Swal.fire({
+        title: `Express Investment Interest`,
+        text: `Would you like to register interest in ${startupName}? TEN HR and coordinators will match your interest and arrange a private pitch meeting.`,
+        showCancelButton: true,
+        confirmButtonText: 'Register Interest',
+        confirmButtonColor: '#D4AF37',
+        background: '#0e1428',
+        color: '#F0EEE8',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Add to discuss pipeline
+          const dList = document.getElementById('discussionsList');
+          const row = document.createElement('div');
+          row.className = "glass-panel rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4";
+          row.innerHTML = `
+            <div>
+              <h4 class="font-bold text-stone-200">${startupName} Discovery Track</h4>
+              <p class="text-xs text-stone-400">Scheduled: Action pending match · Awaiting startup founder acceptance</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="px-2.5 py-0.5 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[10px] text-[#D4AF37]">Pending Founder</span>
+              <button disabled class="opacity-50 px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-semibold whitespace-nowrap">Join Meet</button>
+            </div>
+          `;
+          dList.prepend(row);
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Interest Logged!',
+            text: `The matching requests for ${startupName} have been logged. The founder is being notified.`,
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#D4AF37'
+          });
+        }
+      });
+    }
+
+    function addPortfolioRow() {
+      Swal.fire({
+        title: 'Acquisition Record Log',
+        html:
+          '<input id="swal-sname" class="swal2-input text-[#080A12] border p-2 text-sm w-3/4 rounded-md mb-2" placeholder="Startup Name">' +
+          '<input id="swal-samt" class="swal2-input text-[#080A12] border p-2 text-sm w-3/4 rounded-md mb-2" placeholder="Investment Amount (₹)" type="number">' +
+          '<input id="swal-srate" class="swal2-input text-[#080A12] border p-2 text-sm w-3/4 rounded-md mb-2" placeholder="Equity Percentage (e.g. 5%)">',
+        showCancelButton: true,
+        confirmButtonText: 'Log Capture',
+        confirmButtonColor: '#D4AF37',
+        background: '#0e1428',
+        color: '#F0EEE8',
+        focusConfirm: false,
+        preConfirm: () => {
+          return [
+            document.getElementById('swal-sname').value,
+            document.getElementById('swal-samt').value,
+            document.getElementById('swal-srate').value
+          ]
+        }
+      }).then((result) => {
+        if (result.isConfirmed) {
+          const [name, amt, rate] = result.value;
+          if (!name || !amt || !rate) {
+            Swal.fire('Error', 'Please fill all requested investment fields.', 'error');
+            return;
+          }
+          const container = document.getElementById('portfolioList');
+          const card = document.createElement('div');
+          card.className = "glass-panel rounded-xl p-4 flex justify-between items-center";
+          card.innerHTML = `
+            <div>
+              <h4 class="font-bold text-stone-200">${name}</h4>
+              <p class="text-xs text-stone-400">Total Funded: ₹${Number(amt).toLocaleString()} · Equity Share: ${rate}</p>
+            </div>
+            <span class="px-2.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-400 uppercase font-semibold">Active Asset</span>
+          `;
+          container.prepend(card);
+          Swal.fire({
+            icon: 'success',
+            title: 'Logged Successfully',
+            text: 'Portfolio record has been registered to the TEN database tracker.',
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#D4AF37'
+          });
+        }
+      });
+    }
+  </script>
+</body>
+</html>
