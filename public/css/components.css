@@ -273,9 +273,13 @@ body.modal--open { overflow: hidden; }
   border-right: 1px solid var(--border-default);
   display:    flex;
   flex-direction: column;
-  z-index:    30;
-  transition: width var(--transition-normal);
+  z-index:    100;
+  transform:  translateX(-100%);
+  transition: transform var(--transition-normal);
   overflow:   hidden;
+}
+.sidebar.is-open {
+  transform:  translateX(0);
 }
 .sidebar__logo {
   padding:       var(--space-4) var(--space-5);
@@ -327,7 +331,7 @@ body.modal--open { overflow: hidden; }
 .topbar {
   position:         fixed;
   top:  0;
-  left: var(--sidebar-width);
+  left: 0;
   right: 0;
   height:           var(--topbar-height);
   background:       rgba(255,255,255,0.85);
@@ -357,7 +361,7 @@ body.modal--open { overflow: hidden; }
 .topbar__actions { display: flex; gap: var(--space-3); align-items: center; }
 
 .main-content {
-  margin-left: var(--sidebar-width);
+  margin-left: 0;
   padding-top: var(--topbar-height);
   padding:     calc(var(--topbar-height) + var(--space-8)) var(--space-8) var(--space-8);
   min-height:  100vh;

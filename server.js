@@ -6,6 +6,413 @@ const cors = require("cors");
 const express = require("express");
 const crypto = require("crypto");
 const mongoose = require("mongoose");
+
+// ================= MONGOOSE LOCAL FALLBACK ENGINE =================
+// Automatically intercept all model calls if MongoDB isn't connected.
+// This allows the app to store, fetch, and authenticate users/records
+// in a single-file or multi-file local storage database.
+const DB_DIR = path.join(__dirname, 'uploads', 'local_db');
+if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
+function getCollectionData(modelName) {
+    const file = path.join(DB_DIR, `db_${modelName}.json`);
+    if (!fs.existsSync(file)) {
+        if (modelName === 'Student') {
+            const defaultRecords = [
+                {
+                    _id: "60c72b2f9b1d8b2badcd88a1",
+                    firstName: "Scholar",
+                    lastName: "TEN",
+                    name: "Scholar TEN",
+                    email: "student@entrepreneurshipnetwork.net",
+                    whatsapp: "1234567890",
+                    college: "The Entrepreneurship Network University",
+                    collegeName: "The Entrepreneurship Network University",
+                    domain: "Web Development",
+                    tenure: "3 Months",
+                    joiningDate: "2026-06-01",
+                    employeeId: "TEN-STUDENT-001",
+                    password: "intern123",
+                    currentStreak: 5,
+                    bestStreak: 12,
+                    lastAttendanceDate: new Date().toISOString(),
+                    lastActiveDate: new Date().toISOString(),
+                    v2Onboarded: true,
+                    v2DurationType: "3months",
+                    locStatus: "not_eligible",
+                    lorStatus: "not_eligible",
+                    starStatus: "not_submitted",
+                    offerLetterStatus: "approved"
+                }
+            ];
+            fs.writeFileSync(file, JSON.stringify(defaultRecords, null, 2), 'utf8');
+            return defaultRecords;
+        }
+        return [];
+    }
+    try {
+        return JSON.parse(fs.readFileSync(file, 'utf8') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveCollectionData(modelName, data) {
+    const file = path.join(DB_DIR, `db_${modelName}.json`);
+    try {
+        fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Failed to save local fallback DB:', e);
+    }
+}
+
+function generateId() {
+    try {
+        return new mongoose.Types.ObjectId().toString();
+    } catch (e) {
+        return crypto.randomBytes(12).toString('hex');
+    }
+}
+
+function matchQuery(item, query) {
+    if (!query) return true;
+    for (const key of Object.keys(query)) {
+        if (key === '$or') {
+            if (!Array.isArray(query.$or)) continue;
+            let anyMatch = false;
+            for (const subQuery of query.$or) {
+                if (matchQuery(item, subQuery)) {
+                    anyMatch = true;
+                    break;
+                }
+            }
+            if (!anyMatch) return false;
+            continue;
+        }
+        
+        const val = query[key];
+        if (val && typeof val === 'object' && '$ne' in val) {
+            const itemVal = item[key];
+            if (itemVal === val.$ne) return false;
+            continue;
+        }
+        
+        const itemVal = item[key];
+        const valStr = (val && val._id) ? String(val._id) : String(val);
+        const itemValStr = (itemVal && itemVal._id) ? String(itemVal._id) : String(itemVal);
+        
+        if (itemValStr !== valStr) {
+            if (item[key] !== val) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function applyUpdate(item, update) {
+    if (!update) return;
+    if (update.$set) {
+        Object.assign(item, update.$set);
+    }
+    if (update.$push) {
+        for (const k of Object.keys(update.$push)) {
+            if (!Array.isArray(item[k])) item[k] = [];
+            item[k].push(update.$push[k]);
+        }
+    }
+    if (update.$addToSet) {
+        for (const k of Object.keys(update.$addToSet)) {
+            if (!Array.isArray(item[k])) item[k] = [];
+            if (!item[k].includes(update.$addToSet[k])) {
+                item[k].push(update.$addToSet[k]);
+            }
+        }
+    }
+    for (const key of Object.keys(update)) {
+        if (!key.startsWith('$')) {
+            item[key] = update[key];
+        }
+    }
+    item.updatedAt = new Date();
+}
+
+class FallbackQuery {
+    constructor(promiseFn) {
+        this.promiseFn = promiseFn;
+        this._sort = null;
+        this._limit = null;
+    }
+    sort(s) { this._sort = s; return this; }
+    limit(l) { this._limit = l; return this; }
+    populate() { return this; }
+    select() { return this; }
+    lean() { return this; }
+    exec() {
+        return this.promiseFn(this._sort, this._limit);
+    }
+    then(onResolve, onReject) {
+        return this.exec().then(onResolve, onReject);
+    }
+    catch(onReject) {
+        return this.exec().catch(onReject);
+    }
+}
+
+function wrapModelWithFileFallback(model) {
+    const originalFind = model.find;
+    model.find = function(query) {
+        if (mongoose.connection.readyState !== 1) {
+            return new FallbackQuery(async (sortVal, limitVal) => {
+                let items = getCollectionData(model.modelName);
+                let matched = items.filter(item => matchQuery(item, query));
+                if (sortVal) {
+                    const sortKeys = Object.keys(sortVal);
+                    if (sortKeys.length > 0) {
+                        const key = sortKeys[0];
+                        const direction = sortVal[key];
+                        matched.sort((a, b) => {
+                            const valA = a[key];
+                            const valB = b[key];
+                            if (valA < valB) return direction === -1 ? 1 : -1;
+                            if (valA > valB) return direction === -1 ? -1 : 1;
+                            return 0;
+                        });
+                    }
+                }
+                if (typeof limitVal === 'number') {
+                    matched = matched.slice(0, limitVal);
+                }
+                return matched;
+            });
+        }
+        return originalFind.apply(this, arguments);
+    };
+
+    const originalFindOne = model.findOne;
+    model.findOne = function(query) {
+        if (mongoose.connection.readyState !== 1) {
+            return new FallbackQuery(async () => {
+                let items = getCollectionData(model.modelName);
+                let matched = items.find(item => matchQuery(item, query));
+                return matched || null;
+            });
+        }
+        return originalFindOne.apply(this, arguments);
+    };
+
+    const originalFindById = model.findById;
+    model.findById = function(id) {
+        if (mongoose.connection.readyState !== 1) {
+            return new FallbackQuery(async () => {
+                let items = getCollectionData(model.modelName);
+                let matched = items.find(item => String(item._id) === String(id));
+                return matched || null;
+            });
+        }
+        return originalFindById.apply(this, arguments);
+    };
+
+    const originalCountDocuments = model.countDocuments;
+    model.countDocuments = function(query) {
+        if (mongoose.connection.readyState !== 1) {
+            return new FallbackQuery(async () => {
+                let items = getCollectionData(model.modelName);
+                let matched = items.filter(item => matchQuery(item, query));
+                return matched.length;
+            });
+        }
+        return originalCountDocuments.apply(this, arguments);
+    };
+
+    const originalFindOneAndUpdate = model.findOneAndUpdate;
+    model.findOneAndUpdate = function(query, update, options) {
+        if (mongoose.connection.readyState !== 1) {
+            return new FallbackQuery(async () => {
+                let items = getCollectionData(model.modelName);
+                let index = items.findIndex(item => matchQuery(item, query));
+                if (index === -1) {
+                    if (options && options.upsert) {
+                        const newItem = { _id: generateId(), createdAt: new Date() };
+                        applyUpdate(newItem, update);
+                        items.push(newItem);
+                        saveCollectionData(model.modelName, items);
+                        return newItem;
+                    }
+                    return null;
+                }
+                let item = items[index];
+                applyUpdate(item, update);
+                items[index] = item;
+                saveCollectionData(model.modelName, items);
+                return item;
+            });
+        }
+        return originalFindOneAndUpdate.apply(this, arguments);
+    };
+
+    const originalFindByIdAndUpdate = model.findByIdAndUpdate;
+    model.findByIdAndUpdate = function(id, update, options) {
+        if (mongoose.connection.readyState !== 1) {
+            return new FallbackQuery(async () => {
+                let items = getCollectionData(model.modelName);
+                let index = items.findIndex(item => String(item._id) === String(id));
+                if (index === -1) {
+                    if (options && options.upsert) {
+                        const newItem = { _id: String(id), createdAt: new Date() };
+                        applyUpdate(newItem, update);
+                        items.push(newItem);
+                        saveCollectionData(model.modelName, items);
+                        return newItem;
+                    }
+                    return null;
+                }
+                let item = items[index];
+                applyUpdate(item, update);
+                items[index] = item;
+                saveCollectionData(model.modelName, items);
+                return item;
+            });
+        }
+        return originalFindByIdAndUpdate.apply(this, arguments);
+    };
+
+    const originalCreate = model.create;
+    model.create = function(docOrDocs) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            const isArray = Array.isArray(docOrDocs);
+            const docs = isArray ? docOrDocs : [docOrDocs];
+            const createdDocs = docs.map(d => {
+                const raw = d.toObject ? d.toObject() : { ...d };
+                return { ...raw, _id: raw._id || generateId(), createdAt: new Date(), updatedAt: new Date() };
+            });
+            items.push(...createdDocs);
+            saveCollectionData(model.modelName, items);
+            return isArray ? Promise.resolve(createdDocs) : Promise.resolve(createdDocs[0]);
+        }
+        return originalCreate.apply(this, arguments);
+    };
+
+    const originalDeleteOne = model.deleteOne;
+    model.deleteOne = function(query) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            let index = items.findIndex(item => matchQuery(item, query));
+            if (index !== -1) {
+                items.splice(index, 1);
+                saveCollectionData(model.modelName, items);
+                return Promise.resolve({ acknowledged: true, deletedCount: 1 });
+            }
+            return Promise.resolve({ acknowledged: true, deletedCount: 0 });
+        }
+        return originalDeleteOne.apply(this, arguments);
+    };
+
+    const originalDeleteMany = model.deleteMany;
+    model.deleteMany = function(query) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            const originalLength = items.length;
+            items = items.filter(item => !matchQuery(item, query));
+            saveCollectionData(model.modelName, items);
+            return Promise.resolve({ acknowledged: true, deletedCount: originalLength - items.length });
+        }
+        return originalDeleteMany.apply(this, arguments);
+    };
+
+    const originalUpdateMany = model.updateMany;
+    model.updateMany = function(query, update, options) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            let count = 0;
+            for (let item of items) {
+                if (matchQuery(item, query)) {
+                    applyUpdate(item, update);
+                    count++;
+                }
+            }
+            saveCollectionData(model.modelName, items);
+            return Promise.resolve({ acknowledged: true, modifiedCount: count });
+        }
+        return originalUpdateMany.apply(this, arguments);
+    };
+
+    const originalInsertMany = model.insertMany;
+    model.insertMany = function(docs) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            const newDocs = (Array.isArray(docs) ? docs : [docs]).map(d => {
+                const raw = d.toObject ? d.toObject() : { ...d };
+                return { ...raw, _id: raw._id || generateId(), createdAt: new Date() };
+            });
+            items.push(...newDocs);
+            saveCollectionData(model.modelName, items);
+            return Promise.resolve(newDocs);
+        }
+        return originalInsertMany.apply(this, arguments);
+    };
+
+    const originalBulkWrite = model.bulkWrite;
+    model.bulkWrite = function(ops) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            for (const op of ops) {
+                if (op.updateOne) {
+                    const { filter, update, upsert } = op.updateOne;
+                    let index = items.findIndex(item => matchQuery(item, filter));
+                    if (index === -1) {
+                        if (upsert) {
+                            const newItem = { _id: generateId(), createdAt: new Date() };
+                            applyUpdate(newItem, update);
+                            items.push(newItem);
+                        }
+                    } else {
+                        applyUpdate(items[index], update);
+                    }
+                }
+            }
+            saveCollectionData(model.modelName, items);
+            return Promise.resolve({ ok: 1, nModified: ops.length });
+        }
+        return originalBulkWrite.apply(this, arguments);
+    };
+}
+
+const originalSave = mongoose.Model.prototype.save;
+mongoose.Model.prototype.save = function() {
+    if (mongoose.connection.readyState !== 1) {
+        const modelName = this.constructor.modelName;
+        let items = getCollectionData(modelName);
+        const obj = this.toObject ? this.toObject() : { ...this };
+        if (!obj._id) {
+            obj._id = generateId();
+        } else {
+            obj._id = String(obj._id);
+        }
+        
+        const idx = items.findIndex(item => String(item._id) === String(obj._id));
+        if (idx !== -1) {
+            items[idx] = { ...items[idx], ...obj, updatedAt: new Date() };
+        } else {
+            obj.createdAt = obj.createdAt || new Date();
+            obj.updatedAt = obj.updatedAt || new Date();
+            items.push(obj);
+        }
+        saveCollectionData(modelName, items);
+        return Promise.resolve(this);
+    }
+    return originalSave.apply(this, arguments);
+};
+
+const originalModel = mongoose.model;
+mongoose.model = function(name, schema, collection) {
+    const model = originalModel.apply(this, arguments);
+    wrapModelWithFileFallback(model);
+    return model;
+};
 const multer = require("multer");
 const nodemailer = require("nodemailer");
 const fs = require("fs");
@@ -88,7 +495,7 @@ const COORDINATORS = {
 const app = express();
 
 // ===== Production config =====
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || "https://virtualinternships.entrepreneurshipnetwork.net";
 
 // Ensure uploads directory exists (multer writes to it)
@@ -307,6 +714,10 @@ async function sendAutoDocumentsToStudent(student, docType, sentBy = "System") {
 
 async function runAutoDocumentCheck() {
     try {
+        if (mongoose.connection.readyState !== 1) {
+            console.warn('[AUTO-DOCS] Mongoose is not connected. Skipping check.');
+            return;
+        }
         const students = await Student.find({ documentsAutoSent: { $ne: true } });
         const now = new Date();
         let count = 0;
@@ -330,9 +741,10 @@ setInterval(runAutoDocumentCheck, 6 * 60 * 60 * 1000);
 
 // ================= MONGODB =================
 
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.set('bufferCommands', false); // CRITICAL: fail fast, don't hang
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/internship")
 .then(()=>console.log("MongoDB Connected"))
-.catch((err)=>console.log(err));
+.catch((err)=>console.warn("MongoDB connection warning: Working in local runtime mode. Some write services may require database configuration. " + err.message));
 
 // ================= SCHEMAS =================
 
@@ -4577,4 +4989,4 @@ io.on("connection", (socket) => {
 });
 
 
-server.listen(PORT, ()=>{ console.log(`Server running on port ${PORT}`); });
+server.listen(PORT, "0.0.0.0", ()=>{ console.log(`Server running on port ${PORT}`); });

@@ -108,9 +108,22 @@
     function init() {
       document.addEventListener('click', function(e) {
         const trigger = e.target.closest('[data-sidebar-toggle]');
+        const sidebar = document.querySelector('.sidebar');
         if (trigger) {
-          const sidebar = document.querySelector('.sidebar');
           if (sidebar) sidebar.classList.toggle('is-open');
+        } else if (sidebar && sidebar.classList.contains('is-open')) {
+          if (!sidebar.contains(e.target)) {
+            sidebar.classList.remove('is-open');
+          }
+        }
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          const sidebar = document.querySelector('.sidebar');
+          if (sidebar && sidebar.classList.contains('is-open')) {
+            sidebar.classList.remove('is-open');
+          }
         }
       });
     }
