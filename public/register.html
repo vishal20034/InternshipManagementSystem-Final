@@ -3,354 +3,608 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Register — TEN Ecosystem</title>
+  <title>Register | TEN Ecosystem</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
   <link rel="stylesheet" href="ten-theme.css">
   <link rel="stylesheet" href="ten-motion.css">
+  
+  <!-- FontAwesome & Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
   <style>
-    html, body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--ten-bg);
-      color: var(--ten-text);
-      overflow-x: hidden;
-      padding: 40px 16px;
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #05070e;
     }
-    
-    .register-wrap {
-      position: relative;
-      z-index: 2;
-      width: 100%;
-      max-width: 480px;
-      animation: ten-fadeUp 0.6s ease both;
+    .syne {
+      font-family: 'Syne', sans-serif;
     }
-
-    /* ── Brand header ── */
-    .brand-header {
-      text-align: center;
-      margin-bottom: 28px;
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
     }
-    .brand-logo-ring {
-      width: 64px; height: 64px;
-      background: rgba(212,175,55,0.08);
-      backdrop-filter: blur(10px);
-      border: 1.5px solid rgba(212,175,55,0.35);
-      border-radius: 16px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 12px;
-      box-shadow: 0 0 30px rgba(212,175,55,0.2), inset 0 1px 1px rgba(255,255,255,0.1);
-      animation: ten-pulse-gold 3s ease infinite;
-      transition: all 0.3s ease;
-    }
-    .brand-logo-ring:hover {
-      background: rgba(212,175,55,0.12);
-      border-color: rgba(212,175,55,0.5);
-      transform: translateY(-1px);
-    }
-    .brand-name {
-      font-family: var(--ten-font-display);
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: 4px;
-      color: var(--ten-gold);
-      text-transform: uppercase;
-      margin-bottom: 2px;
-    }
-    .brand-full {
-      font-size: 11px;
-      color: var(--ten-text-sub);
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-    }
-
-    /* ── Card ── */
-    .register-card {
-      background: var(--ten-card);
-      border: 1px solid var(--ten-border);
-      border-radius: var(--ten-r-xl);
-      padding: 36px;
-      box-shadow: var(--ten-shadow-lg);
-      position: relative;
-      overflow: hidden;
-    }
-    .register-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--ten-gold), transparent);
-    }
-
-    .card-title {
-      font-family: var(--ten-font-display);
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 6px;
-      text-align: center;
-    }
-    .card-sub {
-      font-size: 13.5px;
-      color: var(--ten-text-sub);
-      margin-bottom: 28px;
-      line-height: 1.5;
-      text-align: center;
-    }
-
-    /* ── Role visual Selector Grid ── */
-    .role-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 24px;
-    }
-    @media(max-width: 480px){
-      .role-grid { grid-template-columns: 1fr; }
+    .glass-card {
+      background: rgba(14, 20, 40, 0.95);
+      border: 1px solid rgba(212, 175, 55, 0.12);
+      backdrop-filter: blur(14px);
     }
     .role-card {
-      background: var(--ten-surface);
-      border: 1px solid var(--ten-border-dim);
-      border-radius: var(--ten-r-sm);
-      padding: 12px 10px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      position: relative;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .role-card:hover {
-      border-color: var(--ten-border-strong);
-      transform: translateY(-1px);
+      border-color: rgba(212, 175, 55, 0.4);
+      background: rgba(212, 175, 55, 0.04);
+      transform: translateY(-3px);
     }
-    .role-card.active {
-      border-color: var(--ten-gold);
-      background: rgba(212,175,55,0.06);
-      box-shadow: 0 0 14px rgba(212,175,55,0.1);
+    .text-gold {
+      color: #D4AF37;
     }
-    .role-card.active::after {
-      content: '✓';
-      position: absolute;
-      top: 6px; right: 8px;
-      font-size: 10px;
-      font-weight: 900;
-      color: var(--ten-gold);
+    .bg-gold {
+      background-color: #D4AF37;
     }
-    .role-icon {
-      font-size: 20px;
-      margin-bottom: 4px;
+    .border-gold {
+      border-color: rgba(212, 175, 55, 0.3);
     }
-    .role-name {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--ten-text);
-    }
-    .role-desc {
-      font-size: 10.5px;
-      color: var(--ten-text-sub);
-      margin-top: 2px;
-    }
-
-    /* ── Fields ── */
-    .input-group {
-      position: relative;
-      margin-bottom: 20px;
-    }
-    .input-label {
-      display: block;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--ten-text-sub);
-      margin-bottom: 6px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-    .form-input {
-      width: 100%;
-      padding: 11px 14px;
-      background: var(--ten-surface);
-      border: 1px solid var(--ten-border-dim);
-      border-radius: var(--ten-r-md);
-      color: var(--ten-text);
-      font-family: var(--ten-font-body);
-      font-size: 14.5px;
-      transition: all 0.2s ease;
-    }
-    .form-input:focus {
-      border-color: var(--ten-gold);
-      box-shadow: 0 0 12px var(--ten-gold-glow);
-      outline: none;
-    }
-    .form-input::placeholder {
-      color: var(--ten-text-muted);
-    }
-
-    /* ── Action triggers ── */
-    .btn-submit {
-      width: 100%;
-      padding: 13px;
-      background: linear-gradient(135deg, var(--ten-gold), var(--ten-gold-dim));
+    .btn-gold {
+      background: linear-gradient(135deg, #D4AF37, #B8960C);
       color: #05070e;
-      border: none;
-      border-radius: var(--ten-r-md);
-      font-family: var(--ten-font-display);
-      font-weight: 800;
-      font-size: 15px;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      margin-top: 8px;
     }
-    .btn-submit:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(212,175,55,0.3);
-    }
-    
-    .back-action {
-      text-align: center;
-      margin-top: 20px;
-      font-size: 13.5px;
-    }
-    .back-action a {
-      color: var(--ten-gold);
-      text-decoration: none;
-      font-weight: 600;
-      transition: color 0.15s;
-    }
-    .back-action a:hover {
-      color: var(--ten-gold-light);
-      text-decoration: underline;
+    .btn-gold:hover {
+      background: linear-gradient(135deg, #F0D060, #D4AF37);
+      box-shadow: 0 8px 24px rgba(212, 175, 55, 0.25);
     }
   </style>
 </head>
-<body>
+<body class="min-h-screen text-slate-100 flex items-center justify-center p-4 md:p-8 relative overflow-x-hidden">
 
   <!-- Mesh Grid & Ambient Spot Orbs -->
   <div class="ten-grid-bg"></div>
   <div class="ten-orb ten-orb-1"></div>
   <div class="ten-orb ten-orb-2"></div>
 
-  <div class="register-wrap">
-  
-    <!-- Brand badge -->
-    <header class="brand-header">
-      <div class="brand-logo-ring">
-        <svg class="ten-logo-svg" width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <div class="relative w-full max-w-2xl z-10 transition-all duration-500 ease-in-out">
+    
+    <!-- Brand / Header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 mb-4 animate-pulse">
+        <svg class="w-8 h-8" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="20" cy="20" r="14" stroke="#D4AF37" stroke-width="2.5"></circle>
           <path d="M15 15 H25 V19 H15" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round"></path>
           <path d="M20 19 V25" stroke="#D4AF37" stroke-width="2.5" stroke-linecap="round"></path>
         </svg>
       </div>
-      <div class="brand-name">TEN Ecosystem</div>
-      <div class="brand-full">The Entrepreneurship Network</div>
-    </header>
-
-    <!-- Visual Register Form Container -->
-    <div class="register-card">
-      <h2 class="card-title">Join Ecosystem</h2>
-      <p class="card-sub">Create your unified account and gain access to internships, programs, and networking.</p>
-
-      <form id="regForm">
-        
-        <!-- Role dynamic selection field -->
-        <label class="input-label">I am registering as...</label>
-        <input type="hidden" id="roleInput" name="role" required />
-        
-        <div class="role-grid">
-          <div class="role-card" data-role="student">
-            <div class="role-icon">🎓</div>
-            <div class="role-name">Student</div>
-            <div class="role-desc">Intern &amp; Learn</div>
-          </div>
-          <div class="role-card" data-role="founder">
-            <div class="role-icon">🚀</div>
-            <div class="role-name">Founder</div>
-            <div class="role-desc">Hire &amp; Build</div>
-          </div>
-          <div class="role-card" data-role="mentor">
-            <div class="role-icon">🧑‍🏫</div>
-            <div class="role-name">Mentor</div>
-            <div class="role-desc">Guide Ventures</div>
-          </div>
-          <div class="role-card" data-role="investor">
-            <div class="role-icon">💼</div>
-            <div class="role-name">Investor</div>
-            <div class="role-desc">Explore &amp; Fund</div>
-          </div>
-          <div class="role-card" data-role="contractor" style="grid-column: span 2;">
-            <div class="role-icon">🛠️</div>
-            <div class="role-name">Contractor</div>
-            <div class="role-desc">Offer Professional Skills</div>
-          </div>
-        </div>
-
-        <div class="input-group">
-          <label class="input-label" for="fullName">Full Name</label>
-          <input type="text" class="form-input" id="fullName" name="fullName" placeholder="your first and last name" required />
-        </div>
-
-        <div class="input-group">
-          <label class="input-label" for="email">Email address</label>
-          <input type="email" class="form-input" id="email" name="email" placeholder="you@example.com" required />
-        </div>
-
-        <div class="input-group">
-          <label class="input-label" for="password">Password</label>
-          <input type="password" class="form-input" id="password" name="password" placeholder="At least 8 characters" required />
-        </div>
-
-        <button type="submit" class="btn-submit">Initialize Registration →</button>
-      </form>
-
-      <div class="back-action">
-        <a href="/login">Already have an account? Log in</a>
-      </div>
+      <div class="text-xs uppercase tracking-widest text-[#D4AF37] font-extrabold mb-1">TEN Ecosystem</div>
+      <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight syne text-transparent bg-clip-text bg-gradient-to-r from-slate-100 via-amber-100 to-amber-200">
+        JOIN TEN ECOSYSTEM
+      </h1>
+      <p id="topSubtitle" class="text-slate-400 text-sm mt-2 font-medium">Select your role to unlock personalized networking, opportunities, and workspaces.</p>
     </div>
+
+    <!-- Container Card -->
+    <div class="glass-card rounded-2xl p-6 md:p-10 shadow-2xl relative overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#D4AF37] to-transparent"></div>
+
+      <!-- STEP 1: ROLE SELECTION -->
+      <div id="roleSelectionScreen" class="space-y-6">
+        <h2 class="text-xl font-bold text-center text-slate-100 mb-6 uppercase tracking-wider">Register As</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- Student Card -->
+          <button onclick="selectRole('student')" class="role-card text-left p-5 rounded-xl border border-slate-800 bg-slate-900/30 flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-graduation-cap text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-100">Student</h3>
+              <p class="text-slate-400 text-xs mt-1 leading-relaxed">Join as an intern, learn real systems, complete milestones, and earn certifications.</p>
+            </div>
+          </button>
+
+          <!-- Founder Card -->
+          <button onclick="selectRole('founder')" class="role-card text-left p-5 rounded-xl border border-slate-800 bg-slate-900/30 flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-rocket text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-100">Founder</h3>
+              <p class="text-slate-400 text-xs mt-1 leading-relaxed">Manage your venture pipeline, post jobs/milestones, hire talent, and scale your brand.</p>
+            </div>
+          </button>
+
+          <!-- Mentor Card -->
+          <button onclick="selectRole('mentor')" class="role-card text-left p-5 rounded-xl border border-slate-800 bg-slate-900/30 flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-pink-500/10 text-pink-400 border border-pink-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-user-tie text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-100">Mentor</h3>
+              <p class="text-slate-400 text-xs mt-1 leading-relaxed">Guide startup ventures, provide professional training, and review milestone completions.</p>
+            </div>
+          </button>
+
+          <!-- Investor Card -->
+          <button onclick="selectRole('investor')" class="role-card text-left p-5 rounded-xl border border-slate-800 bg-slate-900/30 flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-hand-holding-dollar text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-100">Investor</h3>
+              <p class="text-slate-400 text-xs mt-1 leading-relaxed">Access clean deal rooms, explore startup growth metrics, and fund high-potential ventures.</p>
+            </div>
+          </button>
+
+          <!-- Contractor Card -->
+          <button onclick="selectRole('contractor')" class="role-card text-left p-5 rounded-xl border border-slate-800 bg-slate-900/30 flex items-start gap-4 md:col-span-2">
+            <div class="flex-shrink-0 w-12 h-12 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-screwdriver-wrench text-xl"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-100">Contractor</h3>
+              <p class="text-slate-400 text-xs mt-1 leading-relaxed font-normal">Apply premium engineering, programming, or operations skills as a trusted milestone freelancer.</p>
+            </div>
+          </button>
+
+        </div>
+
+        <div class="pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+          <span>Are you an administrator? <a href="/hr-login" class="text-[#D4AF37] hover:underline font-bold">HR Login</a></span>
+          <a href="/login" class="text-slate-400 hover:text-slate-200 hover:underline">Already registered? Log in</a>
+        </div>
+      </div>
+
+
+      <!-- STEP 2: DYNAMIC ONBOARDING FORMS -->
+      <div id="formSectionScreen" class="hidden">
+        
+        <!-- Form Header info -->
+        <div class="flex items-center justify-between border-b border-slate-800 pb-5 mb-6">
+          <div class="flex items-center gap-3">
+            <div id="roleIconBadge" class="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold">
+              🎓
+            </div>
+            <div>
+              <h2 id="roleFormTitle" class="text-lg font-extrabold text-slate-100 uppercase tracking-wide">STUDENT REGISTRATION</h2>
+              <p class="text-slate-400 text-xs">Fill out your background to set up your ecosystem workspace.</p>
+            </div>
+          </div>
+          <button type="button" onclick="goBackToSelection()" class="text-xs text-slate-400 hover:text-amber-400 flex items-center gap-1 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800 transition">
+            <i class="fa-solid fa-arrow-left"></i> Change Role
+          </button>
+        </div>
+
+        <form id="unifiedRegForm" class="space-y-5">
+          <!-- Hidden Input for selected role -->
+          <input type="hidden" id="selectedRoleInput" name="role" required>
+
+          <!-- Standard Fields used by most/all profiles (Names, Creds) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Full Name <span class="text-red-500">*</span></label>
+              <input type="text" id="reg_fullName" name="fullName" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]" placeholder="e.g. John Doe" required>
+            </div>
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Email address <span class="text-red-500">*</span></label>
+              <input type="email" id="reg_email" name="email" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]" placeholder="john.doe@domain.com" required>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Mobile / WhatsApp <span class="text-red-500">*</span></label>
+              <input type="tel" id="reg_mobile" name="mobile" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]" placeholder="e.g. +91 9876543210" required>
+            </div>
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Account Password <span class="text-red-500">*</span></label>
+              <input type="password" id="reg_password" name="password" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]" placeholder="At least 8 characters" minlength="8" required>
+            </div>
+          </div>
+
+
+          <!-- ── STUDENT SPECIFIC FIELDS ── -->
+          <div id="studentFormFields" class="form-role-subset hidden space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Country <span class="text-red-500">*</span></label>
+                <input type="text" id="stu_country" name="country" class="stu-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="India">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">State <span class="text-red-500">*</span></label>
+                <input type="text" id="stu_state" name="state" class="stu-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Maharashtra">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">City <span class="text-red-500">*</span></label>
+                <input type="text" id="stu_city" name="city" class="stu-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Mumbai">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="md:col-span-2">
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">University / College <span class="text-red-500">*</span></label>
+                <input type="text" id="stu_university" name="university" class="stu-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Indian Institute of Technology">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Graduation Year <span class="text-red-500">*</span></label>
+                <input type="number" id="stu_graduationYear" name="graduationYear" class="stu-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="2026">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Degree / Major <span class="text-red-500">*</span></label>
+              <input type="text" id="stu_degree" name="degree" class="stu-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="B.Tech Computer Science & Engineering">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Skills <span class="text-slate-500 text-[10px] lowercase font-normal">(comma-separated)</span> <span class="text-red-500">*</span></label>
+              <input type="text" id="stu_skills" name="skills" class="stu-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="React, Node.js, Express, MongoDB">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="md:col-span-2">
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Resume link <span class="text-slate-500 text-[10px] lowercase font-normal">(Google Drive / Dropbox)</span></label>
+                <input type="url" id="stu_resume" name="resume" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://drive.google.com/...">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Portfolio / Git Website</label>
+                <input type="url" id="stu_portfolio" name="portfolio" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://mygithub.io">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">LinkedIn Profile URL</label>
+              <input type="url" id="stu_linkedin" name="linkedin" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://linkedin.com/in/username">
+            </div>
+          </div>
+
+
+          <!-- ── FOUNDER SPECIFIC FIELDS ── -->
+          <div id="founderFormFields" class="form-role-subset hidden space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Startup Name <span class="text-red-500">*</span></label>
+                <input type="text" id="fdr_startupName" name="startupName" class="fdr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Venture Inc">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Industry Sector <span class="text-red-500">*</span></label>
+                <input type="text" id="fdr_industry" name="industry" class="fdr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="e.g. SaaS, FinTech, DeepTech">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Startup Stage <span class="text-red-500">*</span></label>
+                <select id="fdr_stage" name="stage" class="fdr-req w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]">
+                  <option value="Idea">Idea</option>
+                  <option value="Validation">Validation</option>
+                  <option value="MVP" selected>MVP</option>
+                  <option value="Early Revenue">Early Revenue</option>
+                  <option value="Growth">Growth</option>
+                  <option value="Scaling">Scaling</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Active Team Size <span class="text-red-500">*</span></label>
+                <input type="number" id="fdr_teamSize" name="teamSize" class="fdr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="e.g. 5">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Funding Stage <span class="text-red-500">*</span></label>
+                <select id="fdr_fundingStage" name="fundingStage" class="fdr-req w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]">
+                  <option value="Bootstrapped">Bootstrapped</option>
+                  <option value="Pre-seed">Pre-seed</option>
+                  <option value="Seed">Seed</option>
+                  <option value="Series A">Series-A</option>
+                  <option value="Profitable">Profitable</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Revenue Range (Monthly in ₹)</label>
+                <input type="text" id="fdr_revenue" name="revenue" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="e.g. ₹50,000 or N/A">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Startup Website Link</label>
+                <input type="url" id="fdr_website" name="website" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://yourstartup.com">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">LinkedIn Page URL</label>
+              <input type="url" id="fdr_linkedin" name="linkedin" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://linkedin.com/company/startup">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Startup Description <span class="text-red-500">*</span></label>
+              <textarea id="fdr_description" name="description" class="fdr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] h-20" placeholder="Briefly describe what your venture builds..."></textarea>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Core Milestone Goals / Asks <span class="text-red-500">*</span></label>
+              <input type="text" id="fdr_goals" name="goals" class="fdr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="e.g. Build MVP, Hire React Talent, Seed Angel Fund">
+            </div>
+          </div>
+
+
+          <!-- ── MENTOR SPECIFIC FIELDS ── -->
+          <div id="mentorFormFields" class="form-role-subset hidden space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Current Active Company <span class="text-red-500">*</span></label>
+                <input type="text" id="mtr_company" name="company" class="mtr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Google India">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Active Designation / Job Title <span class="text-red-500">*</span></label>
+                <input type="text" id="mtr_designation" name="designation" class="mtr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Senior Staff Engineer">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="md:col-span-1">
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Years of Tech/Biz Experience <span class="text-red-500">*</span></label>
+                <input type="number" id="mtr_experience" name="experience" class="mtr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="8">
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">LinkedIn Profile URL <span class="text-red-500">*</span></label>
+                <input type="url" id="mtr_linkedin" name="linkedin" class="mtr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://linkedin.com/in/username">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Areas of Core Expertise <span class="text-slate-500 text-[10px] lowercase font-normal">(comma-separated)</span> <span class="text-red-500">*</span></label>
+              <input type="text" id="mtr_expertiseAreas" name="expertiseAreas" class="mtr-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Product Strategy, Systems Design, React Coding, Venture Capital">
+            </div>
+          </div>
+
+
+          <!-- ── INVESTOR SPECIFIC FIELDS ── -->
+          <div id="investorFormFields" class="form-role-subset hidden space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Investment Firm Name / Individual <span class="text-red-500">*</span></label>
+                <input type="text" id="inv_firmName" name="firmName" class="inv-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Acme Unicorn Capital">
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Active / Allocated Fund Size <span class="text-red-500">*</span></label>
+                <input type="text" id="inv_fundSize" name="fundSize" class="inv-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="e.g. ₹5 Crore or Angel">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Investment Stage Preference <span class="text-red-500">*</span></label>
+                <select id="inv_investmentStage" name="investmentStage" class="inv-req w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]">
+                  <option value="Pre-seed">Pre-seed</option>
+                  <option value="Seed" selected>Seed</option>
+                  <option value="Series A">Series A</option>
+                  <option value="Series B">Series B</option>
+                  <option value="Growth">Growth Focus</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Firm Website / Profile Link</label>
+                <input type="url" id="inv_website" name="website" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://acmeventures.com">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Target Sectors / Industry Focus <span class="text-slate-500 text-[10px] lowercase font-normal">(comma-separated)</span> <span class="text-red-500">*</span></label>
+              <input type="text" id="inv_industryFocus" name="industryFocus" class="inv-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="e.g. AI, SaaS, HealthTech, ClimateTech">
+            </div>
+            
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Investor LinkedIn URL</label>
+              <input type="url" id="inv_linkedin" name="invLinkedIn" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://linkedin.com/in/investor-profile">
+            </div>
+          </div>
+
+
+          <!-- ── CONTRACTOR SPECIFIC FIELDS ── -->
+          <div id="contractorFormFields" class="form-role-subset hidden space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Work Availability <span class="text-red-500">*</span></label>
+                <select id="con_availability" name="availability" class="con-req w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]">
+                  <option value="Immediately">Immediately</option>
+                  <option value="In 2 weeks">In 2 weeks</option>
+                  <option value="In 1 month">In 1 month</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Desired Hourly Rate (₹) <span class="text-red-500">*</span></label>
+                <input type="number" id="con_hourlyRate" name="hourlyRate" class="con-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="e.g. 1200">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Core Dev / Operations Skills <span class="text-slate-500 text-[10px] lowercase font-normal">(comma-separated)</span> <span class="text-red-500">*</span></label>
+              <input type="text" id="con_skills" name="skills" class="con-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="Flutter, Swift, Kotlin, Rust Programming">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Portfolio / Git / Behance URL <span class="text-red-500">*</span></label>
+              <input type="url" id="con_portfolio" name="portfolio" class="con-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37]" placeholder="https://freelancedeveloper.com">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Freelancing / Engineering Experience Details <span class="text-red-500">*</span></label>
+              <textarea id="con_experience" name="experience" class="con-req w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] h-20" placeholder="e.g. 4 years of freelance web design, delivered 12 remote apps..."></textarea>
+            </div>
+          </div>
+
+
+          <!-- SUBMIT TRIGGER BUTTON -->
+          <button type="submit" class="w-full py-4 rounded-xl btn-gold font-extrabold tracking-wide uppercase transition duration-300 transform hover:-translate-y-0.5 mt-2">
+            Submit Registration For Approval <i class="fa-solid fa-cloud-arrow-up ml-1"></i>
+          </button>
+        </form>
+
+      </div>
+
+    </div>
+
   </div>
 
   <script>
-    // Handle interactive Role selection
-    const roleCards = document.querySelectorAll('.role-card');
-    const roleInput = document.getElementById('roleInput');
+    let activeRole = '';
 
-    roleCards.forEach(card => {
-      card.addEventListener('click', () => {
-        roleCards.forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        roleInput.value = card.getAttribute('data-role');
+    function selectRole(role) {
+      activeRole = role;
+      
+      // Update Title & Badge
+      const titleNode = document.getElementById("roleFormTitle");
+      const iconNode = document.getElementById("roleIconBadge");
+      const subNode = document.getElementById("topSubtitle");
+      const hiddenRole = document.getElementById("selectedRoleInput");
+
+      hiddenRole.value = role;
+
+      // Reset dynamic requirement flags
+      document.querySelectorAll('.stu-req, .fdr-req, .mtr-req, .inv-req, .con-req').forEach(el => {
+        el.removeAttribute('required');
       });
-    });
 
-    // Default select Student role
-    const defaultStudent = document.querySelector('[data-role="student"]');
-    if (defaultStudent) {
-      defaultStudent.click();
+      // Show/Hide Role Forms & Apply Requirements Dynamically
+      document.querySelectorAll('.form-role-subset').forEach(el => el.classList.add('hidden'));
+
+      if (role === 'student') {
+        titleNode.textContent = "STUDENT ONBOARDING";
+        iconNode.innerHTML = "<i class='fa-solid fa-graduation-cap text-lg'></i>";
+        iconNode.className = "w-10 h-10 rounded-lg flex items-center justify-center text-emerald-400 bg-emerald-500/10 border border-emerald-500/20";
+        document.getElementById("studentFormFields").classList.remove('hidden');
+        document.querySelectorAll('.stu-req').forEach(el => el.setAttribute('required', 'true'));
+        subNode.textContent = "Student Portal: Match with prestigious projects and unlock premium coursework.";
+      } 
+      else if (role === 'founder') {
+        titleNode.textContent = "FOUNDER OS ONBOARDING";
+        iconNode.innerHTML = "<i class='fa-solid fa-rocket text-lg'></i>";
+        iconNode.className = "w-10 h-10 rounded-lg flex items-center justify-center text-blue-400 bg-blue-500/10 border border-blue-500/20";
+        document.getElementById("founderFormFields").classList.remove('hidden');
+        document.querySelectorAll('.fdr-req').forEach(el => el.setAttribute('required', 'true'));
+        subNode.textContent = "Founder OS: Set up your workspace, hire talent, and post milestones.";
+      } 
+      else if (role === 'mentor') {
+        titleNode.textContent = "MENTOR DECK ONBOARDING";
+        iconNode.innerHTML = "<i class='fa-solid fa-user-tie text-lg'></i>";
+        iconNode.className = "w-10 h-10 rounded-lg flex items-center justify-center text-pink-400 bg-pink-500/10 border border-pink-500/20";
+        document.getElementById("mentorFormFields").classList.remove('hidden');
+        document.querySelectorAll('.mtr-req').forEach(el => el.setAttribute('required', 'true'));
+        subNode.textContent = "Mentor Desk: Share your expertise, consult startup teams, and review tasks.";
+      } 
+      else if (role === 'investor') {
+        titleNode.textContent = "INVESTOR PORTAL ONBOARDING";
+        iconNode.innerHTML = "<i class='fa-solid fa-hand-holding-dollar text-lg'></i>";
+        iconNode.className = "w-10 h-10 rounded-lg flex items-center justify-center text-amber-400 bg-amber-500/10 border border-amber-500/20";
+        document.getElementById("investorFormFields").classList.remove('hidden');
+        document.querySelectorAll('.inv-req').forEach(el => el.setAttribute('required', 'true'));
+        subNode.textContent = "Investor Portal: Track high-potential growth teams and fund premium ventures.";
+      } 
+      else if (role === 'contractor') {
+        titleNode.textContent = "CONTRACTOR HUB ONBOARDING";
+        iconNode.innerHTML = "<i class='fa-solid fa-screwdriver-wrench text-lg'></i>";
+        iconNode.className = "w-10 h-10 rounded-lg flex items-center justify-center text-orange-400 bg-orange-500/10 border border-orange-500/20";
+        document.getElementById("contractorFormFields").classList.remove('hidden');
+        document.querySelectorAll('.con-req').forEach(el => el.setAttribute('required', 'true'));
+        subNode.textContent = "Contractor Hub: Earn rewards by applying engineering modules to venture builders.";
+      }
+
+      // Hide Selection view with standard flow, show form view
+      document.getElementById("roleSelectionScreen").classList.add('hidden');
+      document.getElementById("formSectionScreen").classList.remove('hidden');
     }
 
-    // Submit Action
-    document.getElementById("regForm").addEventListener("submit", async (e) => {
+    function goBackToSelection() {
+      document.getElementById("formSectionScreen").classList.add('hidden');
+      document.getElementById("roleSelectionScreen").classList.remove('hidden');
+      document.getElementById("topSubtitle").textContent = "Select your role to unlock personalized networking, opportunities, and workspaces.";
+      activeRole = '';
+    }
+
+    // Submit Dynamic Onboarding Profile
+    document.getElementById("unifiedRegForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      
-      const role = roleInput.value;
-      if (!role) {
+
+      if (!activeRole) {
         Swal.fire({
           icon: 'warning',
-          title: 'Role Required',
-          text: 'Please select registering role to proceed.',
+          title: 'Role Lost',
+          text: 'Role details missing. Please restart selection.',
           background: '#0e1428',
-          color: '#F0EEE8',
           confirmButtonColor: '#D4AF37'
         });
         return;
       }
 
-      const data = Object.fromEntries(new FormData(e.target));
+      const formData = new FormData(e.target);
+      const flatData = Object.fromEntries(formData);
+
+      // Structure nested roleSpecificData for target endpoint /api/register-hub/register
+      const payload = {
+        fullName: flatData.fullName,
+        email: flatData.email,
+        password: flatData.password,
+        role: activeRole,
+        roleSpecificData: {}
+      };
+
+      // Fill values for roleSpecificData
+      payload.roleSpecificData.mobile = flatData.mobile;
       
-      // Let user know loading
+      if (activeRole === 'student') {
+        payload.roleSpecificData.country = flatData.country;
+        payload.roleSpecificData.state = flatData.state;
+        payload.roleSpecificData.city = flatData.city;
+        payload.roleSpecificData.university = flatData.university;
+        payload.roleSpecificData.degree = flatData.degree;
+        payload.roleSpecificData.graduationYear = Number(flatData.graduationYear);
+        payload.roleSpecificData.skills = flatData.skills;
+        payload.roleSpecificData.resume = flatData.resume;
+        payload.roleSpecificData.portfolio = flatData.portfolio;
+        payload.roleSpecificData.linkedin = flatData.linkedin;
+      } 
+      else if (activeRole === 'founder') {
+        payload.roleSpecificData.startupName = flatData.startupName;
+        payload.roleSpecificData.industry = flatData.industry;
+        payload.roleSpecificData.stage = flatData.stage;
+        payload.roleSpecificData.teamSize = Number(flatData.teamSize);
+        payload.roleSpecificData.website = flatData.website;
+        payload.roleSpecificData.linkedin = flatData.linkedin;
+        payload.roleSpecificData.revenue = flatData.revenue;
+        payload.roleSpecificData.fundingStage = flatData.fundingStage;
+        payload.roleSpecificData.description = flatData.description;
+        payload.roleSpecificData.goals = flatData.goals;
+      } 
+      else if (activeRole === 'mentor') {
+        payload.roleSpecificData.company = flatData.company;
+        payload.roleSpecificData.designation = flatData.designation;
+        payload.roleSpecificData.experience = Number(flatData.experience);
+        payload.roleSpecificData.linkedin = flatData.linkedin;
+        payload.roleSpecificData.expertiseAreas = flatData.expertiseAreas;
+      } 
+      else if (activeRole === 'investor') {
+        payload.roleSpecificData.firmName = flatData.firmName;
+        payload.roleSpecificData.fundSize = flatData.fundSize;
+        payload.roleSpecificData.investmentStage = flatData.investmentStage;
+        payload.roleSpecificData.industryFocus = flatData.industryFocus;
+        payload.roleSpecificData.website = flatData.website;
+        payload.roleSpecificData.linkedin = flatData.invLinkedIn || flatData.linkedin || "";
+      } 
+      else if (activeRole === 'contractor') {
+        payload.roleSpecificData.availability = flatData.availability;
+        payload.roleSpecificData.hourlyRate = Number(flatData.hourlyRate);
+        payload.roleSpecificData.skills = flatData.skills;
+        payload.roleSpecificData.portfolio = flatData.portfolio;
+        payload.roleSpecificData.experience = flatData.experience;
+      }
+
       Swal.fire({
-        title: 'Creating Account...',
-        html: 'Registering your details in the TEN Ecosystem...',
+        title: 'Filing Live Application...',
+        html: 'Logging credentials inside Ecosystem security layers...',
         allowOutsideClick: false,
         didOpen: () => { Swal.showLoading(); },
         background: '#0e1428',
@@ -358,40 +612,43 @@
       });
 
       try {
-        const res = await fetch("/api/register-hub/register", { 
-          method: "POST", 
-          headers: {"Content-Type":"application/json"}, 
-          body: JSON.stringify(data) 
+        const res = await fetch("/api/register-hub/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
         });
         const json = await res.json();
-        
+
         if (json.success) {
           Swal.fire({
             icon: 'success',
-            title: 'Registration Successful!',
-            text: 'Welcome to TEN Ecosystem. Redirecting to login...',
+            title: 'Logged Successfully',
+            text: 'Redirecting to onboarding summary deck...',
             background: '#0e1428',
             color: '#F0EEE8',
-            confirmButtonColor: '#10B981',
-            timer: 2000,
-            showConfirmButton: false
+            showConfirmButton: false,
+            timer: 1500
           });
-          setTimeout(() => { window.location.href = "/"; }, 2000);
+          
+          setTimeout(() => {
+            window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Pending%20Approval`;
+          }, 1500);
         } else {
           Swal.fire({
             icon: 'error',
-            title: 'Registration Failed',
-            text: json.error || 'Please fill check details or try again later.',
+            title: 'Onboarding Denied',
+            text: json.error || 'Check input details or check existing emails.',
             background: '#0e1428',
             color: '#F0EEE8',
             confirmButtonColor: '#D4AF37'
           });
         }
       } catch (err) {
+        console.error(err);
         Swal.fire({
           icon: 'error',
-          title: 'Network Error',
-          text: 'Could not connect to registration server. Please try again.',
+          title: 'Secure Interface Busy',
+          text: 'Authentication timeout. Please retry.',
           background: '#0e1428',
           color: '#F0EEE8',
           confirmButtonColor: '#D4AF37'

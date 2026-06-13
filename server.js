@@ -846,6 +846,12 @@ app.get("/register", (req,res)=>{ res.sendFile(path.join(__dirname,"public","reg
 app.get("/coming-soon", (req,res)=>{ res.sendFile(path.join(__dirname,"public","coming-soon.html")); });
 
 // ── Phase 2 page routes ─────────────────────────────────────────────────────
+app.get("/registration-success", (req,res)=>{ res.sendFile(path.join(__dirname,"public","registration-success.html")); });
+app.get("/student-login",     (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-login.html")); });
+app.get("/founder-login",     (req,res)=>{ res.sendFile(path.join(__dirname,"public","founder-login.html")); });
+app.get("/mentor-login",      (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-login.html")); });
+app.get("/investor-login",    (req,res)=>{ res.sendFile(path.join(__dirname,"public","investor-login.html")); });
+app.get("/contractor-login",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","contractor-login.html")); });
 app.get("/login",             (req,res)=>{ res.sendFile(path.join(__dirname,"public","login.html")); });
 app.get("/student-dashboard", (req,res)=>{ res.sendFile(path.join(__dirname,"public","student-dashboard.html")); });
 app.get("/mentor-dashboard",  (req,res)=>{ res.sendFile(path.join(__dirname,"public","mentor-dashboard.html")); });
@@ -1087,6 +1093,45 @@ try{
             const match = await bcrypt.compare(password, user.password);
             if (!match) {
                 return res.json({ success: false, message: "Invalid Password." });
+            }
+
+            // Enforce Ecosystem HR Approval and Suspend constraints
+            if (['student', 'founder', 'mentor', 'investor', 'contractor'].includes(user.role)) {
+                if (user.isActive === false) {
+                    return res.json({ success: false, message: "Your account has been Suspended by HR. Please contact support." });
+                }
+
+                const StudentProfile = require("./models/StudentProfile");
+                const FounderProfile = require("./models/FounderProfile");
+                const MentorProfile = require("./models/MentorProfile");
+                const InvestorProfile = require("./models/InvestorProfile");
+                const ContractorProfile = require("./models/ContractorProfile");
+
+                let verificationStatus = 'pending';
+                if (user.role === 'student') {
+                    const profile = await StudentProfile.findOne({ userId: user._id });
+                    if (profile) verificationStatus = profile.verificationStatus || 'pending';
+                } else if (user.role === 'founder') {
+                    const profile = await FounderProfile.findOne({ userId: user._id });
+                    if (profile) verificationStatus = profile.verificationStatus || 'pending';
+                } else if (user.role === 'mentor') {
+                    const profile = await MentorProfile.findOne({ userId: user._id });
+                    if (profile) verificationStatus = profile.verificationStatus || 'pending';
+                } else if (user.role === 'investor') {
+                    const profile = await InvestorProfile.findOne({ userId: user._id });
+                    if (profile) verificationStatus = profile.verificationStatus || 'pending';
+                } else if (user.role === 'contractor') {
+                    const profile = await ContractorProfile.findOne({ userId: user._id });
+                    if (profile) verificationStatus = profile.verificationStatus || 'pending';
+                }
+
+                if (verificationStatus === 'pending') {
+                    return res.json({ success: false, message: "Your registration is Pending Approval by HR. Please wait for confirmation." });
+                } else if (verificationStatus === 'rejected') {
+                    return res.json({ success: false, message: "Your registration application has been Rejected by HR." });
+                } else if (verificationStatus === 'suspended') {
+                    return res.json({ success: false, message: "Your account has been Suspended by HR. Please contact support." });
+                }
             }
             
             // If student, get legacy student record or mock one

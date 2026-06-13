@@ -185,11 +185,31 @@ async function registerUser(req, res) {
       phone:    roleSpecificData.mobile || ""
     });
 
+    let genMemberId = '';
+    // Generate sequential Member IDs for Ecosystem Profiles
+    if (role === ROLES.STUDENT) {
+      const studentCount = await StudentProfile.countDocuments();
+      genMemberId = `TEN-STU-${String(studentCount + 1).padStart(6, '0')}`;
+    } else if (role === ROLES.FOUNDER) {
+      const founderCount = await FounderProfile.countDocuments();
+      genMemberId = `TEN-FDR-${String(founderCount + 1).padStart(6, '0')}`;
+    } else if (role === ROLES.MENTOR) {
+      const mentorCount = await MentorProfile.countDocuments();
+      genMemberId = `TEN-MTR-${String(mentorCount + 1).padStart(6, '0')}`;
+    } else if (role === ROLES.INVESTOR) {
+      const investorCount = await InvestorProfile.countDocuments();
+      genMemberId = `TEN-INV-${String(investorCount + 1).padStart(6, '0')}`;
+    } else if (role === ROLES.CONTRACTOR) {
+      const contractorCount = await ContractorProfile.countDocuments();
+      genMemberId = `TEN-CON-${String(contractorCount + 1).padStart(6, '0')}`;
+    }
+
     // 2. Create Role-Specific Profiles in Separate collections/tables with Foreign Keys
     if (role === ROLES.STUDENT) {
       // Create student_profiles
       await StudentProfile.create({
         userId: user._id,
+        memberId: genMemberId,
         fullName: name.trim(),
         email: trimmedEmail,
         mobile: roleSpecificData.mobile || "",
@@ -243,6 +263,7 @@ async function registerUser(req, res) {
       // Create founder_profiles
       await FounderProfile.create({
         userId: user._id,
+        memberId: genMemberId,
         startupName: roleSpecificData.startupName || "My Startup",
         industry: roleSpecificData.industry || "SaaS",
         stage: roleSpecificData.stage ? roleSpecificData.stage.toLowerCase().replace(' ', '_') : "idea",
@@ -275,6 +296,7 @@ async function registerUser(req, res) {
       // Create mentor_profiles
       await MentorProfile.create({
         userId: user._id,
+        memberId: genMemberId,
         headline: `${roleSpecificData.designation} at ${roleSpecificData.company}`,
         linkedinUrl: roleSpecificData.linkedin || "",
         verificationStatus: 'pending'
@@ -299,6 +321,7 @@ async function registerUser(req, res) {
       // Create investor_profiles
       await InvestorProfile.create({
         userId: user._id,
+        memberId: genMemberId,
         fundName: roleSpecificData.firmName || "",
         investorType: 'vc',
         thesis: `Investing in ${roleSpecificData.industryFocus || "tech startups"} at ${roleSpecificData.investmentStage || "seed"} stage.`,
@@ -311,6 +334,7 @@ async function registerUser(req, res) {
       // Create contractor_profiles
       await ContractorProfile.create({
         userId: user._id,
+        memberId: genMemberId,
         name: name.trim(),
         email: trimmedEmail,
         mobile: roleSpecificData.mobile || "",
@@ -359,7 +383,14 @@ async function registerUser(req, res) {
       }]
     });
 
-    return res.status(201).json({ success: true, message: `${role.charAt(0).toUpperCase() + role.slice(1)} account created successfully.`, userId: user._id, role });
+    return res.status(201).json({ 
+      success: true, 
+      message: `${role.charAt(0).toUpperCase() + role.slice(1)} account created successfully.`, 
+      userId: user._id, 
+      role,
+      email: trimmedEmail,
+      memberId: genMemberId
+    });
   } catch (err) {
     if (err.code === 11000) {
       return res.status(409).json({ success: false, error: 'An account with this email already exists.' });
