@@ -4476,10 +4476,22 @@ try {
     app.use('/api/hr', hrDashboardRoutes);
     app.use('/api', programApiRoutes);
 
-    console.log('[Phase2] Ecosystem routes mounted successfully');
+    console.log('[Phase2] Standard ecosystem profile routes mounted successfully');
 } catch(e) {
-    console.error('[Phase2] Failed to mount ecosystem routes:', e.message);
+    console.error('[Phase2] Failed to mount standard ecosystem profile routes:', e.message);
 }
+
+// Additional Ecosystem Feature API Routes from Gimini Project
+try { app.use("/api/founder",    require("./routes/founderRoutes"));       } catch(e) { console.error("[Routes] founderRoutes:", e.message); }
+try { app.use("/api/mentor",     require("./routes/mentorRoutes"));        } catch(e) { console.error("[Routes] mentorRoutes:", e.message); }
+try { app.use("/api/investor",   require("./routes/investorRoutes"));      } catch(e) { console.error("[Routes] investorRoutes:", e.message); }
+try { app.use("/api/contractor", require("./routes/contractorRoutes"));    } catch(e) { console.error("[Routes] contractorRoutes:", e.message); }
+try { app.use("/api/hr-dashboard", require("./routes/hrDashboardRoutes")); } catch(e) { console.error("[Routes] hrDashboardRoutes:", e.message); }
+try { app.use("/api/talent-network", require("./routes/talentNetwork"));   } catch(e) { console.error("[Routes] talentNetwork:", e.message); }
+try { app.use("/api/talent-profile", require("./routes/talentProfile"));   } catch(e) { console.error("[Routes] talentProfile:", e.message); }
+try { app.use("/api/founder-os", require("./routes/founderOS"));           } catch(e) { console.error("[Routes] founderOS:", e.message); }
+try { app.use("/api/community",  require("./routes/community"));           } catch(e) { console.error("[Routes] community:", e.message); }
+try { app.use("/api/notifications", require("./routes/notificationRoutes"));} catch(e) { console.error("[Routes] notificationRoutes:", e.message); }
 
 // NEW FEATURE: Serve uploaded certificates, documents, and offer letters
 const expressModule = require("express");
