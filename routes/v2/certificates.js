@@ -19,9 +19,9 @@ const { generateCertificateId, generateExpertCertificate, generateNanoCertificat
 // ── HR Auth middleware (for future admin cert routes if needed) ──
 async function requireHR(req, res, next) {
     try {
-        const auth = req.headers["authorization"] || req.headers["Authorization"] || "";
+        const auth = (req && req.headers && (req.headers["authorization"] || req.headers["Authorization"])) || "";
         if (auth && auth.startsWith("Bearer hr_")) {
-            req.hrUser = { token: auth };
+            if (req) req.hrUser = { token: auth };
             return next();
         }
         return res.status(401).json({ success: false, message: "HR authentication required" });
@@ -33,11 +33,15 @@ async function requireHR(req, res, next) {
 // ── Auth middleware ──
 async function requireStudent(req, res, next) {
     try {
-        const employeeId = req.headers["x-employee-id"] || req.body.employeeId || req.query.employeeId;
+        const employeeId = req && (
+            (req.headers && (req.headers["x-employee-id"] || req.headers["X-Employee-Id"])) || 
+            (req.body && req.body.employeeId) || 
+            (req.query && req.query.employeeId)
+        );
         if (!employeeId) return res.status(401).json({ success: false, message: "Authentication required" });
         const student = await Student.findOne({ employeeId: String(employeeId) });
         if (!student) return res.status(401).json({ success: false, message: "Student not found" });
-        req.student = student;
+        if (req) req.student = student;
         next();
     } catch (err) {
         res.status(500).json({ success: false, message: "Auth error" });
@@ -101,8 +105,8 @@ async function getCertStatus(student) {
 // GET /api/v2/certificates/my-certs — smart unified handler
 async function handleMyCerts(req, res) {
   try {
-    const employeeId = req.query.employeeId || req.body.employeeId;
-    const headerEmployeeId = req.headers["x-employee-id"] || req.headers["X-Employee-Id"];
+    const employeeId = req && ((req.query && req.query.employeeId) || (req.body && req.body.employeeId));
+    const headerEmployeeId = req && req.headers && (req.headers["x-employee-id"] || req.headers["X-Employee-Id"]);
 
     // If no query parameter employeeId and we have headers, check if it's the old portal (my-certificates.html)
     if (!employeeId && headerEmployeeId) {
@@ -197,7 +201,7 @@ async function handleMyCerts(req, res) {
 
     res.json(safeStudent);
   } catch(e) {
-    console.error('[My-Certs] Error:', e.message);
+    console.error('[My-Certs] Error:', e.stack || e.message);
     res.status(500).json({ error: e.message });
   }
 }
@@ -997,8 +1001,8 @@ router.get('/my-certs', async (req, res) => {
 // GET /api/v2/certificates/download/:type — Download PDF
 router.get('/download/:type', async (req, res) => {
   try {
-    const { employeeId } = req.query;
-    const type = req.params.type.toUpperCase();
+    const { employeeId } = req.query || {};
+    const type = (req.params && req.params.type || "").toUpperCase();
     const student = await Student.findOne({ employeeId }).lean();
     if (!student) return res.status(404).json({ error: 'Not found' });
   

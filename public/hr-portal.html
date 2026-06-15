@@ -413,14 +413,14 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
       <!-- Interactive 8-Level HR Selector -->
       <select id="hrLevelSwitcher" onchange="switchHRActiveLevel(this.value)"
         style="height:38px;padding:0 12px;background:#0c1220;border:1.5px solid rgba(212,175,55,0.3);border-radius:10px;color:#D4AF37;font-size:12px;cursor:pointer;font-weight:700;outline:none;">
-          <option value="1">Level 1: Intern</option>
-          <option value="2">Level 2: Coordinator Associate</option>
-          <option value="3">Level 3: Recruiter</option>
-          <option value="4">Level 4: Quality Analyst</option>
-          <option value="5">Level 5: Lead TA</option>
-          <option value="6">Level 6: Exec HR Mgr</option>
-          <option value="7">Level 7: CHRO</option>
-          <option value="8">Level 8: Managing Partner/Coach</option>
+          <option value="1">Level 1: Jr HR Associate</option>
+          <option value="2">Level 2: Sr HR Associate</option>
+          <option value="3">Level 3: Jr HR Manager</option>
+          <option value="4">Level 4: Sr HR Manager</option>
+          <option value="5">Level 5: HR Associate Director</option>
+          <option value="6">Level 6: Jr HR Director</option>
+          <option value="7">Level 7: HR Director &amp; HRBP</option>
+          <option value="8">Level 8: Chief Human Resources Officer (CHRO)</option>
       </select>
 
       <button onclick="openHRProfileModal()" title="My Profile"
@@ -527,7 +527,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         <div class="stat-value" id="eco-total-students">0</div>
         <div class="stat-sub">Active profiles</div>
       </div>
-      <div class="stat-card" data-c="orange" onclick="switchEcoTab('founders')">
+      <div class="stat-card" id="eco-card-founders" data-c="orange" onclick="switchEcoTab('founders')">
         <div class="stat-icon">🚀</div>
         <div class="stat-label">Startups / Founders</div>
         <div class="stat-value" id="eco-total-founders">0</div>
@@ -539,7 +539,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         <div class="stat-value" id="eco-total-mentors">0</div>
         <div class="stat-sub">Industry advisors</div>
       </div>
-      <div class="stat-card" data-c="red" onclick="switchEcoTab('investors')">
+      <div class="stat-card" id="eco-card-investors" data-c="red" onclick="switchEcoTab('investors')">
         <div class="stat-icon">💰</div>
         <div class="stat-label">Investors</div>
         <div class="stat-value" id="eco-total-investors">0</div>
@@ -1493,49 +1493,49 @@ document.getElementById('dateBadge').textContent=new Date().toLocaleDateString('
 // ================= 8-LEVEL SYSTEMS MANAGEMENT & COORDINATOR INTEGRATIONS =================
 const hrLevelDetails = {
   1: {
-    title: "Level 1: HR Recruiter Intern — Onboarding Specialist",
+    title: "Level 1: Jr HR Associate",
     desc: "Active Focus: Initial applicant logging, ecosystem directory, and trainee coordination tracker modules.",
     icon: "🔮",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard']
   },
   2: {
-    title: "Level 2: HR Operations & Coordinator Associate",
+    title: "Level 2: Sr HR Associate",
     desc: "Active Focus: Assesses & verifies incoming Coordinator applications, enforces one coordinator-per-domain limit.",
     icon: "🛡️",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard', 'ecosystem', 'submissions']
   },
   3: {
-    title: "Level 3: Global Recruitment Specialist",
+    title: "Level 3: Jr HR Manager",
     desc: "Active Focus: Talent sourcing pipelines, cohort allocations, and strategic recruitment onboarding metrics.",
     icon: "🔥",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard']
   },
   4: {
-    title: "Level 4: Quality & Performance Analyst",
+    title: "Level 4: Sr HR Manager",
     desc: "Active Focus: Student task submissions logs, comprehensive domain analytics, and training KPI reporting.",
     icon: "📈",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard', 'submissions', 'insights', 'domains']
   },
   5: {
-    title: "Level 5: Lead Talent Acquisition / Strategic Partnerships",
+    title: "Level 5: HR Associate Director",
     desc: "Active Focus: High-level recruitment strategies, coordinator approvals, promotions management, and certificate boards.",
     icon: "👑",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard', 'ecosystem', 'submissions', 'certificates', 'promotions']
   },
   6: {
-    title: "Level 6: Executive HR Manager",
+    title: "Level 6: Jr HR Director",
     desc: "Active Focus: Full operational oversight, official letter/LOR generation, global broadcast communications, and escalation desk.",
     icon: "💼",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard', 'ecosystem', 'submissions', 'insights', 'domains', 'certificates', 'promotions', 'documents', 'send-notif', 'notif-history']
   },
   7: {
-    title: "Level 7: Chief Human Resources Officer (CHRO)",
+    title: "Level 7: HR Director & HRBP",
     desc: "Active Focus: Executive leadership, policy engineering, brand promotions, and global ecosystem administration dashboard.",
     icon: "🏛️",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard', 'ecosystem', 'submissions', 'insights', 'domains', 'certificates', 'promotions', 'documents', 'send-notif', 'notif-history']
   },
   8: {
-    title: "Level 8: Global Managing Partner & Coach",
+    title: "Level 8: Chief Human Resources Officer (CHRO)",
     desc: "Active Focus: Supreme system orchestrations, venture coaching, startup diagnostics, and executive mentorship loops.",
     icon: "✨",
     views: ['overview', 'students', 'tracker', 'attendance-monitor', 'leaderboard', 'ecosystem', 'submissions', 'insights', 'domains', 'certificates', 'promotions', 'documents', 'send-notif', 'notif-history']
@@ -1555,29 +1555,89 @@ function initHRActiveLevel() {
 }
 
 function switchHRActiveLevel(lvl) {
-  activeHRLevel = parseInt(lvl);
-  const newUrl = window.location.pathname + '?level=' + activeHRLevel;
-  window.history.pushState({ path: newUrl }, '', newUrl);
-  
+  const targetLvl = parseInt(lvl);
+  if (targetLvl === activeHRLevel) return;
+
+  // Intercept the position switch with an identity verification challenge
   Swal.fire({
-    icon: 'success',
-    title: `Environment Rescaled`,
-    text: `Switched into ${hrLevelDetails[activeHRLevel].title}`,
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 2000,
+    title: '<span style="color:#D4AF37;">🔑 Identity Verification</span>',
+    text: `Do you have the required credentials for Level ${targetLvl}: ${hrLevelDetails[targetLvl].title.split(': ')[1]}?`,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, I have credentials',
+    cancelButtonText: "No, I don't",
     background: '#0c1220',
-    color: '#fff'
+    color: '#f0eee8',
+    confirmButtonColor: '#f5c542',
+    cancelButtonColor: '#e05c5c'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // User says yes, redirect to HR login page so they can authenticate.
+      window.location.href = '/hr-login';
+    } else {
+      // User says no, show insightful administrative message and revert selection.
+      let roleTitle = hrLevelDetails[targetLvl].title.split(': ')[1];
+      Swal.fire({
+        title: '<span style="color:#e05c5c;">🔒 Authorization Required</span>',
+        html: `
+          <div style="text-align: left; font-size: 13.5px; line-height: 1.6; color: #94a3b8; font-family: sans-serif;">
+            <p style="margin-bottom: 12px;">Accessing the <strong style="color: #fff;">${roleTitle}</strong> role requires verified system credentials allocated by the TEN Global Administration.</p>
+            <p style="margin-bottom: 12px; font-weight: 600; color: #D4AF37;">📋 Path to Promotion & Access:</p>
+            <ul style="margin-left: 20px; margin-bottom: 14px; list-style-type: disc; padding-left: 0;">
+              <li style="margin-bottom: 6px;">Maintain full attendance compliance and hit 100% KPI score on your weekly task submissions.</li>
+              <li style="margin-bottom: 6px;">Promotions are reviewed dynamically based on domain activity and coordinator referrals.</li>
+              <li style="margin-bottom: 6px;">For temporary delegation or audit permission, contact the <strong style="color:#d946ef;">Chief Human Resources Officer (CHRO)</strong> or the Executive Board.</li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 12px; color: #8aa4c8; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">Your currently verified active session (Level ${activeHRLevel}) is safely preserved.</p>
+          </div>
+        `,
+        icon: 'info',
+        background: '#0c1220',
+        color: '#f0eee8',
+        confirmButtonColor: '#f5c542'
+      });
+      // Revert the selector dropdown back to the authorized level
+      document.getElementById('hrLevelSwitcher').value = activeHRLevel;
+    }
   });
-  
-  applyHRLevelPrivileges();
-  showView('overview');
 }
 
 function applyHRLevelPrivileges() {
   const info = hrLevelDetails[activeHRLevel];
   
+  // Apply distinct visual skinning based on the active HR level
+  const skins = {
+    1: { accent: '#8b5cf6', accentDim: '#6d28d9', border: 'rgba(139, 92, 246, 0.12)', borderGlow: 'rgba(139, 92, 246, 0.28)', surface: '#06030c', card: '#0b0617', card2: '#0e081f' },
+    2: { accent: '#10b981', accentDim: '#047857', border: 'rgba(16, 185, 129, 0.12)', borderGlow: 'rgba(16, 185, 129, 0.28)', surface: '#010805', card: '#03140e', card2: '#041b13' },
+    3: { accent: '#f97316', accentDim: '#c2410c', border: 'rgba(249, 115, 22, 0.12)', borderGlow: 'rgba(249, 115, 22, 0.28)', surface: '#0c0501', card: '#180a03', card2: '#200e04' },
+    4: { accent: '#06b6d4', accentDim: '#0891b2', border: 'rgba(6, 182, 212, 0.12)', borderGlow: 'rgba(6, 182, 212, 0.28)', surface: '#01080a', card: '#03141a', card2: '#041b22' },
+    5: { accent: '#f43f5e', accentDim: '#be123c', border: 'rgba(244, 63, 94, 0.12)', borderGlow: 'rgba(244, 63, 94, 0.28)', surface: '#0a0104', card: '#18030a', card2: '#20040d' },
+    6: { accent: '#94a3b8', accentDim: '#475569', border: 'rgba(148, 163, 184, 0.12)', borderGlow: 'rgba(148, 163, 184, 0.28)', surface: '#08090a', card: '#101215', card2: '#14171b' },
+    7: { accent: '#f5c542', accentDim: '#c9a227', border: 'rgba(245, 197, 66, 0.12)', borderGlow: 'rgba(245, 197, 66, 0.28)', surface: '#04070f', card: '#0c1220', card2: '#0e1628' },
+    8: { accent: '#d946ef', accentDim: '#a21caf', border: 'rgba(217, 70, 239, 0.12)', borderGlow: 'rgba(217, 70, 239, 0.28)', surface: '#09020b', card: '#130417', card2: '#1b0621' }
+  };
+  const sk = skins[activeHRLevel] || skins[7];
+  
+  document.documentElement.style.setProperty('--gold', sk.accent);
+  document.documentElement.style.setProperty('--gold2', sk.accentDim);
+  document.documentElement.style.setProperty('--border', sk.border);
+  document.documentElement.style.setProperty('--border-glow', sk.borderGlow);
+  document.documentElement.style.setProperty('--surface', sk.surface);
+  document.documentElement.style.setProperty('--card', sk.card);
+  document.documentElement.style.setProperty('--card2', sk.card2);
+
+  // Security Visibility constraint logic — Founders & Startups, Investors Deals are STRICTLY restricted to Level 8 Supreme Admin
+  const isL8 = (activeHRLevel === 8);
+  const fCard = document.getElementById('eco-card-founders');
+  const iCard = document.getElementById('eco-card-investors');
+  const fBtn = document.getElementById('eco-btn-founders');
+  const iBtn = document.getElementById('eco-btn-investors');
+
+  if(fCard) fCard.style.display = isL8 ? 'block' : 'none';
+  if(iCard) iCard.style.display = isL8 ? 'block' : 'none';
+  if(fBtn) fBtn.style.display = isL8 ? 'flex' : 'none';
+  if(iBtn) iBtn.style.display = isL8 ? 'flex' : 'none';
+
   document.getElementById('hrLevelWelcomeIcon').textContent = info.icon;
   document.getElementById('hrLevelWelcomeTitle').textContent = info.title;
   document.getElementById('hrLevelWelcomeDesc').textContent = info.desc;

@@ -129,13 +129,31 @@ function getRoleConfig(req, res) {
 // Helper to generate legacy Employee ID
 async function generateEmployeeId(domain) {
   const domainShortCodes = {
-    "Web Development": "WEB",
-    "Data Science": "DS",
-    "Machine Learning": "ML",
-    "Android": "AND",
-    "UI/UX": "UIUX",
-    "Digital Marketing": "MKTG",
-    "General": "GEN"
+    "DevOps with AWS":          "DEVOPS",
+    "Python Development":       "PY",
+    "Java Development":         "JAVA",
+    "Web Development":          "WEB",
+    "MERN Stack Development":   "MERN",
+    "MERN Stack Dev":           "MERN",
+    "Artificial Intelligence":  "AI",
+    "Data Science":             "DS",
+    "Cyber Security":           "CYBER",
+    "Software Engineering":     "SDE",
+    "Flutter Development":      "FLUTTER",
+    "HR Management":            "HRMGMT",
+    "Venture Capital":           "VC",
+    "Vibe Coding":               "VIBE",
+    "Space Research":            "SPACE",
+    "Business Analyst":          "BA",
+    "HR":                        "HR",
+    "Business Development":      "BD",
+    "Space Intern":              "SPACE",
+    "Finance":                   "FIN",
+    "Machine Learning":          "ML",
+    "Android":                   "AND",
+    "UI/UX":                     "UIUX",
+    "Digital Marketing":         "MKTG",
+    "General":                   "GEN"
   };
   const shortCode = domainShortCodes[domain] || "GEN";
   const totalStudents = await Student.countDocuments();
@@ -186,7 +204,8 @@ async function registerUser(req, res) {
       email:    trimmedEmail,
       password: hashedPassword,
       role:     role,
-      phone:    roleSpecificData.mobile || ""
+      phone:    roleSpecificData.mobile || "",
+      isVerified: true
     });
 
     let genMemberId = '';
@@ -227,7 +246,7 @@ async function registerUser(req, res) {
         resume: roleSpecificData.resume || "",
         linkedin: roleSpecificData.linkedin || "",
         portfolio: roleSpecificData.portfolio || "",
-        verificationStatus: 'pending'
+        verificationStatus: 'approved'
       });
 
       // BACKWARD COMPATIBILITY: also create legacy Student document in students collection
@@ -259,7 +278,8 @@ async function registerUser(req, res) {
           twitter: "",
           website: roleSpecificData.portfolio || ""
         },
-        visibility: 'public'
+        visibility: 'public',
+        isVerified: true
       });
     }
 
@@ -313,7 +333,7 @@ async function registerUser(req, res) {
         description: roleSpecificData.description || "",
         location: "",
         lookingFor: chosenLookingFor,
-        verificationStatus: 'pending'
+        verificationStatus: 'approved'
       });
 
       // Create startup_profiles
@@ -339,7 +359,7 @@ async function registerUser(req, res) {
         memberId: genMemberId,
         headline: `${roleSpecificData.designation} at ${roleSpecificData.company}`,
         linkedinUrl: roleSpecificData.linkedin || "",
-        verificationStatus: 'pending'
+        verificationStatus: 'approved'
       });
 
       // Automatically create Talent Profile for mentors
@@ -353,7 +373,8 @@ async function registerUser(req, res) {
           twitter: "",
           website: ""
         },
-        visibility: 'public'
+        visibility: 'public',
+        isVerified: true
       });
     }
 
@@ -365,7 +386,7 @@ async function registerUser(req, res) {
         fundName: roleSpecificData.firmName || "",
         investorType: 'vc',
         thesis: `Investing in ${roleSpecificData.industryFocus || "tech startups"} at ${roleSpecificData.investmentStage || "seed"} stage.`,
-        verificationStatus: 'pending',
+        verificationStatus: 'approved',
         website: roleSpecificData.website || ""
       });
     }
@@ -383,7 +404,7 @@ async function registerUser(req, res) {
         portfolio: roleSpecificData.portfolio || "",
         hourlyRate: roleSpecificData.hourlyRate || 0,
         availability: roleSpecificData.availability || "Immediately",
-        verificationStatus: 'pending'
+        verificationStatus: 'approved'
       });
 
       // Automatically create Talent Profile for contractors
@@ -397,7 +418,8 @@ async function registerUser(req, res) {
           twitter: "",
           website: roleSpecificData.portfolio || ""
         },
-        visibility: 'public'
+        visibility: 'public',
+        isVerified: true
       });
     }
 

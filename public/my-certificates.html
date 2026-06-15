@@ -228,7 +228,7 @@ function renderError(msg) {
 }
 
 function renderCerts(d) {
-  const types = ['expert', 'nano_degree'];
+  const types = ['expert', 'nano_degree', 'fellowship'];
   let html = '';
 
   for (const type of types) {
@@ -236,7 +236,8 @@ function renderCerts(d) {
     const certInfo = d[type];
     const unlocked = certInfo?.unlocked;
     const pct      = certInfo?.completionPct || 0;
-    const threshold= type === 'expert' ? 30 : 70;
+    const rankPct  = d.fellowship?.cohortRankPct ?? 50;
+    const threshold= type === 'expert' ? 30 : type === 'nano_degree' ? 70 : 10;
     const record   = certInfo?.record;
     const price    = d.prices?.[type] || 0;
 
@@ -253,7 +254,11 @@ function renderCerts(d) {
     // Action button
     let actionBtn = '';
     if (!unlocked) {
-      actionBtn = `<button class="cert-action-btn locked">🔒 Locked — ${threshold}% completion needed (${Math.min(100,pct)}% done)</button>`;
+      if (type === 'fellowship') {
+        actionBtn = `<button class="cert-action-btn locked">🔒 Locked — Top 10% ranking needed (Current rank: Top ${rankPct}%)</button>`;
+      } else {
+        actionBtn = `<button class="cert-action-btn locked">🔒 Locked — ${threshold}% completion needed (${Math.min(100,pct)}% done)</button>`;
+      }
     } else if (record?.pdfUrl) {
       actionBtn = `<button class="cert-action-btn claimed-btn" onclick="downloadCert('${record.pdfUrl}','${type}')">⬇ Download Certificate</button>`;
     } else {
@@ -261,7 +266,17 @@ function renderCerts(d) {
       actionBtn = `<button class="cert-action-btn claim-btn" onclick="claimCert('${type}')">🎉 ${payLabel}</button>`;
     }
 
-    const barPct = Math.min(100, Math.round((pct / threshold) * 100));
+    let barPct;
+    let labelLeft = 'Progress';
+    let labelRight = `${pct}% / ${threshold}%`;
+    
+    if (type === 'fellowship') {
+      labelLeft = 'Cohort Rank';
+      labelRight = `Top ${rankPct}% (Needs Top 10%)`;
+      barPct = Math.min(100, Math.max(0, 100 - rankPct));
+    } else {
+      barPct = Math.min(100, Math.round((pct / threshold) * 100));
+    }
 
     html += `
     <div class="cert-card ${type}">
@@ -275,67 +290,10 @@ function renderCerts(d) {
         <div class="cert-name">${unlocked ? '🎉 ' : ''}${info.name}</div>
         <div class="cert-desc">${info.desc}</div>
         <div class="cert-prog-wrap">
-          <div class="cert-prog-label"><span>Progress</span><span>${pct}% / ${threshold}%</span></div>
+          <div class="cert-prog-label"><span>${labelLeft}</span><span>${labelRight}</span></div>
           <div class="cert-prog-track"><div class="cert-prog-fill" style="width:${barPct}%"></div></div>
         </div>
         ${actionBtn}
-      </div>
-    </div>`;
-  }
-
-  // Fellowship — always show (mystery if ineligible, full if eligible)
-  const fw        = d.fellowship || {};
-  const fwEligible = fw.unlocked;
-  const fwRecord   = fw.record;
-  const rankPct    = fw.cohortRankPct ?? 50;
-  const fwPrice    = d.prices?.fellowship || 2500;
-
-  if (fwEligible) {
-    // Full fellowship card
-    let fwAction = '';
-    if (fwRecord?.pdfUrl) {
-      fwAction = `<button class="cert-action-btn claimed-btn" onclick="downloadCert('${fwRecord.pdfUrl}','fellowship')">⬇ Download Certificate</button>`;
-    } else {
-      const fwLabel = d.paymentEnabled ? `Claim It → ₹${fwPrice}` : `Claim It (Payment coming soon)`;
-      fwAction = `<button class="cert-action-btn claim-btn" onclick="claimCert('fellowship')">✨ ${fwLabel}</button>`;
-    }
-    const fwBar = Math.max(0, 100 - rankPct);
-    html += `
-    <div class="cert-card fellowship">
-      <div class="cert-card-header"><div class="cert-tier-badge">TIER 3 — ₹${fwPrice}</div></div>
-      <div class="cert-preview-area">
-        <div class="cert-preview-bg">
-          <div class="cert-name-preview">✨ Fellowship Unlocked</div>
-        </div>
-      </div>
-      <div class="cert-body">
-        <div class="cert-name">🎉 Fellowship</div>
-        <div class="cert-desc">Top 10% of cohort — a title, not just a certificate</div>
-        <div class="cert-prog-wrap">
-          <div class="cert-prog-label"><span>Cohort ranking</span><span>Top ${rankPct}% ✓</span></div>
-          <div class="cert-prog-track"><div class="cert-prog-fill" style="width:${fwBar}%"></div></div>
-        </div>
-        ${fwAction}
-      </div>
-    </div>`;
-  } else {
-    // Mystery card — Zeigarnik Effect: show locked card to create curiosity
-    const rankDisplay = rankPct < 100 ? `${Math.round(rankPct)}% rank` : 'Calculating...';
-    html += `
-    <div class="mystery-card">
-      <div class="mystery-preview">
-        <div class="mystery-orb">🔮</div>
-        <div class="mystery-qmarks">? ? ?</div>
-        <div class="mystery-sub">Something rare awaits the best performers</div>
-      </div>
-      <div class="cert-body">
-        <div class="cert-name" style="color:rgba(139,92,246,0.7);">? ? ?</div>
-        <div class="cert-desc">Reserved for top performers only</div>
-        <div class="cert-prog-wrap">
-          <div class="mystery-rank-row"><span>Your rank</span><span id="cohort-rank-display">${rankDisplay}</span></div>
-          <div class="cert-prog-track"><div class="cert-prog-fill" style="width:0%;background:rgba(139,92,246,0.3)"></div></div>
-        </div>
-        <div class="mystery-locked-badge">🔒 Keep going — top performers unlock this</div>
       </div>
     </div>`;
   }

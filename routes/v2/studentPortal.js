@@ -894,4 +894,514 @@ router.post("/student/quiz-result", requireStudent, async (req, res) => {
     }
 });
 
+// ────────────────────────────────────────────────
+// POST /api/v2/automated-tasks/generate
+// ────────────────────────────────────────────────
+router.post("/automated-tasks/generate", requireStudent, async (req, res) => {
+    try {
+        const student = req.student;
+        const { GoogleGenAI, Type } = require("@google/genai");
+
+        const domain = student.domain || "Web Development";
+        const durationMap = { "1 Month": "1month", "3 Months": "3months", "6 Months": "6months" };
+        const durationType = durationMap[student.tenure] || student.v2DurationType || "3months";
+
+        const approvedCount = await StudentTaskProgress.countDocuments({ studentId: student._id, status: "approved" });
+        let difficultyLevel = req.body.difficultyLevel;
+        if (!difficultyLevel) {
+            difficultyLevel = approvedCount >= 5 ? "hard" : approvedCount >= 2 ? "medium" : "easy";
+        }
+
+        const ai = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY,
+            httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+        });
+
+        const prompt = `Generate a highly professional, domain-specific, resume-building internship task.
+Domain: ${domain}
+Skill level: ${difficultyLevel} (easy, medium, hard, expert).
+
+You MUST return a JSON object following the format below. Create a realistic, challenging, and detailed real-world scenario.`;
+
+        let generated;
+        try {
+            const geminiRes = await ai.models.generateContent({
+                model: "gemini-3.5-flash",
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            description: { type: Type.STRING },
+                            deliverables: { type: Type.STRING },
+                            complexity: { type: Type.STRING },
+                            learningVideos: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        description: { type: Type.STRING },
+                                        url: { type: Type.STRING }
+                                    },
+                                    required: ["title", "description", "url"]
+                                },
+                                required: ["title", "description", "url"]
+                            }
+                        },
+                        required: ["title", "description", "deliverables", "complexity", "learningVideos"]
+                    }
+                }
+            });
+            generated = JSON.parse(geminiRes.text);
+        } catch(e) {
+            console.warn("[V2] Gemini task generation failed or quota exceeded, using high quality local fallback:", e.message);
+            generated = {
+                title: `Automated Practice: Modern ${domain} Architectures`,
+                description: `Design and optimize a production-ready application focusing on modularity, scalability, and structural performance within ${domain} ecosystems.`,
+                deliverables: `1. Fully functional GitHub source code.\n2. In-depth architecture specification document.\n3. Detailed screen-cast demonstration.`,
+                complexity: difficultyLevel,
+                learningVideos: [
+                    { title: "Industrial Software Layouts", description: "Design principles of production systems.", url: "https://www.youtube.com/watch?v=mU6anWqZJcc" },
+                    { title: "System Execution & Scaling", description: "Techniques for managing enterprise data loads safely.", url: "https://www.youtube.com/watch?v=G3e-cpL7ofc" },
+                    { title: "Defensive Coding and Coverage", description: "Formulating proper unit regression plans.", url: "https://www.youtube.com/watch?v=Oe421EPjeBE" }
+                ]
+            };
+        }
+
+        const maxTask = await DomainTask.findOne({ domain, durationType }).sort({ weekNumber: -1 });
+        const nextWeek = maxTask ? maxTask.weekNumber + 1 : 1;
+
+        const newTask = new DomainTask({
+            domain,
+            durationType,
+            weekNumber: nextWeek,
+            taskTitle: generated.title,
+            taskDescription: `${generated.description}\n\nDeliverables:\n${generated.deliverables}`,
+            videoUrl: generated.learningVideos?.[0]?.url || "https://www.youtube.com/watch?v=mU6anWqZJcc",
+            fallbackVideoUrl: generated.learningVideos?.[1]?.url || "https://www.youtube.com/watch?v=G3e-cpL7ofc",
+            coinReward: 20,
+            difficultyLevel: generated.complexity || difficultyLevel
+        });
+
+        newTask.set("learningVideos", generated.learningVideos || [], { strict: false });
+        await newTask.save();
+
+        const newProgress = new StudentTaskProgress({
+            studentId: student._id,
+            taskId: newTask._id,
+            status: "available",
+            videoWatchedPercent: 0
+        });
+        await newProgress.save();
+
+        try {
+            const Notification = require("../../models/Notification");
+            await Notification.notifyStudent(student, {
+                title: "New Automated Task Assigned",
+                message: `An automated ${difficultyLevel} task: "${generated.title}" has been added to your curriculum space!`,
+                type: "success"
+            });
+        } catch(e) { /* silent */ }
+
+        res.json({
+            success: true,
+            taskId: newTask._id,
+            task: {
+                title: newTask.taskTitle,
+                description: newTask.taskDescription,
+                weekNumber: newTask.weekNumber,
+                difficultyLevel: newTask.difficultyLevel,
+                learningVideos: generated.learningVideos || []
+            }
+        });
+
+    } catch(err) {
+        console.error("[V2] automated-tasks generator error:", err.message);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+});
+
+// ────────────────────────────────────────────────
+// POST /api/v2/coding-challenges/generate
+// ────────────────────────────────────────────────
+router.post("/coding-challenges/generate", requireStudent, async (req, res) => {
+    try {
+        const student = req.student;
+        const { GoogleGenAI, Type } = require("@google/genai");
+
+        const domain = student.domain || "Web Development";
+        const approvedCount = await StudentTaskProgress.countDocuments({ studentId: student._id, status: "approved" });
+        const level = approvedCount >= 5 ? "Hard" : approvedCount >= 2 ? "Medium" : "Easy";
+
+        const ai = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY,
+            httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+        });
+
+        const prompt = `Generate a modern algorithmic programming problem targeting ${domain} concepts.
+Difficulty: ${level} (choose from Easy, Medium, Hard).
+Output strict schema JSON format with input/output cases.`;
+
+        let generated;
+        try {
+            const geminiRes = await ai.models.generateContent({
+                model: "gemini-3.5-flash",
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            problemStatement: { type: Type.STRING },
+                            inputFormat: { type: Type.STRING },
+                            outputFormat: { type: Type.STRING },
+                            sampleInput: { type: Type.STRING },
+                            sampleOutput: { type: Type.STRING },
+                            testCases: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        input: { type: Type.STRING },
+                                        output: { type: Type.STRING }
+                                    },
+                                    required: ["input", "output"]
+                                }
+                            }
+                        },
+                        required: ["title", "problemStatement", "inputFormat", "outputFormat", "sampleInput", "sampleOutput", "testCases"]
+                    }
+                }
+            });
+            generated = JSON.parse(geminiRes.text);
+        } catch(e) {
+            console.warn("[V2] Gemini coding challange generation failed or quota exceeded, using fallback:", e.message);
+            generated = {
+                title: `Resource Tuning Optimization in ${domain}`,
+                problemStatement: `Develop a runtime solver to eliminate redundant payload latency overhead in ${domain}. All logic must adhere to clean modular execution patterns.`,
+                inputFormat: "An array of integers specifying query durations.",
+                outputFormat: "Minimum aggregate resource delay value.",
+                sampleInput: "4 8 1 2",
+                sampleOutput: "15",
+                testCases: [
+                    { input: "4 8 1 2", output: "15" },
+                    { input: "1 2 3", output: "6" }
+                ]
+            };
+        }
+
+        const CodingQuestion = mongoose.model("CodingQuestion");
+        const parsedCases = (generated.testCases || []).map(tc => ({
+            input: tc.input || "",
+            expectedOutput: tc.output || "",
+            isHidden: false
+        }));
+
+        const newQuestion = new CodingQuestion({
+            domain,
+            title: generated.title,
+            description: `${generated.problemStatement}\n\nInput Format:\n${generated.inputFormat}\n\nOutput Format:\n${generated.outputFormat}`,
+            inputFormat: generated.inputFormat,
+            outputFormat: generated.outputFormat,
+            sampleInput: generated.sampleInput,
+            sampleOutput: generated.sampleOutput,
+            difficulty: level,
+            testCases: parsedCases
+        });
+        await newQuestion.save();
+
+        try {
+            const Notification = require("../../models/Notification");
+            await Notification.notifyStudent(student, {
+                title: "New Automated Coding Challenge",
+                message: `The dynamic custom coding exercise: "${newQuestion.title}" is ready on your dashboard!`,
+                type: "info"
+            });
+        } catch(e) { /* silent */ }
+
+        res.json({
+            success: true,
+            challengeId: newQuestion._id,
+            challenge: {
+                title: newQuestion.title,
+                problemStatement: generated.problemStatement,
+                inputFormat: newQuestion.inputFormat,
+                outputFormat: newQuestion.outputFormat,
+                sampleInput: newQuestion.sampleInput,
+                sampleOutput: newQuestion.sampleOutput,
+                difficulty: newQuestion.difficulty,
+                testCasesCount: parsedCases.length
+            }
+        });
+
+    } catch(err) {
+        console.error("[V2] coding-challenges dynamic generation error:", err.message);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+});
+
+// ────────────────────────────────────────────────
+// POST /api/v2/quizzes/generate
+// ────────────────────────────────────────────────
+router.post("/quizzes/generate", requireStudent, async (req, res) => {
+    try {
+        const student = req.student;
+        const { taskId } = req.body;
+        const { GoogleGenAI, Type } = require("@google/genai");
+
+        let targetTaskId = taskId;
+        if (!targetTaskId) {
+            const activeProgress = await StudentTaskProgress.findOne({ studentId: student._id, status: { $in: ["available", "in_progress"] } });
+            if (activeProgress) targetTaskId = activeProgress.taskId;
+        }
+
+        if (!targetTaskId) {
+            return res.status(400).json({ success: false, message: "No active task found to generate quiz questions for." });
+        }
+
+        const task = await DomainTask.findById(targetTaskId);
+        if (!task) return res.status(404).json({ success: false, message: "Reference task not found." });
+
+        const ai = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY,
+            httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+        });
+
+        const prompt = `Generate exactly 5 highly technical, distinct multiple-choice questions matching domain: ${task.domain} and topic: ${task.taskTitle || ""}.
+For each question, formulate very clear conceptual options, specify the single correct choice (A, B, C, or D), and write a robust, diagnostic explanation explaining why the correct and incorrect answers behave the way they do (to serve as diagnostic learning feedback for students).`;
+
+        let generatedQuestions;
+        try {
+            const geminiRes = await ai.models.generateContent({
+                model: "gemini-3.5-flash",
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                question: { type: Type.STRING },
+                                options: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        A: { type: Type.STRING },
+                                        B: { type: Type.STRING },
+                                        C: { type: Type.STRING },
+                                        D: { type: Type.STRING }
+                                    },
+                                    required: ["A", "B", "C", "D"]
+                                },
+                                correct: { type: Type.STRING, description: "A, B, C, or D" },
+                                explanation: { type: Type.STRING, description: "In-depth explanation with diagnostic details" }
+                            },
+                            required: ["question", "options", "correct", "explanation"]
+                        }
+                    }
+                }
+            });
+            generatedQuestions = JSON.parse(geminiRes.text);
+        } catch(e) {
+            console.warn("[V2] Gemini quiz generation failed or quota exceeded, using high quality local fallback:", e.message);
+            generatedQuestions = [
+                {
+                    question: `Which pattern is ideal for managing asynchronous state changes in highly concurrent ${task.domain} components?`,
+                    options: {
+                        A: "Synchronous blocking wrappers",
+                        B: "Stateless queue pipelines (Idempotent worker style)",
+                        C: "Poll loops with fixed sleep intervals",
+                        D: "Global absolute registers with strict mutex"
+                    },
+                    correct: "B",
+                    explanation: "B is correct because stateless pipelines allow massive scaling without concurrent locking deadlocks or memory leak overhead."
+                },
+                {
+                    question: `What is the primary benefit of deploying modularized microservice patterns in ${task.domain} environments?`,
+                    options: {
+                        A: "Guaranteed absolute execution lockouts",
+                        B: "Strict linear call constraints",
+                        C: "Independent horizontal scaling capabilities",
+                        D: "Complete elimination of interface structures"
+                    },
+                    correct: "C",
+                    explanation: "C is correct as microservices decoupled along domain boundaries allow targeted scaling of heavily loaded segments without scaling the entire architecture."
+                },
+                {
+                    question: `How does a custom throttle debouncer secure resource interfaces on high-frequency visual user events?`,
+                    options: {
+                        A: "By multiplying state transitions exponentially",
+                        B: "By pooling API invocations into a delayed single execution trigger",
+                        C: "By converting visual UI components into static images",
+                        D: "By disabling user interactions completely"
+                    },
+                    correct: "B",
+                    explanation: "B is correct. Debouncing groups rapid sequential calls into one delayed invocation to reduce redundant payload performance bottlenecks."
+                },
+                {
+                    question: `Which mechanism handles thread/process safety best in non-blocking asynchronous runtimes?`,
+                    options: {
+                        A: "Single-threaded event loops with event queue architectures",
+                        B: "Continuous busy-wait spinlocks",
+                        C: "Direct hardware level interrupts on client machines",
+                        D: "Manual register swapping on runtime engines"
+                    },
+                    correct: "A",
+                    explanation: "A is correct. An event-loop style processes visual and network callbacks sequentially, preventing concurrent write clashes on the single main execution thread."
+                },
+                {
+                    question: `In production application architecture, what is the core purpose of a circuit breaker pattern?`,
+                    options: {
+                        A: "To increase structural hardware electric impedance",
+                        B: "To prevent a single trailing downstream API failure from cascading across system layers",
+                        C: "To format diagnostic logs to visual panels",
+                        D: "To lock user accounts upon incorrect credential checks"
+                    },
+                    correct: "B",
+                    explanation: "B is correct. Short-circuiting dead services shields upstream system threads from indefinitely blocking on non-responsive external dependencies."
+                }
+            ];
+        }
+
+        const QuizQuestion = require("../../models/new/QuizQuestion");
+        const inserted = [];
+        for (const item of generatedQuestions) {
+            const newQ = new QuizQuestion({
+                task_id: task._id,
+                domain: task.domain,
+                week_number: task.weekNumber,
+                duration_type: task.durationType,
+                question_text: item.question,
+                options: {
+                    A: item.options.A,
+                    B: item.options.B,
+                    C: item.options.C,
+                    D: item.options.D
+                },
+                correct_answer: item.correct,
+                explanation: item.explanation,
+                difficulty: "hard"
+            });
+            await newQ.save();
+            inserted.push(newQ);
+        }
+
+        res.json({
+            success: true,
+            taskId: task._id,
+            generatedCount: inserted.length,
+            questions: inserted.map(q => ({
+                question_text: q.question_text,
+                options: q.options,
+                difficulty: q.difficulty
+            }))
+        });
+
+    } catch(err) {
+        console.error("[V2] quizzes generator error:", err.message);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+});
+
+// ────────────────────────────────────────────────
+// POST /api/v2/daily-learning/generate
+// ────────────────────────────────────────────────
+router.post("/daily-learning/generate", requireStudent, async (req, res) => {
+    try {
+        const student = req.student;
+        const { GoogleGenAI, Type } = require("@google/genai");
+
+        const domain = student.domain || "Web Development";
+
+        const ai = new GoogleGenAI({
+            apiKey: process.env.GEMINI_API_KEY,
+            httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+        });
+
+        const prompt = `Formulate a short 5-minute micro-learning topic card with real practical guidance and a miniature diagnostic quiz question for the domain: ${domain}.
+The response MUST follow the strict JSON format matching the schema rules. Make sure the technical tips are actionable.`;
+
+        let generated;
+        try {
+            const geminiRes = await ai.models.generateContent({
+                model: "gemini-3.5-flash",
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            conceptTitle: { type: Type.STRING },
+                            quickTipBody: { type: Type.STRING, description: "Highly actionable paragraph with technical implementation snippet or architectural best practice." },
+                            quickQuiz: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    question: { type: Type.STRING },
+                                    options: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            A: { type: Type.STRING },
+                                            B: { type: Type.STRING },
+                                            C: { type: Type.STRING },
+                                            D: { type: Type.STRING }
+                                        },
+                                        required: ["A", "B", "C", "D"]
+                                    },
+                                    answer: { type: Type.STRING },
+                                    explanation: { type: Type.STRING }
+                                },
+                                required: ["question", "options", "answer", "explanation"]
+                            }
+                        },
+                        required: ["conceptTitle", "quickTipBody", "quickQuiz"]
+                    }
+                }
+            });
+            generated = JSON.parse(geminiRes.text);
+        } catch(e) {
+            console.warn("[V2] Gemini daily-learning generation failed or quota exceeded, using fallback:", e.message);
+            generated = {
+                conceptTitle: "Idempotent API Design",
+                quickTipBody: "Always implement a unique Client-Request-Id header in state-mutating requests (POST/PUT) to shield backend systems against multi-submit duplication during retry pipelines.",
+                quickQuiz: {
+                    question: "Which HTTP verb is natively idempotent in the HTTP specification?",
+                    options: {
+                        A: "POST",
+                        B: "PATCH",
+                        C: "GET",
+                        D: "NONE"
+                    },
+                    answer: "C",
+                    explanation: "GET requests are defined as safe and completely idempotent as they only query backend representation without mutation."
+                }
+            };
+        }
+
+        // Trigger in-app notification with micro-learning info!
+        try {
+            const Notification = require("../../models/Notification");
+            await Notification.notifyStudent(student, {
+                title: `Daily Micro-Learning: ${generated.conceptTitle}`,
+                message: `Morning boost is live! Tip of the day: ${generated.conceptTitle}. Tap card to expand!`,
+                type: "info"
+            });
+        } catch(e) { /* silent */ }
+
+        res.json({
+            success: true,
+            conceptTitle: generated.conceptTitle,
+            quickTipBody: generated.quickTipBody,
+            quickQuiz: generated.quickQuiz
+        });
+
+    } catch(err) {
+        console.error("[V2] daily-learning generator error:", err.message);
+        res.status(500).json({ success: false, message: "Internal server error" });
+    }
+});
+
 module.exports = router;

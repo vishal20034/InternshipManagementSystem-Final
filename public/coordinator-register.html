@@ -190,7 +190,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  max-height: 240px;
+  max-height: 350px;
   overflow-y: auto;
   padding-right: 6px;
 }
@@ -344,6 +344,9 @@ body {
         <p class="card-sub">Choose your target workspace. Only one active coordinator is authorized per domain.</p>
 
         <div class="domain-cards" id="domainSelectorGrid">
+          <!-- Technical Domains Group -->
+          <div style="grid-column: span 2; font-family:var(--ten-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color:var(--ten-gold); margin: 6px 0 2px 0; border-bottom: 1px dashed rgba(212,175,55,0.2); padding-bottom: 4px;">Technical Domains</div>
+
           <div class="domain-card" onclick="selectOnboardingDomain('Web Development')">
             <span style="font-weight:700;color:#fff;font-size:13px;">Web Development</span>
             <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Front/Back Frameworks</span>
@@ -375,6 +378,38 @@ body {
           <div class="domain-card" onclick="selectOnboardingDomain('Cyber Security')">
             <span style="font-weight:700;color:#fff;font-size:13px;">Cyber Security</span>
             <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Pen testing & Systems</span>
+          </div>
+          <div class="domain-card" onclick="selectOnboardingDomain('Software Engineering')">
+            <span style="font-weight:700;color:#fff;font-size:13px;">Software Engineering</span>
+            <span style="color:#94a3b8;font-size:11px;margin-top:2px;">SDLC & Architecture</span>
+          </div>
+          <div class="domain-card" onclick="selectOnboardingDomain('Flutter Development')">
+            <span style="font-weight:700;color:#fff;font-size:13px;">Flutter Development</span>
+            <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Cross-Platform Mobile</span>
+          </div>
+
+          <!-- Business / Non-Technical Domains Group -->
+          <div style="grid-column: span 2; font-family:var(--ten-font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color:#38bdf8; margin: 12px 0 2px 0; border-bottom: 1px dashed rgba(56,189,248,0.2); padding-bottom: 4px;">Business & Non-Technical</div>
+
+          <div class="domain-card" onclick="selectOnboardingDomain('Business Development')">
+            <span style="font-weight:700;color:#fff;font-size:13px;">Business Development</span>
+            <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Sales & Strategy</span>
+          </div>
+          <div class="domain-card" onclick="selectOnboardingDomain('HR')">
+            <span style="font-weight:700;color:#fff;font-size:13px;">HR</span>
+            <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Talent & Recruiting</span>
+          </div>
+          <div class="domain-card" onclick="selectOnboardingDomain('Space Intern')">
+            <span style="font-weight:700;color:#fff;font-size:13px;">Space Intern</span>
+            <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Cosmic Applications</span>
+          </div>
+          <div class="domain-card" onclick="selectOnboardingDomain('Venture Capital')">
+            <span style="font-weight:700;color:#fff;font-size:13px;">Venture Capital</span>
+            <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Startup Deals & Funding</span>
+          </div>
+          <div class="domain-card" onclick="selectOnboardingDomain('Finance')">
+            <span style="font-weight:700;color:#fff;font-size:13px;">Finance</span>
+            <span style="color:#94a3b8;font-size:11px;margin-top:2px;">Planning & Accounting</span>
           </div>
         </div>
 
