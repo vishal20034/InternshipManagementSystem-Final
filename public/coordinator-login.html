@@ -403,7 +403,7 @@ form.addEventListener("submit", async (e) => {
       Swal.fire({
         icon: "error",
         title: "Login Failed",
-        text: "Invalid Username or Password",
+        text: data.message || "Invalid Username or Password",
         background: "#0e1428",
         color: "#F0EEE8",
         confirmButtonColor: "#ef4444"
