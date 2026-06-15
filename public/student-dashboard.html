@@ -2176,14 +2176,46 @@ if(!student){
         if (s.joiningDate)  stored.joiningDate  = s.joiningDate;
         if (s.internshipEnd) stored.internshipEnd = s.internshipEnd;
         if (s.endDate)      stored.endDate      = s.endDate;
+        if (s.domains)      stored.domains      = s.domains;
+        if (s.linkedDomains) stored.linkedDomains = s.linkedDomains;
         localStorage.setItem('student', JSON.stringify(stored));
+        Object.assign(student, stored);
+        if (typeof recalculateDomains === 'function') {
+          recalculateDomains();
+        }
+        if (typeof setupDomainToggle === 'function') {
+          setupDomainToggle();
+        }
       })
       .catch(function(){});
   } catch(e) {}
 })();
 
 const employeeId = student.employeeId;
-const domain = student.domain;
+let domain = student.domain;
+
+let allDomains = (student.domains && student.domains.length > 0)
+  ? student.domains
+  : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
+      ? student.linkedDomains.map(function(ld){ return ld.domain; })
+      : [student.domain].filter(Boolean));
+
+let activeDomainIdx = allDomains.indexOf(domain);
+if (activeDomainIdx === -1) activeDomainIdx = 0;
+domain = allDomains[activeDomainIdx];
+
+function recalculateDomains() {
+  allDomains = (student.domains && student.domains.length > 0)
+    ? student.domains
+    : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
+        ? student.linkedDomains.map(function(ld){ return ld.domain; })
+        : [student.domain].filter(Boolean));
+  activeDomainIdx = allDomains.indexOf(domain);
+  if (activeDomainIdx === -1) activeDomainIdx = 0;
+  if (allDomains.length > 0) {
+    domain = allDomains[activeDomainIdx];
+  }
+}
 
 // ── Domain visual config (icon + accent colour) for professional domain branding ──
 const domainConfig = {
@@ -2228,8 +2260,63 @@ document.getElementById("welcomeText").innerText =
 document.getElementById("employeeText").innerText =
   student.employeeId;
 
-document.getElementById("domainText").innerText =
-  "Domain : " + domain;
+// ── DOMAIN TOGGLE SETUP ─────────────────────────────────────────
+function setupDomainToggle() {
+  const container = document.getElementById("domainText");
+  if (!container) return;
+  if (allDomains.length < 2) {
+    container.innerHTML = "Domain : " + domain;
+    return;
+  }
+
+  // Render a sliding toggle/switcher with all domains
+  let buttonsHtml = allDomains.map((dom, idx) => {
+    const isSelected = dom === domain;
+    const cfg = domainConfig[dom] || { icon: "🎓", color: "#3b82f6" };
+    const btnStyle = isSelected 
+      ? `background:${cfg.color}; color:#ffffff; border-color:${cfg.color}; font-weight:700; transform: scale(1.03);`
+      : `background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.12);`;
+    return `
+      <button onclick="switchActiveDomain(${idx})" 
+              style="padding: 6px 14px; border-radius: 20px; border: 1px solid; cursor: pointer; transition: all 0.25s / cubic-bezier(0.4, 0, 0.2, 1); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; outline: none; margin-right: 4px; ${btnStyle}">
+        <span>${cfg.icon}</span> <span>${dom}</span>
+      </button>
+    `;
+  }).join("");
+
+  container.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:8px; margin-top: 6px;">
+      <div style="font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Active Domain</div>
+      <div style="display:inline-flex; flex-wrap:wrap; background:rgba(0,0,0,0.2); padding:4px; border-radius:24px; border:1px solid rgba(255,255,255,0.05); width:fit-content; max-width:100%;">
+        ${buttonsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function switchActiveDomain(idx) {
+  if (idx < 0 || idx >= allDomains.length) return;
+  activeDomainIdx = idx;
+  domain = allDomains[idx];
+
+  // Apply domain colour to accent elements
+  const cfg = domainConfig[domain] || { icon:"🎓", color:"#3b82f6" };
+  document.documentElement.style.setProperty("--domain-color", cfg.color);
+  document.documentElement.style.setProperty("--domain-color-bg", cfg.color + "18");
+  const domainIconEl = document.getElementById("domainIcon");
+  if(domainIconEl) domainIconEl.innerText = cfg.icon;
+
+  // Re-trigger visual updates
+  setupDomainToggle();
+  
+  // Re-load coordinator notice and tasks for the new domain
+  loadNotice();
+  loadCoordinatorTasks();
+  renderTasks();
+}
+
+// Set up domain switcher on load
+setupDomainToggle();
 
 // Apply domain colour to accent elements
 document.documentElement.style.setProperty("--domain-color", dCfg.color);
@@ -2306,7 +2393,7 @@ let coordTasks = [];
 
 async function loadNotice(){
   try{
-    const response = await fetch("/get-notice/" + student.domain);
+    const response = await fetch("/get-notice/" + encodeURIComponent(domain));
     const data = await response.json();
     document.getElementById("noticeTitle").innerText = data.title || "Important Notice";
     document.getElementById("noticeText").innerText = data.importantNotice || "No notice";
@@ -2401,16 +2488,37 @@ function renderTasks(){
     container.innerHTML = `<div class="empty-state">No tasks available for your domain.</div>`;
     return;
   }
-  container.innerHTML = tasks.map((task, index) => `
-    <div class="task-card">
-      <div class="task-card-header">
-        <span class="task-number">TASK ${index+1}</span>
+  container.innerHTML = tasks.map((taskTask, index) => {
+    // Check if there is already a submission for this specific task and domain
+    const sub = latestSubmissions.find(s => s.task === taskTask && s.domain === domain);
+    const isSubmitted = !!sub;
+    const subStatus = sub ? sub.status : null;
+    
+    let btnHtml = "";
+    if (isSubmitted) {
+      btnHtml = `
+        <button class="primary-btn" disabled 
+                style="background:rgba(16,185,129,0.1) !important; color:#34d399 !important; border:1px solid rgba(16,185,129,0.25) !important; cursor:not-allowed; opacity:0.85;">
+          ✓ Submitted (${subStatus})
+        </button>
+      `;
+    } else {
+      btnHtml = `
+        <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task →</button>
+      `;
+    }
+
+    return `
+      <div class="task-card">
+        <div class="task-card-header">
+          <span class="task-number">TASK ${index+1}</span>
+        </div>
+        <h3>${taskTask}</h3>
+        <p>Submit your work with a GitHub link, screenshot, and PDF documentation.</p>
+        ${btnHtml}
       </div>
-      <h3>Submit Task ${index+1}</h3>
-      <p>Submit your work with a GitHub link, screenshot, and PDF documentation.</p>
-      <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task ${index+1} →</button>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 function openSubmissionModal(index){
@@ -2423,12 +2531,22 @@ function closeSubmissionModal(){
   document.getElementById("submissionModal").style.display="none";
 }
 
+let isSubmittingTask = false;
+
 async function submitTask(){
+  if (isSubmittingTask) return;
   try{
     const githubLink = document.getElementById("githubLink").value;
     const note = document.getElementById("note").value;
     const image = document.getElementById("imageFile").files[0];
     const pdf = document.getElementById("pdfFile").files[0];
+
+    isSubmittingTask = true;
+    const submitBtn = document.querySelector("#submissionModal .primary-btn");
+    if (submitBtn) {
+      submitBtn.innerText = "Submitting...";
+      submitBtn.disabled = true;
+    }
 
     const formData = new FormData();
     formData.append("employeeId",employeeId);
@@ -2444,6 +2562,13 @@ async function submitTask(){
 
     if(data.success){
       Swal.fire({icon:"success",title:"Task Submitted",text:"Your task uploaded successfully 🚀",background:"#101820",color:"#ffffff",confirmButtonColor:"#00c853"});
+      
+      // Clear fields
+      document.getElementById("githubLink").value = "";
+      document.getElementById("note").value = "";
+      document.getElementById("imageFile").value = "";
+      document.getElementById("pdfFile").value = "";
+      
       closeSubmissionModal();
       loadStudentSubmissions();
     }else{
@@ -2451,6 +2576,13 @@ async function submitTask(){
     }
   }catch(error){
     console.log(error);
+  } finally {
+    isSubmittingTask = false;
+    const submitBtn = document.querySelector("#submissionModal .primary-btn");
+    if (submitBtn) {
+      submitBtn.innerText = "Submit Task";
+      submitBtn.disabled = false;
+    }
   }
 }
 
@@ -2473,6 +2605,7 @@ async function loadStudentSubmissions(){
       TenExtras2.bulkSubmissionsToolbar({ employeeId: student.employeeId });
     }
     updateStats(submissions);
+    renderTasks();
   }catch(error){
     console.log(error);
   }
