@@ -76,7 +76,7 @@
         <i class="fa-solid fa-circle-info text-slate-500 mt-1"></i>
         <div>
           <h4 class="text-slate-300 text-xs font-semibold uppercase tracking-wider">Next Step</h4>
-          <p class="text-slate-400 text-xs mt-1 leading-relaxed">
+          <p id="nextStepText" class="text-slate-400 text-xs mt-1 leading-relaxed">
             Your registration is currently pending HR review. You will receive an email confirmation once the HR Team has approved your profile.
           </p>
         </div>
@@ -104,16 +104,35 @@
       const role   = params.get("role") || "Member";
       const email  = params.get("email") || "N/A";
       const memberId = params.get("memberId") || "PENDING";
-      const status = params.get("status") || "Pending Approval";
+      const rawStatus = params.get("status") || "Pending Approval";
+
+      const isStudent = role.toLowerCase() === "student";
+      const status = isStudent ? "APPROVED" : rawStatus;
 
       // Populate layout
       document.getElementById("displayRole").textContent = role;
       document.getElementById("displayEmail").textContent = email;
       document.getElementById("displayMemberId").textContent = memberId;
-      document.getElementById("displayStatus").innerHTML = `
-        <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-        ${status}
-      `;
+
+      const statusEl = document.getElementById("displayStatus");
+      const nextStepEl = document.getElementById("nextStepText");
+
+      if (isStudent || status.toLowerCase() === "approved" || status.toLowerCase() === "active") {
+        statusEl.className = "font-semibold text-emerald-400 flex items-center gap-1.5 text-xs uppercase tracking-wider";
+        statusEl.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          APPROVED
+        `;
+        if (nextStepEl) {
+          nextStepEl.textContent = "Your student account has been automatically approved and activated! You can proceed to the portal login to access your learning dashboard and get started immediately.";
+        }
+      } else {
+        statusEl.className = "font-semibold text-amber-400 flex items-center gap-1.5 text-xs uppercase tracking-wider";
+        statusEl.innerHTML = `
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          ${status}
+        `;
+      }
 
       // Set specialized login button target dynamically
       const loginBtn = document.getElementById("loginBtn");
