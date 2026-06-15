@@ -847,12 +847,13 @@
           });
           
           setTimeout(() => {
+            const pwdQuery = flatData.password ? `&password=${encodeURIComponent(flatData.password)}` : '';
             if (json.role === 'founder') {
-              window.location.href = `/founder-registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&startupName=${encodeURIComponent(json.startupName || 'Venture')}&status=Pending%20Approval`;
+              window.location.href = `/founder-registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&startupName=${encodeURIComponent(json.startupName || 'Venture')}&status=Pending%20Approval${pwdQuery}`;
             } else if (json.role === 'student') {
-              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Approved`;
+              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Approved${pwdQuery}`;
             } else {
-              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Pending%20Approval`;
+              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Pending%20Approval${pwdQuery}`;
             }
           }, 1500);
         } else {

@@ -90,6 +90,7 @@ const studentsSchema = new mongoose.Schema({
     internshipStartDate: { type: Date, default: null },
     hasSeenWelcome:      { type: Boolean, default: false },
     hasSeenOnboarding:   { type: Boolean, default: false },
+    calculatedAttendance: { type: Number, default: null },
 
     // v2 portal fields
     v2Onboarded:          { type: Boolean, default: false },

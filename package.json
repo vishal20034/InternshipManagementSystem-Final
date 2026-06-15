@@ -11,7 +11,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "node seeds/domainTasks.seed.js",
     "seed:fresh": "node seeds/dropAndReseed.js",
-    "seed:quiz": "node seeds/quizQuestions.seed.js"
+    "seed:quiz": "node seeds/quizQuestions.seed.js",
+    "github:push": "node scripts/push_to_github.js",
+    "github:pull": "node scripts/pull_from_github.js"
   },
   "keywords": [],
   "author": "",

@@ -190,7 +190,11 @@ router.get("/student/me", requireStudent, async (req, res) => {
                 linkedDomains:      currentLinked,
                 onboardingPopupSeen: me.onboardingPopupSeen || false,
                 joinerTypeSelected:  me.joinerTypeSelected  || false,
-                joinerType:          me.joinerType           || null
+                joinerType:          me.joinerType           || null,
+                hasSeenWelcome:      me.hasSeenWelcome       || false,
+                hasSeenOnboarding:   me.hasSeenOnboarding    || false,
+                calculatedAttendance: me.calculatedAttendance !== undefined ? me.calculatedAttendance : null,
+                attendancePercentage: me.attendancePercentage !== undefined ? me.attendancePercentage : null
             },
             totalCoins,
             rupeeValue
@@ -217,6 +221,22 @@ router.post("/student/mark-onboarding-seen", requireStudent, async (req, res) =>
 });
 
 // ────────────────────────────────────────────────
+// FEATURE 1 — POST /api/v2/student/mark-welcome-seen
+// Marks welcome modal as seen
+// ────────────────────────────────────────────────
+router.post("/student/mark-welcome-seen", requireStudent, async (req, res) => {
+    try {
+        await Student.updateOne(
+            { _id: req.student._id },
+            { $set: { hasSeenWelcome: true } }
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// ────────────────────────────────────────────────
 // FEATURE 1 — POST /api/v2/student/set-joiner-type
 // Saves joiner type selection — never shows again
 // ────────────────────────────────────────────────
@@ -233,6 +253,131 @@ router.post("/student/set-joiner-type", requireStudent, async (req, res) => {
         res.json({ success: true, joinerType });
     } catch (err) {
         res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Helper for onboarding attendance calculation
+function countDaysExcludingSundaysLocal(start, end) {
+    let count = 0;
+    const cur = new Date(start); cur.setHours(0,0,0,0);
+    const e = new Date(end);     e.setHours(0,0,0,0);
+    while (cur <= e) {
+        if (cur.getDay() !== 0) count++; // 0 is Sunday
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
+
+// ────────────────────────────────────────────────
+// POST /api/v2/student/complete-onboarding
+// Saves all onboarding fields, calculates attendance, and saves to MongoDB.
+// ────────────────────────────────────────────────
+router.post("/student/complete-onboarding", requireStudent, async (req, res) => {
+    try {
+        const student = req.student;
+        const { joinerType, updatedEmployeeId, joiningDate } = req.body;
+
+        const updates = {};
+        
+        if (joinerType) {
+            updates.joinerType = joinerType;
+            updates.joinerTypeSelected = true;
+        }
+
+        if (joinerType === "whatsapp") {
+            if (joiningDate) {
+                const startDate = new Date(joiningDate);
+                if (!isNaN(startDate.getTime())) {
+                    updates.joiningDate = joiningDate;
+                    updates.internshipStartDate = startDate;
+                }
+            }
+
+            if (updatedEmployeeId && updatedEmployeeId.trim() !== "" && updatedEmployeeId.trim() !== student.employeeId) {
+                const targetEmpId = updatedEmployeeId.trim();
+                const existing = await Student.findOne({ employeeId: targetEmpId });
+                if (existing) {
+                    return res.status(400).json({ success: false, message: "This Employee ID is already registered by another student." });
+                }
+                updates.employeeId = targetEmpId;
+                updates.employeeIdOverride = targetEmpId;
+            }
+
+            const actualJoiningDate = joiningDate || student.joiningDate || student.createdAt;
+            if (actualJoiningDate) {
+                const start = new Date(actualJoiningDate);
+                const today = new Date();
+                
+                const tenureDaysMap = {
+                    "1 Week": 7,
+                    "15 Days": 15,
+                    "1 Month": 30,
+                    "45 Days": 45,
+                    "3 Months": 90,
+                    "6 Months": 180
+                };
+                const totalDays = tenureDaysMap[student.tenure] || 30;
+                const end = new Date(start);
+                end.setDate(end.getDate() + totalDays - 1);
+
+                const workingDaysPassed = countDaysExcludingSundaysLocal(start, today);
+                const totalWorkingDaysInTenure = countDaysExcludingSundaysLocal(start, end);
+                const calculatedAttendance = Math.min(100, Math.round((workingDaysPassed / Math.max(totalWorkingDaysInTenure, 1)) * 100));
+
+                updates.calculatedAttendance = calculatedAttendance;
+                // Also update the general attendancePercentage field for consistency
+                updates.attendancePercentage = calculatedAttendance;
+            }
+        } else {
+            updates.calculatedAttendance = 0;
+            updates.attendancePercentage = 0;
+        }
+
+        updates.onboardingPopupSeen = true;
+        updates.hasSeenOnboarding = true;
+        updates.hasSeenWelcome = true;
+
+        const updatedStudent = await Student.findOneAndUpdate(
+            { _id: student._id },
+            { $set: updates },
+            { new: true }
+        );
+
+        if (updates.employeeId && updates.employeeId !== student.employeeId) {
+            try {
+                const Attendance = require("../../models/Attendance");
+                const Submission = require("../../models/Submission");
+                await Attendance.updateMany({ employeeId: student.employeeId }, { $set: { employeeId: updates.employeeId } });
+                await Submission.updateMany({ employeeId: student.employeeId }, { $set: { employeeId: updates.employeeId } });
+            } catch (assocErr) {
+                console.error("Correlated updates error:", assocErr);
+            }
+        }
+
+        res.json({
+            success: true,
+            student: {
+                name:               `${updatedStudent.firstName || ""} ${updatedStudent.lastName || ""}`.trim(),
+                firstName:          updatedStudent.firstName,
+                lastName:           updatedStudent.lastName,
+                email:              updatedStudent.email || "",
+                phone:              updatedStudent.whatsapp || updatedStudent.phone || "",
+                college:            updatedStudent.collegeName || updatedStudent.college || "",
+                collegeName:        updatedStudent.collegeName || updatedStudent.college || "",
+                employeeId:         updatedStudent.employeeId,
+                domain:             updatedStudent.domain,
+                tenure:             updatedStudent.tenure,
+                joiningDate:        updatedStudent.joiningDate,
+                onboardingPopupSeen: updatedStudent.onboardingPopupSeen || false,
+                joinerTypeSelected:  updatedStudent.joinerTypeSelected  || false,
+                joinerType:          updatedStudent.joinerType           || null,
+                calculatedAttendance: updatedStudent.calculatedAttendance,
+                attendancePercentage: updatedStudent.attendancePercentage
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Onboarding calculation failed" });
     }
 });
 

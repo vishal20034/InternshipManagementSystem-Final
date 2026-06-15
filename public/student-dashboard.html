@@ -1478,7 +1478,7 @@ button:active { transform: translateY(0); }
 <!-- ── SIDEBAR NAVIGATION ── -->
 <div class="stu-sidebar">
   <div class="stu-sidebar-brand">
-    <div class="stu-sidebar-brand-icon"><img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;filter:drop-shadow(0 0 6px rgba(212,175,55,0.4));" /></div>
+    <div class="stu-sidebar-brand-icon"><img src="ten-logo.png" alt="TEN Logo" style="width:28px;height:28px;object-fit:contain;display:block;filter:drop-shadow(0 0 6px rgba(212,175,55,0.45));" /></div>
     <div class="stu-sidebar-brand-text">
       <span class="brand-name">TEN</span>
       <span class="brand-sub">Student Portal</span>
@@ -2233,6 +2233,12 @@ if(!student){
         if (s.endDate)      stored.endDate      = s.endDate;
         if (s.domains)      stored.domains      = s.domains;
         if (s.linkedDomains) stored.linkedDomains = s.linkedDomains;
+        if (s.onboardingPopupSeen !== undefined) stored.onboardingPopupSeen = s.onboardingPopupSeen;
+        if (s.joinerTypeSelected !== undefined) stored.joinerTypeSelected = s.joinerTypeSelected;
+        if (s.joinerType !== undefined) stored.joinerType = s.joinerType;
+        if (s.calculatedAttendance !== undefined) stored.calculatedAttendance = s.calculatedAttendance;
+        if (s.hasSeenWelcome !== undefined) stored.hasSeenWelcome = s.hasSeenWelcome;
+        if (s.hasSeenOnboarding !== undefined) stored.hasSeenOnboarding = s.hasSeenOnboarding;
         localStorage.setItem('student', JSON.stringify(stored));
         student = stored;
         if (typeof recalculateDomains === 'function') {
@@ -2243,6 +2249,9 @@ if(!student){
         }
         if (typeof setupDomainSwitcher === 'function') {
           setupDomainSwitcher();
+        }
+        if (typeof showWelcomeModalIfNeeded === 'function') {
+          showWelcomeModalIfNeeded();
         }
       })
       .catch(function(){});
@@ -3067,19 +3076,26 @@ async function loadAttendance(){
     const s = d.stats || {};
     window._attendanceStats = s;
 
-    document.getElementById("selfAttPct").innerText   = (s.selfPct||0) + "%";
-    document.getElementById("selfAttCount").innerText = (s.selfTotal||0) + " days marked";
+    const isWhatsappJoiner = (student && student.joinerType === 'whatsapp');
+    const overridePct = (isWhatsappJoiner && student.calculatedAttendance !== undefined) ? student.calculatedAttendance : null;
+    
+    const finalSelfPct = (overridePct !== null) ? overridePct : (s.selfPct||0);
+    const finalCombinedPct = (overridePct !== null) ? overridePct : (s.combinedPct||0);
+
+    document.getElementById("selfAttPct").innerText   = finalSelfPct + "%";
+    document.getElementById("selfAttCount").innerText = (overridePct !== null) ? "WhatsApp Joiner" : ((s.selfTotal||0) + " days marked");
     document.getElementById("classAttPct").innerText  = (s.coordPct||0) + "%";
     document.getElementById("classAttCount").innerText= (s.coordPresent||0) + " present / " + (s.coordTotal||0);
-    document.getElementById("combinedAttPct").innerText = (s.combinedPct||0) + "%";
+    document.getElementById("combinedAttPct").innerText = finalCombinedPct + "%";
 
     const badge = document.getElementById("combinedAttBadge");
-    if(s.eligible){ badge.innerText = "Eligible ✅"; badge.style.color = "#10b981"; }
+    const isEligible = (finalCombinedPct >= 75);
+    if(isEligible){ badge.innerText = "Eligible ✅"; badge.style.color = "#10b981"; }
     else { badge.innerText = "Below 75% ❌"; badge.style.color = "#f43f5e"; }
 
     // Headline stats
-    document.getElementById("attendanceText").innerText = (s.combinedPct||0) + "%";
-    updateAttRing(s.combinedPct || 0);
+    document.getElementById("attendanceText").innerText = finalCombinedPct + "%";
+    updateAttRing(finalCombinedPct);
     document.getElementById("meetingsJoinedText").innerText = (s.combinedPresentDays||0);
 
     const threshEl = document.getElementById("attendanceThreshold");
@@ -3121,9 +3137,9 @@ async function loadAttendance(){
     var bCoord = document.getElementById('attBreakCoord');
     var bCombined = document.getElementById('attBreakCombined');
     var bThresh = document.getElementById('attBreakThreshold');
-    if(bSelf) bSelf.innerText = (s.selfPct||0) + '%';
+    if(bSelf) bSelf.innerText = finalSelfPct + '%';
     if(bCoord) bCoord.innerText = (s.coordPct||0) + '%';
-    if(bCombined) bCombined.innerText = (s.combinedPct||0) + '%';
+    if(bCombined) bCombined.innerText = finalCombinedPct + '%';
     if(bThresh && threshEl) bThresh.innerText = threshEl.innerText;
   }catch(e){ console.log(e); }
 }
@@ -3619,6 +3635,7 @@ loadCoordinatorTasks(); // Then load coordinator tasks (updates coordTaskContain
 loadCodingProblems();   // F5: show coding section if domain has any
 loadStudentSubmissions();
 loadAttendance();       // NEW dual-attendance system
+if (typeof updateGoogleLinksVisibility === "function") { updateGoogleLinksVisibility(); }
 loadV2TaskJourney();    // NEW FEATURE: coin balance + task journey widget
 setupDomainToggle();     // initialize toggle if 2 domains
 
@@ -4526,7 +4543,12 @@ function openProfileModal() {
   document.getElementById('pmJoined').textContent = joined ? new Date(joined).toLocaleDateString('en-IN') : '—';
   var end = stu.internshipEnd || stu.endDate;
   document.getElementById('pmEnd').textContent = end ? new Date(end).toLocaleDateString('en-IN') : '—';
-  _pmPassVal = stu.password || stu.plainPassword || '';
+  var rawPass = stu.plainPassword || stu.password || '';
+  if (rawPass && !rawPass.startsWith("$2b$") && !rawPass.startsWith("$2a$") && rawPass !== "intern123") {
+    _pmPassVal = rawPass;
+  } else {
+    _pmPassVal = '';
+  }
   _pmPassVisible = false;
   document.getElementById('pmPassword').textContent = '••••••••';
   document.getElementById('pmPassToggle').textContent = 'Reveal';
@@ -4552,13 +4574,23 @@ async function togglePmPassword() {
       body: JSON.stringify({ employeeId: empId })
     });
     var data = await res.json();
-    if (data.success && data.password) {
+    if (data.success && data.password && data.password !== 'intern123') {
       _pmPassVal = data.password;
     } else {
-      _pmPassVal = stu.password || stu.plainPassword || 'intern123';
+      var fallback = stu.plainPassword || stu.password || '';
+      if (fallback && !fallback.startsWith("$2b$") && !fallback.startsWith("$2a$") && fallback !== 'intern123') {
+        _pmPassVal = fallback;
+      } else {
+        _pmPassVal = 'intern123';
+      }
     }
   } catch (err) {
-    _pmPassVal = stu.password || stu.plainPassword || 'intern123';
+    var fallback = stu.plainPassword || stu.password || '';
+    if (fallback && !fallback.startsWith("$2b$") && !fallback.startsWith("$2a$") && fallback !== 'intern123') {
+      _pmPassVal = fallback;
+    } else {
+      _pmPassVal = 'intern123';
+    }
   }
 
   _pmPassVisible = true;
@@ -4594,114 +4626,387 @@ document.addEventListener('keydown', function(e) {
   </div>
 </div>
 
-<!-- ===== NEW JOINER TYPE MODAL ===== -->
-<div id="joinerTypeModal" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);align-items:center;justify-content:center;">
-  <div style="position:relative;max-width:480px;width:90%;background:linear-gradient(160deg,#0b0d14,#0d1020);border:1px solid rgba(212,175,55,0.4);border-radius:20px;padding:40px 36px;color:#e8dcc8;text-align:center;">
-    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:20px 20px 0 0;"></div>
-    <div style="font-size:40px;margin-bottom:16px;">👋</div>
-    <h2 style="font-size:22px;font-weight:800;color:#D4AF37;margin-bottom:10px;">Welcome to TEN Portal!</h2>
-    <p style="font-size:14px;color:#9a8a6a;margin-bottom:28px;line-height:1.6;">Before we begin, please tell us — are you a new joiner, or have you joined TEN before through WhatsApp and are new to this portal?</p>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <button onclick="confirmJoinerType('new')" style="padding:16px 24px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:12px;color:#0a0700;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;">
-        🆕 I am a New Joiner
-      </button>
-      <button onclick="confirmJoinerType('whatsapp')" style="padding:16px 24px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:12px;color:#10b981;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;">
-        💬 Already Joined Before via WhatsApp
-      </button>
+<!-- ===== MULTI-STEP ONBOARDING WIZARD MODAL ===== -->
+<div id="onboardingWizardModal" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(8,10,18,0.95);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
+  <div style="position:relative;max-width:540px;width:100%;background:linear-gradient(150deg,#0a0d16,#0e1224);border:1px solid rgba(212,175,55,0.35);border-radius:24px;padding:40px;color:#f0eee8;box-shadow:0 30px 80px rgba(0,0,0,0.85);font-family:system-ui, -apple-system, sans-serif;">
+    <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:24px 24px 0 0;"></div>
+    
+    <!-- Step 1: Selection -->
+    <div id="wizardStep1" style="display:block;">
+      <div style="font-size:46px;margin-bottom:18px;text-align:center;">👋</div>
+      <h2 style="font-size:24px;font-weight:800;color:#D4AF37;margin-bottom:12px;text-align:center;letter-spacing:0.5px;">Welcome to TEN Portal!</h2>
+      <p style="font-size:14px;color:#a2b1c6;margin-bottom:32px;line-height:1.6;text-align:center;">To customize your portal experience, please select your onboarding status below:</p>
+      
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <button onclick="wizardSelectType('new')" style="display:flex;align-items:center;gap:16px;width:100%;padding:18px 24px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.3);border-radius:16px;color:#fff;cursor:pointer;transition:all 0.3s;text-align:left;" onmouseover="this.style.background='rgba(212,175,55,0.12)';" onmouseout="this.style.background='rgba(212,175,55,0.06)';">
+          <span style="font-size:24px;">🆕</span>
+          <div>
+            <div style="font-weight:700;color:#D4AF37;font-size:15px;">New Joiner</div>
+            <div style="font-size:12px;color:#8aa4c8;margin-top:2px;">Complete guidelines &amp; start fresh.</div>
+          </div>
+        </button>
+        
+        <button onclick="wizardSelectType('whatsapp')" style="display:flex;align-items:center;gap:16px;width:100%;padding:18px 24px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.3);border-radius:16px;color:#fff;cursor:pointer;transition:all 0.3s;text-align:left;" onmouseover="this.style.background='rgba(16,185,129,0.12)';" onmouseout="this.style.background='rgba(16,185,129,0.06)';">
+          <span style="font-size:24px;">💬</span>
+          <div>
+            <div style="font-weight:700;color:#10b981;font-size:15px;">WhatsApp Group Joiner</div>
+            <div style="font-size:12px;color:#8aa4c8;margin-top:2px;">Existing joiner migrating to the portal.</div>
+          </div>
+        </button>
+      </div>
     </div>
-    <p style="font-size:11px;color:#5a4a2a;margin-top:16px;">⚠️ This cannot be changed once selected</p>
-  </div>
-</div>
 
-<!-- Joiner Type Confirmation Warning Modal -->
-<div id="joinerConfirmModal" style="display:none;position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
-  <div style="max-width:400px;width:90%;background:#0d1020;border:1px solid rgba(244,63,94,0.4);border-radius:16px;padding:32px;text-align:center;color:#e8dcc8;">
-    <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
-    <h3 style="font-size:18px;font-weight:800;color:#f43f5e;margin-bottom:10px;">Are you sure?</h3>
-    <p id="joinerConfirmText" style="font-size:13px;color:#9a8a6a;margin-bottom:24px;line-height:1.6;"></p>
-    <p style="font-size:12px;color:#e05c5c;font-weight:700;margin-bottom:24px;">⚠️ This action cannot be undone. Choose carefully.</p>
-    <div style="display:flex;gap:12px;">
-      <button onclick="closeJoinerConfirm()" style="flex:1;padding:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#e8dcc8;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>
-      <button id="joinerConfirmBtn" style="flex:1;padding:12px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">Yes, Confirm</button>
+    <!-- Step 2: Employee ID Confirmation (Only for WhatsApp Joiners) -->
+    <div id="wizardStep2" style="display:none;">
+      <div style="font-size:40px;margin-bottom:18px;text-align:center;">🪪</div>
+      <h2 style="font-size:22px;font-weight:800;color:#10b981;margin-bottom:12px;text-align:center;">Employee ID Verification</h2>
+      <p style="font-size:14px;color:#a2b1c6;margin-bottom:28px;line-height:1.6;text-align:center;">Do you have an existing Employee ID that was assigned to you?</p>
+      
+      <div id="wizardStep2Choice" style="display:flex;gap:16px;">
+        <button onclick="wizardStep2No()" style="flex:1;padding:16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-weight:700;cursor:pointer;font-size:14px;transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.10)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';">No, I don't</button>
+        <button onclick="wizardStep2Yes()" style="flex:1;padding:16px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 6px 20px rgba(16,185,129,0.25);">Yes, I have one</button>
+      </div>
+
+      <div id="wizardStep2InputBlock" style="display:none;margin-top:24px;text-align:left;">
+        <label style="font-size:12px;font-weight:700;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px;">Your Employee ID</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="wizardEmpIdInput" disabled style="flex:1;padding:14px 16px;background:#05070e;border:1px solid rgba(99,140,210,0.3);border-radius:10px;color:#fff;font-family:monospace;font-size:15px;font-weight:600;" />
+          <button id="wizardEmpIdEditBtn" onclick="wizardEnableEmpIdEdit()" style="padding:14px 20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-weight:600;cursor:pointer;">Edit</button>
+          <button id="wizardEmpIdUpdateBtn" onclick="wizardUpdateEmpId()" style="display:none;padding:14px 20px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;">Update</button>
+        </div>
+        <p id="wizardEmpIdStatus" style="font-size:12px;margin-top:8px;color:#a2b1c6;"></p>
+        
+        <div style="margin-top:32px;display:flex;justify-content:flex-end;">
+          <button id="wizardStep2NextBtn" onclick="wizardGoToStep3()" style="padding:14px 32px;background:rgba(212,175,55,0.2);border:1px solid rgba(212,175,55,0.4);border-radius:10px;color:#D4AF37;font-weight:700;cursor:pointer;transition:0.3s;" onmouseover="this.style.background='rgba(212,175,55,0.3)';" onmouseout="this.style.background='rgba(212,175,55,0.2)';">Next Step →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Internship Joining Date & Attendance (Only for WhatsApp Joiners) -->
+    <div id="wizardStep3" style="display:none;">
+      <div style="font-size:40px;margin-bottom:18px;text-align:center;">📅</div>
+      <h2 style="font-size:22px;font-weight:800;color:#D4AF37;margin-bottom:12px;text-align:center;">Internship Joining Date</h2>
+      <p style="font-size:14px;color:#a2b1c6;margin-bottom:24px;line-height:1.6;text-align:center;">Please pick your original internship joining date. Note that future dates are not allowed.</p>
+      
+      <div style="text-align:left;margin-bottom:28px;">
+        <label style="font-size:11px;font-weight:700;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px;">Pick Date</label>
+        <input type="date" id="wizardJoiningDateInput" style="width:100%;padding:14px;background:#05070e;border:1px solid rgba(212,175,55,0.3);border-radius:10px;color:#fff;font-size:15px;font-weight:600;" />
+      </div>
+
+      <!-- Attendance calculation result screen -->
+      <div id="wizardStep3ResultBlock" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:16px;padding:20px;margin-bottom:28px;text-align:center;">
+        <p style="font-size:13px;color:#a2b1c6;margin-bottom:6px;">Calculated Attendance Percentage:</p>
+        <h3 id="wizardStep3ResultPct" style="font-size:36px;font-weight:800;color:#10b981;">0%</h3>
+        <p style="font-size:12px;color:#8aa4c8;line-height:1.5;margin-top:8px;">Calculated excluding Sundays from your selected joining date to today, relative to your registered tenure.</p>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <button id="wizardStep3ConfirmBtn" onclick="wizardConfirmJoiningDate()" style="padding:14px 32px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-weight:800;cursor:pointer;font-size:15px;box-shadow:0 6px 20px rgba(212,175,55,0.25);">Confirm &amp; Proceed →</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-// ===== FEATURE 1 — JOINER TYPE LOGIC (DB-backed, shows ONCE ONLY) =====
-var _pendingJoinerType = null;
+// ===== FEATURE 1 — DYNAMIC MULTI-STEP ONBOARDING ENGINE =====
+var _onboardingState = {
+  joinerType: null,
+  updatedEmployeeId: null,
+  joiningDate: null,
+  calculatedAttendance: null
+};
 
 function showJoinerTypeModalIfNeeded() {
   try {
     var stu = JSON.parse(localStorage.getItem('student') || '{}');
     var empId = stu.employeeId || stu.employee_id || localStorage.getItem('employeeId') || '';
     if (!empId) return;
-    // Check DB flag first (set on login), then fallback to localStorage
-    if (stu.joinerTypeSelected === true) {
-      applyJoinerTypeUI(stu.joinerType || localStorage.getItem('tenJoinerType_' + empId));
+
+    // Check if onboarding is completely finished (database or local storage status)
+    if (stu.onboardingPopupSeen === true || stu.hasSeenOnboarding === true) {
+      applyJoinerTypeUI(stu.joinerType);
+      updateGoogleLinksVisibility();
       return;
     }
-    var legacyKey = 'tenJoinerType_' + empId;
-    if (localStorage.getItem(legacyKey)) {
-      applyJoinerTypeUI(localStorage.getItem(legacyKey));
-      return;
+
+    _onboardingState.updatedEmployeeId = empId;
+    document.getElementById('wizardEmpIdInput').value = empId;
+    
+    var wizard = document.getElementById('onboardingWizardModal');
+    if (wizard) {
+      wizard.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
     }
-    var modal = document.getElementById('joinerTypeModal');
-    modal.style.display = 'flex';
+  } catch(e) {
+    console.error("Onboarding init error:", e);
+  }
+}
+
+function wizardSelectType(type) {
+  _onboardingState.joinerType = type;
+  if (type === 'new') {
+    // New Joiner goes directly to Step 4 (Guidelines)
+    document.getElementById('onboardingWizardModal').style.display = 'none';
+    document.body.style.overflow = '';
+    
+    // Show instruction modal
+    document.getElementById('instructionModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
-  } catch(e) {}
+  } else {
+    // WhatsApp Group Joiner goes to Step 2 (Employee ID Check)
+    document.getElementById('wizardStep1').style.display = 'none';
+    document.getElementById('wizardStep2').style.display = 'block';
+  }
 }
 
-function confirmJoinerType(type) {
-  _pendingJoinerType = type;
-  var text = type === 'new'
-    ? 'You are selecting <strong style="color:#D4AF37;">New Joiner</strong>. The Google Attendance Form will NOT be shown for you — you only mark attendance on this portal.'
-    : 'You are selecting <strong style="color:#10b981;">WhatsApp Re-Joiner</strong>. You must fill BOTH the portal attendance AND the Google Form twice daily.';
-  document.getElementById('joinerConfirmText').innerHTML = text;
-  document.getElementById('joinerConfirmModal').style.display = 'flex';
-  document.getElementById('joinerConfirmBtn').onclick = finalizeJoinerType;
+function wizardStep2Yes() {
+  document.getElementById('wizardStep2Choice').style.display = 'none';
+  document.getElementById('wizardStep2InputBlock').style.display = 'block';
 }
 
-function closeJoinerConfirm() {
-  document.getElementById('joinerConfirmModal').style.display = 'none';
-  _pendingJoinerType = null;
+function wizardStep2No() {
+  _onboardingState.updatedEmployeeId = null;
+  wizardGoToStep3();
 }
 
-function finalizeJoinerType() {
+function wizardEnableEmpIdEdit() {
+  var input = document.getElementById('wizardEmpIdInput');
+  input.disabled = false;
+  input.focus();
+  document.getElementById('wizardEmpIdEditBtn').style.display = 'none';
+  document.getElementById('wizardEmpIdUpdateBtn').style.display = 'block';
+}
+
+async function wizardUpdateEmpId() {
+  var input = document.getElementById('wizardEmpIdInput');
+  var newId = input.value.trim();
+  var status = document.getElementById('wizardEmpIdStatus');
+  
+  if (!newId) {
+    status.style.color = '#f43f5e';
+    status.textContent = '❌ Employee ID cannot be empty.';
+    return;
+  }
+  
+  try {
+    status.style.color = '#3b82f6';
+    status.textContent = 'Verifying and saving...';
+    
+    _onboardingState.updatedEmployeeId = newId;
+
+    status.style.color = '#10b981';
+    status.textContent = '✅ Employee ID verified & prepared!';
+    input.disabled = true;
+    document.getElementById('wizardEmpIdEditBtn').style.display = 'block';
+    document.getElementById('wizardEmpIdUpdateBtn').style.display = 'none';
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'Employee ID Confirmed',
+      text: 'Employee ID is updated and will be saved permanently upon finalizing onboarding.',
+      background: '#0d1124',
+      color: '#f0eee8',
+      confirmButtonColor: '#10b981'
+    });
+  } catch(err) {
+    status.style.color = '#f43f5e';
+    status.textContent = '❌ Verification failed. Please try again.';
+  }
+}
+
+function wizardGoToStep3() {
+  document.getElementById('wizardStep2').style.display = 'none';
+  var dateInput = document.getElementById('wizardJoiningDateInput');
+  if (dateInput) {
+    dateInput.max = new Date().toISOString().split('T')[0];
+  }
+  document.getElementById('wizardStep3').style.display = 'block';
+}
+
+async function wizardConfirmJoiningDate() {
+  var dateVal = document.getElementById('wizardJoiningDateInput').value;
+  if (!dateVal) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Date Required',
+      text: 'Please select your internship joining date.',
+      background: '#0d1124',
+      color: '#f0eee8',
+      confirmButtonColor: '#D4AF37'
+    });
+    return;
+  }
+  
+  _onboardingState.joiningDate = dateVal;
+
+  var currentEmpId = _onboardingState.updatedEmployeeId || (JSON.parse(localStorage.getItem('student') || '{}').employeeId);
+
+  try {
+    var btn = document.getElementById('wizardStep3ConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Calculating...';
+
+    var res = await fetch('/api/v2/student/complete-onboarding', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('ten_token') || ''),
+        'x-employee-id': currentEmpId
+      },
+      body: JSON.stringify({
+        joinerType: _onboardingState.joinerType,
+        updatedEmployeeId: _onboardingState.updatedEmployeeId,
+        joiningDate: _onboardingState.joiningDate
+      })
+    });
+    
+    var data = await res.json();
+    if (!data.success) {
+      btn.disabled = false;
+      btn.textContent = 'Confirm & Proceed →';
+      Swal.fire({
+        icon: 'error',
+        title: 'Form Submission Failed',
+        text: data.message || 'Verification failed. This might be due to a duplicate Employee ID or network issue.',
+        background: '#0d1124',
+        color: '#f0eee8',
+        confirmButtonColor: '#f43f5e'
+      });
+      return;
+    }
+    
+    _onboardingState.calculatedAttendance = data.student.calculatedAttendance;
+    
+    localStorage.setItem('student', JSON.stringify(data.student));
+    if (data.student.employeeId) {
+       localStorage.setItem('employeeId', data.student.employeeId);
+    }
+
+    document.getElementById('wizardStep3ResultPct').textContent = data.student.calculatedAttendance + '%';
+    document.getElementById('wizardStep3ResultBlock').style.display = 'block';
+    
+    btn.disabled = false;
+    btn.textContent = 'Proceed to Guidelines →';
+    btn.onclick = function() {
+      document.getElementById('onboardingWizardModal').style.display = 'none';
+      document.body.style.overflow = '';
+      
+      document.getElementById('instructionModal').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    };
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = 'Confirm & Proceed →';
+    console.error(err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Execution Error',
+      text: 'A network error occurred. Please try again.',
+      background: '#0d1124',
+      color: '#f0eee8'
+    });
+  }
+}
+
+// Complete onboarding Guidelines action
+async function acknowledgeInstructions() {
   var stu = JSON.parse(localStorage.getItem('student') || '{}');
-  var empId = stu.employeeId || stu.employee_id || localStorage.getItem('employeeId') || 'unknown';
-  // Save to localStorage (legacy key)
-  localStorage.setItem('tenJoinerType_' + empId, _pendingJoinerType);
-  // Update cached student object
-  stu.joinerTypeSelected = true;
-  stu.joinerType = _pendingJoinerType;
-  localStorage.setItem('student', JSON.stringify(stu));
-  document.getElementById('joinerConfirmModal').style.display = 'none';
-  document.getElementById('joinerTypeModal').style.display = 'none';
-  document.body.style.overflow = '';
-  applyJoinerTypeUI(_pendingJoinerType);
-  // Persist to DB (fire-and-forget)
-  fetch('/api/v2/student/set-joiner-type', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-    body: JSON.stringify({ joinerType: _pendingJoinerType })
-  }).catch(function(){});
+  var empId = stu.employeeId || localStorage.getItem('employeeId') || 'unknown';
+  
+  try {
+    if (_onboardingState.joinerType === 'new') {
+      var res = await fetch('/api/v2/student/complete-onboarding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (localStorage.getItem('ten_token') || ''),
+          'x-employee-id': empId
+        },
+        body: JSON.stringify({
+          joinerType: 'new'
+        })
+      });
+      var data = await res.json();
+      if (data.success) {
+        stu = data.student;
+      }
+    }
+    
+    stu.onboardingPopupSeen = true;
+    localStorage.setItem('student', JSON.stringify(stu));
+    localStorage.setItem('tenInstructionsSeen_' + empId, 'true');
+    
+    document.getElementById('instructionModal').style.display = 'none';
+    document.body.style.overflow = '';
+    
+    updateDashboardAfterOnboarding(stu);
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Onboarding Complete! 🎉',
+      text: 'Welcome to your personalized student dashboard!',
+      background: '#0d1124',
+      color: '#f0eee8',
+      confirmButtonColor: '#10b981'
+    });
+  } catch(e) {
+    stu.onboardingPopupSeen = true;
+    localStorage.setItem('student', JSON.stringify(stu));
+    document.getElementById('instructionModal').style.display = 'none';
+    document.body.style.overflow = '';
+    window.location.reload();
+  }
+}
+
+function updateDashboardAfterOnboarding(stuData) {
+  if (stuData.employeeId) {
+     localStorage.setItem('employeeId', stuData.employeeId);
+     if (typeof employeeId !== 'undefined') {
+        employeeId = stuData.employeeId;
+     }
+  }
+
+  var pmEmpId = document.getElementById('pmEmpId');
+  if (pmEmpId) pmEmpId.textContent = stuData.employeeId || '—';
+  
+  var joined = stuData.joiningDate || stuData.createdAt;
+  var pmJoined = document.getElementById('pmJoined');
+  if (pmJoined) pmJoined.textContent = joined ? new Date(joined).toLocaleDateString('en-IN') : '—';
+  
+  var pmCalcAttBlock = document.getElementById('pmCalcAttBlock');
+  var pmCalcAtt = document.getElementById('pmCalcAtt');
+  if (stuData.calculatedAttendance !== undefined && stuData.calculatedAttendance !== null) {
+     if (pmCalcAttBlock) pmCalcAttBlock.style.display = 'block';
+     if (pmCalcAtt) pmCalcAtt.textContent = stuData.calculatedAttendance + '%';
+  } else {
+     if (pmCalcAttBlock) pmCalcAttBlock.style.display = 'none';
+  }
+
+  applyJoinerTypeUI(stuData.joinerType);
+  updateGoogleLinksVisibility();
+
+  if (typeof loadAttendance === 'function') {
+     loadAttendance();
+  }
 }
 
 function applyJoinerTypeUI(type) {
-  var formBox = document.getElementById('googleFormAttendanceBox');
-  if (formBox) formBox.style.display = (type === 'whatsapp') ? 'block' : 'none';
+  updateGoogleLinksVisibility();
 }
 
-(function() {
-  try {
-    var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    if (stu && (stu.employeeId || stu.employee_id)) {
-      setTimeout(showWelcomeModalIfNeeded, 800);
+function updateGoogleLinksVisibility() {
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var formBox = document.getElementById('googleFormAttendanceBox');
+  if (stu.joinerType === 'whatsapp') {
+    if (formBox) {
+       formBox.style.display = 'none';
     }
-  } catch(e) {}
-})();
-// ===== END JOINER TYPE LOGIC =====
+  } else {
+    if (formBox) {
+       formBox.style.display = 'none';
+    }
+  }
+}
 </script>
 
 <!-- ===== FIRST-LOGIN ONBOARDING INSTRUCTION MODAL ===== -->
@@ -4790,40 +5095,6 @@ function applyJoinerTypeUI(type) {
 <!-- ===== END ONBOARDING INSTRUCTION MODAL ===== -->
 
 <script>
-// ===== FEATURE 1 — FIRST-LOGIN ONBOARDING POPUP (DB-backed, shows ONCE ONLY) =====
-function showInstructionModalIfNeeded(employeeId) {
-  try {
-    var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    // Check DB flag first (set on login), then fallback to localStorage key
-    if (stu.onboardingPopupSeen === true) return;
-    var legacyKey = 'tenInstructionsSeen_' + employeeId;
-    if (localStorage.getItem(legacyKey)) return;
-    document.getElementById('instructionModal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
-  } catch(e) {}
-}
-
-function acknowledgeInstructions() {
-  var empId = (typeof student !== 'undefined' && student && student.employeeId)
-    ? student.employeeId
-    : (localStorage.getItem('employeeId') || 'unknown');
-  // Save legacy localStorage key
-  localStorage.setItem('tenInstructionsSeen_' + empId, 'true');
-  // Update the cached student object so it won't show again this session
-  try {
-    var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    stu.onboardingPopupSeen = true;
-    localStorage.setItem('student', JSON.stringify(stu));
-  } catch(e) {}
-  document.getElementById('instructionModal').style.display = 'none';
-  document.body.style.overflow = '';
-  // Persist to DB (fire-and-forget)
-  fetch('/api/v2/student/mark-onboarding-seen', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-employee-id': empId }
-  }).catch(function(){});
-}
-
 function showWelcomeModalIfNeeded() {
   try {
     var stu = JSON.parse(localStorage.getItem('student') || '{}');
@@ -4913,6 +5184,13 @@ function _doLogout() {
   window.location.href = 'login.html';
 }
 // ===== END AUTO-LOGIN / LOGOUT =====
+document.addEventListener("DOMContentLoaded", function() {
+  setTimeout(function() {
+    if (typeof showWelcomeModalIfNeeded === "function") {
+      showWelcomeModalIfNeeded();
+    }
+  }, 100);
+});
 </script>
 
 <script src="ten-motion.js"></script>

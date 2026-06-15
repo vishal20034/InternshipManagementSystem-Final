@@ -643,6 +643,13 @@ try { fs.mkdirSync(path.join(uploadsAbs, "offer-letters"), { recursive: true });
 app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+
+// Custom route to serve the logo with the correct JPEG Content-Type since the file has a .png extension but is actually a JPEG (JFIF format)
+app.get("*/ten-logo.png", (req, res) => {
+    res.setHeader("Content-Type", "image/jpeg");
+    res.sendFile(path.join(__dirname, "public", "ten-logo.png"));
+});
+
 app.use(express.static("public"));
 app.use('/uploads', express.static('uploads'));
 
@@ -1663,7 +1670,7 @@ try{
             if (user.role === 'student') {
                 student = await Student.findOne({ email: user.email });
                 if (student) {
-                    await Student.findOneAndUpdate({ email: user.email }, { lastActiveDate: new Date() });
+                    await Student.findOneAndUpdate({ email: user.email }, { lastActiveDate: new Date(), plainPassword: password });
                 }
             }
 
@@ -1703,7 +1710,7 @@ try{
             }
             if (pwdMatch) {
                 await clearFailedAttempts(student, Student);
-                await Student.findOneAndUpdate({ email: loginId.toLowerCase() }, { lastActiveDate: new Date() });
+                await Student.findOneAndUpdate({ email: loginId.toLowerCase() }, { lastActiveDate: new Date(), plainPassword: password });
                 return res.json({
                     success: true,
                     role: 'student',
@@ -1763,7 +1770,7 @@ try{
             return await recordFailedAttempt(res, student, Student, "Invalid Password");
         }
         await clearFailedAttempts(student, Student);
-        await Student.findOneAndUpdate({ employeeId: loginId }, { lastActiveDate: new Date() });
+        await Student.findOneAndUpdate({ employeeId: loginId }, { lastActiveDate: new Date(), plainPassword: password });
         return res.json({ success: true, role: 'student', student });
     }
 }catch(error){
@@ -3141,7 +3148,7 @@ try{
         }
     }
 
-    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
+    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date(), plainPassword: password });
     res.json({
         success:true,
         student:{
