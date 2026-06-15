@@ -388,20 +388,24 @@ body {
     <p class="sub">Access your internship workspace. Choose your portal to continue.</p>
 
     <button class="portal-btn primary ten-card-hover ten-scale-in ten-d1" onclick="window.location.href='register.html'">
-      <span class="btn-left"><span class="btn-icon">✦</span> Register as Intern</span>
+      <span class="btn-left"><span class="btn-icon">✦</span> Join TEN Ecosystem</span>
     </button>
 
     <button class="portal-btn ten-card-hover ten-scale-in ten-d2" onclick="window.location.href='login.html'">
-      <span class="btn-left"><span class="btn-icon">🎓</span> Student Login</span>
+      <span class="btn-left"><span class="btn-icon">🎓</span> Member Login</span>
     </button>
 
     <div class="divider"></div>
 
     <button class="portal-btn ten-card-hover ten-scale-in ten-d3" onclick="window.location.href='coordinator-login.html'">
-      <span class="btn-left"><span class="btn-icon">🛡</span> Coordinator Portal</span>
+      <span class="btn-left"><span class="btn-icon">🛡</span> Coordinator Login Portal</span>
     </button>
 
-    <button class="portal-btn ten-card-hover ten-scale-in ten-d4" onclick="window.location.href='/hr-login'">
+    <button class="portal-btn ten-card-hover ten-scale-in ten-d4" style="border: 1px dashed rgba(212,175,55,0.4);" onclick="window.location.href='coordinator-register.html'">
+      <span class="btn-left"><span class="btn-icon">⚡️</span> Coordinator Register</span>
+    </button>
+
+    <button class="portal-btn ten-card-hover ten-scale-in ten-d4" onclick="openHrPositionModal()">
       <span class="btn-left"><span class="btn-icon">👔</span> HR Portal</span>
     </button>
 
@@ -412,6 +416,81 @@ body {
   </div>
 
 </div><!-- /portal-wrap -->
+
+  <!-- Glassmorphism popup for HR Position selection -->
+  <div id="hrPositionModal" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(6,10,24,0.85); backdrop-filter:blur(24px) saturate(130%); width:100%; height:100%; display:none; align-items:center; justify-content:center; padding:20px; z-index:1000000;">
+    <div style="background:rgba(14,20,40,0.7); border:1px solid rgba(212,175,55,0.25); border-radius:18px; padding:32px; width:100%; max-width:800px; box-shadow:0 32px 72px rgba(0,0,0,0.8), 0 0 54px rgba(212,175,55,0.08); text-align:center; animation: ten-fadeUp 0.4s ease both;">
+       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+          <h3 style="color:#D4AF37; font-size:22px; font-weight:800; letter-spacing:1px; margin:0; text-transform:uppercase; font-family:inherit;">Select Active HR Position</h3>
+          <button onclick="closeHrPositionModal()" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:#fff; cursor:pointer; padding:6px 14px; font-size:12px; font-weight:bold; transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">Close</button>
+       </div>
+       <p style="color:#94a3b8; font-size:12px; font-weight:bold; text-transform:uppercase; margin-bottom:24px; letter-spacing:2px;">8 Levels of Secure Onboarding Access Control</p>
+       <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:16px;">
+          <div onclick="selectHrPosition(1)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 1</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">Jr HR Associate</p>
+          </div>
+          <div onclick="selectHrPosition(2)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 2</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">Sr HR Associate</p>
+          </div>
+          <div onclick="selectHrPosition(3)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 3</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">Jr HR Manager</p>
+          </div>
+          <div onclick="selectHrPosition(4)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 4</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">Sr HR Manager</p>
+          </div>
+          <div onclick="selectHrPosition(5)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 5</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">HR Associate Director</p>
+          </div>
+          <div onclick="selectHrPosition(6)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 6</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">Jr HR Director</p>
+          </div>
+          <div onclick="selectHrPosition(7)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 7</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">HR Director + HRBP</p>
+          </div>
+          <div onclick="selectHrPosition(8)" style="border:1px solid rgba(255,255,255,0.06); background:rgba(30,41,59,0.2); border-radius:12px; padding:20px; cursor:pointer; transition:0.2s;" onmouseover="this.style.borderColor='#D4AF37'; this.style.background='rgba(212,175,55,0.05)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'; this.style.background='rgba(30,41,59,0.2)'">
+              <h5 style="color:#fff; font-size:13px; font-weight:bold; margin:0 0 6px 0;">Level 8</h5>
+              <p style="color:#94a3b8; font-size:11px; margin:0;">Vice President</p>
+          </div>
+       </div>
+    </div>
+  </div>
+
+  <script>
+    function openHrPositionModal() {
+      document.getElementById('hrPositionModal').style.display = 'flex';
+    }
+    function closeHrPositionModal() {
+      document.getElementById('hrPositionModal').style.display = 'none';
+    }
+    function selectHrPosition(level) {
+      closeHrPositionModal();
+      Swal.fire({
+          title: 'Do you have credentials from Admin?',
+          text: 'Access is restricted to authorized level managers.',
+          icon: 'question',
+          showCancelButton: true,
+          confirmButtonText: 'YES',
+          cancelButtonText: 'NO',
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37',
+          cancelButtonColor: '#ef4444'
+      }).then((result) => {
+          if (result.isConfirmed) {
+              window.location.href = `/hr-login?level=${level}`;
+          } else if (result.dismiss === Swal.DismissReason.cancel) {
+              window.location.href = 'https://chat.whatsapp.com/FsMqgrEqZiDLL2qgHuEqwN?s=sh&p=a&mlu=2';
+          }
+      });
+    }
+  </script>
 
 <script src="ten-motion.js"></script>
 </body>
