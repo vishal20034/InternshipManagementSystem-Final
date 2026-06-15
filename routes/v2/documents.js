@@ -12,8 +12,8 @@ const Student             = require("../../models/Student");
 const StudentDocument     = require("../../models/new/StudentDocument");
 const StudentTaskProgress = require("../../models/new/StudentTaskProgress");
 const { generateOfferLetterPDF } = require("../../services/v2/offerLetterService");
-const { generateLORPDF }  = require("../../services/v2/lorService");
-const { generateLOCPDF }  = require("../../services/v2/locService");
+const { generateLORPDF } = require("../../services/v2/lorService");
+const { generateLOCPDF } = require("../../services/v2/locService");
 const DocumentHistory     = require("../../models/DocumentHistory");
 const MailHistory         = require("../../models/MailHistory");
 const Notification        = require("../../models/Notification");
@@ -59,11 +59,9 @@ async function requireStudent(req, res, next) {
 }
 
 // ── Auth middleware (HR) ──
-// Accepts the same "Bearer hr_XXX" token the existing HR portal sends
 async function requireHR(req, res, next) {
     try {
         const auth = req.headers["authorization"] || req.headers["Authorization"] || "";
-        // Accept the existing HR portal token format (same validation as existing /hr/* routes)
         if (auth && auth.startsWith("Bearer hr_")) {
             req.hrUser = { token: auth };
             return next();
@@ -86,7 +84,6 @@ function createTransporter() {
 // STUDENT ROUTES
 // ════════════════════════════════
 
-// ── LOC auto-generation helper (called when student reaches 100% completion) ──
 async function tryAutoGenerateLOC(student) {
     try {
         const [totalCount, approvedCount] = await Promise.all([
@@ -96,7 +93,7 @@ async function tryAutoGenerateLOC(student) {
         if (!totalCount || approvedCount < totalCount) return;
 
         let doc = await StudentDocument.findOne({ studentId: student._id });
-        if (doc && doc.locUrl) return; // already generated
+        if (doc && doc.locUrl) return;
 
         const locDir = path.join(__dirname, "../../uploads/loc");
         try { fs.mkdirSync(locDir, { recursive: true }); } catch (_) {}
@@ -128,7 +125,6 @@ async function tryAutoGenerateLOC(student) {
         doc.locDocumentNumber = docNumber;
         await doc.save();
 
-        // Sync with Student model
         try {
             const pdfBuffer = fs.readFileSync(outPath);
             await Student.findByIdAndUpdate(student._id, {
@@ -157,7 +153,6 @@ async function tryAutoGenerateLOC(student) {
             sentToEmail:    student.email || ""
         });
 
-        // Email LOC to student (best-effort)
         try {
             const transporter = createTransporter();
             await transporter.sendMail({
@@ -180,8 +175,6 @@ async function tryAutoGenerateLOC(student) {
     }
 }
 
-// GET /api/v2/documents/my-status
-// Returns current document status for logged-in student (fresh on every load)
 router.get("/documents/my-status", requireStudent, async (req, res) => {
     try {
         let doc = await StudentDocument.findOne({ studentId: req.student._id });
@@ -189,7 +182,6 @@ router.get("/documents/my-status", requireStudent, async (req, res) => {
             doc = await StudentDocument.create({ studentId: req.student._id });
         }
 
-        // Trigger LOC check on every status load (non-blocking)
         tryAutoGenerateLOC(req.student).catch(() => {});
 
         res.json({
@@ -217,8 +209,6 @@ router.get("/documents/my-status", requireStudent, async (req, res) => {
     }
 });
 
-// POST /api/v2/documents/upload-address-proof
-// Multipart upload for address proof
 router.post("/documents/upload-address-proof", requireStudent, (req, res, next) => {
     req.docType = "address_proof";
     next();
@@ -227,7 +217,6 @@ router.post("/documents/upload-address-proof", requireStudent, (req, res, next) 
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
         let doc = await StudentDocument.findOne({ studentId: req.student._id });
         if (!doc) doc = new StudentDocument({ studentId: req.student._id });
-        // Remove old file if exists
         if (doc.addressProofUrl && fs.existsSync(doc.addressProofUrl)) {
             try { fs.unlinkSync(doc.addressProofUrl); } catch (_) {}
         }
@@ -245,8 +234,6 @@ router.post("/documents/upload-address-proof", requireStudent, (req, res, next) 
     }
 });
 
-// POST /api/v2/documents/upload-marksheet
-// Multipart upload for marksheet
 router.post("/documents/upload-marksheet", requireStudent, (req, res, next) => {
     req.docType = "marksheet";
     next();
@@ -255,7 +242,6 @@ router.post("/documents/upload-marksheet", requireStudent, (req, res, next) => {
         if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
         let doc = await StudentDocument.findOne({ studentId: req.student._id });
         if (!doc) doc = new StudentDocument({ studentId: req.student._id });
-        // Remove old file if exists
         if (doc.marksheetUrl && fs.existsSync(doc.marksheetUrl)) {
             try { fs.unlinkSync(doc.marksheetUrl); } catch (_) {}
         }
@@ -273,8 +259,6 @@ router.post("/documents/upload-marksheet", requireStudent, (req, res, next) => {
     }
 });
 
-// POST /api/v2/documents/submit
-// Marks status as 'pending', triggers HR notification
 router.post("/documents/submit", requireStudent, async (req, res) => {
     try {
         const doc = await StudentDocument.findOne({ studentId: req.student._id });
@@ -289,14 +273,12 @@ router.post("/documents/submit", requireStudent, async (req, res) => {
         doc.rejectionReason = null;
         await doc.save();
 
-        // Sync with Student model
         await Student.findByIdAndUpdate(req.student._id, {
             offerLetterStatus: "pending",
             documentsSubmittedAt: new Date(),
             documentRejectionReason: null
         });
 
-        // Notify HR via email (best-effort)
         try {
             const transporter = createTransporter();
             await transporter.sendMail({
@@ -340,8 +322,6 @@ router.post("/documents/submit", requireStudent, async (req, res) => {
 // HR ADMIN ROUTES
 // ════════════════════════════════
 
-// GET /api/v2/admin/documents/pending
-// HR sees all students with pending/under_review documents
 router.get("/admin/documents/pending", requireHR, async (req, res) => {
     try {
         const docs = await StudentDocument.find({
@@ -378,8 +358,6 @@ router.get("/admin/documents/pending", requireHR, async (req, res) => {
     }
 });
 
-// POST /api/v2/admin/documents/generate-offer-letters
-// Bulk: HR selects students, generates + emails offer letters
 router.post("/admin/documents/generate-offer-letters", requireHR, async (req, res) => {
     try {
         const { studentIds } = req.body;
@@ -399,7 +377,6 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
 
                 const docNumber = normalizeDocumentNumber(generateDocumentNumber("offer_letter"));
 
-                // Calculate dates
                 const joining = student.joiningDate ? new Date(student.joiningDate) : new Date();
                 const tenureDays = student.tenure === "45 Days" ? 45 : student.tenure === "1 Month" ? 30 : student.tenure === "3 Months" ? 90 : student.tenure === "6 Months" ? 180 : 45;
                 const endDate   = new Date(joining.getTime() + tenureDays * 24 * 3600 * 1000);
@@ -419,7 +396,6 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                     documentNumber: docNumber
                 }, pdfPath);
 
-                // Update status
                 docRec.uploadStatus     = "approved";
                 docRec.reviewedAt       = new Date();
                 docRec.offerLetterUrl   = `/uploads/offer-letters/${path.basename(pdfPath)}`;
@@ -427,12 +403,11 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                 docRec.offerLetterDocumentNumber = docNumber;
                 await docRec.save();
 
-                // Sync with Student model
                 try {
                     const pdfBuffer = fs.readFileSync(pdfPath);
                     await Student.findByIdAndUpdate(sid, {
                         offerPdfBase64: pdfBuffer.toString('base64'),
-                        offerLetterStatus: 'approved', // or 'issued'
+                        offerLetterStatus: 'approved',
                         offerLetterGeneratedAt: new Date(),
                         documentRejectionReason: null
                     });
@@ -441,7 +416,6 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                     console.error(`[Sync] ✗ Failed to sync Offer Letter to Student:`, syncErr.message);
                 }
 
-                // Email offer letter to student
                 let mailStatus = "sent";
                 let mailError = "";
                 try {
@@ -459,8 +433,7 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                     mailError = mailErr && mailErr.message ? String(mailErr.message) : "";
                 }
 
-                const studentName =
-                    (student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email || "").trim();
+                const studentName = (student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.email || "").trim();
                 const college = (student.collegeName || student.college || "Not provided").trim();
 
                 await DocumentHistory.create({
@@ -517,13 +490,10 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
     }
 });
 
-// GET /api/v2/documents/my-certificates
-// Student: get all certificates + stats + journey stage
 router.get("/documents/my-certificates", requireStudent, async (req, res) => {
     try {
         const student = req.student;
 
-        // Stats from student model
         const stats = {
             attendance:     student.attendancePercentage   || 0,
             performance:    student.performanceScore       || 0,
@@ -532,7 +502,6 @@ router.get("/documents/my-certificates", requireStudent, async (req, res) => {
             daysRemaining:  null
         };
 
-        // Calculate days remaining
         let internshipStatus = "active";
         if (student.joiningDate) {
             const joining = new Date(student.joiningDate);
@@ -543,11 +512,9 @@ router.get("/documents/my-certificates", requireStudent, async (req, res) => {
             if (daysLeft <= 0) internshipStatus = "completed";
         }
 
-        // Offer letter from StudentDocument
         const docRecord = await StudentDocument.findOne({ studentId: student._id });
         const offerLetterEarned = !!(docRecord && docRecord.offerLetterUrl);
 
-        // LOC, LOR, Star Performance from uploads folder
         const empId = student.employeeId || student._id.toString();
         const locPath  = require("path").join(__dirname, "../../uploads/certificates", `${empId}_loc.pdf`);
         const lorPath  = require("path").join(__dirname, "../../uploads/certificates", `${empId}_lor.pdf`);
@@ -558,11 +525,12 @@ router.get("/documents/my-certificates", requireStudent, async (req, res) => {
         const lorEarned  = fse.existsSync(lorPath);
         const starEarned = fse.existsSync(starPath);
 
-        // Get star grade
         const { getStarGrade } = require("../../services/automationCron");
-        const starInfo = getStarGrade(stats);
+        let starInfo = { grade: '', label: '' };
+        try {
+            starInfo = getStarGrade(stats);
+        } catch (_) {}
 
-        // Journey stage
         let journeyStage = "registered";
         if (offerLetterEarned) journeyStage = "offer_received";
         else if (docRecord && (docRecord.addressProofUrl || docRecord.marksheetUrl)) journeyStage = "docs_uploaded";
@@ -608,8 +576,6 @@ router.get("/documents/my-certificates", requireStudent, async (req, res) => {
     }
 });
 
-// POST /api/v2/admin/documents/generate-lor/:studentId
-// HR generates an LOR for a student
 router.post("/admin/documents/generate-lor/:studentId", requireHR, async (req, res) => {
     try {
         const student = await Student.findById(req.params.studentId);
@@ -617,7 +583,6 @@ router.post("/admin/documents/generate-lor/:studentId", requireHR, async (req, r
 
         const { force } = req.body;
 
-        // Check minimum 50% completion
         const [totalCount, approvedCount] = await Promise.all([
             StudentTaskProgress.countDocuments({ studentId: student._id }),
             StudentTaskProgress.countDocuments({ studentId: student._id, status: "approved" })
@@ -645,8 +610,6 @@ router.post("/admin/documents/generate-lor/:studentId", requireHR, async (req, r
     }
 });
 
-// PATCH /api/v2/admin/documents/reject/:studentId
-// HR rejects documents with a reason
 router.patch("/admin/documents/reject/:studentId", requireHR, async (req, res) => {
     try {
         const { rejectionReason } = req.body;
@@ -658,13 +621,11 @@ router.patch("/admin/documents/reject/:studentId", requireHR, async (req, res) =
         doc.reviewedAt      = new Date();
         await doc.save();
 
-        // Sync with Student model
         await Student.findByIdAndUpdate(req.params.studentId, {
             offerLetterStatus: "rejected",
             documentRejectionReason: doc.rejectionReason
         });
 
-        // Notify student
         try {
             const student = await Student.findById(req.params.studentId).select("email name");
             if (student) {

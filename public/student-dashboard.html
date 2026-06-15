@@ -29,6 +29,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addon-fit/addon-fit.min.js"></script>
 
 <style>
+@media (max-width: 768px) {
+  .domain-btn-text { display: none !important; }
+}
 :root {
   --bg-base:        #05070e;
   --bg-surface:     #090d1a;
@@ -1545,6 +1548,11 @@ button:active { transform: translateY(0); }
         🔔
         <span class="notif-badge" id="notifBadge2">0</span>
       </button>
+      <button id="domainToggleBtn2" onclick="toggleNextDomain()" title="Switch Domain"
+        style="display:none;align-items:center;justify-content:center;padding:0 14px;height:42px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:12px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:#D4AF37;transition:all 0.3s;gap:6px;"
+        onmouseover="this.style.background='rgba(212,175,55,0.2)'" onmouseout="this.style.background='rgba(212,175,55,0.1)'">
+        <span>🔄 Switch Domain</span>
+      </button>
       <button id="refreshBtn2" onclick="refreshDashboard()" title="Refresh Dashboard"
         style="width:42px;height:42px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;">
         🔄
@@ -1673,6 +1681,45 @@ button:active { transform: translateY(0); }
         <div>
           <h1 id="welcomeText">Welcome 🚀</h1>
           <p id="domainText">Domain</p>
+
+          <!-- Two-domain toggle — shown only if 2 domains -->
+          <div id="domainToggleWrap"
+               style="display:none;align-items:center;gap:14px;margin-top:14px;
+                      flex-wrap:wrap;">
+
+            <span id="domain1Chip"
+                  style="font-size:12px;font-weight:700;padding:6px 14px;
+                         border-radius:20px;background:rgba(59,130,246,0.18);
+                         border:1px solid rgba(59,130,246,0.4);color:#93c5fd;
+                         transition:all 0.25s;cursor:pointer;"
+                  onclick="switchToTab(0)">
+            </span>
+
+            <div onclick="flipDomainToggle()"
+                 id="slidingDomainToggle"
+                 title="Switch domain"
+                 style="width:52px;height:28px;
+                        background:linear-gradient(90deg,#1e40af,#0891b2);
+                        border-radius:14px;cursor:pointer;position:relative;
+                        border:1px solid rgba(59,130,246,0.35);
+                        transition:background 0.35s;flex-shrink:0;">
+              <div id="domainToggleKnob"
+                   style="width:22px;height:22px;background:white;
+                          border-radius:50%;position:absolute;
+                          top:2px;left:2px;transition:left 0.3s;
+                          box-shadow:0 2px 6px rgba(0,0,0,0.35);">
+              </div>
+            </div>
+
+            <span id="domain2Chip"
+                  style="font-size:12px;font-weight:700;padding:6px 14px;
+                         border-radius:20px;background:rgba(255,255,255,0.06);
+                         border:1px solid rgba(255,255,255,0.1);color:#94a3b8;
+                         transition:all 0.25s;cursor:pointer;"
+                  onclick="switchToTab(1)">
+            </span>
+
+          </div>
         </div>
       </div>
     </div>
@@ -1681,6 +1728,11 @@ button:active { transform: translateY(0); }
       <button class="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications">
         🔔
         <span class="notif-badge" id="notifBadge">0</span>
+      </button>
+      <button id="domainToggleBtn" onclick="toggleNextDomain()" title="Switch Domain"
+        style="display:none;align-items:center;justify-content:center;padding:0 14px;height:42px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:12px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:#D4AF37;transition:all 0.3s;gap:6px;"
+        onmouseover="this.style.background='rgba(212,175,55,0.2)'" onmouseout="this.style.background='rgba(212,175,55,0.1)'">
+        <span>🔄 Switch Domain</span>
       </button>
       <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh Dashboard"
         style="width:42px;height:42px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;">
@@ -1695,7 +1747,10 @@ button:active { transform: translateY(0); }
     <div class="profile-avatar" id="profileAvatar">?</div>
     <div class="profile-info">
       <div class="profile-name" id="profileName">—</div>
-      <div class="profile-domain-badge" id="profileDomain">—</div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0;">
+        <div class="profile-domain-badge" id="profileDomain">—</div>
+        <div id="customDomainSwitcher" style="display: none;"></div>
+      </div>
       <div class="profile-id" id="profileId">—</div>
       <div class="profile-meta">
         <span id="profileTenure">—</span>
@@ -1898,7 +1953,7 @@ button:active { transform: translateY(0); }
   <div class="tasks-box">
     <div class="section-title">
       <h2>📚 Your Domain Tasks</h2>
-      <span class="badge">Domain Tasks</span>
+      <span class="badge" id="taskDomainBadge">Loading...</span>
     </div>
     <div id="tasksContainer"></div>
   </div>
@@ -2153,7 +2208,7 @@ function applyTheme(theme){document.documentElement.setAttribute('data-theme',th
 function toggleTheme(){var c=localStorage.getItem('ten-theme')||'dark';var n=c==='dark'?'light':'dark';localStorage.setItem('ten-theme',n);applyTheme(n);}
 (function(){applyTheme(localStorage.getItem('ten-theme')||'dark');})();
 
-const student = JSON.parse(localStorage.getItem("student"));
+let student = JSON.parse(localStorage.getItem("student"));
 
 if(!student){
   window.location.href="/login.html";
@@ -2179,30 +2234,30 @@ if(!student){
         if (s.domains)      stored.domains      = s.domains;
         if (s.linkedDomains) stored.linkedDomains = s.linkedDomains;
         localStorage.setItem('student', JSON.stringify(stored));
-        Object.assign(student, stored);
+        student = stored;
         if (typeof recalculateDomains === 'function') {
           recalculateDomains();
         }
         if (typeof setupDomainToggle === 'function') {
           setupDomainToggle();
         }
+        if (typeof setupDomainSwitcher === 'function') {
+          setupDomainSwitcher();
+        }
       })
       .catch(function(){});
   } catch(e) {}
 })();
-
-const employeeId = student.employeeId;
-let domain = student.domain;
 
 let allDomains = (student.domains && student.domains.length > 0)
   ? student.domains
   : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
       ? student.linkedDomains.map(function(ld){ return ld.domain; })
       : [student.domain].filter(Boolean));
-
-let activeDomainIdx = allDomains.indexOf(domain);
+let activeDomainIdx = allDomains.indexOf(student.domain);
 if (activeDomainIdx === -1) activeDomainIdx = 0;
-domain = allDomains[activeDomainIdx];
+let domain = allDomains[activeDomainIdx];
+const employeeId = student.employeeId;
 
 function recalculateDomains() {
   allDomains = (student.domains && student.domains.length > 0)
@@ -2210,11 +2265,122 @@ function recalculateDomains() {
     : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
         ? student.linkedDomains.map(function(ld){ return ld.domain; })
         : [student.domain].filter(Boolean));
-  activeDomainIdx = allDomains.indexOf(domain);
+  activeDomainIdx = allDomains.indexOf(student.domain);
   if (activeDomainIdx === -1) activeDomainIdx = 0;
-  if (allDomains.length > 0) {
-    domain = allDomains[activeDomainIdx];
+  domain = allDomains[activeDomainIdx];
+}
+
+// ── DOMAIN TOGGLE SETUP ─────────────────────────────────────────
+function setupDomainToggle() {
+  if (allDomains.length < 2) return;  // only show if 2 domains
+
+  const wrap  = document.getElementById("domainToggleWrap");
+  const chip1 = document.getElementById("domain1Chip");
+  const chip2 = document.getElementById("domain2Chip");
+
+  if (chip1 && chip2 && wrap) {
+    chip1.textContent = allDomains[0];
+    if (allDomains.length > 1) {
+      chip2.textContent = allDomains[1];
+    }
+    wrap.style.display = "flex";
+    updateToggleVisuals();
   }
+}
+
+function updateToggleVisuals() {
+  const chip1 = document.getElementById("domain1Chip");
+  const chip2 = document.getElementById("domain2Chip");
+  const knob  = document.getElementById("domainToggleKnob");
+
+  if (!chip1 || !chip2 || !knob) return;
+
+  if (activeDomainIdx === 0) {
+    knob.style.left = "2px";
+    chip1.style.background = "rgba(59,130,246,0.18)";
+    chip1.style.borderColor = "rgba(59,130,246,0.4)";
+    chip1.style.color       = "#93c5fd";
+    chip2.style.background  = "rgba(255,255,255,0.06)";
+    chip2.style.borderColor = "rgba(255,255,255,0.1)";
+    chip2.style.color       = "#94a3b8";
+  } else {
+    knob.style.left = "28px";
+    chip2.style.background  = "rgba(59,130,246,0.18)";
+    chip2.style.borderColor = "rgba(59,130,246,0.4)";
+    chip2.style.color       = "#93c5fd";
+    chip1.style.background  = "rgba(255,255,255,0.06)";
+    chip1.style.borderColor = "rgba(255,255,255,0.1)";
+    chip1.style.color       = "#94a3b8";
+  }
+}
+
+function flipDomainToggle() {
+  switchToTab(activeDomainIdx === 0 ? 1 : 0);
+}
+
+function switchToTab(idx) {
+  if (idx === activeDomainIdx) return;
+  const target = allDomains[idx];
+  if (!target) return;
+  
+  Swal.fire({
+    title: 'Switching Domain...',
+    html: 'Preparing your workspace for <b>' + target + '</b>',
+    background: '#0e1428',
+    color: '#F0EEE8',
+    allowOutsideClick: false,
+    didOpen: function() {
+      Swal.showLoading();
+    }
+  });
+
+  fetch("/student/switch-domain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: student.email, targetDomain: target })
+  })
+  .then(res => res.json())
+  .then(d => {
+    if (d.success) {
+      const next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+      localStorage.setItem("student", JSON.stringify(next));
+      localStorage.setItem("employeeId", next.employeeId);
+      sessionStorage.setItem("student", JSON.stringify(next));
+      
+      Swal.fire({
+         icon: 'success',
+         title: 'Workspace Loaded! 🎉',
+         text: 'Successfully switched to ' + target,
+         background: '#0e1428',
+         color: '#F0EEE8',
+         confirmButtonColor: '#D4AF37',
+         timer: 1500,
+         timerProgressBar: true,
+         showConfirmButton: false
+      }).then(function() {
+         window.location.reload();
+      });
+    } else {
+      Swal.fire({
+         icon: 'error',
+         title: 'Failed to switch domain',
+         text: d.message || "Could not switch domain.",
+         background: '#0e1428',
+         color: '#F0EEE8',
+         confirmButtonColor: '#D4AF37'
+      });
+    }
+  })
+  .catch(err => {
+    Swal.fire({
+       icon: 'error',
+       title: 'Network Error',
+       text: "Could not connect to the server.",
+       background: '#0e1428',
+       color: '#F0EEE8',
+       confirmButtonColor: '#D4AF37'
+    });
+  });
 }
 
 // ── Domain visual config (icon + accent colour) for professional domain branding ──
@@ -2260,63 +2426,8 @@ document.getElementById("welcomeText").innerText =
 document.getElementById("employeeText").innerText =
   student.employeeId;
 
-// ── DOMAIN TOGGLE SETUP ─────────────────────────────────────────
-function setupDomainToggle() {
-  const container = document.getElementById("domainText");
-  if (!container) return;
-  if (allDomains.length < 2) {
-    container.innerHTML = "Domain : " + domain;
-    return;
-  }
-
-  // Render a sliding toggle/switcher with all domains
-  let buttonsHtml = allDomains.map((dom, idx) => {
-    const isSelected = dom === domain;
-    const cfg = domainConfig[dom] || { icon: "🎓", color: "#3b82f6" };
-    const btnStyle = isSelected 
-      ? `background:${cfg.color}; color:#ffffff; border-color:${cfg.color}; font-weight:700; transform: scale(1.03);`
-      : `background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.12);`;
-    return `
-      <button onclick="switchActiveDomain(${idx})" 
-              style="padding: 6px 14px; border-radius: 20px; border: 1px solid; cursor: pointer; transition: all 0.25s / cubic-bezier(0.4, 0, 0.2, 1); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; outline: none; margin-right: 4px; ${btnStyle}">
-        <span>${cfg.icon}</span> <span>${dom}</span>
-      </button>
-    `;
-  }).join("");
-
-  container.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:8px; margin-top: 6px;">
-      <div style="font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Active Domain</div>
-      <div style="display:inline-flex; flex-wrap:wrap; background:rgba(0,0,0,0.2); padding:4px; border-radius:24px; border:1px solid rgba(255,255,255,0.05); width:fit-content; max-width:100%;">
-        ${buttonsHtml}
-      </div>
-    </div>
-  `;
-}
-
-function switchActiveDomain(idx) {
-  if (idx < 0 || idx >= allDomains.length) return;
-  activeDomainIdx = idx;
-  domain = allDomains[idx];
-
-  // Apply domain colour to accent elements
-  const cfg = domainConfig[domain] || { icon:"🎓", color:"#3b82f6" };
-  document.documentElement.style.setProperty("--domain-color", cfg.color);
-  document.documentElement.style.setProperty("--domain-color-bg", cfg.color + "18");
-  const domainIconEl = document.getElementById("domainIcon");
-  if(domainIconEl) domainIconEl.innerText = cfg.icon;
-
-  // Re-trigger visual updates
-  setupDomainToggle();
-  
-  // Re-load coordinator notice and tasks for the new domain
-  loadNotice();
-  loadCoordinatorTasks();
-  renderTasks();
-}
-
-// Set up domain switcher on load
-setupDomainToggle();
+document.getElementById("domainText").innerText =
+  "Domain : " + domain;
 
 // Apply domain colour to accent elements
 document.documentElement.style.setProperty("--domain-color", dCfg.color);
@@ -2458,95 +2569,205 @@ function renderCoordinatorTasks(fileUrl="", fileName=""){
         <span class="task-number" style="background:rgba(0,200,83,0.12);color:#00c853;">📁 FILE</span>
       </div>
       <h3>${fileName || "Coordinator Task File"}</h3>
-      <p>Your coordinator has uploaded a task file. Click below to download.</p>
-      <a href="${fileUrl}" download="${fileName}" class="primary-btn"
-         style="display:inline-block;text-decoration:none;padding:10px 20px;">
-        ⬇ Download File
-      </a>
+      <p>Your coordinator has uploaded a task file. Click below to download and review your assignment.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+        <a href="${fileUrl}" download="${fileName}" class="primary-btn"
+           style="display:inline-block;text-decoration:none;padding:10px 20px;">
+          ⬇ Download File
+        </a>
+        <button class="primary-btn" onclick="openCoordinatorFileSubmission('${(fileName || "Coordinator Task File").replace(/'/g, "\\'")}')"
+                style="background:transparent;border:1px solid #00c853;color:#00c853;">
+          Submit Task →
+        </button>
+      </div>
     </div>`;
   }
 
-  // Show text tasks — NO submit button, just read
+  // Show text tasks
   if(hasTasks){
     html += coordTasks.map((task, index) => `
-    <div class="task-card" style="border-left:3px solid #f59e0b;">
+    <div class="task-card" style="border-left:3px solid #f59e0b;margin-bottom:12px;">
       <div class="task-card-header">
         <span class="task-number" style="background:#f59e0b20;color:#f59e0b;">TASK ${index+1}</span>
       </div>
       <h3>${task}</h3>
+      <div style="margin-top:14px;">
+        <button class="primary-btn" onclick="openCoordinatorTaskSubmission(${index})">
+          Submit Task →
+        </button>
+      </div>
     </div>`).join("");
   }
 
   container.innerHTML = html;
 }
 
-function renderTasks(){
+function openCoordinatorTaskSubmission(index) {
+  currentAssignmentId = null;
+  currentTask = "Coordinator Task " + (index + 1) + ": " + coordTasks[index];
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+function openCoordinatorFileSubmission(fileName) {
+  currentAssignmentId = null;
+  currentTask = "Coordinator Task File: " + fileName;
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+// ── NEW: Load tasks from backend (/my-tasks route) ────────────
+let currentAssignmentId = null;
+
+async function loadAndRenderTasks() {
   const container = document.getElementById("tasksContainer");
-  const matchedDomain = getMatchedDomain(domain);
-  const tasks = tasksByDomain[matchedDomain] || [];
-  if(tasks.length === 0){
-    container.innerHTML = `<div class="empty-state">No tasks available for your domain.</div>`;
-    return;
+  if (!container) return;
+  container.innerHTML = `
+    <div style="text-align:center;padding:30px;color:var(--text-secondary);">
+      <div style="font-size:28px;margin-bottom:10px;">⏳</div>
+      Loading your tasks...
+    </div>`;
+
+  // Update badge if exists
+  const badge = document.getElementById("taskDomainBadge");
+  if (badge) {
+    badge.textContent = domain;
   }
-  container.innerHTML = tasks.map((taskTask, index) => {
-    // Check if there is already a submission for this specific task and domain
-    const sub = latestSubmissions.find(s => s.task === taskTask && s.domain === domain);
-    const isSubmitted = !!sub;
-    const subStatus = sub ? sub.status : null;
-    
+
+  try {
+    const res  = await fetch("/my-tasks/" + encodeURIComponent(employeeId));
+    const data = await res.json();
+
+    if (data.success && data.tasks && data.tasks.length > 0) {
+      renderTaskCards(data.tasks);
+    } else {
+      // Fallback to hardcoded tasks if backend returns nothing
+      renderHardcodedTasks();
+    }
+  } catch (err) {
+    console.log("Task load error:", err);
+    renderHardcodedTasks();
+  }
+}
+
+function renderTaskCards(tasks) {
+  const container = document.getElementById("tasksContainer");
+  if (!container) return;
+
+  const diffColors = {
+    "Beginner":     { bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.3)",  text: "#34d399" },
+    "Intermediate": { bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.3)",  text: "#fbbf24" },
+    "Advanced":     { bg: "rgba(239,68,68,0.1)",   border: "rgba(239,68,68,0.3)",   text: "#f87171" },
+    "Capstone":     { bg: "rgba(139,92,246,0.1)",  border: "rgba(139,92,246,0.3)",  text: "#a78bfa" }
+  };
+
+  container.innerHTML = tasks.map((task) => {
+    const dc = diffColors[task.difficulty] || diffColors["Beginner"];
+    const isSubmitted = task.status && task.status !== "Pending";
     let btnHtml = "";
     if (isSubmitted) {
       btnHtml = `
         <button class="primary-btn" disabled 
                 style="background:rgba(16,185,129,0.1) !important; color:#34d399 !important; border:1px solid rgba(16,185,129,0.25) !important; cursor:not-allowed; opacity:0.85;">
-          ✓ Submitted (${subStatus})
+          ✓ Submitted (${task.status})
         </button>
       `;
     } else {
       btnHtml = `
-        <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task →</button>
+        <button class="primary-btn"
+                onclick="openSubmissionModalForTask('${task._id}','${task.title.replace(/'/g,"\\'")}')">
+          Submit Task →
+        </button>
       `;
     }
-
     return `
       <div class="task-card">
         <div class="task-card-header">
-          <span class="task-number">TASK ${index+1}</span>
+          <span class="task-number">Day ${task.dayNumber} · Task ${task.taskNumber}</span>
+          <span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;
+                       background:${dc.bg};border:1px solid ${dc.border};color:${dc.text};">
+            ${task.difficulty || "Beginner"}
+          </span>
         </div>
-        <h3>${taskTask}</h3>
-        <p>Submit your work with a GitHub link, screenshot, and PDF documentation.</p>
+        <h3>${task.title}</h3>
+        <p>${task.description}</p>
         ${btnHtml}
-      </div>
-    `;
+      </div>`;
   }).join("");
 }
 
-function openSubmissionModal(index){
+// Updated openSubmissionModal for backend tasks
+function openSubmissionModalForTask(assignmentId, title) {
+  currentAssignmentId = assignmentId;
+  currentTask         = title;
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+// Keep original openSubmissionModal for hardcoded fallback
+function openSubmissionModal(index) {
+  currentAssignmentId = null;
   const matchedDomain = getMatchedDomain(domain);
-  currentTask = tasksByDomain[matchedDomain][index];
-  document.getElementById("submissionModal").style.display="flex";
+  currentTask = (tasksByDomain[matchedDomain] || [])[index] || "Task";
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+function renderHardcodedTasks() {
+  const container = document.getElementById("tasksContainer");
+  if (!container) return;
+  const matchedDomain = getMatchedDomain(domain);
+  const tasks     = tasksByDomain[matchedDomain] || [];
+
+  if (tasks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="text-align:center;padding:40px;color:var(--text-secondary);">
+        <div style="font-size:32px;margin-bottom:12px;">📋</div>
+        <p>No tasks available for this domain yet.</p>
+        <p style="font-size:13px;margin-top:8px;">Tasks will appear here soon.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = tasks.map((task, index) => `
+    <div class="task-card">
+      <div class="task-card-header">
+        <span class="task-number">Task ${index + 1}</span>
+      </div>
+      <h3>${task}</h3>
+      <p>Complete this task and submit your work with a GitHub link, screenshot, and PDF documentation.</p>
+      <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task →</button>
+    </div>`).join("");
 }
 
 function closeSubmissionModal(){
   document.getElementById("submissionModal").style.display="none";
 }
 
+function renderTasks(){
+  loadAndRenderTasks();
+}
+
 let isSubmittingTask = false;
 
 async function submitTask(){
-  if (isSubmittingTask) return;
+  if (isSubmittingTask) {
+    console.log("Ignored double-click submission command.");
+    return;
+  }
+
+  const modalBtn = document.querySelector("#submissionModal button.primary-btn");
+  let originalLabel = "Submit Task";
+  if (modalBtn) {
+    originalLabel = modalBtn.innerText;
+    modalBtn.disabled = true;
+    modalBtn.innerText = "Submitting...";
+    modalBtn.style.opacity = "0.6";
+    modalBtn.style.cursor = "not-allowed";
+  }
+
+  isSubmittingTask = true;
   try{
     const githubLink = document.getElementById("githubLink").value;
     const note = document.getElementById("note").value;
-    const image = document.getElementById("imageFile").files[0];
-    const pdf = document.getElementById("pdfFile").files[0];
-
-    isSubmittingTask = true;
-    const submitBtn = document.querySelector("#submissionModal .primary-btn");
-    if (submitBtn) {
-      submitBtn.innerText = "Submitting...";
-      submitBtn.disabled = true;
-    }
+    const image = document.getElementById("imageFile").value ? document.getElementById("imageFile").files[0] : null;
+    const pdf = document.getElementById("pdfFile").value ? document.getElementById("pdfFile").files[0] : null;
 
     const formData = new FormData();
     formData.append("employeeId",employeeId);
@@ -2554,6 +2775,9 @@ async function submitTask(){
     formData.append("githubLink",githubLink);
     formData.append("note",note);
     formData.append("task",currentTask);
+    if (typeof currentAssignmentId !== 'undefined' && currentAssignmentId) {
+      formData.append("assignmentId", currentAssignmentId);
+    }
     if(image){ formData.append("image",image); }
     if(pdf){ formData.append("pdf",pdf); }
 
@@ -2562,26 +2786,29 @@ async function submitTask(){
 
     if(data.success){
       Swal.fire({icon:"success",title:"Task Submitted",text:"Your task uploaded successfully 🚀",background:"#101820",color:"#ffffff",confirmButtonColor:"#00c853"});
+      closeSubmissionModal();
       
-      // Clear fields
+      // Clear inputs inside the submission modal on successful submission
       document.getElementById("githubLink").value = "";
       document.getElementById("note").value = "";
       document.getElementById("imageFile").value = "";
       document.getElementById("pdfFile").value = "";
       
-      closeSubmissionModal();
       loadStudentSubmissions();
+      loadAndRenderTasks(); // Refresh dashboard task card lists instantly!
     }else{
-      Swal.fire({icon:"error",title:"Submission Failed",text:"Task submission failed",background:"#101820",color:"#ffffff"});
+      Swal.fire({icon:"error",title:"Submission Failed",text:data.message || "Task submission failed",background:"#101820",color:"#ffffff"});
     }
   }catch(error){
     console.log(error);
+    Swal.fire({icon:"error",title:"Network Error",text:"Communication with the server failed.",background:"#101820",color:"#ffffff"});
   } finally {
     isSubmittingTask = false;
-    const submitBtn = document.querySelector("#submissionModal .primary-btn");
-    if (submitBtn) {
-      submitBtn.innerText = "Submit Task";
-      submitBtn.disabled = false;
+    if (modalBtn) {
+      modalBtn.disabled = false;
+      modalBtn.innerText = originalLabel;
+      modalBtn.style.opacity = "1.0";
+      modalBtn.style.cursor = "pointer";
     }
   }
 }
@@ -2605,7 +2832,6 @@ async function loadStudentSubmissions(){
       TenExtras2.bulkSubmissionsToolbar({ employeeId: student.employeeId });
     }
     updateStats(submissions);
-    renderTasks();
   }catch(error){
     console.log(error);
   }
@@ -3388,12 +3614,13 @@ document.addEventListener("visibilitychange", function(){
 });
 
 loadNotice();
-renderTasks();          // Show domain tasks immediately without waiting for fetch
+loadAndRenderTasks();    // replaces renderTasks()
 loadCoordinatorTasks(); // Then load coordinator tasks (updates coordTaskContainer)
 loadCodingProblems();   // F5: show coding section if domain has any
 loadStudentSubmissions();
 loadAttendance();       // NEW dual-attendance system
 loadV2TaskJourney();    // NEW FEATURE: coin balance + task journey widget
+setupDomainToggle();     // initialize toggle if 2 domains
 
 
 // ── Notification System ──
@@ -4031,7 +4258,193 @@ function updateAttRing(pct) {
   label.textContent = pct + '%';
 }
 
+function setupDomainSwitcher() {
+  var linked = Array.isArray(student.linkedDomains) ? student.linkedDomains : [];
+  if (linked.length < 2) return;
+
+  // Render Fast Header Toggle Buttons
+  var btn1 = document.getElementById("domainToggleBtn");
+  var btn2 = document.getElementById("domainToggleBtn2");
+
+  var currentIndex = linked.findIndex(function(ld) {
+    return ld.domain === student.domain;
+  });
+  var nextIndex = (currentIndex + 1) % linked.length;
+  var nextDomain = linked[nextIndex].domain;
+
+  // Format short display names (e.g. Web Development -> Web Dev)
+  var shortName = nextDomain;
+  if (shortName.toLowerCase().indexOf("development") !== -1) {
+    shortName = shortName.replace(/development/gi, "Dev");
+  }
+  if (shortName.length > 15) {
+    shortName = shortName.substring(0, 12) + "...";
+  }
+
+  if (btn1) {
+    btn1.style.display = "flex";
+    btn1.innerHTML = '🔄<span class="domain-btn-text" style="margin-left:5px;">Switch: ' + shortName + '</span>';
+    btn1.setAttribute("title", "Switch workspace to " + nextDomain);
+  }
+  if (btn2) {
+    btn2.style.display = "flex";
+    btn2.innerHTML = '🔄<span class="domain-btn-text" style="margin-left:5px;">Switch: ' + shortName + '</span>';
+    btn2.setAttribute("title", "Switch workspace to " + nextDomain);
+  }
+
+  var wrapper = document.getElementById("customDomainSwitcher");
+  if (!wrapper) return;
+
+  wrapper.style.display = "block";
+  
+  var selectHtml = '<select id="domainSelectDropdown" style="background:#0c1326;color:#D4AF37;border:1px solid rgba(212,175,55,0.6);border-radius:12px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;outline:none;box-shadow:0 0 8px rgba(212,175,55,0.1);transition:all 0.3s;max-width:180px;">';
+  
+  linked.forEach(function(ld) {
+    var isSelected = (ld.domain === student.domain);
+    selectHtml += '<option value="' + ld.domain + '" ' + (isSelected ? 'selected' : '') + '>Switch to: ' + ld.domain + '</option>';
+  });
+  
+  selectHtml += '</select>';
+  wrapper.innerHTML = selectHtml;
+
+  var selectEl = document.getElementById("domainSelectDropdown");
+  if (selectEl) {
+    selectEl.addEventListener("change", async function(e) {
+      var target = e.target.value;
+      if (target === student.domain) return;
+      
+      Swal.fire({
+        title: 'Switching Domain...',
+        html: 'Preparing your workspace for <b>' + target + '</b>',
+        background: '#0e1428',
+        color: '#F0EEE8',
+        allowOutsideClick: false,
+        didOpen: function() {
+          Swal.showLoading();
+        }
+      });
+
+      try {
+        var res = await fetch("/student/switch-domain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: student.email, targetDomain: target })
+        });
+        var d = await res.json();
+        if (d.success) {
+          var next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+          localStorage.setItem("student", JSON.stringify(next));
+          localStorage.setItem("employeeId", next.employeeId);
+          sessionStorage.setItem("student", JSON.stringify(next));
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Workspace Loaded! 🎉',
+            text: 'Successfully switched to ' + target,
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#D4AF37',
+            timer: 1500,
+            timerProgressBar: true,
+            showConfirmButton: false
+          }).then(function() {
+            window.location.reload();
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed to switch domain',
+            text: d.message || "Could not switch domain.",
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#D4AF37'
+          });
+        }
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Network Error',
+          text: "Could not connect to the server.",
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37'
+        });
+      }
+    });
+  }
+}
+
+async function toggleNextDomain() {
+  var linked = Array.isArray(student.linkedDomains) ? student.linkedDomains : [];
+  if (linked.length < 2) return;
+
+  var currentIndex = linked.findIndex(function(ld) {
+    return ld.domain === student.domain;
+  });
+  var nextIndex = (currentIndex + 1) % linked.length;
+  var target = linked[nextIndex].domain;
+
+  Swal.fire({
+    title: 'Switching Domain...',
+    html: 'Loading your workspace for <b>' + target + '</b>',
+    background: '#0e1428',
+    color: '#F0EEE8',
+    allowOutsideClick: false,
+    didOpen: function() {
+      Swal.showLoading();
+    }
+  });
+
+  try {
+    var res = await fetch("/student/switch-domain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: student.email, targetDomain: target })
+    });
+    var d = await res.json();
+    if (d.success) {
+      var next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+      localStorage.setItem("student", JSON.stringify(next));
+      localStorage.setItem("employeeId", next.employeeId);
+      sessionStorage.setItem("student", JSON.stringify(next));
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Workspace Loaded! 🎉',
+        text: 'Successfully switched to ' + target,
+        background: '#0e1428',
+        color: '#F0EEE8',
+        confirmButtonColor: '#D4AF37',
+        timer: 1500,
+        timerProgressBar: true,
+        showConfirmButton: false
+      }).then(function() {
+        window.location.reload();
+      });
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed to switch domain',
+        text: d.message || "Could not switch domain.",
+        background: '#0e1428',
+        color: '#F0EEE8',
+        confirmButtonColor: '#D4AF37'
+      });
+    }
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Network Error',
+      text: "Could not connect to the server.",
+      background: '#0e1428',
+      color: '#F0EEE8',
+      confirmButtonColor: '#D4AF37'
+    });
+  }
+}
+
 populateProfileCard();
+setupDomainSwitcher();
 </script>
 
 <div class="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -4084,7 +4497,7 @@ populateProfileCard();
         <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Portal Password</div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div id="pmPassword" style="font-size:14px;font-weight:700;color:#f0eee8;font-family:monospace;letter-spacing:3px;">••••••••</div>
-          <button onclick="togglePmPassword()" id="pmPassToggle" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:3px 8px;color:#8aa4c8;cursor:pointer;font-size:11px;">Show</button>
+          <button onclick="togglePmPassword()" id="pmPassToggle" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:3px 8px;color:#8aa4c8;cursor:pointer;font-size:11px;">Reveal</button>
         </div>
       </div>
     </div>
@@ -4116,15 +4529,41 @@ function openProfileModal() {
   _pmPassVal = stu.password || stu.plainPassword || '';
   _pmPassVisible = false;
   document.getElementById('pmPassword').textContent = '••••••••';
-  document.getElementById('pmPassToggle').textContent = 'Show';
+  document.getElementById('pmPassToggle').textContent = 'Reveal';
   var modal = document.getElementById('profileModal');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
-function togglePmPassword() {
-  _pmPassVisible = !_pmPassVisible;
-  document.getElementById('pmPassword').textContent = _pmPassVisible ? (_pmPassVal || 'N/A') : '••••••••';
-  document.getElementById('pmPassToggle').textContent = _pmPassVisible ? 'Hide' : 'Show';
+async function togglePmPassword() {
+  if (_pmPassVisible) {
+    _pmPassVisible = false;
+    document.getElementById('pmPassword').textContent = '••••••••';
+    document.getElementById('pmPassToggle').textContent = 'Reveal';
+    return;
+  }
+
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var empId = stu.employeeId || stu.employee_id || '';
+
+  try {
+    var res = await fetch('/get-my-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: empId })
+    });
+    var data = await res.json();
+    if (data.success && data.password) {
+      _pmPassVal = data.password;
+    } else {
+      _pmPassVal = stu.password || stu.plainPassword || 'intern123';
+    }
+  } catch (err) {
+    _pmPassVal = stu.password || stu.plainPassword || 'intern123';
+  }
+
+  _pmPassVisible = true;
+  document.getElementById('pmPassword').textContent = _pmPassVal;
+  document.getElementById('pmPassToggle').textContent = 'Hide';
 }
 function closeProfileModal() {
   document.getElementById('profileModal').style.display = 'none';
@@ -4134,6 +4573,26 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape' && document.getElementById('profileModal').style.display === 'flex') closeProfileModal();
 });
 </script>
+
+<!-- ===== NEW WELCOME POPUP ===== -->
+<div id="welcomePortalModal" style="display:none;position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;">
+  <div style="position:relative;max-width:520px;width:100%;background:linear-gradient(145deg,#0c0e1a,#0d1124);border:1px solid rgba(212,175,55,0.45);border-radius:24px;padding:46px 40px;color:#e8dcc8;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.8);">
+    <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:24px 24px 0 0;"></div>
+    <div style="font-size:52px;margin-bottom:20px;">🎉</div>
+    <h2 style="font-size:24px;font-weight:900;color:#D4AF37;margin-bottom:12px;letter-spacing:0.5px;">Congratulations on Joining TEN!</h2>
+    <p style="font-size:14px;color:#b0a48a;line-height:1.6;margin-bottom:30px;">We are thrilled to welcome you to the TEN family as an intern. Let's build your pathway to excellence!</p>
+    
+    <div id="welcomeOptionSection" style="margin-bottom:34px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:14px;padding:18px 20px;text-align:left;">
+      <div style="font-size:11px;font-weight:800;color:#D4AF37;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Your Dedicated Recommendation</div>
+      <div id="welcomeRecommendationTitle" style="font-size:15px;font-weight:800;color:#f0eee8;margin-bottom:4px;"></div>
+      <p id="welcomeRecommendationDesc" style="font-size:12px;color:#9b8c6e;line-height:1.5;margin:0;"></p>
+    </div>
+
+    <button onclick="acknowledgeWelcomePortal()" style="width:100%;padding:16px 30px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:12px;color:#0a0700;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(212,175,55,0.35);">
+      Let's Get Started!
+    </button>
+  </div>
+</div>
 
 <!-- ===== NEW JOINER TYPE MODAL ===== -->
 <div id="joinerTypeModal" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);align-items:center;justify-content:center;">
@@ -4238,7 +4697,7 @@ function applyJoinerTypeUI(type) {
   try {
     var stu = JSON.parse(localStorage.getItem('student') || '{}');
     if (stu && (stu.employeeId || stu.employee_id)) {
-      setTimeout(showJoinerTypeModalIfNeeded, 800);
+      setTimeout(showWelcomeModalIfNeeded, 800);
     }
   } catch(e) {}
 })();
@@ -4365,12 +4824,60 @@ function acknowledgeInstructions() {
   }).catch(function(){});
 }
 
-(function() {
+function showWelcomeModalIfNeeded() {
   try {
     var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    if (stu && stu.employeeId) showInstructionModalIfNeeded(stu.employeeId);
-  } catch(e) {}
-})();
+    if (!stu || !stu.employeeId) return;
+
+    if (stu.hasSeenWelcome === true) {
+      showJoinerTypeModalIfNeeded();
+      return;
+    }
+
+    var domain = (stu.domain || "").toLowerCase();
+    var isDeveloper = domain.includes("developer") || domain.includes("development") || domain.includes("web") || domain.includes("software") || domain.includes("coding") || domain.includes("flutter");
+
+    var recTitle = isDeveloper ? "💻 Goal: Get Certified!" : "👥 Goal: Support HR & Operations!";
+    var recDesc = isDeveloper 
+      ? "As a developer intern, you should focus on completing automated tasks, tracking milestones daily, and maintaining a high approval rating to qualify for your official completion certificate."
+      : "As an HR or operational intern, you will help coordinate guidelines, support onboarding pathways, track guidelines, and assist with managing student correspondence.";
+
+    var titleEl = document.getElementById("welcomeRecommendationTitle");
+    var descEl = document.getElementById("welcomeRecommendationDesc");
+    if (titleEl) titleEl.textContent = recTitle;
+    if (descEl) descEl.textContent = recDesc;
+
+    var modal = document.getElementById("welcomePortalModal");
+    if (modal) {
+      modal.style.display = "flex";
+      document.body.style.overflow = "hidden";
+    } else {
+      showJoinerTypeModalIfNeeded();
+    }
+  } catch(e) {
+    showJoinerTypeModalIfNeeded();
+  }
+}
+
+function acknowledgeWelcomePortal() {
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var empId = stu.employeeId || localStorage.getItem('employeeId') || '';
+
+  stu.hasSeenWelcome = true;
+  localStorage.setItem('student', JSON.stringify(stu));
+
+  var modal = document.getElementById("welcomePortalModal");
+  if (modal) modal.style.display = "none";
+  document.body.style.overflow = "";
+
+  showJoinerTypeModalIfNeeded();
+
+  fetch('/api/v2/student/mark-welcome-seen', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-employee-id': empId }
+  }).catch(function(){});
+}
+
 // ===== END ONBOARDING POPUP =====
 </script>
 

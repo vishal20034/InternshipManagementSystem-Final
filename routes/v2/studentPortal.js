@@ -140,6 +140,26 @@ router.get("/student/me", requireStudent, async (req, res) => {
         const student = req.student;
         const { totalCoins, rupeeValue } = await coinService.getBalance(student._id);
         const me = student;
+
+        // Auto-heal and sync multiple domains for the same student email on-the-fly
+        const emailLc = String(me.email || "").trim().toLowerCase();
+        let currentLinked = me.linkedDomains || [];
+        if (emailLc) {
+            const allForEmail = await Student.find({ email: emailLc });
+            if (allForEmail.length >= 2) {
+                const updatedLinked = allForEmail.map(s => ({
+                    domain:     s.domain,
+                    studentId:  s._id,
+                    employeeId: s.employeeId
+                }));
+                // If links are stale or count mismatch, push correct linkedDomains to DB
+                if (!currentLinked || currentLinked.length !== updatedLinked.length) {
+                    await Student.updateMany({ email: emailLc }, { linkedDomains: updatedLinked });
+                    currentLinked = updatedLinked;
+                }
+            }
+        }
+
         // Compute internship end date same as login route
         let meEndDate = null;
         if (me.joiningDate) {
@@ -167,7 +187,7 @@ router.get("/student/me", requireStudent, async (req, res) => {
                 joiningDate:        me.joiningDate,
                 internshipEnd:      meEndDate,
                 endDate:            meEndDate,
-                linkedDomains:      me.linkedDomains || [],
+                linkedDomains:      currentLinked,
                 onboardingPopupSeen: me.onboardingPopupSeen || false,
                 joinerTypeSelected:  me.joinerTypeSelected  || false,
                 joinerType:          me.joinerType           || null
@@ -530,7 +550,7 @@ router.post("/student/onboard", requireStudent, async (req, res) => {
         const { durationType } = req.body;
         const student = req.student;
 
-        const validDurations = ["45days", "1month", "3months", "6months"];
+        const validDurations = ["1week", "15days", "45days", "1month", "3months", "6months"];
         if (!validDurations.includes(durationType)) {
             return res.status(400).json({ success: false, message: "Invalid duration type" });
         }
@@ -776,8 +796,9 @@ router.get("/coordinator/submissions", async (req, res) => {
         if (!auth.startsWith("Bearer ")) {
             return res.status(401).json({ success: false, message: "Coordinator auth required" });
         }
-        const domain = req.query.domain;
+        let domain = req.query.domain;
         if (!domain) return res.status(400).json({ success: false, message: "domain query param required" });
+        if (domain === "Artificial Intelligence" || domain === "AI") domain = "Data Science";
 
         const tasks = await DomainTask.find({ domain }).lean();
         const taskIds = tasks.map(t => t._id);

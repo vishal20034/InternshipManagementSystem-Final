@@ -250,8 +250,16 @@ async function registerUser(req, res) {
       });
 
       // BACKWARD COMPATIBILITY: also create legacy Student document in students collection
-      const domain = 'Web Development'; // default
+      let parsedDomains = [];
+      if (roleSpecificData.domains && typeof roleSpecificData.domains === 'string') {
+        parsedDomains = roleSpecificData.domains.split(',').map(d => d.trim()).filter(Boolean);
+      }
+      if (parsedDomains.length === 0) {
+        parsedDomains = ['Web Development'];
+      }
+      const domain = parsedDomains[0];
       const employeeId = await generateEmployeeId(domain);
+      const tenureValue = roleSpecificData.tenure || "1 Month";
       await Student.create({
         firstName: name.trim().split(' ')[0] || name.trim(),
         lastName: name.trim().split(' ').slice(1).join(' ') || "",
@@ -259,11 +267,13 @@ async function registerUser(req, res) {
         email: trimmedEmail,
         whatsapp: roleSpecificData.mobile || "",
         password: hashedPassword,
+        plainPassword: password,
         employeeId: employeeId,
         domain: domain,
+        domains: parsedDomains,
         collegeName: roleSpecificData.university || "",
         college: roleSpecificData.university || "",
-        tenure: "3 months",
+        tenure: tenureValue,
         joiningDate: new Date().toISOString().split('T')[0]
       });
 

@@ -380,6 +380,131 @@ function wrapModelWithFileFallback(model) {
         }
         return originalBulkWrite.apply(this, arguments);
     };
+
+    const originalAggregate = model.aggregate;
+    model.aggregate = function(pipeline) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            let result = JSON.parse(JSON.stringify(items)); // deep copy
+
+            for (const stage of pipeline) {
+                if (stage.$match) {
+                    result = result.filter(item => matchQuery(item, stage.$match));
+                } else if (stage.$unwind) {
+                    let path = stage.$unwind;
+                    if (typeof path === 'object' && path.path) path = path.path;
+                    if (typeof path === 'string' && path.startsWith('$')) path = path.slice(1);
+                    
+                    const unwound = [];
+                    for (const item of result) {
+                        const val = item[path];
+                        if (Array.isArray(val)) {
+                            for (const elem of val) {
+                                unwound.push({ ...item, [path]: elem });
+                            }
+                        } else if (val !== undefined && val !== null) {
+                            unwound.push(item);
+                        }
+                    }
+                    result = unwound;
+                } else if (stage.$group) {
+                    const groupById = stage.$group._id;
+                    const groups = {}; // key string -> values
+                    
+                    for (const item of result) {
+                        let idVal = null;
+                        if (typeof groupById === 'string' && groupById.startsWith('$')) {
+                            const key = groupById.slice(1);
+                            idVal = item[key];
+                        } else if (typeof groupById === 'object' && groupById !== null) {
+                            idVal = {};
+                            for (const k of Object.keys(groupById)) {
+                                let pathVal = groupById[k];
+                                if (typeof pathVal === 'string' && pathVal.startsWith('$')) {
+                                    idVal[k] = item[pathVal.slice(1)];
+                                } else {
+                                    idVal[k] = pathVal;
+                                }
+                            }
+                        } else {
+                            idVal = groupById;
+                        }
+                        
+                        const groupKey = (typeof idVal === 'object' && idVal !== null) ? JSON.stringify(idVal) : String(idVal);
+                        if (!groups[groupKey]) {
+                            groups[groupKey] = { _id: idVal, _items: [] };
+                            // Add extra custom accumulators
+                            for (const field of Object.keys(stage.$group)) {
+                                if (field === '_id') continue;
+                                const acc = stage.$group[field];
+                                if (acc.$sum !== undefined) {
+                                    groups[groupKey][field] = 0;
+                                }
+                            }
+                        }
+                        groups[groupKey]._items.push(item);
+                        
+                        for (const field of Object.keys(stage.$group)) {
+                            if (field === '_id') continue;
+                            const acc = stage.$group[field];
+                            if (acc.$sum !== undefined) {
+                                let addVal = 0;
+                                if (typeof acc.$sum === 'number') {
+                                    addVal = acc.$sum;
+                                } else if (typeof acc.$sum === 'string' && acc.$sum.startsWith('$')) {
+                                    addVal = Number(item[acc.$sum.slice(1)]) || 0;
+                                }
+                                groups[groupKey][field] += addVal;
+                            }
+                        }
+                    }
+                    
+                    result = Object.values(groups).map(g => {
+                        const { _items, ...rest } = g;
+                        return rest;
+                    });
+                } else if (stage.$sort) {
+                    const sortKeys = Object.keys(stage.$sort);
+                    if (sortKeys.length > 0) {
+                        const key = sortKeys[0];
+                        const direction = stage.$sort[key];
+                        result.sort((a, b) => {
+                            let valA = a[key];
+                            let valB = b[key];
+                            if (typeof valA === 'object' && valA !== null) valA = JSON.stringify(valA);
+                            if (typeof valB === 'object' && valB !== null) valB = JSON.stringify(valB);
+                            if (valA < valB) return direction === -1 ? 1 : -1;
+                            if (valA > valB) return direction === -1 ? -1 : 1;
+                            return 0;
+                        });
+                    }
+                } else if (stage.$limit) {
+                    result = result.slice(0, stage.$limit);
+                } else if (stage.$project) {
+                    result = result.map(item => {
+                        const projected = {};
+                        for (const k of Object.keys(stage.$project)) {
+                            const pVal = stage.$project[k];
+                            if (pVal === 1) {
+                                projected[k] = item[k];
+                            } else if (typeof pVal === 'string' && pVal.startsWith('$')) {
+                                projected[k] = item[pVal.slice(1)];
+                            }
+                        }
+                        // handle _id: 0
+                        if (stage.$project._id === 0) {
+                            delete projected._id;
+                        } else if (projected._id === undefined && item._id !== undefined) {
+                            projected._id = item._id;
+                        }
+                        return projected;
+                    });
+                }
+            }
+            return Promise.resolve(result);
+        }
+        return originalAggregate.apply(this, arguments);
+    };
 }
 
 const originalSave = mongoose.Model.prototype.save;
@@ -428,6 +553,8 @@ const MailHistory = require("./models/MailHistory");
 const Notice = require("./models/Notice");
 const Notification = require("./models/Notification");
 const Attendance = require("./models/Attendance");
+const AutoTask = require("./models/AutoTask");
+const TaskAssignment = require("./models/TaskAssignment");
 const Message = require("./models/Message");
 const HR = require("./models/HR");
 const Coordinator = require("./models/Coordinator");
@@ -590,7 +717,7 @@ const transporter = nodemailer.createTransport({
 
 if(process.env.EMAIL_USER && process.env.EMAIL_PASS){
     transporter.verify((error)=>{
-        if(error){ console.log("Email verify error:", error.message); }
+        if(error){ console.log("SMTP verification status (optional SMTP service): failed/unreachable -", error.message); }
         else{ console.log("Email Server Ready"); }
     });
 } else {
@@ -754,7 +881,303 @@ setInterval(runAutoDocumentCheck, 6 * 60 * 60 * 1000);
 
 mongoose.set('bufferCommands', false); // CRITICAL: fail fast, don't hang
 mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/internship")
-.then(()=>console.log("MongoDB Connected"))
+.then(async () => {
+  console.log("MongoDB Connected");
+  // Trigger AutoTask seeding asynchronously on startup
+  try {
+    // We always force upgrade schemas and contents on startup to ensure your systems have the real domain-specific tasks!
+    console.log("Upgrading AutoTask schemas... Seeding real domain-specific tasks...");
+    await AutoTask.deleteMany({});
+    
+    // Also, clear old pending generic task assignments so they are cleanly regenerated from the new domain-specific templates!
+    const deletePendingResult = await TaskAssignment.deleteMany({ status: "Pending" });
+    if (deletePendingResult.deletedCount > 0) {
+      console.log(`Cleared ${deletePendingResult.deletedCount} outdated/generic Pending task assignments to make way for domain-specific ones.`);
+    }
+
+    const DOMAINS_TECH = [
+      "DevOps with AWS", "Python Development", "Java Development",
+      "Web Development", "MERN Stack", "MERN Stack Development", "Artificial Intelligence",
+      "Data Science", "Cyber Security", "Software Engineering",
+      "Flutter Development"
+    ];
+    const DOMAINS_BUSINESS = [
+      "Business Development", "Human Resources", "HR Management",
+      "Space Intern", "Space Research", "Venture Capital", "Finance", "HR",
+      "Business Analyst", "Vibe Coding"
+    ];
+
+    const DOMAIN_TEMPLATES = {
+      "DevOps with AWS": [
+        { t1: "AWS Console & CLI Setup", d1: "Install and configure AWS CLI. Set up IAM users and define programmatic access keys." },
+        { t1: "Virtual Private Cloud Config", d1: "Build custom VPC with public/private subnets, Internet Gateways, and Route tables." },
+        { t1: "EC2 & Security Groups", d1: "Provision an EC2 instance with custom security group rules and SSH key pair keys." },
+        { t1: "Dockerize an Application", d1: "Create a Dockerfile, build an image, and deploy a container to local or ECS environment." },
+        { t1: "CI/CD Setup with GitHub Actions", d1: "Design a pipeline to auto-test and build your Docker images on code push." },
+        { t1: "Infrastructure as Code", d1: "Create Terraform configurations to provision an S3 bucket and DynamoDB table safely." },
+        { t1: "Kubernetes Basics (EKS)", d1: "Deploy a multi-pod application on Kubernetes/EKS using deployment and service manifests." },
+        { t1: "Monitoring CloudWatch Logs", d1: "Set up CloudWatch alarms, custom metric dashboards, and CPU threshold-based logs." }
+      ],
+      "Python Development": [
+        { t1: "Python Env & Git Hub Setup", d1: "Set up pyenv/venv, write initial script, handle requirements.txt, and link to GitHub." },
+        { t1: "Data Structure Filtering", d1: "Parse complex JSON/CSV data files, transform records, and write summary audits to disk." },
+        { t1: "OOP Library Management System", d1: "Design an elegant OOP class hierarchy representing library inventory or asset management." },
+        { t1: "API Engine with Flask REST", d1: "Build a light RESTful API server with Flask offering GET, POST with raw json payloads." },
+        { t1: "Asynchronous IO with asyncio", d1: "Implement non-blocking async IO file downloaders fetching API resources concurrently." },
+        { t1: "ORM Integration SQLAlchemy", d1: "Configure SQLAlchemy ORM, run database migrations, and handle relationships." },
+        { t1: "Unit Testing Suites pytest", d1: "Write pytest suites covering edge cases. Achieve > 85% coverage and generate reports." },
+        { t1: "Pandas Exploratory Analysis", d1: "Perform exploratory data analysis on a messy dataset, clean null values, and group analytics indicators." }
+      ],
+      "Java Development": [
+        { t1: "JDK Tooling Setup", d1: "Configure Maven/Gradle project in IntelliJ, run simple main entry point, and setup Git tracking." },
+        { t1: "OOP Business Hierarchy", d1: "Demonstrate inheritance, encapsulation, polymorphism, and interfaces with a business logic model." },
+        { t1: "Collections Framework API", d1: "Implement custom generic repositories of data utilizing Map, Set, and sorted List implementations." },
+        { t1: "Spring Boot Web REST API", d1: "Build a Spring Boot Web API controller featuring query parameters, request validation, and proper CORS." },
+        { t1: "JPA Hibernate SQL Connect", d1: "Establish hibernate entities, repository interfaces, and custom JPQL queries for relational databases." },
+        { t1: "Global Error Handlers", d1: "Implement global custom exception handler with @ControllerAdvice using Logback or SLF4J." },
+        { t1: "JUnit Test Suites Mockito", d1: "Write comprehensive unit tests mocking DB responses with Mockito to guarantee service layer safety." },
+        { t1: "Spring Security Auth JWT", d1: "Secure API endpoints using JSON Web Tokens (JWT) and configure roles-based middleware controls." }
+      ],
+      "Web Development": [
+        { t1: "Semantic Layouts & Styling", d1: "Design a responsive landing page layout utilizing clean Flexbox, Grid, and proper typography." },
+        { t1: "Interactivity with Vanilla JS", d1: "Build an interactive dynamic dashboard component with zero libraries, filtering data in real-time." },
+        { t1: "Asynchronous Fetch Operations", d1: "Consume external public APIs like Weather API or Rick and Morty API to render card lists." },
+        { t1: "Aesthetic CSS Micro-effects", d1: "Add subtle loading transitions, custom toast animation panels, and modular micro-interactions." },
+        { t1: "Vite Configuration Environments", d1: "Set up compile configurations, absolute imports, build optimization, and assets processing." },
+        { t1: "Mobile Breakpoint Layouts", d1: "Enforce mobile-first CSS breakpoint adjustments and touch gesture hover adaptations." },
+        { t1: "State Persistence Local Storage", d1: "Keep track of filters, bookmarks, and inputs using localStorage/sessionStorage APIs." },
+        { t1: "Web Accessibility a11y Audit", d1: "Implement aria-labels, keyboard-navigable tabs, contrast guidelines, and run Lighthouse checks." }
+      ],
+      "MERN Stack": [
+        { t1: "MERN Concurrently Setup", d1: "Create sibling client/ and server/ projects, configure concurrently, and wire baseline environmental proxies." },
+        { t1: "Express Routers & Payload Check", d1: "Craft Express.js core routes, validation middleware, and global server-side error handlers." },
+        { t1: "Mongoose Models Creation", d1: "Establish structured collections, validation, and virtuals in Mongoose data models." },
+        { t1: "React Functional Components", d1: "Draft a modular UI passing state down through functional components with Tailwind styling." },
+        { t1: "JWT Cookie Logins Flow", d1: "Store user session state in React Context and protect Express API routes via JWT cookie headers." },
+        { t1: "Axios Client Sync Hook", d1: "Connect frontend hooks (useEffect/Axios) to proxy calls, handling clean loaders and errors." },
+        { t1: "MERN Relational CRM CRUD", d1: "Combine React state and Express/Mongo queries to represent a complete relational real-time listing." },
+        { t1: "Dockerized Node Production", d1: "Deploy web client and server to platforms with proper environment variables mapping." }
+      ],
+      "MERN Stack Development": [
+        { t1: "Full MERN Project Init", d1: "Create sibling client/ and server/ projects, configure concurrently, and wire baseline environmental proxies." },
+        { t1: "Express Server Architecture", d1: "Craft Express.js core routes, validation middleware, and global server-side error handlers." },
+        { t1: "Schemas Design Mongoose", d1: "Establish structured collections, validation, and virtuals in Mongoose data models." },
+        { t1: "React Dashboard Modular Views", d1: "Draft a modular UI passing state down through functional components with Tailwind styling." },
+        { t1: "JWT Auth Middleware Guard", d1: "Store user session state in React Context and protect Express API routes via JWT cookie headers." },
+        { t1: "Context State & Hook Sync", d1: "Connect frontend hooks (useEffect/Axios) to proxy calls, handling clean loaders and errors." },
+        { t1: "Interactive REST CRM Model", d1: "Combine React state and Express/Mongo queries to represent a complete relational real-time listing." },
+        { t1: "Production Bundler Optimize", d1: "Deploy web client and server to platforms with proper environment variables mapping." }
+      ],
+      "Artificial Intelligence": [
+        { t1: "Conda & Jupyter Notebook setup", d1: "Install Conda, create fresh virtual environments, and boot Jupyter Lab for data pipelines." },
+        { t1: "NumPy Vector Calculations", d1: "Perform linear algebra transformations, dot products, and multi-dimensional array operations." },
+        { t1: "Pandas Data Pre-processing", d1: "Pre-process training tabular data, clean outliers, encode categorical features, and split datasets." },
+        { t1: "Exploratory Data Visualizations", d1: "Plot visual correlations, feature heatmaps, distribution curves, and save charts." },
+        { t1: "Scikit-Learn Regression", d1: "Train a simple linear regression model to predict housing prices and measure MSE metrics." },
+        { t1: "Classification Sentiments", d1: "Implement support vector machines (SVM) or decision trees to classify text sentiments." },
+        { t1: "PyTorch Multilayer Perceptron", d1: "Design a light multilayer perceptron (MLP) for digit classification using MNIST dataset." },
+        { t1: "Transformers Pipeline Usage", d1: "Integrate a local transformer or HuggingFace hub pipeline to execute sequence generation." }
+      ],
+      "Data Science": [
+        { t1: "DS Tooling Environment Setup", d1: "Establish environment containing pandas, numpy, scipy, and scikit-learn libraries." },
+        { t1: "BeautifulSoup Web Sourcing", d1: "Write BeautifulSoup routines to pull structural tables from target public web portals." },
+        { t1: "Missing Values Imputation", d1: "Examine dirty datasets, evaluate standard deviation, and execute forward/backward fill strategy." },
+        { t1: "Relational Joins Queries", d1: "Write structured SQL inner and outer joins to query multi-million record test tables." },
+        { t1: "Exploratory Statistics Inference", d1: "Plot scatter trends, boxplots identifying skewness, and run ANOVA verification studies." },
+        { t1: "Feature Extraction Engineering", d1: "Engineer synthetic helper variables (ratios, dates, components) to improve model R-squared." },
+        { t1: "Clustering Algorithms K-Means", d1: "Segment customer clusters utilizing silhouette plotting to determine the optimal group sizing." },
+        { t1: "Streamlit Dashboard App", d1: "Deploy a quick Streamlit page rendering interactive charts for historical sales analysis." }
+      ],
+      "Cyber Security": [
+        { t1: "Offensive Virtual Lab Env", d1: "Assemble secure sandboxed guest virtualization environments containing specialized offensive OS systems." },
+        { t1: "Nmap Host Reconnaissance", d1: "Run scan types to map port state, detect host service versions, and identify target OS fingerprinting." },
+        { t1: "OWASP Top-10 Audit Checks", d1: "Inspect sample insecure templates to locate typical injection points, XSS inputs, and IDOR flaws." },
+        { t1: "Wireshark Packet Analysis", d1: "Decode PCAP streams to spot plain text auth passwords, ARP spoof indicators, and odd DNS traffic." },
+        { t1: "Cryptography Checksums Verify", d1: "Verify SHA256 checksums, generate GPG signing credentials, and crack MD5 cipher text strings." },
+        { t1: "Burp Intercepting Proxy Labs", d1: "Proxy local browse sessions using intercepting proxies to perform granular parameter tampering." },
+        { t1: "Hardening System SSH Access", d1: "Generate SSH config rules, configure SSH key authorization, and close unrequested services." },
+        { t1: "Post-Incident Forensic Briefing", d1: "Formulate exhaustive post-incident checklists outlining indicators of compromise and defense." }
+      ],
+      "Software Engineering": [
+        { t1: "Git Branching Workflows", d1: "Master feature branches, merge conflicts, pull request reviews, and semantic version tagging." },
+        { t1: "Structural Design Patterns", d1: "Demonstrate the Singleton, Factory, and Observer patterns inside a clean software component." },
+        { t1: "Refactoring Nested Controllers", d1: "Refactor a bloated, nested-conditional backend router into a modular class-based system." },
+        { t1: "UML Architecture Mapping", d1: "Graph class boundaries, database entity relations, and sequence event pathways." },
+        { t1: "OpenAPI Spec Contracts", d1: "Draft complete Swagger/YAML representation files describing path variables and response objects." },
+        { t1: "Docker-Compose Stack Orchestrate", d1: "Establish multi-container docker-compose files linking client, api, and postgres databases." },
+        { t1: "TDD Red-Green Refactoring", d1: "Write failing tests first, code the bare minimum to pass, refactor, and repeat for dynamic functions." },
+        { t1: "Sprint Backlogs Mapping Scrum", d1: "Structure detailed user stories, configure story points, and chart a sprint burndown path." }
+      ],
+      "Flutter Development": [
+        { t1: "Flutter SDK Init & Emulator Run", d1: "Install Flutter toolkit, set up Android Emulator or iOS Simulator, and run launch template." },
+        { t1: "Row Column Visual Compositions", d1: "Assemble nesting structures of Row, Column, Container, and Stack widgets to match Figma mocks." },
+        { t1: "Stateful Widget Lifecycle setState", d1: "Manipulate dynamic component configurations safely using setState hook triggers." },
+        { t1: "Named Routing Navigation", d1: "Construct push/pop transitions and define nested app bar routing structures." },
+        { t1: "HTTP Service Call Integration", d1: "Utilize pub.dev HTTP packages to compile network response strings into custom Dart models." },
+        { t1: "Provider Global State Listeners", d1: "Isolate state from views, configuring clean reactive listen structures." },
+        { t1: "Client Storage Shared Preferences", d1: "Store lightweight profile information and login keys safely via shared_preferences." },
+        { t1: "Release Gradle Bundle Compiling", d1: "Configure build gradle settings, clean project modules, and verify production app bundles." }
+      ],
+      "Business Development": [
+        { t1: "ICP Target Sourcing Sheet", d1: "Locate 10 qualified prospective target partner profiles, documenting active needs and contact info." },
+        { t1: "Cold Sequence Outbox Scripting", d1: "Draft high-converting follow-up sequence templates targeting decision-maker corporate directors." },
+        { t1: "Positioning Matrices & Pitch Deck", d1: "Create structured presentation slides outlining competitive value props and delivery models." },
+        { t1: "B2B Funnel Lifecycle Stages", d1: "Model sales progression funnel stages from discovery and demos to contract closure." },
+        { t1: "Objections Rebuttals Playbook", d1: "Compile structured response points handling pricing, competition, and timeline blockers." },
+        { t1: "SLA Deliverables Draft", d1: "Formulate baseline non-disclosure agreements, work deliverables schedules, and payment terms." },
+        { t1: "Quarterly Sales Forecast Plan", d1: "Assemble target sheets detailing expected monthly transaction flow weights and conversions." },
+        { t1: "Channel Partnership Marketing", d1: "Outline joint marketing programs designed to deploy third-party reseller packages." }
+      ],
+      "Human Resources": [
+        { t1: "Sourcing Posts Job Listings", d1: "Structure highly engaging open-role job description posts optimizing for search." },
+        { t1: "Interview Rubrics & Score Cards", d1: "Engineer a standardized 6-question initial interview rubric template score sheet." },
+        { t1: "Onboarding Flow Schedules", d1: "Establish complete checklist processes spanning compliance documentation to technical handoff." },
+        { t1: "Corporate Training Curriculums", d1: "Design multi-session employee instruction curriculums for modern workspace alignment." },
+        { t1: "Peer Appraisals Review Matrix", d1: "Formulate constructive peer-evaluation rubrics encouraging clear career objectives." },
+        { t1: "Mediation Path Dispute Mapping", d1: "Map structural mediation dialogue roadmaps prioritizing psychological workplace safety." },
+        { t1: "Engagement Feedback Audits", d1: "Draft comprehensive corporate feedback questionnaires focused on retention markers." },
+        { t1: "Compliance Audits Walkthroughs", d1: "Examine regional legal code obligations, workspace safety standards, and offboarding files." }
+      ],
+      "HR Management": [
+        { t1: "HR Management Sourcing", d1: "Structure highly engaging open-role job description posts optimizing for search." },
+        { t1: "Structured Interview Systems", d1: "Engineer a standardized 6-question initial interview rubric template score sheet." },
+        { t1: "New Hire Path Onboarding", d1: "Establish complete checklist processes spanning compliance documentation to technical handoff." },
+        { t1: "Corporate Development Plans", d1: "Design multi-session employee instruction curriculums for modern workspace alignment." },
+        { t1: "Appraisal Rubrics Development", d1: "Formulate constructive peer-evaluation rubrics encouraging clear career objectives." },
+        { t1: "Dispute Mediation Rules", d1: "Map structural mediation dialogue roadmaps prioritizing workplace safety." },
+        { t1: "Retention Engagement Metrics", d1: "Draft comprehensive corporate feedback questionnaires focused on retention markers." },
+        { t1: "Regulatory Compliance Audit", d1: "Examine regional legal code obligations, workspace safety standards, and offboarding files." }
+      ],
+      "HR": [
+        { t1: "JD Formulating Recruitment", d1: "Structure highly engaging open-role job description posts optimizing for search." },
+        { t1: "Standard Interview Rubrics", d1: "Engineer a standardized 6-question initial interview rubric template score sheet." },
+        { t1: "Employee Lifecycle Systems", d1: "Establish complete checklist processes spanning compliance documentation to technical handoff." },
+        { t1: "Training Operations Program", d1: "Design multi-session employee instruction curriculums for modern workspace alignment." },
+        { t1: "Structured Appraisal Loops", d1: "Formulate constructive peer-evaluation rubrics encouraging clear career objectives." },
+        { t1: "Conflict Resolution Protocol", d1: "Map structural mediation dialogue roadmaps prioritizing workplace safety." },
+        { t1: "Employee Opinion Climate Survey", d1: "Draft comprehensive corporate feedback questionnaires focused on retention markers." },
+        { t1: "HR Compliance Risk Register", d1: "Examine regional legal code obligations, workspace safety standards, and offboarding files." }
+      ],
+      "Space Intern": [
+        { t1: "Orbital Gravity Vectors Plan", d1: "Calculate planetary escape velocity parameters and classify trajectory ellipse elements." },
+        { t1: "Constellations Signal Coverage", d1: "Graph functional communication coverages using standard coordinates databases." },
+        { t1: "Thrust Propulsion Specific Impulse", d1: "Compare liquid propellant specific impulses against alternative ion thrust motors." },
+        { t1: "Stars Spectral Chemistry Analysis", d1: "Analyze emission wave lengths to list likely chemical markers found on remote planetoids." },
+        { t1: "Signal Noise Reduction Filters", d1: "Implement standard algorithmic approaches to clean stellar broadcast data feeds." },
+        { t1: "Life Supports Suit Schematics", d1: "Map thermal air-circulation requirements required inside extravehicular mobility suits." },
+        { t1: "Safe Landing Elevation Plot", d1: "Examine digital terrain elevation maps to choose optimal safe low-slope landing sites." },
+        { t1: "Probe Mission Trajectory Draft", d1: "Author a formal 1000-word research abstract detailing deep-space probe trajectory designs." }
+      ],
+      "Space Research": [
+        { t1: "Orbital Mechanics Elements", d1: "Calculate planetary escape velocity parameters and classify trajectory ellipse elements." },
+        { t1: "Satellite Coverage Maps", d1: "Graph functional communication coverages using standard coordinates databases." },
+        { t1: "Propulsion Motor Comparison", d1: "Compare liquid propellant specific impulses against alternative ion thrust motors." },
+        { t1: "Remote Spectral Chemistry Analysis", d1: "Analyze emission wave lengths to list likely chemical markers found on remote planetoids." },
+        { t1: "Stellar Broadcast Noise Clean", d1: "Implement standard algorithmic approaches to clean stellar broadcast data feeds." },
+        { t1: "Environmental Mobility Suit life", d1: "Map thermal air-circulation requirements required inside extravehicular mobility suits." },
+        { t1: "Landing Site Slopes Study", d1: "Examine digital terrain elevation maps to choose optimal safe low-slope landing sites." },
+        { t1: "Stellar Trajectory Research Abstract", d1: "Author a formal 1000-word research abstract detailing deep-space probe trajectory designs." }
+      ],
+      "Venture Capital": [
+        { t1: "Deals Sourcing Discovery", d1: "Filter 5 promising early-stage companies inside specific industry landscapes." },
+        { t1: "Pitch Deck Slicing Analysis", d1: "Evaluate early startup funding decks, pinpointing customer acquisition cost concerns." },
+        { t1: "Cap Tables Dilution Models", d1: "Draft share allocation calculations illustrating series-A dilution outcomes." },
+        { t1: "Technical Governance Audit Sheet", d1: "Compile exhaustive checklist templates detailing technical and corporate governance risk." },
+        { t1: "TAM SAM SOM Segment Estimates", d1: "Run TAM, SAM, and SOM analyses to confirm addressable monetization spaces." },
+        { t1: "Startup Evaluation Metrics List", d1: "Formulate scorecard valuations explaining pre-money vs post-money agreements." },
+        { t1: "Investment Thesis Proposal Memo", d1: "Draft standard investment proposals detailing the core entry deal thesis." },
+        { t1: "Recent Exit Multiples Comparative", d1: "Examine recent acquisitions to determine realistic multiples." }
+      ],
+      "Finance": [
+        { t1: "EBITDA Margin Analytics", d1: "Examine operational revenue, trace cost of goods sold, and check EBITDA margins." },
+        { t1: "NPV Models Discounted Forecast", d1: "Create structural templates calculating current NPV valuations via future cash flows." },
+        { t1: "Modern Portfolio Risk Allocation", d1: "Calculate historical yields to model optimal target-risk assets weight balances." },
+        { t1: "Amortization Debts Structuring", d1: "Examine amortization schedules, comparing senior secure issues against mezzanine notes." },
+        { t1: "Cash Cycles Days Sales Outstanding", d1: "Analyze days sales outstanding to identify cash collection process improvements." },
+        { t1: "Statistical Fraud Forensic Audit", d1: "Deploy standard statistical assays to spot outliers in cost reporting files." },
+        { t1: "Derivative Swaps Risk Hedge", d1: "Diagram complex puts and options setups mapped against commodity price movements." },
+        { t1: "Multi-entity Consolidate Balance", d1: "Prepare multi-entity balance sheets, factoring currency translation rates." }
+      ],
+      "Business Analyst": [
+        { t1: "BRD System Specifications", d1: "Formulate core specifications translating complex user needs to technical workflows." },
+        { t1: "As-Is Flow charts Mapped Futures", d1: "Visualize current inefficient operational states mapped against streamlined futures." },
+        { t1: "Querying Warehouse Performance SQL", d1: "Create queries parsing product performance indicators from warehouse tables." },
+        { t1: "Acceptance Testing Stories Epics", d1: "Map detailed feature specifications complete with user acceptance tests." },
+        { t1: "System Upgrade Dependencies Deck", d1: "Outline prospective software changes, listing risk trade-offs and dependencies." },
+        { t1: "UAT Release Checks Checklist", d1: "Establish step-by-step validator checksheets to confirm correct system releases." },
+        { t1: "Root Cause Fishbone Diagrams", d1: "Deploy standard Ishikawa diagram structures to trace persistent customer delays." },
+        { t1: "Efficiency Recommendation ROI", d1: "Compile executive recommendation summaries illustrating process ROI projections." }
+      ],
+      "Vibe Coding": [
+        { t1: "Few-Shot Prompt Engineering Labs", d1: "Craft zero-shot and few-shot instruction strings to build simple app components." },
+        { t1: "Web Audio Canvas Sequencers", d1: "Wire generative prompt steps to assemble highly responsive interactive particle grids." },
+        { t1: "CSS Tailwinds Card Aesthetics", d1: "Instruct AI generators to format elegant web cards complete with fluid hover animations." },
+        { t1: "Unified API Integrations Glue", d1: "Formulate pipeline routines that link disjoint data APIs with simple clean displays." },
+        { t1: "Diagnostics & Prompt Error Fix", d1: "Locate and resolve performance bottlenecks by loading error logs as prompt contexts." },
+        { t1: "Live Web Instruments Synth Grid", d1: "Synthesize virtual instruments or grid panels utilizing Web Audio API nodes." },
+        { t1: "Local IndexedDB State Persistence", d1: "Assemble full client lists persisting to browser environments with zero servers." },
+        { t1: "AI Prompted Capstone Masterpiece", d1: "Build and release a signature interactive app that demonstrates the agility of prompt-driven coding." }
+      ]
+    };
+
+    const tenures = ["1 Week", "15 Days", "1 Month", "45 Days", "3 Months", "6 Months"];
+    const tenureDays = { "1 Week": 7, "15 Days": 15, "1 Month": 30, "45 Days": 45, "3 Months": 90, "6 Months": 180 };
+    const allTasks = [];
+
+    for (const tenure of tenures) {
+      const totalDays = tenureDays[tenure];
+
+      // Seed Tech Domains
+      for (const domain of DOMAINS_TECH) {
+        const pool = DOMAIN_TEMPLATES[domain] || DOMAIN_TEMPLATES["Web Development"];
+        for (let day = 1; day <= totalDays; day++) {
+          const taskA = pool[(day * 2 - 2) % pool.length];
+          const taskB = pool[(day * 2 - 1) % pool.length];
+          allTasks.push({
+            domain, tenure, dayNumber: day, taskNumber: 1,
+            title: `[Day ${day}] ${taskA.t1}`, description: taskA.d1,
+            difficulty: day <= 7 ? "Beginner" : (day <= 20 ? "Intermediate" : "Advanced"),
+            taskType: "coding", isActive: true
+          });
+          allTasks.push({
+            domain, tenure, dayNumber: day, taskNumber: 2,
+            title: `[Day ${day}] ${taskB.t1}`, description: taskB.d1,
+            difficulty: day <= 7 ? "Beginner" : (day <= 20 ? "Intermediate" : "Advanced"),
+            taskType: "coding", isActive: true
+          });
+        }
+      }
+
+      // Seed Business Domains
+      for (const domain of DOMAINS_BUSINESS) {
+        const pool = DOMAIN_TEMPLATES[domain] || DOMAIN_TEMPLATES["Business Development"];
+        for (let day = 1; day <= totalDays; day++) {
+          const taskA = pool[(day * 2 - 2) % pool.length];
+          const taskB = pool[(day * 2 - 1) % pool.length];
+          allTasks.push({
+            domain, tenure, dayNumber: day, taskNumber: 1,
+            title: `[Day ${day}] ${taskA.t1}`, description: taskA.d1,
+            difficulty: day <= 7 ? "Beginner" : (day <= 20 ? "Intermediate" : "Advanced"),
+            taskType: "research", isActive: true
+          });
+          allTasks.push({
+            domain, tenure, dayNumber: day, taskNumber: 2,
+            title: `[Day ${day}] ${taskB.t1}`, description: taskB.d1,
+            difficulty: day <= 7 ? "Beginner" : (day <= 20 ? "Intermediate" : "Advanced"),
+            taskType: "presentation", isActive: true
+          });
+        }
+      }
+    }
+
+    for (let i = 0; i < allTasks.length; i += 500) {
+      await AutoTask.insertMany(allTasks.slice(i, i + 500));
+    }
+    console.log("Auto seeding complete! Total unique seeded: " + allTasks.length);
+  } catch(e) {
+    console.error("Auto seeding tasks failed:", e);
+  }
+})
 .catch((err)=>console.warn("MongoDB connection warning: Working in local runtime mode. Some write services may require database configuration. " + err.message));
 
 // ================= SCHEMAS =================
@@ -773,6 +1196,7 @@ const submissionSchema = new mongoose.Schema({
     attendanceAllowed: { type: Boolean, default: false },
     attendanceGiven: { type: Boolean, default: false },
     attendanceCount: { type: Number, default: 0 },
+    coordinatorRating: { type: Number, default: 0, min: 0, max: 5 },
     internshipDuration: { type: String, default: "1 Month" },
     monthlyAttendance: {
         month1: { type: Number, default: 0 },
@@ -1013,9 +1437,16 @@ try{
     // Auto-generated password (we kept the original behavior — register form
     // has no password field). For multi-domain registrations we re-use the
     // existing student's password so the user has one password across both.
-    const password = isFirstRegistration
-        ? crypto.randomBytes(4).toString("hex")
-        : (existingByEmail[0].password || crypto.randomBytes(4).toString("hex"));
+    let password;
+    let plainPassword;
+    if (isFirstRegistration) {
+        plainPassword = crypto.randomBytes(4).toString("hex");
+        password = plainPassword;
+    } else {
+        const existingStudentToken = existingByEmail[0];
+        password = existingStudentToken.password || crypto.randomBytes(4).toString("hex");
+        plainPassword = existingStudentToken.plainPassword || (password.startsWith("$2b$") || password.startsWith("$2a$") ? "intern123" : password);
+    }
 
     const newStudent = new Student({
         firstName, lastName,
@@ -1025,6 +1456,7 @@ try{
         college: collegeName,
         tenure, joiningDate,
         employeeId, password,
+        plainPassword,
         collegeName: collegeName || ""
     });
     await newStudent.save();
@@ -1608,14 +2040,27 @@ app.post("/submit-task", upload.fields([
     { name:"pdf", maxCount:1 }
 ]), async(req,res)=>{
 try{
-    const { employeeId, domain, githubLink, note, task } = req.body;
+    const { employeeId, domain, githubLink, note, task, assignmentId } = req.body;
     const image = req.files["image"] ? "/" + req.files["image"][0].path : "";
     const pdf   = req.files["pdf"]   ? "/" + req.files["pdf"][0].path   : "";
 
-    // Double Submission Protection: Check if a Submission for this specific task and employee exists
+    // 1. Double Submission Protection: Check if a Submission for this specific task and employee has already gone through
     const existingSubmission = await Submission.findOne({ employeeId, task: task || "" });
     if (existingSubmission) {
       console.log(`[Double Submission Block] Ignored duplicate Submission write for employeeId: ${employeeId}, task: ${task}`);
+      return res.json({ success: true, message: "Task has already been submitted successfully!" });
+    }
+
+    // 2. Double Submission Protection: Check if the TaskAssignment is already non-Pending
+    let targetAssignment = null;
+    if (assignmentId) {
+      targetAssignment = await TaskAssignment.findById(assignmentId);
+    } else {
+      targetAssignment = await TaskAssignment.findOne({ employeeId, title: task });
+    }
+
+    if (targetAssignment && targetAssignment.status !== "Pending") {
+      console.log(`[Double Submission Block] Ignored duplicate status write. TaskAssignment is currently in '${targetAssignment.status}' state.`);
       return res.json({ success: true, message: "Task has already been submitted successfully!" });
     }
 
@@ -1647,6 +2092,34 @@ try{
     });
 
     await submission.save();
+
+    // Link and update the automated task assignment if it exists
+    if (assignmentId) {
+      await TaskAssignment.findByIdAndUpdate(
+        assignmentId,
+        {
+          status: "Submitted",
+          submittedAt: new Date(),
+          githubLink,
+          note,
+          image,
+          pdf
+        }
+      );
+    } else {
+      await TaskAssignment.findOneAndUpdate(
+        { employeeId, title: task, status: "Pending" },
+        {
+          status: "Submitted",
+          submittedAt: new Date(),
+          githubLink,
+          note,
+          image,
+          pdf
+        }
+      );
+    }
+
     await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
     // Milestones + badges (first-task)
     await setMilestone(employeeId, "firstTaskSubmitted");
@@ -1688,7 +2161,7 @@ try{
 
 app.post("/update-status", async(req,res)=>{
 try{
-    const { id, status, feedback } = req.body;
+    const { id, status, feedback, rating } = req.body;
 
     const existing = await Submission.findById(id);
     if(!existing){
@@ -1701,14 +2174,23 @@ try{
     let performance = "B";
     if(status === "Approved"){ performance = "A+"; }
 
+    const ratingValue = rating ? Number(rating) : 0;
+
     await Submission.findByIdAndUpdate(id, {
         status,
         feedback,
         reviewedOnce: true,
         attendanceAllowed: status === "Approved",
         performance,
-        tasksCompleted: status === "Approved" ? 1 : 0
+        tasksCompleted: status === "Approved" ? 1 : 0,
+        coordinatorRating: ratingValue
     }, { new:true });
+
+    // Synchronize to the automated TaskAssignment if applicable
+    await TaskAssignment.findOneAndUpdate(
+      { employeeId: existing.employeeId, title: existing.task, status: "Submitted" },
+      { status, feedback, coordinatorRating: ratingValue }
+    );
 
     // Fire notification to the student
     const submission = await Submission.findById(id);
@@ -2672,7 +3154,8 @@ try{
             collegeName: getStudentCollege(student),
 
             employeeId: student.employeeId,
-            domain: student.domain,
+            domain: student.domains?.[0] || student.domain,
+            domains: student.domains || [student.domain],
             tenure: student.tenure,
 
             // Dashboard uses `joiningDate` for the Joined field
@@ -2687,13 +3170,345 @@ try{
             // FEATURE 1 — one-time popup flags
             onboardingPopupSeen: student.onboardingPopupSeen || false,
             joinerTypeSelected:  student.joinerTypeSelected  || false,
-            joinerType:          student.joinerType           || null
+            joinerType:          student.joinerType           || null,
+            hasSeenWelcome:      student.hasSeenWelcome       || false,
+            hasSeenOnboarding:   student.hasSeenOnboarding    || false,
+            internshipStartDate: student.internshipStartDate  || null,
+            employeeIdOverride:  student.employeeIdOverride   || null
         }
     });
 }catch(error){
     console.log(error);
     res.json({ success:false, message:"Server Error" });
 }
+});
+
+// ================= STUDENT PORTAL API ENDPOINTS =================
+
+app.post("/get-my-password", async (req, res) => {
+  try {
+    const { employeeId, confirmedPassword } = req.body;
+    const student = await Student.findOne({ employeeId });
+    if (!student) {
+      return res.json({ success: false, message: "Not verified" });
+    }
+    const displayPassword = student.plainPassword || (student.password && !student.password.startsWith("$2b$") && !student.password.startsWith("$2a$") ? student.password : "intern123");
+    if (confirmedPassword !== undefined && confirmedPassword !== null) {
+      let pwdMatch = student.password === confirmedPassword;
+      if (!pwdMatch) {
+        try {
+          pwdMatch = await bcrypt.compare(confirmedPassword, student.password);
+        } catch (e) {}
+      }
+      if (!pwdMatch) {
+        return res.json({ success: false, message: "Not verified" });
+      }
+      return res.json({ success: true, password: displayPassword });
+    } else {
+      // Direct verification-free reveal
+      return res.json({ success: true, password: displayPassword });
+    }
+  } catch (err) {
+    res.json({ success: false });
+  }
+});
+
+app.post(["/mark-onboarding-seen", "/api/v2/student/mark-onboarding-seen"], async (req, res) => {
+  try {
+    const employeeId = req.body.employeeId || req.headers['x-employee-id'] || req.headers['employeeid'];
+    await Student.findOneAndUpdate(
+      { employeeId },
+      { hasSeenOnboarding: true, onboardingPopupSeen: true },
+      { new: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false });
+  }
+});
+
+app.post(["/mark-welcome-seen", "/api/v2/student/mark-welcome-seen"], async (req, res) => {
+  try {
+    const employeeId = req.body.employeeId || req.headers['x-employee-id'] || req.headers['employeeid'];
+    await Student.findOneAndUpdate(
+      { employeeId },
+      { hasSeenWelcome: true },
+      { new: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false });
+  }
+});
+
+app.post(["/save-joiner-type", "/api/v2/student/set-joiner-type"], async (req, res) => {
+  try {
+    const employeeId = req.body.employeeId || req.headers['x-employee-id'] || req.headers['employeeid'];
+    const { joinerType } = req.body;
+    await Student.findOneAndUpdate(
+      { employeeId },
+      { joinerType, joinerTypeSelected: true },
+      { new: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false });
+  }
+});
+
+app.post(["/save-employee-id-override", "/api/v2/student/save-employee-id-override"], async (req, res) => {
+  try {
+    const employeeId = req.body.employeeId || req.headers['x-employee-id'] || req.headers['employeeid'];
+    const { employeeIdOverride } = req.body;
+    if (!employeeIdOverride || employeeIdOverride.trim() === "") {
+      return res.json({
+        success: false,
+        message: "Employee ID cannot be empty"
+      });
+    }
+    await Student.findOneAndUpdate(
+      { employeeId },
+      { employeeIdOverride: employeeIdOverride.trim() },
+      { new: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false });
+  }
+});
+
+app.post(["/save-start-date", "/api/v2/student/save-start-date"], async (req, res) => {
+  try {
+    const employeeId = req.body.employeeId || req.headers['x-employee-id'] || req.headers['employeeid'];
+    const { internshipStartDate } = req.body;
+    if (!internshipStartDate) {
+      return res.json({
+        success: false,
+        message: "Please provide a start date"
+      });
+    }
+    const startDate = new Date(internshipStartDate);
+    if (isNaN(startDate.getTime())) {
+      return res.json({
+        success: false,
+        message: "Invalid date format"
+      });
+    }
+    await Student.findOneAndUpdate(
+      { employeeId },
+      {
+        internshipStartDate: startDate,
+        hasSeenOnboarding: true,
+        onboardingPopupSeen: true
+      },
+      { new: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false });
+  }
+});
+
+// ── HELPER FUNCTION — CALCULATE STATS ──
+async function calculateAttendanceStats(employeeId) {
+  // Get student data for tenure and start date
+  const student = await Student.findOne({ employeeId });
+  if (!student) return null;
+
+  // Determine tenure total days
+  const tenureDaysMap = {
+    "1 Week": 7,
+    "15 Days": 15,
+    "1 Month": 30,
+    "45 Days": 45,
+    "3 Months": 90,
+    "6 Months": 180
+  };
+  const totalDays = tenureDaysMap[student.tenure] || 30;
+
+  // Determine start date
+  // WhatsApp joiners use internshipStartDate, others use joiningDate
+  let startDate;
+  if (student.joinerType === "whatsapp" && student.internshipStartDate) {
+    startDate = new Date(student.internshipStartDate);
+  } else {
+    startDate = new Date(student.joiningDate || student.createdAt);
+  }
+
+  // Get all attendance records for this student
+  const selfRecords = await Attendance.find({
+    employeeId,
+    markedBy: "self"
+  });
+  const coordRecords = await Attendance.find({
+    employeeId,
+    markedBy: "coordinator"
+  });
+
+  const selfCount = selfRecords.filter(r => r.status === "Present" || !r.status).length;
+  const coordCount = coordRecords.filter(r => r.status === "Present" || !r.status).length;
+
+  // Combined = union of self + coordinator dates (filtered for status !== "Absent")
+  const presentDates = new Set();
+  selfRecords.forEach(r => { if (r.status !== "Absent") presentDates.add(r.dateKey || new Date(r.date).toISOString().split('T')[0]); });
+  coordRecords.forEach(r => { if (r.status !== "Absent") presentDates.add(r.dateKey || new Date(r.date).toISOString().split('T')[0]); });
+
+  const combinedCount = presentDates.size;
+
+  // Calculate percentages (capped at 100%)
+  const selfPct   = Math.min(Math.round((selfCount / totalDays) * 100), 100);
+  const coordPct  = Math.min(Math.round((coordCount / totalDays) * 100), 100);
+  const combinedPct = Math.min(Math.round((combinedCount / totalDays) * 100), 100);
+
+  // Days needed to reach 75%
+  const minDays = Math.ceil(totalDays * 0.75);
+  const daysNeeded = Math.max(0, minDays - combinedCount);
+
+  // Check if today already marked
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(now.getTime() + istOffset);
+  const today = istNow.toISOString().split("T")[0];
+
+  const markedToday = selfRecords.some(r => r.dateKey === today || new Date(r.date).toISOString().split('T')[0] === today);
+
+  return {
+    selfCount,
+    coordCount,
+    combinedCount,
+    totalDays,
+    selfPct,
+    coordPct,
+    combinedPct,
+    minDays,
+    daysNeeded,
+    markedToday,
+    isAboveMinimum: combinedPct >= 75,
+    tenure: student.tenure
+  };
+}
+
+// ── MARK OWN ATTENDANCE (student clicks button) ──
+app.post("/mark-attendance", async (req, res) => {
+  try {
+    const { employeeId } = req.body;
+    if (!employeeId) return res.json({ success: false, message: "Employee ID required" });
+
+    const student = await Student.findOne({ employeeId });
+    if (!student) return res.json({ success: false, message: "Student not found" });
+
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const today = istNow.toISOString().split("T")[0];
+
+    // Check if already marked today
+    const existing = await Attendance.findOne({
+      employeeId,
+      dateKey: today,
+      markedBy: "self"
+    });
+
+    if (existing) {
+      return res.json({
+        success: false,
+        message: "Attendance already marked for today",
+        alreadyMarked: true
+      });
+    }
+
+    // Save attendance
+    await Attendance.create({
+      studentId: student._id,
+      employeeId,
+      domain: student.domain,
+      date: now,
+      dateKey: today,
+      status: "Present",
+      markedBy: "self"
+    });
+
+    await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date() });
+    await bumpStreakAndMilestones(student);
+    await checkCertificateEligibility(employeeId);
+    await recomputeBadgesFor(employeeId);
+
+    // Calculate and return updated stats
+    const stats = await calculateAttendanceStats(employeeId);
+    res.json({ success: true, stats });
+
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.json({
+        success: false,
+        message: "Attendance already marked for today",
+        alreadyMarked: true
+      });
+    }
+    console.log(err);
+    res.json({ success: false, message: "Server error" });
+  }
+});
+
+// ── GET ATTENDANCE STATS ──
+app.get("/attendance-stats/:employeeId", async (req, res) => {
+  try {
+    const employeeId = decodeURIComponent(req.params.employeeId);
+    const stats = await calculateAttendanceStats(employeeId);
+    if (!stats) return res.json({ success: false, message: "Stats calculation failed" });
+    res.json({ success: true, stats });
+  } catch (err) {
+    console.log(err);
+    res.json({ success: false });
+  }
+});
+
+// ── COORDINATOR MARKS ATTENDANCE FOR STUDENT ──
+app.post("/coordinator-mark-attendance", async (req, res) => {
+  try {
+    const { employeeId, date } = req.body;
+    const markDate = date || new Date().toISOString().split("T")[0];
+    const d = new Date(markDate);
+    const dateKey = markDate;
+
+    const student = await Student.findOne({ employeeId });
+    if (!student) return res.json({ success: false, message: "Student not found" });
+
+    const existing = await Attendance.findOne({
+      employeeId,
+      dateKey,
+      markedBy: "coordinator"
+    });
+
+    if (existing) {
+      return res.json({
+        success: false,
+        message: "Already marked for this date"
+      });
+    }
+
+    await Attendance.create({
+      studentId: student._id,
+      employeeId,
+      domain: student.domain,
+      date: d,
+      dateKey,
+      status: "Present",
+      markedBy: "coordinator"
+    });
+
+    const stats = await calculateAttendanceStats(employeeId);
+    res.json({ success: true, stats });
+
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.json({
+        success: false,
+        message: "Already marked"
+      });
+    }
+    res.json({ success: false });
+  }
 });
 
 // ================= COORDINATOR LOGIN =================
@@ -3555,7 +4370,7 @@ async function calculatePerformance(studentRefOrId){
     }
     if(!student) return null;
 
-    const stats = await computeAttendanceStats(student.employeeId, student.joiningDate);
+    const stats = (await calculateAttendanceStats(student.employeeId)) || { combinedPct: 0 };
     const submissions = await Submission.find({ employeeId: student.employeeId });
     const totalSubmitted = submissions.length;
     const approved = submissions.filter(s => s.status === "Approved").length;
@@ -4387,6 +5202,7 @@ app.post("/auth/reset-password", async(req,res)=>{
         // behaviour). For coord/HR the DB-backed accounts use bcrypt.
         if(role === "student"){
             user.password = newPassword;
+            user.plainPassword = newPassword;
         } else {
             user.password = await bcrypt.hash(newPassword, 10);
         }
@@ -4451,6 +5267,107 @@ try{
         collegeName: getStudentCollege(target)
     }});
 }catch(e){ console.log(e); res.status(500).json({ success:false }); }
+});
+
+// ==================================================================
+// ============ Automated Task Unlock (Feature 3) ==================
+// ==================================================================
+app.get("/my-tasks/:employeeId", async (req, res) => {
+  try {
+    const employeeId = decodeURIComponent(req.params.employeeId);
+    const student = await Student.findOne({ employeeId });
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    // 1. Calculate how many days have passed since they started
+    const joiningDate = student.joiningDate ? new Date(student.joiningDate) : new Date(student.createdAt);
+    const today = new Date();
+    
+    // Clear time parts for clean date-based division
+    const d1 = new Date(joiningDate.getFullYear(), joiningDate.getMonth(), joiningDate.getDate());
+    const d2 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const diffTime = Math.max(0, d2 - d1);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // Day 1 is first day
+
+    // 2. Parse tenure to max allowed days
+    const tenureMapping = {
+      "1 Week": 7,
+      "15 Days": 15,
+      "1 Month": 30,
+      "45 Days": 45,
+      "3 Months": 90,
+      "6 Months": 180
+    };
+    const maxDays = tenureMapping[student.tenure] || 30;
+    const currentDay = Math.min(diffDays, maxDays);
+
+    // 3. Auto-approve tasks pending for > 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const pendingOverdue = await TaskAssignment.find({
+      employeeId,
+      status: "Pending",
+      unlockedAt: { $lt: oneDayAgo }
+    });
+    for (const task of pendingOverdue) {
+      task.status = "Auto-Approved";
+      task.feedback = "Auto-approved due to completion time threshold.";
+      task.autoApprovedAt = new Date();
+      await task.save();
+    }
+
+    // 4. For each past day (1 to currentDay), check and unlock Day 1, Day 2 etc.
+    for (let d = 1; d <= currentDay; d++) {
+      for (let t = 1; t <= 2; t++) {
+        // Check if TaskAssignment already exists
+        const exists = await TaskAssignment.findOne({
+          employeeId,
+          domain: student.domain,
+          dayNumber: d,
+          taskNumber: t
+        });
+
+        if (!exists) {
+          // Find the corresponding AutoTask
+          const autoTask = await AutoTask.findOne({
+            domain: { $regex: new RegExp("^" + student.domain + "$", "i") },
+            tenure: student.tenure,
+            dayNumber: d,
+            taskNumber: t
+          });
+
+          if (autoTask) {
+            const newAssignment = new TaskAssignment({
+              employeeId,
+              domain: student.domain,
+              taskId: autoTask._id,
+              title: autoTask.title,
+              description: autoTask.description,
+              difficulty: autoTask.difficulty,
+              dayNumber: d,
+              taskNumber: t,
+              unlockedAt: new Date(),
+              deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              status: "Pending"
+            });
+            await newAssignment.save();
+          }
+        }
+      }
+    }
+
+    // 5. Returns all unlocked task assignments for the domain
+    const activeTasks = await TaskAssignment.find({
+      employeeId,
+      domain: student.domain,
+      status: { $in: ["Pending", "Submitted", "Approved", "Rejected", "Auto-Approved"] }
+    }).sort({ dayNumber: 1, taskNumber: 1 });
+
+    res.json({ success: true, tasks: activeTasks });
+  } catch (err) {
+    console.error("[my-tasks] error:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ==================================================================

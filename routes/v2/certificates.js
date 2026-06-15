@@ -101,7 +101,6 @@ async function getCertStatus(student) {
 // CERTIFICATE ROUTES
 // ════════════════════════════════
 
-// GET /api/v2/certificates/my-certs
 // GET /api/v2/certificates/my-certs — smart unified handler
 async function handleMyCerts(req, res) {
   try {
@@ -285,7 +284,6 @@ router.post("/certificates/claim/:type", requireStudent, async (req, res) => {
         }
 
         // ── PAYMENT_ENABLED=true path ──
-        // (Razorpay integration runs only when flag is true)
         const Razorpay = require("razorpay");
         const rzp = new Razorpay({ key_id: paymentConfig.RAZORPAY_KEY_ID, key_secret: paymentConfig.RAZORPAY_KEY_SECRET });
         const order = await rzp.orders.create({
@@ -315,9 +313,6 @@ router.post("/certificates/generate-pdf/:type", requireStudent, async (req, res)
     try {
         const type    = req.params.type;
         const student = req.student;
-
-        // If payment is enabled, verify payment signature here
-        // (Skipped when PAYMENT_ENABLED=false for internal use)
 
         let certRecord = await StudentCertificate.findOne({ studentId: student._id, certificateType: type });
         if (!certRecord) {
@@ -505,7 +500,7 @@ const cron                = require("node-cron");
 
 // Find the existing transporter and make it fault-tolerant
 const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',    // or 'smtp'
+  service: process.env.EMAIL_SERVICE || 'gmail',
   host:    process.env.EMAIL_HOST,
   port:    parseInt(process.env.EMAIL_PORT) || 587,
   secure:  process.env.EMAIL_SECURE === 'true',
@@ -536,7 +531,7 @@ async function sendCertificateEmail(toEmail, studentName, certType, pdfBuffer) {
     return { sent: true };
   } catch(e) {
     console.error(`[Email] ✗ Failed to send ${certType} to ${toEmail}:`, e.message);
-    return { sent: false, reason: e.message };  // NEVER throw — just return failure
+    return { sent: false, reason: e.message };
   }
 }
 
@@ -671,7 +666,7 @@ async function buildCertPDF(student, certType) {
   
     doc.moveDown(2);
   
-    // ── Fine / Eligibility Notice box (always shown) ──
+    // ── Fine / Eligibility Notice box ──
     const noticeY = doc.y;
     doc.rect(70, noticeY, 455, certType === 'OFFER' ? 80 : 110)
        .lineWidth(0.5).strokeColor('#e2e8f0').stroke();
@@ -732,7 +727,6 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
   };
   const fields = fieldMap[certType];
   
-  // SAVE FIRST — email is optional
   await Student.findByIdAndUpdate(studentId, {
     [fields.pdfField]:   pdfBuffer.toString('base64'),
     [fields.statusField]: 'issued',
@@ -742,7 +736,6 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
   
   const emailResult = await sendCertificateEmail(student.email, student.name || student.fullName || 'Student', certType, pdfBuffer);
   
-  // Update StudentDocument to keep legacy collections in perfect sync
   try {
     const StudentDocument = require("../../models/new/StudentDocument");
     let docRec = await StudentDocument.findOne({ studentId });
@@ -765,7 +758,6 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
     console.error(`[CertSync] ✗ Failed to sync to StudentDocument:`, docSyncErr.message);
   }
 
-  // Create DocumentHistory record (Document Send History)
   try {
     const studentName = (student.name || student.fullName || "").trim();
     const college = (student.collegeName || student.college || "Not provided").trim();
@@ -797,7 +789,6 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
     console.error(`[CertHistory] Failed to log DocumentHistory for ${studentId}:`, historyErr.message);
   }
 
-  // Create MailHistory record (Automated Mail History)
   try {
     const studentName = (student.name || student.fullName || "").trim();
     await MailHistory.create({
@@ -815,7 +806,6 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
     console.error(`[MailHistory] Failed to log MailHistory for ${studentId}:`, mailHistoryErr.message);
   }
 
-  // In-app notification mirroring the HR certificate mail (additive, failure-safe)
   {
     const notifLabels = {
       LOC: "Letter of Completion",
@@ -843,12 +833,10 @@ async function checkAndIssueCerts(studentId, sentBy = "System Automation") {
   const locFinePaid = (student.pendingFines||[]).some(f => f.fineType === 'loc_attendance' && f.paid);
   const lorFinePaid = (student.pendingFines||[]).some(f => f.fineType === 'lor_criteria' && f.paid);
 
-  // LOC check
   if (['pending_hr', 'approved', 'fine_pending'].includes(student.locStatus) && student.locStatus !== 'issued') {
     if (att >= 75 || locFinePaid) {
       await generateAndSaveCert(studentId, 'LOC', student, sentBy);
     } else {
-      // Add fine if not already added
       const hasFine = (student.pendingFines||[]).some(f => f.fineType === 'loc_attendance');
       if (!hasFine) {
         await Student.findByIdAndUpdate(studentId, {
@@ -863,7 +851,6 @@ async function checkAndIssueCerts(studentId, sentBy = "System Automation") {
     }
   }
   
-  // LOR check
   if (['pending_hr', 'approved', 'fine_pending'].includes(student.lorStatus) && student.lorStatus !== 'issued') {
     if ((att >= 75 && perf >= 75) || lorFinePaid) {
       await generateAndSaveCert(studentId, 'LOR', student, sentBy);
@@ -886,7 +873,6 @@ async function checkAndIssueCerts(studentId, sentBy = "System Automation") {
     }
   }
   
-  // STAR — only if HR explicitly set starStatus = 'approved'
   if (student.starStatus === 'approved') {
     await generateAndSaveCert(studentId, 'STAR', student, sentBy);
   }
@@ -895,7 +881,7 @@ async function checkAndIssueCerts(studentId, sentBy = "System Automation") {
 // POST /api/v2/certificates/hr-approve — HR manually approves
 router.post('/hr-approve', async (req, res) => {
   try {
-    const { studentId, certTypes, force } = req.body; // certTypes: ['LOC','LOR','STAR']
+    const { studentId, certTypes, force } = req.body;
     const update = {};
     if (certTypes.includes('LOC'))  update.locStatus  = 'pending_hr';
     if (certTypes.includes('LOR'))  update.lorStatus  = 'pending_hr';
@@ -918,12 +904,10 @@ router.post('/hr-approve', async (req, res) => {
   }
 });
 
-// POST /api/v2/certificates/pay-fine — HR marks a fine as paid and triggers issuance
+// POST /api/v2/certificates/pay-fine
 router.post('/pay-fine', async (req, res) => {
   try {
-    const { studentId, fineType } = req.body; // fineType: 'loc_attendance' or 'lor_criteria'
-    
-    // Find student, update the specific fine to paid = true
+    const { studentId, fineType } = req.body;
     const student = await Student.findById(studentId);
     if (!student) return res.status(404).json({ error: 'Student not found' });
     
@@ -938,15 +922,13 @@ router.post('/pay-fine', async (req, res) => {
     }
     
     if (fineFound) {
-      // Also update locStatus / lorStatus back from fine_pending to pending_hr so it gets processed
       if (fineType === 'loc_attendance' && student.locStatus === 'fine_pending') {
         student.locStatus = 'pending_hr';
       } else if (fineType === 'lor_criteria' && student.lorStatus === 'fine_pending') {
-        student.lorStatus = 'pending_hr';
+        student.lorStatus = 'fine_pending';
       }
       
       await student.save();
-      // Auto run certificate checks!
       await checkAndIssueCerts(studentId);
       return res.json({ success: true, message: `Fine of type ${fineType} successfully marked as paid and certificate generated` });
     } else {
@@ -993,12 +975,12 @@ router.post('/star-submit', async (req, res) => {
   }
 });
   
-// GET /api/v2/certificates/my-certs — Student fetches their certificate status (smart/merged)
+// GET /api/v2/certificates/my-certs
 router.get('/my-certs', async (req, res) => {
     return handleMyCerts(req, res);
 });
   
-// GET /api/v2/certificates/download/:type — Download PDF
+// GET /api/v2/certificates/download/:type
 router.get('/download/:type', async (req, res) => {
   try {
     const { employeeId } = req.query || {};
@@ -1009,7 +991,6 @@ router.get('/download/:type', async (req, res) => {
     const pdfMap = { LOC:'locPdfBase64', LOR:'lorPdfBase64', STAR:'starPdfBase64', OFFER:'offerPdfBase64' };
     const b64 = student[pdfMap[type]];
     if (!b64) {
-      // Fallback: Check StudentDocument for legacy / file system PDF
       try {
         const StudentDocument = require("../../models/new/StudentDocument");
         const docRec = await StudentDocument.findOne({ studentId: student._id }).lean();
@@ -1069,7 +1050,6 @@ router.get('/pending-hr', async (req, res) => {
 // CRON JOBS — SECTION 4
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Cron 1: Coordinator didn't act in 24h → escalate to HR
 cron.schedule('0 * * * *', async () => {
   try {
     const cutoff = new Date(Date.now() - 24*60*60*1000);
@@ -1091,7 +1071,6 @@ cron.schedule('0 * * * *', async () => {
   }
 });
   
-// Cron 2: HR didn't act in 24h → auto-process certs
 cron.schedule('20 * * * *', async () => {
   try {
     const cutoff = new Date(Date.now() - 24*60*60*1000);
@@ -1108,7 +1087,6 @@ cron.schedule('20 * * * *', async () => {
   }
 });
   
-// Cron 3: Offer letter auto-generate 24h after doc upload if HR hasn't acted
 cron.schedule('40 * * * *', async () => {
   try {
     const cutoff = new Date(Date.now() - 24*60*60*1000);

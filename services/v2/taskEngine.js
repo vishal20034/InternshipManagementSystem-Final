@@ -9,6 +9,8 @@ const coinService          = require("./coinService");
 function tenureToDurationType(tenure) {
     if (!tenure) return "1month";
     const t = tenure.toString().toLowerCase().replace(/\s+/g, "");
+    if (t.includes("1w") || t.includes("1week") || t.includes("7dy") || t.includes("7day")) return "1week";
+    if (t.includes("15d") || t.includes("15day")) return "15days";
     if (t.includes("45")) return "45days";
     if (t.includes("6m") || t.includes("6month")) return "6months";
     if (t.includes("3m") || t.includes("3month")) return "3months";
@@ -21,12 +23,30 @@ function tenureToDurationType(tenure) {
  * Idempotent — safe to call multiple times.
  */
 async function assignTasksForStudent(student) {
-    const domain       = student.domain;
+    let domain = student.domain;
+    if (domain === "HR") domain = "HR Management";
+    if (domain === "Business Development") domain = "Business Analyst";
+    if (domain === "Space Intern") domain = "Space Research";
+    if (domain === "Artificial Intelligence" || domain === "AI") domain = "Data Science";
+
     const durationType = student.v2DurationType || tenureToDurationType(student.tenure);
 
     if (!domain || !durationType) return { assigned: 0 };
 
-    const allTasks = await DomainTask.find({ domain, durationType }).lean();
+    let queryDurationType = durationType;
+    let queryObj = { domain };
+
+    if (durationType === "1week") {
+        queryDurationType = "1month";
+        queryObj.weekNumber = 1;
+    } else if (durationType === "15days") {
+        queryDurationType = "1month";
+        queryObj.weekNumber = { $in: [1, 2] };
+    }
+
+    queryObj.durationType = queryDurationType;
+
+    const allTasks = await DomainTask.find(queryObj).lean();
     if (!allTasks.length) return { assigned: 0 };
 
     const ops = allTasks.map(task => ({
@@ -59,6 +79,11 @@ async function tryUnlockNextWeek(student, approvedTaskId) {
     if (!approvedTaskDoc) return { unlocked: 0 };
 
     const { domain, durationType, weekNumber: currentWeek } = approvedTaskDoc;
+
+    // Check if user is on short duration (1week or 15days) which locks maximum week progression
+    const studentDuration = student.v2DurationType || tenureToDurationType(student.tenure);
+    if (studentDuration === "1week") return { unlocked: 0 };
+    if (studentDuration === "15days" && currentWeek >= 2) return { unlocked: 0 };
 
     // All tasks in the current week for this student
     const currentWeekTasks = await DomainTask.find({ domain, durationType, weekNumber: currentWeek }).lean();
@@ -130,13 +155,31 @@ async function approveTask(student, progressId, coordinatorId, feedback) {
  * Get all tasks for a student, grouped by week, with their status.
  */
 async function getStudentTasks(student) {
-    const domain       = student.domain;
+    let domain = student.domain;
+    if (domain === "HR") domain = "HR Management";
+    if (domain === "Business Development") domain = "Business Analyst";
+    if (domain === "Space Intern") domain = "Space Research";
+    if (domain === "Artificial Intelligence" || domain === "AI") domain = "Data Science";
+
     const durationType = student.v2DurationType || tenureToDurationType(student.tenure);
 
     if (!domain || !durationType) return { weeks: [], domain, durationType };
 
+    let queryDurationType = durationType;
+    let queryObj = { domain };
+
+    if (durationType === "1week") {
+        queryDurationType = "1month";
+        queryObj.weekNumber = 1;
+    } else if (durationType === "15days") {
+        queryDurationType = "1month";
+        queryObj.weekNumber = { $in: [1, 2] };
+    }
+
+    queryObj.durationType = queryDurationType;
+
     const [allTasks, progressList] = await Promise.all([
-        DomainTask.find({ domain, durationType }).sort({ weekNumber: 1, _id: 1 }).lean(),
+        DomainTask.find(queryObj).sort({ weekNumber: 1, _id: 1 }).lean(),
         StudentTaskProgress.find({ studentId: student._id }).lean()
     ]);
 

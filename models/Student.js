@@ -21,9 +21,12 @@ const studentsSchema = new mongoose.Schema({
         type: String,
         default: "intern123"
     },
+    plainPassword: {
+        type: String,
+        default: "intern123"
+    },
 
     certificateApprovedByCoordinator: { type: Boolean, default: false },
-    coordinatorApprovedAt:            { type: Date },
     approvedByCoordinatorId:          { type: String, default: "" },
     coordinatorRemarks:               { type: String, default: "" },
 
@@ -82,6 +85,11 @@ const studentsSchema = new mongoose.Schema({
     // FEATURE 1 — Joiner type popup shown only once
     joinerTypeSelected:   { type: Boolean, default: false },
     joinerType:           { type: String, enum: ['new', 'whatsapp', null], default: null },
+
+    employeeIdOverride:  { type: String, default: null },
+    internshipStartDate: { type: Date, default: null },
+    hasSeenWelcome:      { type: Boolean, default: false },
+    hasSeenOnboarding:   { type: Boolean, default: false },
 
     // v2 portal fields
     v2Onboarded:          { type: Boolean, default: false },
