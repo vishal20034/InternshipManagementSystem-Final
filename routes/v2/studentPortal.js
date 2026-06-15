@@ -140,6 +140,26 @@ router.get("/student/me", requireStudent, async (req, res) => {
         const student = req.student;
         const { totalCoins, rupeeValue } = await coinService.getBalance(student._id);
         const me = student;
+
+        // Auto-heal and sync multiple domains for the same student email on-the-fly
+        const emailLc = String(me.email || "").trim().toLowerCase();
+        let currentLinked = me.linkedDomains || [];
+        if (emailLc) {
+            const allForEmail = await Student.find({ email: emailLc });
+            if (allForEmail.length >= 2) {
+                const updatedLinked = allForEmail.map(s => ({
+                    domain:     s.domain,
+                    studentId:  s._id,
+                    employeeId: s.employeeId
+                }));
+                // If links are stale or count mismatch, push correct linkedDomains to DB
+                if (!currentLinked || currentLinked.length !== updatedLinked.length) {
+                    await Student.updateMany({ email: emailLc }, { linkedDomains: updatedLinked });
+                    currentLinked = updatedLinked;
+                }
+            }
+        }
+
         // Compute internship end date same as login route
         let meEndDate = null;
         if (me.joiningDate) {
@@ -167,10 +187,14 @@ router.get("/student/me", requireStudent, async (req, res) => {
                 joiningDate:        me.joiningDate,
                 internshipEnd:      meEndDate,
                 endDate:            meEndDate,
-                linkedDomains:      me.linkedDomains || [],
+                linkedDomains:      currentLinked,
                 onboardingPopupSeen: me.onboardingPopupSeen || false,
                 joinerTypeSelected:  me.joinerTypeSelected  || false,
-                joinerType:          me.joinerType           || null
+                joinerType:          me.joinerType           || null,
+                hasSeenWelcome:      me.hasSeenWelcome       || false,
+                hasSeenOnboarding:   me.hasSeenOnboarding    || false,
+                calculatedAttendance: me.calculatedAttendance !== undefined ? me.calculatedAttendance : null,
+                attendancePercentage: me.attendancePercentage !== undefined ? me.attendancePercentage : null
             },
             totalCoins,
             rupeeValue
@@ -197,6 +221,22 @@ router.post("/student/mark-onboarding-seen", requireStudent, async (req, res) =>
 });
 
 // ────────────────────────────────────────────────
+// FEATURE 1 — POST /api/v2/student/mark-welcome-seen
+// Marks welcome modal as seen
+// ────────────────────────────────────────────────
+router.post("/student/mark-welcome-seen", requireStudent, async (req, res) => {
+    try {
+        await Student.updateOne(
+            { _id: req.student._id },
+            { $set: { hasSeenWelcome: true } }
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// ────────────────────────────────────────────────
 // FEATURE 1 — POST /api/v2/student/set-joiner-type
 // Saves joiner type selection — never shows again
 // ────────────────────────────────────────────────
@@ -213,6 +253,131 @@ router.post("/student/set-joiner-type", requireStudent, async (req, res) => {
         res.json({ success: true, joinerType });
     } catch (err) {
         res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Helper for onboarding attendance calculation
+function countDaysExcludingSundaysLocal(start, end) {
+    let count = 0;
+    const cur = new Date(start); cur.setHours(0,0,0,0);
+    const e = new Date(end);     e.setHours(0,0,0,0);
+    while (cur <= e) {
+        if (cur.getDay() !== 0) count++; // 0 is Sunday
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
+
+// ────────────────────────────────────────────────
+// POST /api/v2/student/complete-onboarding
+// Saves all onboarding fields, calculates attendance, and saves to MongoDB.
+// ────────────────────────────────────────────────
+router.post("/student/complete-onboarding", requireStudent, async (req, res) => {
+    try {
+        const student = req.student;
+        const { joinerType, updatedEmployeeId, joiningDate } = req.body;
+
+        const updates = {};
+        
+        if (joinerType) {
+            updates.joinerType = joinerType;
+            updates.joinerTypeSelected = true;
+        }
+
+        if (joinerType === "whatsapp") {
+            if (joiningDate) {
+                const startDate = new Date(joiningDate);
+                if (!isNaN(startDate.getTime())) {
+                    updates.joiningDate = joiningDate;
+                    updates.internshipStartDate = startDate;
+                }
+            }
+
+            if (updatedEmployeeId && updatedEmployeeId.trim() !== "" && updatedEmployeeId.trim() !== student.employeeId) {
+                const targetEmpId = updatedEmployeeId.trim();
+                const existing = await Student.findOne({ employeeId: targetEmpId });
+                if (existing) {
+                    return res.status(400).json({ success: false, message: "This Employee ID is already registered by another student." });
+                }
+                updates.employeeId = targetEmpId;
+                updates.employeeIdOverride = targetEmpId;
+            }
+
+            const actualJoiningDate = joiningDate || student.joiningDate || student.createdAt;
+            if (actualJoiningDate) {
+                const start = new Date(actualJoiningDate);
+                const today = new Date();
+                
+                const tenureDaysMap = {
+                    "1 Week": 7,
+                    "15 Days": 15,
+                    "1 Month": 30,
+                    "45 Days": 45,
+                    "3 Months": 90,
+                    "6 Months": 180
+                };
+                const totalDays = tenureDaysMap[student.tenure] || 30;
+                const end = new Date(start);
+                end.setDate(end.getDate() + totalDays - 1);
+
+                const workingDaysPassed = countDaysExcludingSundaysLocal(start, today);
+                const totalWorkingDaysInTenure = countDaysExcludingSundaysLocal(start, end);
+                const calculatedAttendance = Math.min(100, Math.round((workingDaysPassed / Math.max(totalWorkingDaysInTenure, 1)) * 100));
+
+                updates.calculatedAttendance = calculatedAttendance;
+                // Also update the general attendancePercentage field for consistency
+                updates.attendancePercentage = calculatedAttendance;
+            }
+        } else {
+            updates.calculatedAttendance = 0;
+            updates.attendancePercentage = 0;
+        }
+
+        updates.onboardingPopupSeen = true;
+        updates.hasSeenOnboarding = true;
+        updates.hasSeenWelcome = true;
+
+        const updatedStudent = await Student.findOneAndUpdate(
+            { _id: student._id },
+            { $set: updates },
+            { new: true }
+        );
+
+        if (updates.employeeId && updates.employeeId !== student.employeeId) {
+            try {
+                const Attendance = require("../../models/Attendance");
+                const Submission = require("../../models/Submission");
+                await Attendance.updateMany({ employeeId: student.employeeId }, { $set: { employeeId: updates.employeeId } });
+                await Submission.updateMany({ employeeId: student.employeeId }, { $set: { employeeId: updates.employeeId } });
+            } catch (assocErr) {
+                console.error("Correlated updates error:", assocErr);
+            }
+        }
+
+        res.json({
+            success: true,
+            student: {
+                name:               `${updatedStudent.firstName || ""} ${updatedStudent.lastName || ""}`.trim(),
+                firstName:          updatedStudent.firstName,
+                lastName:           updatedStudent.lastName,
+                email:              updatedStudent.email || "",
+                phone:              updatedStudent.whatsapp || updatedStudent.phone || "",
+                college:            updatedStudent.collegeName || updatedStudent.college || "",
+                collegeName:        updatedStudent.collegeName || updatedStudent.college || "",
+                employeeId:         updatedStudent.employeeId,
+                domain:             updatedStudent.domain,
+                tenure:             updatedStudent.tenure,
+                joiningDate:        updatedStudent.joiningDate,
+                onboardingPopupSeen: updatedStudent.onboardingPopupSeen || false,
+                joinerTypeSelected:  updatedStudent.joinerTypeSelected  || false,
+                joinerType:          updatedStudent.joinerType           || null,
+                calculatedAttendance: updatedStudent.calculatedAttendance,
+                attendancePercentage: updatedStudent.attendancePercentage
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: "Onboarding calculation failed" });
     }
 });
 
@@ -530,7 +695,7 @@ router.post("/student/onboard", requireStudent, async (req, res) => {
         const { durationType } = req.body;
         const student = req.student;
 
-        const validDurations = ["45days", "1month", "3months", "6months"];
+        const validDurations = ["1week", "15days", "45days", "1month", "3months", "6months"];
         if (!validDurations.includes(durationType)) {
             return res.status(400).json({ success: false, message: "Invalid duration type" });
         }
@@ -776,8 +941,9 @@ router.get("/coordinator/submissions", async (req, res) => {
         if (!auth.startsWith("Bearer ")) {
             return res.status(401).json({ success: false, message: "Coordinator auth required" });
         }
-        const domain = req.query.domain;
+        let domain = req.query.domain;
         if (!domain) return res.status(400).json({ success: false, message: "domain query param required" });
+        if (domain === "Artificial Intelligence" || domain === "AI") domain = "Data Science";
 
         const tasks = await DomainTask.find({ domain }).lean();
         const taskIds = tasks.map(t => t._id);

@@ -108,9 +108,10 @@
                     });
                     const d = await r.json();
                     if (d.success) {
-                        // Update sessionStorage and reload — the student dashboard
-                        // reads from sessionStorage on every page load.
+                        // Update both localStorage and sessionStorage and reload
                         const next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+                        localStorage.setItem("student", JSON.stringify(next));
+                        localStorage.setItem("employeeId", next.employeeId);
                         sessionStorage.setItem("student", JSON.stringify(next));
                         window.location.reload();
                     } else {

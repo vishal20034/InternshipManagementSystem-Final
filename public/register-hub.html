@@ -205,8 +205,17 @@
         .then(function(data) {
           submitBtn.classList.remove('btn--loading');
           if (data.success) {
-            showSuccess('Account created! Redirecting to login…');
-            setTimeout(function() { window.location.href = 'login.html'; }, 2000);
+            showSuccess('Account created! Redirecting to onboarding summary…');
+            setTimeout(function() { 
+              const pwdQuery = password ? `&password=${encodeURIComponent(password)}` : '';
+              if (data.role === 'founder') {
+                window.location.href = `/founder-registration-success?role=${encodeURIComponent(data.role)}&email=${encodeURIComponent(data.email)}&memberId=${encodeURIComponent(data.memberId)}&startupName=${encodeURIComponent(roleSpecificData.startupName || 'Venture')}&status=Pending%20Approval${pwdQuery}`;
+              } else if (data.role === 'student') {
+                window.location.href = `/registration-success?role=${encodeURIComponent(data.role)}&email=${encodeURIComponent(data.email)}&memberId=${encodeURIComponent(data.memberId)}&status=Approved${pwdQuery}`;
+              } else {
+                window.location.href = `/registration-success?role=${encodeURIComponent(data.role)}&email=${encodeURIComponent(data.email)}&memberId=${encodeURIComponent(data.memberId)}&status=Pending%20Approval${pwdQuery}`;
+              }
+            }, 2000);
           } else {
             showError(data.error || 'Registration failed. Please try again.');
             submitBtn.disabled = false;

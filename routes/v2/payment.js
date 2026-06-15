@@ -102,7 +102,6 @@ router.post('/create-order', async (req, res) => {
     const apiBody = apiRes.body;
     console.log('[PAYMENT] PaymentSetu response (HTTP ' + apiRes.status + '):', JSON.stringify(apiBody));
 
-    // Success — gateway returned a payment URL
     if (apiBody && apiBody.status === true && apiBody.payment_url) {
       const payment = new Payment({
         orderId,
@@ -125,7 +124,6 @@ router.post('/create-order', async (req, res) => {
       return res.json({ success: true, paymentUrl: apiBody.payment_url, orderId });
     }
 
-    // Gateway-level errors
     if (apiBody && apiBody.error_code === 'ALREADY_PAID') {
       const existing = await Payment.findOne({ orderId, status: 'success' });
       if (existing) return res.json({ success: true, alreadyPaid: true, orderId: existing.orderId, txnUtr: existing.txnUtr });
@@ -135,7 +133,6 @@ router.post('/create-order', async (req, res) => {
       return res.status(503).json({ success: false, message: 'Payment credits exhausted. Please contact support.' });
     }
 
-    // Auth error — key rejected
     const msgLower = (apiBody && (apiBody.msg || apiBody.message || '')).toLowerCase();
     if (msgLower.includes('token') || msgLower.includes('api key') || msgLower.includes('auth')) {
       console.error('[PAYMENT] API key rejected by PaymentSetu:', apiBody);
@@ -151,7 +148,7 @@ router.post('/create-order', async (req, res) => {
   }
 });
 
-// POST /api/v2/payment/webhook  — raw body, HMAC verified
+// POST /api/v2/payment/webhook
 router.post('/webhook',
   express.raw({ type: '*/*' }),
   async (req, res) => {
@@ -232,7 +229,6 @@ router.get('/status/:orderId', async (req, res) => {
     if (!payment)                         return res.status(404).json({ success: false, message: 'Payment not found' });
     if (payment.employeeId !== employeeId) return res.status(403).json({ success: false, message: 'Forbidden' });
 
-    // Active verification: if status is pending, query PaymentSetu to verify!
     if (payment.status === 'pending') {
       try {
         console.log('[PAYMENT STATUS CHECK] Actively checking with PaymentSetu for orderId:', payment.orderId);
@@ -289,7 +285,7 @@ router.get('/status/:orderId', async (req, res) => {
   }
 });
 
-// POST /api/v2/payment/utr-confirm  — student submits UTR after direct UPI payment
+// POST /api/v2/payment/utr-confirm
 router.post('/utr-confirm', async (req, res) => {
   try {
     const employeeId = req.headers['x-employee-id'];
@@ -357,7 +353,7 @@ router.get('/my-payments', async (req, res) => {
   }
 });
 
-// GET /api/v2/payment/check-credits  (HR or student)
+// GET /api/v2/payment/check-credits
 router.get('/check-credits', async (req, res) => {
   try {
     const auth       = req.headers.authorization || '';
@@ -382,7 +378,7 @@ router.get('/check-credits', async (req, res) => {
   }
 });
 
-// GET /api/v2/payment/hr-all-payments  (HR only)
+// GET /api/v2/payment/hr-all-payments
 router.get('/hr-all-payments', async (req, res) => {
   try {
     const auth = req.headers.authorization || '';

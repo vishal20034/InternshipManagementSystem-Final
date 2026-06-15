@@ -305,16 +305,9 @@ router.post("/document-history/log", requireHR, async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────
-// CERTIFICATE APPROVAL ROUTES (new automation workflow)
-// ─────────────────────────────────────────────────────
 const CertificateRequest = require("../../models/CertificateRequest");
-const path               = require("path");
-const fsCert             = require("fs");
 const { autoGenerateCertificates } = require("../../services/automationCron");
 
-// GET /api/v2/hr/admin/certificates/pending
-// Returns all CertificateRequests awaiting HR approval
 router.get("/admin/certificates/pending", requireHR, async (req, res) => {
     try {
         const pending = await CertificateRequest.find({ status: "awaiting_hr" })
@@ -359,8 +352,6 @@ router.get("/admin/certificates/pending", requireHR, async (req, res) => {
     }
 });
 
-// POST /api/v2/hr/admin/certificates/approve
-// HR manually approves and triggers certificate generation
 router.post("/admin/certificates/approve", requireHR, async (req, res) => {
     try {
         const { studentId, approveLoC, approveLor, approveStarPerformance, notes } = req.body;
@@ -380,7 +371,6 @@ router.post("/admin/certificates/approve", requireHR, async (req, res) => {
 
         await Student.findByIdAndUpdate(studentId, { certificateStatus: "awaiting_hr" });
 
-        // Generate certificates asynchronously
         setImmediate(() => autoGenerateCertificates(certReq));
 
         res.json({ success: true, message: "Certificate generation started", requestId: certReq._id });
@@ -390,11 +380,6 @@ router.post("/admin/certificates/approve", requireHR, async (req, res) => {
     }
 });
 
-// ─────────────────────────────────────────────────────
-// DOCUMENT HISTORY — GET /api/v2/hr/document-history
-// Returns all document-send records (manual + automation)
-// for the HR portal "Document Send History" tab.
-// ─────────────────────────────────────────────────────
 router.get("/document-history", requireHR, async (req, res) => {
   try {
     const page  = Math.max(1, parseInt(req.query.page || "1", 10) || 1);
@@ -432,5 +417,3 @@ router.get("/document-history", requireHR, async (req, res) => {
 });
 
 module.exports = router;
-
-

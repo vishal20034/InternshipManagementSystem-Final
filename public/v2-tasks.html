@@ -96,8 +96,8 @@ body::after {
   background:var(--bg-card);
   border:1px solid var(--border-strong);
   border-radius:var(--radius-lg);
-  padding:48px 44px;
-  max-width:520px; width:100%;
+  padding:36px 32px;
+  max-width:620px; width:100%;
   box-shadow:0 0 60px rgba(212,175,55,0.08);
   animation:fadeUp 0.5s ease both;
 }
@@ -112,7 +112,7 @@ body::after {
   border-radius:100px; padding:6px 16px; font-size:13px; font-weight:600; color:#93c5fd;
   margin:12px 0;
 }
-.duration-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:24px 0; }
+.duration-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin:24px 0; }
 .duration-option {
   background:var(--bg-surface); border:2px solid var(--border);
   border-radius:var(--radius-md); padding:18px 16px;
@@ -381,15 +381,25 @@ body::after {
       <div class="onboard-domain-badge">🎯 <span id="onboard-domain">—</span></div>
     </div>
     <div class="duration-grid" id="durationGrid">
-      <div class="duration-option" data-duration="45days" onclick="selectDuration(this)">
-        <div class="dur-icon">⚡</div>
-        <div class="dur-label">45 Days</div>
-        <div class="dur-sub">Intensive sprint</div>
+      <div class="duration-option" data-duration="1week" onclick="selectDuration(this)">
+        <div class="dur-icon">⏱️</div>
+        <div class="dur-label">1 Week</div>
+        <div class="dur-sub">Mini sprint</div>
+      </div>
+      <div class="duration-option" data-duration="15days" onclick="selectDuration(this)">
+        <div class="dur-icon">⏳</div>
+        <div class="dur-label">15 Days</div>
+        <div class="dur-sub">Compact track</div>
       </div>
       <div class="duration-option" data-duration="1month" onclick="selectDuration(this)">
         <div class="dur-icon">📅</div>
         <div class="dur-label">1 Month</div>
         <div class="dur-sub">Standard track</div>
+      </div>
+      <div class="duration-option" data-duration="45days" onclick="selectDuration(this)">
+        <div class="dur-icon">⚡</div>
+        <div class="dur-label">45 Days</div>
+        <div class="dur-sub">Intensive sprint</div>
       </div>
       <div class="duration-option" data-duration="3months" onclick="selectDuration(this)">
         <div class="dur-icon">🌱</div>
@@ -659,10 +669,11 @@ async function init() {
       document.getElementById('onboard-overlay').style.display = 'flex';
 
       // Pre-select based on tenure
-      const tenureMap = { '45': '45days', '1': '1month', '3': '3months', '6': '6months' };
       const tenure = (studentData.tenure || '').replace(/\s+/g,'').toLowerCase();
       let preSelect = '1month';
-      if (tenure.includes('45')) preSelect = '45days';
+      if (tenure.includes('1w') || tenure.includes('1week') || tenure.includes('7dy') || tenure.includes('7day')) preSelect = '1week';
+      else if (tenure.includes('15d') || tenure.includes('15day')) preSelect = '15days';
+      else if (tenure.includes('45')) preSelect = '45days';
       else if (tenure.includes('6m')) preSelect = '6months';
       else if (tenure.includes('3m')) preSelect = '3months';
 

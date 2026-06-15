@@ -29,6 +29,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addon-fit/addon-fit.min.js"></script>
 
 <style>
+@media (max-width: 768px) {
+  .domain-btn-text { display: none !important; }
+}
 :root {
   --bg-base:        #05070e;
   --bg-surface:     #090d1a;
@@ -1475,7 +1478,7 @@ button:active { transform: translateY(0); }
 <!-- ── SIDEBAR NAVIGATION ── -->
 <div class="stu-sidebar">
   <div class="stu-sidebar-brand">
-    <div class="stu-sidebar-brand-icon"><img src="ten-logo.png" alt="TEN Logo" style="width:42px;height:42px;object-fit:contain;display:block;filter:drop-shadow(0 0 6px rgba(212,175,55,0.4));" /></div>
+    <div class="stu-sidebar-brand-icon"><img src="ten-logo.png" alt="TEN Logo" style="width:28px;height:28px;object-fit:contain;display:block;filter:drop-shadow(0 0 6px rgba(212,175,55,0.45));" /></div>
     <div class="stu-sidebar-brand-text">
       <span class="brand-name">TEN</span>
       <span class="brand-sub">Student Portal</span>
@@ -1544,6 +1547,11 @@ button:active { transform: translateY(0); }
       <button class="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications">
         🔔
         <span class="notif-badge" id="notifBadge2">0</span>
+      </button>
+      <button id="domainToggleBtn2" onclick="toggleNextDomain()" title="Switch Domain"
+        style="display:none;align-items:center;justify-content:center;padding:0 14px;height:42px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:12px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:#D4AF37;transition:all 0.3s;gap:6px;"
+        onmouseover="this.style.background='rgba(212,175,55,0.2)'" onmouseout="this.style.background='rgba(212,175,55,0.1)'">
+        <span>🔄 Switch Domain</span>
       </button>
       <button id="refreshBtn2" onclick="refreshDashboard()" title="Refresh Dashboard"
         style="width:42px;height:42px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;">
@@ -1673,6 +1681,45 @@ button:active { transform: translateY(0); }
         <div>
           <h1 id="welcomeText">Welcome 🚀</h1>
           <p id="domainText">Domain</p>
+
+          <!-- Two-domain toggle — shown only if 2 domains -->
+          <div id="domainToggleWrap"
+               style="display:none;align-items:center;gap:14px;margin-top:14px;
+                      flex-wrap:wrap;">
+
+            <span id="domain1Chip"
+                  style="font-size:12px;font-weight:700;padding:6px 14px;
+                         border-radius:20px;background:rgba(59,130,246,0.18);
+                         border:1px solid rgba(59,130,246,0.4);color:#93c5fd;
+                         transition:all 0.25s;cursor:pointer;"
+                  onclick="switchToTab(0)">
+            </span>
+
+            <div onclick="flipDomainToggle()"
+                 id="slidingDomainToggle"
+                 title="Switch domain"
+                 style="width:52px;height:28px;
+                        background:linear-gradient(90deg,#1e40af,#0891b2);
+                        border-radius:14px;cursor:pointer;position:relative;
+                        border:1px solid rgba(59,130,246,0.35);
+                        transition:background 0.35s;flex-shrink:0;">
+              <div id="domainToggleKnob"
+                   style="width:22px;height:22px;background:white;
+                          border-radius:50%;position:absolute;
+                          top:2px;left:2px;transition:left 0.3s;
+                          box-shadow:0 2px 6px rgba(0,0,0,0.35);">
+              </div>
+            </div>
+
+            <span id="domain2Chip"
+                  style="font-size:12px;font-weight:700;padding:6px 14px;
+                         border-radius:20px;background:rgba(255,255,255,0.06);
+                         border:1px solid rgba(255,255,255,0.1);color:#94a3b8;
+                         transition:all 0.25s;cursor:pointer;"
+                  onclick="switchToTab(1)">
+            </span>
+
+          </div>
         </div>
       </div>
     </div>
@@ -1681,6 +1728,11 @@ button:active { transform: translateY(0); }
       <button class="notif-bell-btn" onclick="toggleNotifPanel()" title="Notifications">
         🔔
         <span class="notif-badge" id="notifBadge">0</span>
+      </button>
+      <button id="domainToggleBtn" onclick="toggleNextDomain()" title="Switch Domain"
+        style="display:none;align-items:center;justify-content:center;padding:0 14px;height:42px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.25);border-radius:12px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;color:#D4AF37;transition:all 0.3s;gap:6px;"
+        onmouseover="this.style.background='rgba(212,175,55,0.2)'" onmouseout="this.style.background='rgba(212,175,55,0.1)'">
+        <span>🔄 Switch Domain</span>
       </button>
       <button id="refreshBtn" onclick="refreshDashboard()" title="Refresh Dashboard"
         style="width:42px;height:42px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all 0.3s;">
@@ -1695,7 +1747,10 @@ button:active { transform: translateY(0); }
     <div class="profile-avatar" id="profileAvatar">?</div>
     <div class="profile-info">
       <div class="profile-name" id="profileName">—</div>
-      <div class="profile-domain-badge" id="profileDomain">—</div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0;">
+        <div class="profile-domain-badge" id="profileDomain">—</div>
+        <div id="customDomainSwitcher" style="display: none;"></div>
+      </div>
       <div class="profile-id" id="profileId">—</div>
       <div class="profile-meta">
         <span id="profileTenure">—</span>
@@ -1898,7 +1953,7 @@ button:active { transform: translateY(0); }
   <div class="tasks-box">
     <div class="section-title">
       <h2>📚 Your Domain Tasks</h2>
-      <span class="badge">Domain Tasks</span>
+      <span class="badge" id="taskDomainBadge">Loading...</span>
     </div>
     <div id="tasksContainer"></div>
   </div>
@@ -2153,7 +2208,7 @@ function applyTheme(theme){document.documentElement.setAttribute('data-theme',th
 function toggleTheme(){var c=localStorage.getItem('ten-theme')||'dark';var n=c==='dark'?'light':'dark';localStorage.setItem('ten-theme',n);applyTheme(n);}
 (function(){applyTheme(localStorage.getItem('ten-theme')||'dark');})();
 
-const student = JSON.parse(localStorage.getItem("student"));
+let student = JSON.parse(localStorage.getItem("student"));
 
 if(!student){
   window.location.href="/login.html";
@@ -2178,31 +2233,40 @@ if(!student){
         if (s.endDate)      stored.endDate      = s.endDate;
         if (s.domains)      stored.domains      = s.domains;
         if (s.linkedDomains) stored.linkedDomains = s.linkedDomains;
+        if (s.onboardingPopupSeen !== undefined) stored.onboardingPopupSeen = s.onboardingPopupSeen;
+        if (s.joinerTypeSelected !== undefined) stored.joinerTypeSelected = s.joinerTypeSelected;
+        if (s.joinerType !== undefined) stored.joinerType = s.joinerType;
+        if (s.calculatedAttendance !== undefined) stored.calculatedAttendance = s.calculatedAttendance;
+        if (s.hasSeenWelcome !== undefined) stored.hasSeenWelcome = s.hasSeenWelcome;
+        if (s.hasSeenOnboarding !== undefined) stored.hasSeenOnboarding = s.hasSeenOnboarding;
         localStorage.setItem('student', JSON.stringify(stored));
-        Object.assign(student, stored);
+        student = stored;
         if (typeof recalculateDomains === 'function') {
           recalculateDomains();
         }
         if (typeof setupDomainToggle === 'function') {
           setupDomainToggle();
         }
+        if (typeof setupDomainSwitcher === 'function') {
+          setupDomainSwitcher();
+        }
+        if (typeof showWelcomeModalIfNeeded === 'function') {
+          showWelcomeModalIfNeeded();
+        }
       })
       .catch(function(){});
   } catch(e) {}
 })();
-
-const employeeId = student.employeeId;
-let domain = student.domain;
 
 let allDomains = (student.domains && student.domains.length > 0)
   ? student.domains
   : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
       ? student.linkedDomains.map(function(ld){ return ld.domain; })
       : [student.domain].filter(Boolean));
-
-let activeDomainIdx = allDomains.indexOf(domain);
+let activeDomainIdx = allDomains.indexOf(student.domain);
 if (activeDomainIdx === -1) activeDomainIdx = 0;
-domain = allDomains[activeDomainIdx];
+let domain = allDomains[activeDomainIdx];
+const employeeId = student.employeeId;
 
 function recalculateDomains() {
   allDomains = (student.domains && student.domains.length > 0)
@@ -2210,11 +2274,122 @@ function recalculateDomains() {
     : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
         ? student.linkedDomains.map(function(ld){ return ld.domain; })
         : [student.domain].filter(Boolean));
-  activeDomainIdx = allDomains.indexOf(domain);
+  activeDomainIdx = allDomains.indexOf(student.domain);
   if (activeDomainIdx === -1) activeDomainIdx = 0;
-  if (allDomains.length > 0) {
-    domain = allDomains[activeDomainIdx];
+  domain = allDomains[activeDomainIdx];
+}
+
+// ── DOMAIN TOGGLE SETUP ─────────────────────────────────────────
+function setupDomainToggle() {
+  if (allDomains.length < 2) return;  // only show if 2 domains
+
+  const wrap  = document.getElementById("domainToggleWrap");
+  const chip1 = document.getElementById("domain1Chip");
+  const chip2 = document.getElementById("domain2Chip");
+
+  if (chip1 && chip2 && wrap) {
+    chip1.textContent = allDomains[0];
+    if (allDomains.length > 1) {
+      chip2.textContent = allDomains[1];
+    }
+    wrap.style.display = "flex";
+    updateToggleVisuals();
   }
+}
+
+function updateToggleVisuals() {
+  const chip1 = document.getElementById("domain1Chip");
+  const chip2 = document.getElementById("domain2Chip");
+  const knob  = document.getElementById("domainToggleKnob");
+
+  if (!chip1 || !chip2 || !knob) return;
+
+  if (activeDomainIdx === 0) {
+    knob.style.left = "2px";
+    chip1.style.background = "rgba(59,130,246,0.18)";
+    chip1.style.borderColor = "rgba(59,130,246,0.4)";
+    chip1.style.color       = "#93c5fd";
+    chip2.style.background  = "rgba(255,255,255,0.06)";
+    chip2.style.borderColor = "rgba(255,255,255,0.1)";
+    chip2.style.color       = "#94a3b8";
+  } else {
+    knob.style.left = "28px";
+    chip2.style.background  = "rgba(59,130,246,0.18)";
+    chip2.style.borderColor = "rgba(59,130,246,0.4)";
+    chip2.style.color       = "#93c5fd";
+    chip1.style.background  = "rgba(255,255,255,0.06)";
+    chip1.style.borderColor = "rgba(255,255,255,0.1)";
+    chip1.style.color       = "#94a3b8";
+  }
+}
+
+function flipDomainToggle() {
+  switchToTab(activeDomainIdx === 0 ? 1 : 0);
+}
+
+function switchToTab(idx) {
+  if (idx === activeDomainIdx) return;
+  const target = allDomains[idx];
+  if (!target) return;
+  
+  Swal.fire({
+    title: 'Switching Domain...',
+    html: 'Preparing your workspace for <b>' + target + '</b>',
+    background: '#0e1428',
+    color: '#F0EEE8',
+    allowOutsideClick: false,
+    didOpen: function() {
+      Swal.showLoading();
+    }
+  });
+
+  fetch("/student/switch-domain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: student.email, targetDomain: target })
+  })
+  .then(res => res.json())
+  .then(d => {
+    if (d.success) {
+      const next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+      localStorage.setItem("student", JSON.stringify(next));
+      localStorage.setItem("employeeId", next.employeeId);
+      sessionStorage.setItem("student", JSON.stringify(next));
+      
+      Swal.fire({
+         icon: 'success',
+         title: 'Workspace Loaded! 🎉',
+         text: 'Successfully switched to ' + target,
+         background: '#0e1428',
+         color: '#F0EEE8',
+         confirmButtonColor: '#D4AF37',
+         timer: 1500,
+         timerProgressBar: true,
+         showConfirmButton: false
+      }).then(function() {
+         window.location.reload();
+      });
+    } else {
+      Swal.fire({
+         icon: 'error',
+         title: 'Failed to switch domain',
+         text: d.message || "Could not switch domain.",
+         background: '#0e1428',
+         color: '#F0EEE8',
+         confirmButtonColor: '#D4AF37'
+      });
+    }
+  })
+  .catch(err => {
+    Swal.fire({
+       icon: 'error',
+       title: 'Network Error',
+       text: "Could not connect to the server.",
+       background: '#0e1428',
+       color: '#F0EEE8',
+       confirmButtonColor: '#D4AF37'
+    });
+  });
 }
 
 // ── Domain visual config (icon + accent colour) for professional domain branding ──
@@ -2260,63 +2435,8 @@ document.getElementById("welcomeText").innerText =
 document.getElementById("employeeText").innerText =
   student.employeeId;
 
-// ── DOMAIN TOGGLE SETUP ─────────────────────────────────────────
-function setupDomainToggle() {
-  const container = document.getElementById("domainText");
-  if (!container) return;
-  if (allDomains.length < 2) {
-    container.innerHTML = "Domain : " + domain;
-    return;
-  }
-
-  // Render a sliding toggle/switcher with all domains
-  let buttonsHtml = allDomains.map((dom, idx) => {
-    const isSelected = dom === domain;
-    const cfg = domainConfig[dom] || { icon: "🎓", color: "#3b82f6" };
-    const btnStyle = isSelected 
-      ? `background:${cfg.color}; color:#ffffff; border-color:${cfg.color}; font-weight:700; transform: scale(1.03);`
-      : `background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.6); border-color:rgba(255,255,255,0.12);`;
-    return `
-      <button onclick="switchActiveDomain(${idx})" 
-              style="padding: 6px 14px; border-radius: 20px; border: 1px solid; cursor: pointer; transition: all 0.25s / cubic-bezier(0.4, 0, 0.2, 1); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; outline: none; margin-right: 4px; ${btnStyle}">
-        <span>${cfg.icon}</span> <span>${dom}</span>
-      </button>
-    `;
-  }).join("");
-
-  container.innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:8px; margin-top: 6px;">
-      <div style="font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; font-weight:600;">Active Domain</div>
-      <div style="display:inline-flex; flex-wrap:wrap; background:rgba(0,0,0,0.2); padding:4px; border-radius:24px; border:1px solid rgba(255,255,255,0.05); width:fit-content; max-width:100%;">
-        ${buttonsHtml}
-      </div>
-    </div>
-  `;
-}
-
-function switchActiveDomain(idx) {
-  if (idx < 0 || idx >= allDomains.length) return;
-  activeDomainIdx = idx;
-  domain = allDomains[idx];
-
-  // Apply domain colour to accent elements
-  const cfg = domainConfig[domain] || { icon:"🎓", color:"#3b82f6" };
-  document.documentElement.style.setProperty("--domain-color", cfg.color);
-  document.documentElement.style.setProperty("--domain-color-bg", cfg.color + "18");
-  const domainIconEl = document.getElementById("domainIcon");
-  if(domainIconEl) domainIconEl.innerText = cfg.icon;
-
-  // Re-trigger visual updates
-  setupDomainToggle();
-  
-  // Re-load coordinator notice and tasks for the new domain
-  loadNotice();
-  loadCoordinatorTasks();
-  renderTasks();
-}
-
-// Set up domain switcher on load
-setupDomainToggle();
+document.getElementById("domainText").innerText =
+  "Domain : " + domain;
 
 // Apply domain colour to accent elements
 document.documentElement.style.setProperty("--domain-color", dCfg.color);
@@ -2458,95 +2578,205 @@ function renderCoordinatorTasks(fileUrl="", fileName=""){
         <span class="task-number" style="background:rgba(0,200,83,0.12);color:#00c853;">📁 FILE</span>
       </div>
       <h3>${fileName || "Coordinator Task File"}</h3>
-      <p>Your coordinator has uploaded a task file. Click below to download.</p>
-      <a href="${fileUrl}" download="${fileName}" class="primary-btn"
-         style="display:inline-block;text-decoration:none;padding:10px 20px;">
-        ⬇ Download File
-      </a>
+      <p>Your coordinator has uploaded a task file. Click below to download and review your assignment.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+        <a href="${fileUrl}" download="${fileName}" class="primary-btn"
+           style="display:inline-block;text-decoration:none;padding:10px 20px;">
+          ⬇ Download File
+        </a>
+        <button class="primary-btn" onclick="openCoordinatorFileSubmission('${(fileName || "Coordinator Task File").replace(/'/g, "\\'")}')"
+                style="background:transparent;border:1px solid #00c853;color:#00c853;">
+          Submit Task →
+        </button>
+      </div>
     </div>`;
   }
 
-  // Show text tasks — NO submit button, just read
+  // Show text tasks
   if(hasTasks){
     html += coordTasks.map((task, index) => `
-    <div class="task-card" style="border-left:3px solid #f59e0b;">
+    <div class="task-card" style="border-left:3px solid #f59e0b;margin-bottom:12px;">
       <div class="task-card-header">
         <span class="task-number" style="background:#f59e0b20;color:#f59e0b;">TASK ${index+1}</span>
       </div>
       <h3>${task}</h3>
+      <div style="margin-top:14px;">
+        <button class="primary-btn" onclick="openCoordinatorTaskSubmission(${index})">
+          Submit Task →
+        </button>
+      </div>
     </div>`).join("");
   }
 
   container.innerHTML = html;
 }
 
-function renderTasks(){
+function openCoordinatorTaskSubmission(index) {
+  currentAssignmentId = null;
+  currentTask = "Coordinator Task " + (index + 1) + ": " + coordTasks[index];
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+function openCoordinatorFileSubmission(fileName) {
+  currentAssignmentId = null;
+  currentTask = "Coordinator Task File: " + fileName;
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+// ── NEW: Load tasks from backend (/my-tasks route) ────────────
+let currentAssignmentId = null;
+
+async function loadAndRenderTasks() {
   const container = document.getElementById("tasksContainer");
-  const matchedDomain = getMatchedDomain(domain);
-  const tasks = tasksByDomain[matchedDomain] || [];
-  if(tasks.length === 0){
-    container.innerHTML = `<div class="empty-state">No tasks available for your domain.</div>`;
-    return;
+  if (!container) return;
+  container.innerHTML = `
+    <div style="text-align:center;padding:30px;color:var(--text-secondary);">
+      <div style="font-size:28px;margin-bottom:10px;">⏳</div>
+      Loading your tasks...
+    </div>`;
+
+  // Update badge if exists
+  const badge = document.getElementById("taskDomainBadge");
+  if (badge) {
+    badge.textContent = domain;
   }
-  container.innerHTML = tasks.map((taskTask, index) => {
-    // Check if there is already a submission for this specific task and domain
-    const sub = latestSubmissions.find(s => s.task === taskTask && s.domain === domain);
-    const isSubmitted = !!sub;
-    const subStatus = sub ? sub.status : null;
-    
+
+  try {
+    const res  = await fetch("/my-tasks/" + encodeURIComponent(employeeId));
+    const data = await res.json();
+
+    if (data.success && data.tasks && data.tasks.length > 0) {
+      renderTaskCards(data.tasks);
+    } else {
+      // Fallback to hardcoded tasks if backend returns nothing
+      renderHardcodedTasks();
+    }
+  } catch (err) {
+    console.log("Task load error:", err);
+    renderHardcodedTasks();
+  }
+}
+
+function renderTaskCards(tasks) {
+  const container = document.getElementById("tasksContainer");
+  if (!container) return;
+
+  const diffColors = {
+    "Beginner":     { bg: "rgba(16,185,129,0.1)",  border: "rgba(16,185,129,0.3)",  text: "#34d399" },
+    "Intermediate": { bg: "rgba(245,158,11,0.1)",  border: "rgba(245,158,11,0.3)",  text: "#fbbf24" },
+    "Advanced":     { bg: "rgba(239,68,68,0.1)",   border: "rgba(239,68,68,0.3)",   text: "#f87171" },
+    "Capstone":     { bg: "rgba(139,92,246,0.1)",  border: "rgba(139,92,246,0.3)",  text: "#a78bfa" }
+  };
+
+  container.innerHTML = tasks.map((task) => {
+    const dc = diffColors[task.difficulty] || diffColors["Beginner"];
+    const isSubmitted = task.status && task.status !== "Pending";
     let btnHtml = "";
     if (isSubmitted) {
       btnHtml = `
         <button class="primary-btn" disabled 
                 style="background:rgba(16,185,129,0.1) !important; color:#34d399 !important; border:1px solid rgba(16,185,129,0.25) !important; cursor:not-allowed; opacity:0.85;">
-          ✓ Submitted (${subStatus})
+          ✓ Submitted (${task.status})
         </button>
       `;
     } else {
       btnHtml = `
-        <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task →</button>
+        <button class="primary-btn"
+                onclick="openSubmissionModalForTask('${task._id}','${task.title.replace(/'/g,"\\'")}')">
+          Submit Task →
+        </button>
       `;
     }
-
     return `
       <div class="task-card">
         <div class="task-card-header">
-          <span class="task-number">TASK ${index+1}</span>
+          <span class="task-number">Day ${task.dayNumber} · Task ${task.taskNumber}</span>
+          <span style="font-size:11px;font-weight:700;padding:4px 12px;border-radius:12px;
+                       background:${dc.bg};border:1px solid ${dc.border};color:${dc.text};">
+            ${task.difficulty || "Beginner"}
+          </span>
         </div>
-        <h3>${taskTask}</h3>
-        <p>Submit your work with a GitHub link, screenshot, and PDF documentation.</p>
+        <h3>${task.title}</h3>
+        <p>${task.description}</p>
         ${btnHtml}
-      </div>
-    `;
+      </div>`;
   }).join("");
 }
 
-function openSubmissionModal(index){
+// Updated openSubmissionModal for backend tasks
+function openSubmissionModalForTask(assignmentId, title) {
+  currentAssignmentId = assignmentId;
+  currentTask         = title;
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+// Keep original openSubmissionModal for hardcoded fallback
+function openSubmissionModal(index) {
+  currentAssignmentId = null;
   const matchedDomain = getMatchedDomain(domain);
-  currentTask = tasksByDomain[matchedDomain][index];
-  document.getElementById("submissionModal").style.display="flex";
+  currentTask = (tasksByDomain[matchedDomain] || [])[index] || "Task";
+  document.getElementById("submissionModal").style.display = "flex";
+}
+
+function renderHardcodedTasks() {
+  const container = document.getElementById("tasksContainer");
+  if (!container) return;
+  const matchedDomain = getMatchedDomain(domain);
+  const tasks     = tasksByDomain[matchedDomain] || [];
+
+  if (tasks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="text-align:center;padding:40px;color:var(--text-secondary);">
+        <div style="font-size:32px;margin-bottom:12px;">📋</div>
+        <p>No tasks available for this domain yet.</p>
+        <p style="font-size:13px;margin-top:8px;">Tasks will appear here soon.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = tasks.map((task, index) => `
+    <div class="task-card">
+      <div class="task-card-header">
+        <span class="task-number">Task ${index + 1}</span>
+      </div>
+      <h3>${task}</h3>
+      <p>Complete this task and submit your work with a GitHub link, screenshot, and PDF documentation.</p>
+      <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task →</button>
+    </div>`).join("");
 }
 
 function closeSubmissionModal(){
   document.getElementById("submissionModal").style.display="none";
 }
 
+function renderTasks(){
+  loadAndRenderTasks();
+}
+
 let isSubmittingTask = false;
 
 async function submitTask(){
-  if (isSubmittingTask) return;
+  if (isSubmittingTask) {
+    console.log("Ignored double-click submission command.");
+    return;
+  }
+
+  const modalBtn = document.querySelector("#submissionModal button.primary-btn");
+  let originalLabel = "Submit Task";
+  if (modalBtn) {
+    originalLabel = modalBtn.innerText;
+    modalBtn.disabled = true;
+    modalBtn.innerText = "Submitting...";
+    modalBtn.style.opacity = "0.6";
+    modalBtn.style.cursor = "not-allowed";
+  }
+
+  isSubmittingTask = true;
   try{
     const githubLink = document.getElementById("githubLink").value;
     const note = document.getElementById("note").value;
-    const image = document.getElementById("imageFile").files[0];
-    const pdf = document.getElementById("pdfFile").files[0];
-
-    isSubmittingTask = true;
-    const submitBtn = document.querySelector("#submissionModal .primary-btn");
-    if (submitBtn) {
-      submitBtn.innerText = "Submitting...";
-      submitBtn.disabled = true;
-    }
+    const image = document.getElementById("imageFile").value ? document.getElementById("imageFile").files[0] : null;
+    const pdf = document.getElementById("pdfFile").value ? document.getElementById("pdfFile").files[0] : null;
 
     const formData = new FormData();
     formData.append("employeeId",employeeId);
@@ -2554,6 +2784,9 @@ async function submitTask(){
     formData.append("githubLink",githubLink);
     formData.append("note",note);
     formData.append("task",currentTask);
+    if (typeof currentAssignmentId !== 'undefined' && currentAssignmentId) {
+      formData.append("assignmentId", currentAssignmentId);
+    }
     if(image){ formData.append("image",image); }
     if(pdf){ formData.append("pdf",pdf); }
 
@@ -2562,26 +2795,29 @@ async function submitTask(){
 
     if(data.success){
       Swal.fire({icon:"success",title:"Task Submitted",text:"Your task uploaded successfully 🚀",background:"#101820",color:"#ffffff",confirmButtonColor:"#00c853"});
+      closeSubmissionModal();
       
-      // Clear fields
+      // Clear inputs inside the submission modal on successful submission
       document.getElementById("githubLink").value = "";
       document.getElementById("note").value = "";
       document.getElementById("imageFile").value = "";
       document.getElementById("pdfFile").value = "";
       
-      closeSubmissionModal();
       loadStudentSubmissions();
+      loadAndRenderTasks(); // Refresh dashboard task card lists instantly!
     }else{
-      Swal.fire({icon:"error",title:"Submission Failed",text:"Task submission failed",background:"#101820",color:"#ffffff"});
+      Swal.fire({icon:"error",title:"Submission Failed",text:data.message || "Task submission failed",background:"#101820",color:"#ffffff"});
     }
   }catch(error){
     console.log(error);
+    Swal.fire({icon:"error",title:"Network Error",text:"Communication with the server failed.",background:"#101820",color:"#ffffff"});
   } finally {
     isSubmittingTask = false;
-    const submitBtn = document.querySelector("#submissionModal .primary-btn");
-    if (submitBtn) {
-      submitBtn.innerText = "Submit Task";
-      submitBtn.disabled = false;
+    if (modalBtn) {
+      modalBtn.disabled = false;
+      modalBtn.innerText = originalLabel;
+      modalBtn.style.opacity = "1.0";
+      modalBtn.style.cursor = "pointer";
     }
   }
 }
@@ -2605,7 +2841,6 @@ async function loadStudentSubmissions(){
       TenExtras2.bulkSubmissionsToolbar({ employeeId: student.employeeId });
     }
     updateStats(submissions);
-    renderTasks();
   }catch(error){
     console.log(error);
   }
@@ -2841,19 +3076,26 @@ async function loadAttendance(){
     const s = d.stats || {};
     window._attendanceStats = s;
 
-    document.getElementById("selfAttPct").innerText   = (s.selfPct||0) + "%";
-    document.getElementById("selfAttCount").innerText = (s.selfTotal||0) + " days marked";
+    const isWhatsappJoiner = (student && student.joinerType === 'whatsapp');
+    const overridePct = (isWhatsappJoiner && student.calculatedAttendance !== undefined) ? student.calculatedAttendance : null;
+    
+    const finalSelfPct = (overridePct !== null) ? overridePct : (s.selfPct||0);
+    const finalCombinedPct = (overridePct !== null) ? overridePct : (s.combinedPct||0);
+
+    document.getElementById("selfAttPct").innerText   = finalSelfPct + "%";
+    document.getElementById("selfAttCount").innerText = (overridePct !== null) ? "WhatsApp Joiner" : ((s.selfTotal||0) + " days marked");
     document.getElementById("classAttPct").innerText  = (s.coordPct||0) + "%";
     document.getElementById("classAttCount").innerText= (s.coordPresent||0) + " present / " + (s.coordTotal||0);
-    document.getElementById("combinedAttPct").innerText = (s.combinedPct||0) + "%";
+    document.getElementById("combinedAttPct").innerText = finalCombinedPct + "%";
 
     const badge = document.getElementById("combinedAttBadge");
-    if(s.eligible){ badge.innerText = "Eligible ✅"; badge.style.color = "#10b981"; }
+    const isEligible = (finalCombinedPct >= 75);
+    if(isEligible){ badge.innerText = "Eligible ✅"; badge.style.color = "#10b981"; }
     else { badge.innerText = "Below 75% ❌"; badge.style.color = "#f43f5e"; }
 
     // Headline stats
-    document.getElementById("attendanceText").innerText = (s.combinedPct||0) + "%";
-    updateAttRing(s.combinedPct || 0);
+    document.getElementById("attendanceText").innerText = finalCombinedPct + "%";
+    updateAttRing(finalCombinedPct);
     document.getElementById("meetingsJoinedText").innerText = (s.combinedPresentDays||0);
 
     const threshEl = document.getElementById("attendanceThreshold");
@@ -2895,9 +3137,9 @@ async function loadAttendance(){
     var bCoord = document.getElementById('attBreakCoord');
     var bCombined = document.getElementById('attBreakCombined');
     var bThresh = document.getElementById('attBreakThreshold');
-    if(bSelf) bSelf.innerText = (s.selfPct||0) + '%';
+    if(bSelf) bSelf.innerText = finalSelfPct + '%';
     if(bCoord) bCoord.innerText = (s.coordPct||0) + '%';
-    if(bCombined) bCombined.innerText = (s.combinedPct||0) + '%';
+    if(bCombined) bCombined.innerText = finalCombinedPct + '%';
     if(bThresh && threshEl) bThresh.innerText = threshEl.innerText;
   }catch(e){ console.log(e); }
 }
@@ -3388,12 +3630,14 @@ document.addEventListener("visibilitychange", function(){
 });
 
 loadNotice();
-renderTasks();          // Show domain tasks immediately without waiting for fetch
+loadAndRenderTasks();    // replaces renderTasks()
 loadCoordinatorTasks(); // Then load coordinator tasks (updates coordTaskContainer)
 loadCodingProblems();   // F5: show coding section if domain has any
 loadStudentSubmissions();
 loadAttendance();       // NEW dual-attendance system
+if (typeof updateGoogleLinksVisibility === "function") { updateGoogleLinksVisibility(); }
 loadV2TaskJourney();    // NEW FEATURE: coin balance + task journey widget
+setupDomainToggle();     // initialize toggle if 2 domains
 
 
 // ── Notification System ──
@@ -4031,7 +4275,193 @@ function updateAttRing(pct) {
   label.textContent = pct + '%';
 }
 
+function setupDomainSwitcher() {
+  var linked = Array.isArray(student.linkedDomains) ? student.linkedDomains : [];
+  if (linked.length < 2) return;
+
+  // Render Fast Header Toggle Buttons
+  var btn1 = document.getElementById("domainToggleBtn");
+  var btn2 = document.getElementById("domainToggleBtn2");
+
+  var currentIndex = linked.findIndex(function(ld) {
+    return ld.domain === student.domain;
+  });
+  var nextIndex = (currentIndex + 1) % linked.length;
+  var nextDomain = linked[nextIndex].domain;
+
+  // Format short display names (e.g. Web Development -> Web Dev)
+  var shortName = nextDomain;
+  if (shortName.toLowerCase().indexOf("development") !== -1) {
+    shortName = shortName.replace(/development/gi, "Dev");
+  }
+  if (shortName.length > 15) {
+    shortName = shortName.substring(0, 12) + "...";
+  }
+
+  if (btn1) {
+    btn1.style.display = "flex";
+    btn1.innerHTML = '🔄<span class="domain-btn-text" style="margin-left:5px;">Switch: ' + shortName + '</span>';
+    btn1.setAttribute("title", "Switch workspace to " + nextDomain);
+  }
+  if (btn2) {
+    btn2.style.display = "flex";
+    btn2.innerHTML = '🔄<span class="domain-btn-text" style="margin-left:5px;">Switch: ' + shortName + '</span>';
+    btn2.setAttribute("title", "Switch workspace to " + nextDomain);
+  }
+
+  var wrapper = document.getElementById("customDomainSwitcher");
+  if (!wrapper) return;
+
+  wrapper.style.display = "block";
+  
+  var selectHtml = '<select id="domainSelectDropdown" style="background:#0c1326;color:#D4AF37;border:1px solid rgba(212,175,55,0.6);border-radius:12px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;outline:none;box-shadow:0 0 8px rgba(212,175,55,0.1);transition:all 0.3s;max-width:180px;">';
+  
+  linked.forEach(function(ld) {
+    var isSelected = (ld.domain === student.domain);
+    selectHtml += '<option value="' + ld.domain + '" ' + (isSelected ? 'selected' : '') + '>Switch to: ' + ld.domain + '</option>';
+  });
+  
+  selectHtml += '</select>';
+  wrapper.innerHTML = selectHtml;
+
+  var selectEl = document.getElementById("domainSelectDropdown");
+  if (selectEl) {
+    selectEl.addEventListener("change", async function(e) {
+      var target = e.target.value;
+      if (target === student.domain) return;
+      
+      Swal.fire({
+        title: 'Switching Domain...',
+        html: 'Preparing your workspace for <b>' + target + '</b>',
+        background: '#0e1428',
+        color: '#F0EEE8',
+        allowOutsideClick: false,
+        didOpen: function() {
+          Swal.showLoading();
+        }
+      });
+
+      try {
+        var res = await fetch("/student/switch-domain", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: student.email, targetDomain: target })
+        });
+        var d = await res.json();
+        if (d.success) {
+          var next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+          localStorage.setItem("student", JSON.stringify(next));
+          localStorage.setItem("employeeId", next.employeeId);
+          sessionStorage.setItem("student", JSON.stringify(next));
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Workspace Loaded! 🎉',
+            text: 'Successfully switched to ' + target,
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#D4AF37',
+            timer: 1500,
+            timerProgressBar: true,
+            showConfirmButton: false
+          }).then(function() {
+            window.location.reload();
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed to switch domain',
+            text: d.message || "Could not switch domain.",
+            background: '#0e1428',
+            color: '#F0EEE8',
+            confirmButtonColor: '#D4AF37'
+          });
+        }
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Network Error',
+          text: "Could not connect to the server.",
+          background: '#0e1428',
+          color: '#F0EEE8',
+          confirmButtonColor: '#D4AF37'
+        });
+      }
+    });
+  }
+}
+
+async function toggleNextDomain() {
+  var linked = Array.isArray(student.linkedDomains) ? student.linkedDomains : [];
+  if (linked.length < 2) return;
+
+  var currentIndex = linked.findIndex(function(ld) {
+    return ld.domain === student.domain;
+  });
+  var nextIndex = (currentIndex + 1) % linked.length;
+  var target = linked[nextIndex].domain;
+
+  Swal.fire({
+    title: 'Switching Domain...',
+    html: 'Loading your workspace for <b>' + target + '</b>',
+    background: '#0e1428',
+    color: '#F0EEE8',
+    allowOutsideClick: false,
+    didOpen: function() {
+      Swal.showLoading();
+    }
+  });
+
+  try {
+    var res = await fetch("/student/switch-domain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: student.email, targetDomain: target })
+    });
+    var d = await res.json();
+    if (d.success) {
+      var next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+      localStorage.setItem("student", JSON.stringify(next));
+      localStorage.setItem("employeeId", next.employeeId);
+      sessionStorage.setItem("student", JSON.stringify(next));
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Workspace Loaded! 🎉',
+        text: 'Successfully switched to ' + target,
+        background: '#0e1428',
+        color: '#F0EEE8',
+        confirmButtonColor: '#D4AF37',
+        timer: 1500,
+        timerProgressBar: true,
+        showConfirmButton: false
+      }).then(function() {
+        window.location.reload();
+      });
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed to switch domain',
+        text: d.message || "Could not switch domain.",
+        background: '#0e1428',
+        color: '#F0EEE8',
+        confirmButtonColor: '#D4AF37'
+      });
+    }
+  } catch (err) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Network Error',
+      text: "Could not connect to the server.",
+      background: '#0e1428',
+      color: '#F0EEE8',
+      confirmButtonColor: '#D4AF37'
+    });
+  }
+}
+
 populateProfileCard();
+setupDomainSwitcher();
 </script>
 
 <div class="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -4084,7 +4514,7 @@ populateProfileCard();
         <div style="font-size:10px;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Portal Password</div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div id="pmPassword" style="font-size:14px;font-weight:700;color:#f0eee8;font-family:monospace;letter-spacing:3px;">••••••••</div>
-          <button onclick="togglePmPassword()" id="pmPassToggle" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:3px 8px;color:#8aa4c8;cursor:pointer;font-size:11px;">Show</button>
+          <button onclick="togglePmPassword()" id="pmPassToggle" style="background:rgba(255,255,255,0.08);border:none;border-radius:6px;padding:3px 8px;color:#8aa4c8;cursor:pointer;font-size:11px;">Reveal</button>
         </div>
       </div>
     </div>
@@ -4113,18 +4543,59 @@ function openProfileModal() {
   document.getElementById('pmJoined').textContent = joined ? new Date(joined).toLocaleDateString('en-IN') : '—';
   var end = stu.internshipEnd || stu.endDate;
   document.getElementById('pmEnd').textContent = end ? new Date(end).toLocaleDateString('en-IN') : '—';
-  _pmPassVal = stu.password || stu.plainPassword || '';
+  var rawPass = stu.plainPassword || stu.password || '';
+  if (rawPass && !rawPass.startsWith("$2b$") && !rawPass.startsWith("$2a$") && rawPass !== "intern123") {
+    _pmPassVal = rawPass;
+  } else {
+    _pmPassVal = '';
+  }
   _pmPassVisible = false;
   document.getElementById('pmPassword').textContent = '••••••••';
-  document.getElementById('pmPassToggle').textContent = 'Show';
+  document.getElementById('pmPassToggle').textContent = 'Reveal';
   var modal = document.getElementById('profileModal');
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 }
-function togglePmPassword() {
-  _pmPassVisible = !_pmPassVisible;
-  document.getElementById('pmPassword').textContent = _pmPassVisible ? (_pmPassVal || 'N/A') : '••••••••';
-  document.getElementById('pmPassToggle').textContent = _pmPassVisible ? 'Hide' : 'Show';
+async function togglePmPassword() {
+  if (_pmPassVisible) {
+    _pmPassVisible = false;
+    document.getElementById('pmPassword').textContent = '••••••••';
+    document.getElementById('pmPassToggle').textContent = 'Reveal';
+    return;
+  }
+
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var empId = stu.employeeId || stu.employee_id || '';
+
+  try {
+    var res = await fetch('/get-my-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: empId })
+    });
+    var data = await res.json();
+    if (data.success && data.password && data.password !== 'intern123') {
+      _pmPassVal = data.password;
+    } else {
+      var fallback = stu.plainPassword || stu.password || '';
+      if (fallback && !fallback.startsWith("$2b$") && !fallback.startsWith("$2a$") && fallback !== 'intern123') {
+        _pmPassVal = fallback;
+      } else {
+        _pmPassVal = 'intern123';
+      }
+    }
+  } catch (err) {
+    var fallback = stu.plainPassword || stu.password || '';
+    if (fallback && !fallback.startsWith("$2b$") && !fallback.startsWith("$2a$") && fallback !== 'intern123') {
+      _pmPassVal = fallback;
+    } else {
+      _pmPassVal = 'intern123';
+    }
+  }
+
+  _pmPassVisible = true;
+  document.getElementById('pmPassword').textContent = _pmPassVal;
+  document.getElementById('pmPassToggle').textContent = 'Hide';
 }
 function closeProfileModal() {
   document.getElementById('profileModal').style.display = 'none';
@@ -4135,114 +4606,407 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-<!-- ===== NEW JOINER TYPE MODAL ===== -->
-<div id="joinerTypeModal" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);align-items:center;justify-content:center;">
-  <div style="position:relative;max-width:480px;width:90%;background:linear-gradient(160deg,#0b0d14,#0d1020);border:1px solid rgba(212,175,55,0.4);border-radius:20px;padding:40px 36px;color:#e8dcc8;text-align:center;">
-    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:20px 20px 0 0;"></div>
-    <div style="font-size:40px;margin-bottom:16px;">👋</div>
-    <h2 style="font-size:22px;font-weight:800;color:#D4AF37;margin-bottom:10px;">Welcome to TEN Portal!</h2>
-    <p style="font-size:14px;color:#9a8a6a;margin-bottom:28px;line-height:1.6;">Before we begin, please tell us — are you a new joiner, or have you joined TEN before through WhatsApp and are new to this portal?</p>
-    <div style="display:flex;flex-direction:column;gap:14px;">
-      <button onclick="confirmJoinerType('new')" style="padding:16px 24px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:12px;color:#0a0700;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;">
-        🆕 I am a New Joiner
-      </button>
-      <button onclick="confirmJoinerType('whatsapp')" style="padding:16px 24px;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);border-radius:12px;color:#10b981;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;">
-        💬 Already Joined Before via WhatsApp
-      </button>
+<!-- ===== NEW WELCOME POPUP ===== -->
+<div id="welcomePortalModal" style="display:none;position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;">
+  <div style="position:relative;max-width:520px;width:100%;background:linear-gradient(145deg,#0c0e1a,#0d1124);border:1px solid rgba(212,175,55,0.45);border-radius:24px;padding:46px 40px;color:#e8dcc8;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.8);">
+    <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:24px 24px 0 0;"></div>
+    <div style="font-size:52px;margin-bottom:20px;">🎉</div>
+    <h2 style="font-size:24px;font-weight:900;color:#D4AF37;margin-bottom:12px;letter-spacing:0.5px;">Congratulations on Joining TEN!</h2>
+    <p style="font-size:14px;color:#b0a48a;line-height:1.6;margin-bottom:30px;">We are thrilled to welcome you to the TEN family as an intern. Let's build your pathway to excellence!</p>
+    
+    <div id="welcomeOptionSection" style="margin-bottom:34px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:14px;padding:18px 20px;text-align:left;">
+      <div style="font-size:11px;font-weight:800;color:#D4AF37;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Your Dedicated Recommendation</div>
+      <div id="welcomeRecommendationTitle" style="font-size:15px;font-weight:800;color:#f0eee8;margin-bottom:4px;"></div>
+      <p id="welcomeRecommendationDesc" style="font-size:12px;color:#9b8c6e;line-height:1.5;margin:0;"></p>
     </div>
-    <p style="font-size:11px;color:#5a4a2a;margin-top:16px;">⚠️ This cannot be changed once selected</p>
+
+    <button onclick="acknowledgeWelcomePortal()" style="width:100%;padding:16px 30px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:12px;color:#0a0700;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 8px 24px rgba(212,175,55,0.35);">
+      Let's Get Started!
+    </button>
   </div>
 </div>
 
-<!-- Joiner Type Confirmation Warning Modal -->
-<div id="joinerConfirmModal" style="display:none;position:fixed;inset:0;z-index:9999999;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
-  <div style="max-width:400px;width:90%;background:#0d1020;border:1px solid rgba(244,63,94,0.4);border-radius:16px;padding:32px;text-align:center;color:#e8dcc8;">
-    <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
-    <h3 style="font-size:18px;font-weight:800;color:#f43f5e;margin-bottom:10px;">Are you sure?</h3>
-    <p id="joinerConfirmText" style="font-size:13px;color:#9a8a6a;margin-bottom:24px;line-height:1.6;"></p>
-    <p style="font-size:12px;color:#e05c5c;font-weight:700;margin-bottom:24px;">⚠️ This action cannot be undone. Choose carefully.</p>
-    <div style="display:flex;gap:12px;">
-      <button onclick="closeJoinerConfirm()" style="flex:1;padding:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#e8dcc8;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>
-      <button id="joinerConfirmBtn" style="flex:1;padding:12px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">Yes, Confirm</button>
+<!-- ===== MULTI-STEP ONBOARDING WIZARD MODAL ===== -->
+<div id="onboardingWizardModal" style="display:none;position:fixed;inset:0;z-index:999999;background:rgba(8,10,18,0.95);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:20px;overflow-y:auto;">
+  <div style="position:relative;max-width:540px;width:100%;background:linear-gradient(150deg,#0a0d16,#0e1224);border:1px solid rgba(212,175,55,0.35);border-radius:24px;padding:40px;color:#f0eee8;box-shadow:0 30px 80px rgba(0,0,0,0.85);font-family:system-ui, -apple-system, sans-serif;">
+    <div style="position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,transparent,#D4AF37,transparent);border-radius:24px 24px 0 0;"></div>
+    
+    <!-- Step 1: Selection -->
+    <div id="wizardStep1" style="display:block;">
+      <div style="font-size:46px;margin-bottom:18px;text-align:center;">👋</div>
+      <h2 style="font-size:24px;font-weight:800;color:#D4AF37;margin-bottom:12px;text-align:center;letter-spacing:0.5px;">Welcome to TEN Portal!</h2>
+      <p style="font-size:14px;color:#a2b1c6;margin-bottom:32px;line-height:1.6;text-align:center;">To customize your portal experience, please select your onboarding status below:</p>
+      
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <button onclick="wizardSelectType('new')" style="display:flex;align-items:center;gap:16px;width:100%;padding:18px 24px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.3);border-radius:16px;color:#fff;cursor:pointer;transition:all 0.3s;text-align:left;" onmouseover="this.style.background='rgba(212,175,55,0.12)';" onmouseout="this.style.background='rgba(212,175,55,0.06)';">
+          <span style="font-size:24px;">🆕</span>
+          <div>
+            <div style="font-weight:700;color:#D4AF37;font-size:15px;">New Joiner</div>
+            <div style="font-size:12px;color:#8aa4c8;margin-top:2px;">Complete guidelines &amp; start fresh.</div>
+          </div>
+        </button>
+        
+        <button onclick="wizardSelectType('whatsapp')" style="display:flex;align-items:center;gap:16px;width:100%;padding:18px 24px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.3);border-radius:16px;color:#fff;cursor:pointer;transition:all 0.3s;text-align:left;" onmouseover="this.style.background='rgba(16,185,129,0.12)';" onmouseout="this.style.background='rgba(16,185,129,0.06)';">
+          <span style="font-size:24px;">💬</span>
+          <div>
+            <div style="font-weight:700;color:#10b981;font-size:15px;">WhatsApp Group Joiner</div>
+            <div style="font-size:12px;color:#8aa4c8;margin-top:2px;">Existing joiner migrating to the portal.</div>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Employee ID Confirmation (Only for WhatsApp Joiners) -->
+    <div id="wizardStep2" style="display:none;">
+      <div style="font-size:40px;margin-bottom:18px;text-align:center;">🪪</div>
+      <h2 style="font-size:22px;font-weight:800;color:#10b981;margin-bottom:12px;text-align:center;">Employee ID Verification</h2>
+      <p style="font-size:14px;color:#a2b1c6;margin-bottom:28px;line-height:1.6;text-align:center;">Do you have an existing Employee ID that was assigned to you?</p>
+      
+      <div id="wizardStep2Choice" style="display:flex;gap:16px;">
+        <button onclick="wizardStep2No()" style="flex:1;padding:16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#fff;font-weight:700;cursor:pointer;font-size:14px;transition:0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.10)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';">No, I don't</button>
+        <button onclick="wizardStep2Yes()" style="flex:1;padding:16px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:12px;color:#fff;font-weight:700;cursor:pointer;font-size:14px;box-shadow:0 6px 20px rgba(16,185,129,0.25);">Yes, I have one</button>
+      </div>
+
+      <div id="wizardStep2InputBlock" style="display:none;margin-top:24px;text-align:left;">
+        <label style="font-size:12px;font-weight:700;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px;">Your Employee ID</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="text" id="wizardEmpIdInput" disabled style="flex:1;padding:14px 16px;background:#05070e;border:1px solid rgba(99,140,210,0.3);border-radius:10px;color:#fff;font-family:monospace;font-size:15px;font-weight:600;" />
+          <button id="wizardEmpIdEditBtn" onclick="wizardEnableEmpIdEdit()" style="padding:14px 20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-weight:600;cursor:pointer;">Edit</button>
+          <button id="wizardEmpIdUpdateBtn" onclick="wizardUpdateEmpId()" style="display:none;padding:14px 20px;background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;">Update</button>
+        </div>
+        <p id="wizardEmpIdStatus" style="font-size:12px;margin-top:8px;color:#a2b1c6;"></p>
+        
+        <div style="margin-top:32px;display:flex;justify-content:flex-end;">
+          <button id="wizardStep2NextBtn" onclick="wizardGoToStep3()" style="padding:14px 32px;background:rgba(212,175,55,0.2);border:1px solid rgba(212,175,55,0.4);border-radius:10px;color:#D4AF37;font-weight:700;cursor:pointer;transition:0.3s;" onmouseover="this.style.background='rgba(212,175,55,0.3)';" onmouseout="this.style.background='rgba(212,175,55,0.2)';">Next Step →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Internship Joining Date & Attendance (Only for WhatsApp Joiners) -->
+    <div id="wizardStep3" style="display:none;">
+      <div style="font-size:40px;margin-bottom:18px;text-align:center;">📅</div>
+      <h2 style="font-size:22px;font-weight:800;color:#D4AF37;margin-bottom:12px;text-align:center;">Internship Joining Date</h2>
+      <p style="font-size:14px;color:#a2b1c6;margin-bottom:24px;line-height:1.6;text-align:center;">Please pick your original internship joining date. Note that future dates are not allowed.</p>
+      
+      <div style="text-align:left;margin-bottom:28px;">
+        <label style="font-size:11px;font-weight:700;color:#8aa4c8;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:8px;">Pick Date</label>
+        <input type="date" id="wizardJoiningDateInput" style="width:100%;padding:14px;background:#05070e;border:1px solid rgba(212,175,55,0.3);border-radius:10px;color:#fff;font-size:15px;font-weight:600;" />
+      </div>
+
+      <!-- Attendance calculation result screen -->
+      <div id="wizardStep3ResultBlock" style="display:none;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:16px;padding:20px;margin-bottom:28px;text-align:center;">
+        <p style="font-size:13px;color:#a2b1c6;margin-bottom:6px;">Calculated Attendance Percentage:</p>
+        <h3 id="wizardStep3ResultPct" style="font-size:36px;font-weight:800;color:#10b981;">0%</h3>
+        <p style="font-size:12px;color:#8aa4c8;line-height:1.5;margin-top:8px;">Calculated excluding Sundays from your selected joining date to today, relative to your registered tenure.</p>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <button id="wizardStep3ConfirmBtn" onclick="wizardConfirmJoiningDate()" style="padding:14px 32px;background:linear-gradient(135deg,#D4AF37,#b8952e);border:none;border-radius:10px;color:#0a0700;font-weight:800;cursor:pointer;font-size:15px;box-shadow:0 6px 20px rgba(212,175,55,0.25);">Confirm &amp; Proceed →</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-// ===== FEATURE 1 — JOINER TYPE LOGIC (DB-backed, shows ONCE ONLY) =====
-var _pendingJoinerType = null;
+// ===== FEATURE 1 — DYNAMIC MULTI-STEP ONBOARDING ENGINE =====
+var _onboardingState = {
+  joinerType: null,
+  updatedEmployeeId: null,
+  joiningDate: null,
+  calculatedAttendance: null
+};
 
 function showJoinerTypeModalIfNeeded() {
   try {
     var stu = JSON.parse(localStorage.getItem('student') || '{}');
     var empId = stu.employeeId || stu.employee_id || localStorage.getItem('employeeId') || '';
     if (!empId) return;
-    // Check DB flag first (set on login), then fallback to localStorage
-    if (stu.joinerTypeSelected === true) {
-      applyJoinerTypeUI(stu.joinerType || localStorage.getItem('tenJoinerType_' + empId));
+
+    // Check if onboarding is completely finished (database or local storage status)
+    if (stu.onboardingPopupSeen === true || stu.hasSeenOnboarding === true) {
+      applyJoinerTypeUI(stu.joinerType);
+      updateGoogleLinksVisibility();
       return;
     }
-    var legacyKey = 'tenJoinerType_' + empId;
-    if (localStorage.getItem(legacyKey)) {
-      applyJoinerTypeUI(localStorage.getItem(legacyKey));
-      return;
+
+    _onboardingState.updatedEmployeeId = empId;
+    document.getElementById('wizardEmpIdInput').value = empId;
+    
+    var wizard = document.getElementById('onboardingWizardModal');
+    if (wizard) {
+      wizard.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
     }
-    var modal = document.getElementById('joinerTypeModal');
-    modal.style.display = 'flex';
+  } catch(e) {
+    console.error("Onboarding init error:", e);
+  }
+}
+
+function wizardSelectType(type) {
+  _onboardingState.joinerType = type;
+  if (type === 'new') {
+    // New Joiner goes directly to Step 4 (Guidelines)
+    document.getElementById('onboardingWizardModal').style.display = 'none';
+    document.body.style.overflow = '';
+    
+    // Show instruction modal
+    document.getElementById('instructionModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
-  } catch(e) {}
+  } else {
+    // WhatsApp Group Joiner goes to Step 2 (Employee ID Check)
+    document.getElementById('wizardStep1').style.display = 'none';
+    document.getElementById('wizardStep2').style.display = 'block';
+  }
 }
 
-function confirmJoinerType(type) {
-  _pendingJoinerType = type;
-  var text = type === 'new'
-    ? 'You are selecting <strong style="color:#D4AF37;">New Joiner</strong>. The Google Attendance Form will NOT be shown for you — you only mark attendance on this portal.'
-    : 'You are selecting <strong style="color:#10b981;">WhatsApp Re-Joiner</strong>. You must fill BOTH the portal attendance AND the Google Form twice daily.';
-  document.getElementById('joinerConfirmText').innerHTML = text;
-  document.getElementById('joinerConfirmModal').style.display = 'flex';
-  document.getElementById('joinerConfirmBtn').onclick = finalizeJoinerType;
+function wizardStep2Yes() {
+  document.getElementById('wizardStep2Choice').style.display = 'none';
+  document.getElementById('wizardStep2InputBlock').style.display = 'block';
 }
 
-function closeJoinerConfirm() {
-  document.getElementById('joinerConfirmModal').style.display = 'none';
-  _pendingJoinerType = null;
+function wizardStep2No() {
+  _onboardingState.updatedEmployeeId = null;
+  wizardGoToStep3();
 }
 
-function finalizeJoinerType() {
+function wizardEnableEmpIdEdit() {
+  var input = document.getElementById('wizardEmpIdInput');
+  input.disabled = false;
+  input.focus();
+  document.getElementById('wizardEmpIdEditBtn').style.display = 'none';
+  document.getElementById('wizardEmpIdUpdateBtn').style.display = 'block';
+}
+
+async function wizardUpdateEmpId() {
+  var input = document.getElementById('wizardEmpIdInput');
+  var newId = input.value.trim();
+  var status = document.getElementById('wizardEmpIdStatus');
+  
+  if (!newId) {
+    status.style.color = '#f43f5e';
+    status.textContent = '❌ Employee ID cannot be empty.';
+    return;
+  }
+  
+  try {
+    status.style.color = '#3b82f6';
+    status.textContent = 'Verifying and saving...';
+    
+    _onboardingState.updatedEmployeeId = newId;
+
+    status.style.color = '#10b981';
+    status.textContent = '✅ Employee ID verified & prepared!';
+    input.disabled = true;
+    document.getElementById('wizardEmpIdEditBtn').style.display = 'block';
+    document.getElementById('wizardEmpIdUpdateBtn').style.display = 'none';
+    
+    Swal.fire({
+      icon: 'success',
+      title: 'Employee ID Confirmed',
+      text: 'Employee ID is updated and will be saved permanently upon finalizing onboarding.',
+      background: '#0d1124',
+      color: '#f0eee8',
+      confirmButtonColor: '#10b981'
+    });
+  } catch(err) {
+    status.style.color = '#f43f5e';
+    status.textContent = '❌ Verification failed. Please try again.';
+  }
+}
+
+function wizardGoToStep3() {
+  document.getElementById('wizardStep2').style.display = 'none';
+  var dateInput = document.getElementById('wizardJoiningDateInput');
+  if (dateInput) {
+    dateInput.max = new Date().toISOString().split('T')[0];
+  }
+  document.getElementById('wizardStep3').style.display = 'block';
+}
+
+async function wizardConfirmJoiningDate() {
+  var dateVal = document.getElementById('wizardJoiningDateInput').value;
+  if (!dateVal) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Date Required',
+      text: 'Please select your internship joining date.',
+      background: '#0d1124',
+      color: '#f0eee8',
+      confirmButtonColor: '#D4AF37'
+    });
+    return;
+  }
+  
+  _onboardingState.joiningDate = dateVal;
+
+  var currentEmpId = _onboardingState.updatedEmployeeId || (JSON.parse(localStorage.getItem('student') || '{}').employeeId);
+
+  try {
+    var btn = document.getElementById('wizardStep3ConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Calculating...';
+
+    var res = await fetch('/api/v2/student/complete-onboarding', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('ten_token') || ''),
+        'x-employee-id': currentEmpId
+      },
+      body: JSON.stringify({
+        joinerType: _onboardingState.joinerType,
+        updatedEmployeeId: _onboardingState.updatedEmployeeId,
+        joiningDate: _onboardingState.joiningDate
+      })
+    });
+    
+    var data = await res.json();
+    if (!data.success) {
+      btn.disabled = false;
+      btn.textContent = 'Confirm & Proceed →';
+      Swal.fire({
+        icon: 'error',
+        title: 'Form Submission Failed',
+        text: data.message || 'Verification failed. This might be due to a duplicate Employee ID or network issue.',
+        background: '#0d1124',
+        color: '#f0eee8',
+        confirmButtonColor: '#f43f5e'
+      });
+      return;
+    }
+    
+    _onboardingState.calculatedAttendance = data.student.calculatedAttendance;
+    
+    localStorage.setItem('student', JSON.stringify(data.student));
+    if (data.student.employeeId) {
+       localStorage.setItem('employeeId', data.student.employeeId);
+    }
+
+    document.getElementById('wizardStep3ResultPct').textContent = data.student.calculatedAttendance + '%';
+    document.getElementById('wizardStep3ResultBlock').style.display = 'block';
+    
+    btn.disabled = false;
+    btn.textContent = 'Proceed to Guidelines →';
+    btn.onclick = function() {
+      document.getElementById('onboardingWizardModal').style.display = 'none';
+      document.body.style.overflow = '';
+      
+      document.getElementById('instructionModal').style.display = 'block';
+      document.body.style.overflow = 'hidden';
+    };
+  } catch(err) {
+    btn.disabled = false;
+    btn.textContent = 'Confirm & Proceed →';
+    console.error(err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Execution Error',
+      text: 'A network error occurred. Please try again.',
+      background: '#0d1124',
+      color: '#f0eee8'
+    });
+  }
+}
+
+// Complete onboarding Guidelines action
+async function acknowledgeInstructions() {
   var stu = JSON.parse(localStorage.getItem('student') || '{}');
-  var empId = stu.employeeId || stu.employee_id || localStorage.getItem('employeeId') || 'unknown';
-  // Save to localStorage (legacy key)
-  localStorage.setItem('tenJoinerType_' + empId, _pendingJoinerType);
-  // Update cached student object
-  stu.joinerTypeSelected = true;
-  stu.joinerType = _pendingJoinerType;
-  localStorage.setItem('student', JSON.stringify(stu));
-  document.getElementById('joinerConfirmModal').style.display = 'none';
-  document.getElementById('joinerTypeModal').style.display = 'none';
-  document.body.style.overflow = '';
-  applyJoinerTypeUI(_pendingJoinerType);
-  // Persist to DB (fire-and-forget)
-  fetch('/api/v2/student/set-joiner-type', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-employee-id': empId },
-    body: JSON.stringify({ joinerType: _pendingJoinerType })
-  }).catch(function(){});
+  var empId = stu.employeeId || localStorage.getItem('employeeId') || 'unknown';
+  
+  try {
+    if (_onboardingState.joinerType === 'new') {
+      var res = await fetch('/api/v2/student/complete-onboarding', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (localStorage.getItem('ten_token') || ''),
+          'x-employee-id': empId
+        },
+        body: JSON.stringify({
+          joinerType: 'new'
+        })
+      });
+      var data = await res.json();
+      if (data.success) {
+        stu = data.student;
+      }
+    }
+    
+    stu.onboardingPopupSeen = true;
+    localStorage.setItem('student', JSON.stringify(stu));
+    localStorage.setItem('tenInstructionsSeen_' + empId, 'true');
+    
+    document.getElementById('instructionModal').style.display = 'none';
+    document.body.style.overflow = '';
+    
+    updateDashboardAfterOnboarding(stu);
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Onboarding Complete! 🎉',
+      text: 'Welcome to your personalized student dashboard!',
+      background: '#0d1124',
+      color: '#f0eee8',
+      confirmButtonColor: '#10b981'
+    });
+  } catch(e) {
+    stu.onboardingPopupSeen = true;
+    localStorage.setItem('student', JSON.stringify(stu));
+    document.getElementById('instructionModal').style.display = 'none';
+    document.body.style.overflow = '';
+    window.location.reload();
+  }
+}
+
+function updateDashboardAfterOnboarding(stuData) {
+  if (stuData.employeeId) {
+     localStorage.setItem('employeeId', stuData.employeeId);
+     if (typeof employeeId !== 'undefined') {
+        employeeId = stuData.employeeId;
+     }
+  }
+
+  var pmEmpId = document.getElementById('pmEmpId');
+  if (pmEmpId) pmEmpId.textContent = stuData.employeeId || '—';
+  
+  var joined = stuData.joiningDate || stuData.createdAt;
+  var pmJoined = document.getElementById('pmJoined');
+  if (pmJoined) pmJoined.textContent = joined ? new Date(joined).toLocaleDateString('en-IN') : '—';
+  
+  var pmCalcAttBlock = document.getElementById('pmCalcAttBlock');
+  var pmCalcAtt = document.getElementById('pmCalcAtt');
+  if (stuData.calculatedAttendance !== undefined && stuData.calculatedAttendance !== null) {
+     if (pmCalcAttBlock) pmCalcAttBlock.style.display = 'block';
+     if (pmCalcAtt) pmCalcAtt.textContent = stuData.calculatedAttendance + '%';
+  } else {
+     if (pmCalcAttBlock) pmCalcAttBlock.style.display = 'none';
+  }
+
+  applyJoinerTypeUI(stuData.joinerType);
+  updateGoogleLinksVisibility();
+
+  if (typeof loadAttendance === 'function') {
+     loadAttendance();
+  }
 }
 
 function applyJoinerTypeUI(type) {
-  var formBox = document.getElementById('googleFormAttendanceBox');
-  if (formBox) formBox.style.display = (type === 'whatsapp') ? 'block' : 'none';
+  updateGoogleLinksVisibility();
 }
 
-(function() {
-  try {
-    var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    if (stu && (stu.employeeId || stu.employee_id)) {
-      setTimeout(showJoinerTypeModalIfNeeded, 800);
+function updateGoogleLinksVisibility() {
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var formBox = document.getElementById('googleFormAttendanceBox');
+  if (stu.joinerType === 'whatsapp') {
+    if (formBox) {
+       formBox.style.display = 'none';
     }
-  } catch(e) {}
-})();
-// ===== END JOINER TYPE LOGIC =====
+  } else {
+    if (formBox) {
+       formBox.style.display = 'none';
+    }
+  }
+}
 </script>
 
 <!-- ===== FIRST-LOGIN ONBOARDING INSTRUCTION MODAL ===== -->
@@ -4331,46 +5095,60 @@ function applyJoinerTypeUI(type) {
 <!-- ===== END ONBOARDING INSTRUCTION MODAL ===== -->
 
 <script>
-// ===== FEATURE 1 — FIRST-LOGIN ONBOARDING POPUP (DB-backed, shows ONCE ONLY) =====
-function showInstructionModalIfNeeded(employeeId) {
+function showWelcomeModalIfNeeded() {
   try {
     var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    // Check DB flag first (set on login), then fallback to localStorage key
-    if (stu.onboardingPopupSeen === true) return;
-    var legacyKey = 'tenInstructionsSeen_' + employeeId;
-    if (localStorage.getItem(legacyKey)) return;
-    document.getElementById('instructionModal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
-  } catch(e) {}
+    if (!stu || !stu.employeeId) return;
+
+    if (stu.hasSeenWelcome === true) {
+      showJoinerTypeModalIfNeeded();
+      return;
+    }
+
+    var domain = (stu.domain || "").toLowerCase();
+    var isDeveloper = domain.includes("developer") || domain.includes("development") || domain.includes("web") || domain.includes("software") || domain.includes("coding") || domain.includes("flutter");
+
+    var recTitle = isDeveloper ? "💻 Goal: Get Certified!" : "👥 Goal: Support HR & Operations!";
+    var recDesc = isDeveloper 
+      ? "As a developer intern, you should focus on completing automated tasks, tracking milestones daily, and maintaining a high approval rating to qualify for your official completion certificate."
+      : "As an HR or operational intern, you will help coordinate guidelines, support onboarding pathways, track guidelines, and assist with managing student correspondence.";
+
+    var titleEl = document.getElementById("welcomeRecommendationTitle");
+    var descEl = document.getElementById("welcomeRecommendationDesc");
+    if (titleEl) titleEl.textContent = recTitle;
+    if (descEl) descEl.textContent = recDesc;
+
+    var modal = document.getElementById("welcomePortalModal");
+    if (modal) {
+      modal.style.display = "flex";
+      document.body.style.overflow = "hidden";
+    } else {
+      showJoinerTypeModalIfNeeded();
+    }
+  } catch(e) {
+    showJoinerTypeModalIfNeeded();
+  }
 }
 
-function acknowledgeInstructions() {
-  var empId = (typeof student !== 'undefined' && student && student.employeeId)
-    ? student.employeeId
-    : (localStorage.getItem('employeeId') || 'unknown');
-  // Save legacy localStorage key
-  localStorage.setItem('tenInstructionsSeen_' + empId, 'true');
-  // Update the cached student object so it won't show again this session
-  try {
-    var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    stu.onboardingPopupSeen = true;
-    localStorage.setItem('student', JSON.stringify(stu));
-  } catch(e) {}
-  document.getElementById('instructionModal').style.display = 'none';
-  document.body.style.overflow = '';
-  // Persist to DB (fire-and-forget)
-  fetch('/api/v2/student/mark-onboarding-seen', {
+function acknowledgeWelcomePortal() {
+  var stu = JSON.parse(localStorage.getItem('student') || '{}');
+  var empId = stu.employeeId || localStorage.getItem('employeeId') || '';
+
+  stu.hasSeenWelcome = true;
+  localStorage.setItem('student', JSON.stringify(stu));
+
+  var modal = document.getElementById("welcomePortalModal");
+  if (modal) modal.style.display = "none";
+  document.body.style.overflow = "";
+
+  showJoinerTypeModalIfNeeded();
+
+  fetch('/api/v2/student/mark-welcome-seen', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-employee-id': empId }
   }).catch(function(){});
 }
 
-(function() {
-  try {
-    var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    if (stu && stu.employeeId) showInstructionModalIfNeeded(stu.employeeId);
-  } catch(e) {}
-})();
 // ===== END ONBOARDING POPUP =====
 </script>
 
@@ -4406,6 +5184,13 @@ function _doLogout() {
   window.location.href = 'login.html';
 }
 // ===== END AUTO-LOGIN / LOGOUT =====
+document.addEventListener("DOMContentLoaded", function() {
+  setTimeout(function() {
+    if (typeof showWelcomeModalIfNeeded === "function") {
+      showWelcomeModalIfNeeded();
+    }
+  }, 100);
+});
 </script>
 
 <script src="ten-motion.js"></script>

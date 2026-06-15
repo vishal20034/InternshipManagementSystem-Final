@@ -199,9 +199,15 @@
               <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Mobile / WhatsApp <span class="text-red-500">*</span></label>
               <input type="tel" id="reg_mobile" name="mobile" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]" placeholder="e.g. +91 9876543210" required>
             </div>
-            <div>
+            <div style="position:relative;">
               <label class="block text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Account Password <span class="text-red-500">*</span></label>
-              <input type="password" id="reg_password" name="password" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]" placeholder="At least 8 characters" minlength="8" required>
+              <input type="password" id="reg_password" name="password" class="w-full px-4 py-3 bg-slate-950/50 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] pr-12" placeholder="At least 8 characters" minlength="8" required>
+              <span id="togglePasswordBtn"
+                    onclick="toggleRegPwd()"
+                    style="position:absolute;right:16px;top:38px;cursor:pointer;
+                           font-size:18px;color:#8ca0ba;user-select:none;">
+                👁
+              </span>
             </div>
           </div>
 
@@ -547,6 +553,18 @@
     let activeRole = '';
     let selectedDomains = [];
 
+    function toggleRegPwd() {
+      const input = document.getElementById("reg_password");
+      const icon  = document.getElementById("togglePasswordBtn");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.innerText = "🙈";
+      } else {
+        input.type = "password";
+        icon.innerText = "👁";
+      }
+    }
+
     function selectDomainCard(domain) {
       if (!activeRole || activeRole !== 'student') return;
       
@@ -762,6 +780,8 @@
         payload.roleSpecificData.resume = flatData.resume;
         payload.roleSpecificData.portfolio = flatData.portfolio;
         payload.roleSpecificData.linkedin = flatData.linkedin;
+        payload.roleSpecificData.tenure = flatData.tenure;
+        payload.roleSpecificData.domains = flatData.domains;
       } 
       else if (activeRole === 'founder') {
         payload.roleSpecificData.startupName = flatData.startupName;
@@ -827,12 +847,13 @@
           });
           
           setTimeout(() => {
+            const pwdQuery = flatData.password ? `&password=${encodeURIComponent(flatData.password)}` : '';
             if (json.role === 'founder') {
-              window.location.href = `/founder-registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&startupName=${encodeURIComponent(json.startupName || 'Venture')}&status=Pending%20Approval`;
+              window.location.href = `/founder-registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&startupName=${encodeURIComponent(json.startupName || 'Venture')}&status=Pending%20Approval${pwdQuery}`;
             } else if (json.role === 'student') {
-              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Approved`;
+              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Approved${pwdQuery}`;
             } else {
-              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Pending%20Approval`;
+              window.location.href = `/registration-success?role=${encodeURIComponent(json.role)}&email=${encodeURIComponent(json.email)}&memberId=${encodeURIComponent(json.memberId)}&status=Pending%20Approval${pwdQuery}`;
             }
           }, 1500);
         } else {

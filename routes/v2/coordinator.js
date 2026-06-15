@@ -6,7 +6,6 @@ const Student            = require("../../models/Student");
 const CertificateRequest = require("../../models/CertificateRequest");
 
 // ── Coordinator auth middleware ──
-// Accepts same coordinator token used elsewhere
 async function requireCoordinator(req, res, next) {
     try {
         const auth = req.headers["authorization"] || req.headers["Authorization"] || "";
@@ -14,7 +13,6 @@ async function requireCoordinator(req, res, next) {
             req.coordinatorUser = { token: auth };
             return next();
         }
-        // Also allow x-coordinator-id header (used by existing portal)
         const coordId = req.headers["x-coordinator-id"] || req.body.coordinatorId;
         if (coordId) {
             req.coordinatorUser = { id: coordId };
@@ -27,7 +25,6 @@ async function requireCoordinator(req, res, next) {
 }
 
 // POST /api/v2/coordinator/approve-certificates
-// Coordinator approves or rejects a student's certificate request
 router.post("/coordinator/approve-certificates", requireCoordinator, async (req, res) => {
     try {
         const { studentId, approved, notes } = req.body;
@@ -73,7 +70,6 @@ router.post("/coordinator/approve-certificates", requireCoordinator, async (req,
 });
 
 // GET /api/v2/coordinator/pending-certificates
-// Returns students awaiting coordinator approval
 router.get("/coordinator/pending-certificates", requireCoordinator, async (req, res) => {
     try {
         const pending = await CertificateRequest.find({ status: "awaiting_coordinator" })
