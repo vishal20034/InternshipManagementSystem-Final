@@ -35,18 +35,19 @@
 
     function injectLink(role) {
         // If the page already has a link with id="tfp-link" we leave it alone.
-        if (document.getElementById("tfp-link")) {
-            document.getElementById("tfp-link").addEventListener("click", e => { e.preventDefault(); openModal(role); });
+        let a = document.getElementById("tfp-link");
+        if (a) {
             return;
         }
         // Otherwise, append after the first password input we find.
         const pwd = document.querySelector('input[type="password"]');
         if (!pwd) return;
-        const a = document.createElement("a");
+        a = document.createElement("a");
+        a.id = "tfp-link";
         a.className = "tfp-link";
         a.href = "#";
         a.textContent = "Forgot password?";
-        a.addEventListener("click", e => { e.preventDefault(); openModal(role); });
+        a.addEventListener("click", e => { e.preventDefault(); openModal(cfgRole); });
         // Insert right after the password input's parent group when possible.
         let host = pwd.closest(".form-group, .field-group, .field-inner") || pwd.parentNode;
         host.appendChild(a);

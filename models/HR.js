@@ -14,6 +14,9 @@ const HRSchema = new mongoose.Schema({
     role:     { type: String, default: "hr" },
     employeeId: { type: String, default: "" },
     promotedFrom: { type: String, default: "" },  // e.g. "coordinator"
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockoutUntil: { type: Date, default: null },
+    isLockedOut: { type: Boolean, default: false },
     // Forgot password (Feature 9)
     passwordResetToken:  { type: String, default: null, index: true },
     passwordResetExpiry: { type: Date,   default: null },
