@@ -232,6 +232,49 @@ router.get('/status/:orderId', async (req, res) => {
     if (!payment)                         return res.status(404).json({ success: false, message: 'Payment not found' });
     if (payment.employeeId !== employeeId) return res.status(403).json({ success: false, message: 'Forbidden' });
 
+    // Active verification: if status is pending, query PaymentSetu to verify!
+    if (payment.status === 'pending') {
+      try {
+        console.log('[PAYMENT STATUS CHECK] Actively checking with PaymentSetu for orderId:', payment.orderId);
+        const apiRes = await callPaymentSetuAPI('/check_status?order_id=' + payment.orderId, 'GET', null);
+        console.log('[PAYMENT STATUS CHECK] PaymentSetu response:', apiRes ? apiRes.body : 'No response');
+        if (apiRes && apiRes.body) {
+          const body = apiRes.body;
+          const isSuccess = 
+            (body.status === 'success') || 
+            (body.data && body.data.status === 'success') || 
+            (body.order && body.order.status === 'success') ||
+            (body.status === true && body.data && body.data.status === 'success');
+            
+          if (isSuccess) {
+            const utr = (body.data && body.data.txn_utr) || body.txn_utr || 'API_POLL_' + Date.now();
+            const txnTime = (body.data && body.data.txn_time) || body.txn_time || new Date().toISOString();
+            const upiId = (body.data && body.data.customer_upi_id) || body.customer_upi_id || '';
+            
+            payment.status = 'success';
+            payment.txnUtr = utr;
+            payment.txnTime = txnTime;
+            payment.customerUpiId = upiId;
+            await payment.save();
+            console.log('[PAYMENT STATUS CHECK] Payment updated to success via active polling!');
+
+            try {
+              await new Notification({
+                title:            '💳 Payment Successful!',
+                message:          `Payment of ₹${payment.amountRupees} confirmed. UTR: ${payment.txnUtr}`,
+                type:             'success',
+                from:             'System',
+                targetType:       'student',
+                targetEmployeeId: payment.employeeId
+              }).save();
+            } catch (_) {}
+          }
+        }
+      } catch (checkErr) {
+        console.error('[PAYMENT STATUS CHECK] Active verification failed:', checkErr.message);
+      }
+    }
+
     return res.json({
       success:      true,
       status:       payment.status,

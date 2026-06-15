@@ -52,9 +52,7 @@
             out.push({ id: "general", room: "general", label: "General Chat" });
             out.push({ id: "staff", room: "hr_coordinators", label: "Staff Chat" });
         } else if (role === "hr") {
-            out.push({ id: "general", room: "general", label: "General Chat" });
-            out.push({ id: "staff", room: "hr_coordinators", label: "Staff Chat" });
-            out.push({ id: "internal", room: "hr_internal", label: "HR Internal" });
+            // Removals as requested: General Chat, Staff Chat, HR Internal chat button
         }
         return out;
     }
