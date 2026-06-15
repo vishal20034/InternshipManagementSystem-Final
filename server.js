@@ -1612,6 +1612,13 @@ try{
     const image = req.files["image"] ? "/" + req.files["image"][0].path : "";
     const pdf   = req.files["pdf"]   ? "/" + req.files["pdf"][0].path   : "";
 
+    // Double Submission Protection: Check if a Submission for this specific task and employee exists
+    const existingSubmission = await Submission.findOne({ employeeId, task: task || "" });
+    if (existingSubmission) {
+      console.log(`[Double Submission Block] Ignored duplicate Submission write for employeeId: ${employeeId}, task: ${task}`);
+      return res.json({ success: true, message: "Task has already been submitted successfully!" });
+    }
+
     const student = await Student.findOne({ employeeId });
     let internshipDuration = "1 Month";
     if(student && student.tenure){
