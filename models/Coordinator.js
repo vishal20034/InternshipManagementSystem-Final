@@ -14,6 +14,12 @@ const CoordinatorSchema = new mongoose.Schema({
     domain:     { type: String, required: true },
     employeeId: { type: String, default: "" },
     promotedFrom: { type: String, default: "" },    // e.g. "student"
+    verificationStatus: { type: String, default: "pending", enum: ["pending", "approved", "rejected"] },
+    resumePdf: { type: String, default: "" },
+    experience: { type: String, default: "" },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockoutUntil: { type: Date, default: null },
+    isLockedOut: { type: Boolean, default: false },
     // Forgot password (Feature 9)
     passwordResetToken:  { type: String, default: null, index: true },
     passwordResetExpiry: { type: Date,   default: null },

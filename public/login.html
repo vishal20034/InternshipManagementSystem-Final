@@ -212,6 +212,15 @@ html, body {
     <div class="card-title ten-fade-up ten-d1">Sign In</div>
     <p class="card-sub ten-fade-up ten-d2">Access Students, Founders, Mentors, Investors, and Contractors hubs</p>
 
+    <!-- Role Selection Switcher -->
+    <div style="display:flex; justify-content:space-between; gap:4px; margin-bottom:24px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:4px; border-radius:10px;">
+        <button type="button" class="role-tab" id="tab-student" onclick="setLoginRole('student')" style="flex:1; padding:8px 4px; font-size:10px; font-weight:700; text-transform:uppercase; border:none; background:rgba(212,175,55,0.08); color:var(--ten-gold); border-radius:6px; cursor:pointer; transition:all 0.2s;">Student</button>
+        <button type="button" class="role-tab" id="tab-founder" onclick="setLoginRole('founder')" style="flex:1; padding:8px 4px; font-size:10px; font-weight:700; text-transform:uppercase; border:none; background:none; color:#94a3b8; border-radius:6px; cursor:pointer; transition:all 0.2s;">Founder</button>
+        <button type="button" class="role-tab" id="tab-mentor" onclick="setLoginRole('mentor')" style="flex:1; padding:8px 4px; font-size:10px; font-weight:700; text-transform:uppercase; border:none; background:none; color:#94a3b8; border-radius:6px; cursor:pointer; transition:all 0.2s;">Mentor</button>
+        <button type="button" class="role-tab" id="tab-investor" onclick="setLoginRole('investor')" style="flex:1; padding:8px 4px; font-size:10px; font-weight:700; text-transform:uppercase; border:none; background:none; color:#94a3b8; border-radius:6px; cursor:pointer; transition:all 0.2s;">Investor</button>
+        <button type="button" class="role-tab" id="tab-contractor" onclick="setLoginRole('contractor')" style="flex:1; padding:8px 4px; font-size:10px; font-weight:700; text-transform:uppercase; border:none; background:none; color:#94a3b8; border-radius:6px; cursor:pointer; transition:all 0.2s;">Contractor</button>
+    </div>
+
     <form id="loginForm" class="ten-fade-up ten-d3">
       <div class="field-group">
         <label class="field-label" id="fieldLabel">Email Address or Employee ID</label>
@@ -227,7 +236,7 @@ html, body {
   </div>
 
   <div class="card-nav">
-    <a href="register-hub.html">Register Account</a>
+    <a href="index.html">Register Account</a>
     <span class="sep">·</span>
     <a href="coordinator-login.html">Coordinator Login</a>
     <span class="sep">·</span>
@@ -235,6 +244,35 @@ html, body {
   </div>
 
 <script src="/forgot-password.js"></script>
+<script>
+let activeRole = 'student';
+
+function setLoginRole(role) {
+  activeRole = role;
+  document.querySelectorAll('.role-tab').forEach(b => {
+    b.style.color = '#94a3b8';
+    b.style.background = 'none';
+  });
+  const activeBtn = document.getElementById('tab-' + role);
+  if (activeBtn) {
+    activeBtn.style.color = 'var(--ten-gold)';
+    activeBtn.style.background = 'rgba(212,175,55,0.08)';
+  }
+  
+  const fieldLabel = document.getElementById('fieldLabel');
+  const loginIdInput = document.getElementById('loginId');
+  if (role === 'student') {
+    fieldLabel.textContent = 'Email Address or Employee ID';
+    loginIdInput.placeholder = 'Enter your Email or Employee ID';
+  } else {
+    fieldLabel.textContent = role.toUpperCase() + ' Email Address';
+    loginIdInput.placeholder = 'Enter your ' + role.toUpperCase() + ' Email';
+  }
+  if (window.TenForgotPassword) {
+    TenForgotPassword.init({ role: role });
+  }
+}
+</script>
 <script>if(window.TenForgotPassword) TenForgotPassword.init({ role: "student" });</script>
 
   <div class="page-footer">© 2026 TEN Internship Management System</div>
