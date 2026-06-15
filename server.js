@@ -1071,11 +1071,77 @@ try{
 }catch(error){ console.log(error); res.status(500).json({ success:false, message:"Server Error" }); }
 });
 
+// ================= ACCOUNT LOCKOUT SECURE SERVICE =================
+function getRemainingLockoutTime(user) {
+    if (user.isLockedOut && user.lockoutUntil) {
+        const remainingTime = new Date(user.lockoutUntil).getTime() - Date.now();
+        if (remainingTime > 0) {
+            const minutes = Math.ceil(remainingTime / (1000 * 60));
+            return minutes;
+        }
+    }
+    return 0;
+}
+
+async function checkLockout(res, user, userModel) {
+    const minutes = getRemainingLockoutTime(user);
+    if (minutes > 0) {
+        res.json({
+            success: false,
+            message: `Your account is temporarily locked. Try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`
+        });
+        return true; // is locked
+    }
+    if (user.isLockedOut) {
+        await userModel.findByIdAndUpdate(user._id, {
+            isLockedOut: false,
+            lockoutUntil: null,
+            failedLoginAttempts: 0
+        });
+        user.isLockedOut = false;
+        user.lockoutUntil = null;
+        user.failedLoginAttempts = 0;
+    }
+    return false;
+}
+
+async function recordFailedAttempt(res, user, userModel, defaultErrorMsg) {
+    const attempts = (user.failedLoginAttempts || 0) + 1;
+    let updateData = { failedLoginAttempts: attempts };
+    
+    if (attempts >= 5) {
+        const resetTime = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+        updateData.isLockedOut = true;
+        updateData.lockoutUntil = resetTime;
+        await userModel.findByIdAndUpdate(user._id, updateData);
+        return res.json({
+            success: false,
+            message: "Your account is temporarily locked. Try again in 5 minutes."
+        });
+    } else {
+        await userModel.findByIdAndUpdate(user._id, updateData);
+        return res.json({
+            success: false,
+            message: `${defaultErrorMsg} (Failed attempts: ${attempts}/5)`
+        });
+    }
+}
+
+async function clearFailedAttempts(user, userModel) {
+    if (user.failedLoginAttempts > 0 || user.isLockedOut) {
+        await userModel.findByIdAndUpdate(user._id, {
+            failedLoginAttempts: 0,
+            isLockedOut: false,
+            lockoutUntil: null
+        });
+    }
+}
+
 // ================= LOGIN =================
 
 app.post("/login", loginLimiter, async(req,res)=>{
 try{
-    const { employeeId, password, email } = req.body;
+    const { employeeId, password, email, role } = req.body;
     const loginId = (employeeId || email || "").trim();
 
     if (!loginId) {
@@ -1091,9 +1157,17 @@ try{
         const EcosystemUser = require("./models/EcosystemUser");
         const user = await EcosystemUser.findOne({ email: loginId.toLowerCase() });
         if (user) {
+            // Verify role match
+            if (role && user.role !== role) {
+                return res.json({ success: false, message: `Access denied. No ${role} account found with this email.` });
+            }
+
+            // Lockout check
+            if (await checkLockout(res, user, EcosystemUser)) return;
+
             const match = await bcrypt.compare(password, user.password);
             if (!match) {
-                return res.json({ success: false, message: "Invalid Password." });
+                return await recordFailedAttempt(res, user, EcosystemUser, "Invalid Password.");
             }
 
             // Enforce Ecosystem HR Approval and Suspend constraints
@@ -1135,6 +1209,9 @@ try{
                 }
             }
             
+            // Password match on locked accounts resets attempts
+            await clearFailedAttempts(user, EcosystemUser);
+
             // If student, get legacy student record or mock one
             let student = null;
             if (user.role === 'student') {
@@ -1167,6 +1244,11 @@ try{
         // Check legacy Student model by email just in case
         const student = await Student.findOne({ email: loginId.toLowerCase() });
         if (student) {
+            if (role && role !== 'student') {
+                return res.json({ success: false, message: `Access denied. No ${role} account found.` });
+            }
+            if (await checkLockout(res, student, Student)) return;
+
             let pwdMatch = student.password === password;
             if (!pwdMatch) {
                 try {
@@ -1174,18 +1256,26 @@ try{
                 } catch(e) {}
             }
             if (pwdMatch) {
+                await clearFailedAttempts(student, Student);
                 await Student.findOneAndUpdate({ email: loginId.toLowerCase() }, { lastActiveDate: new Date() });
                 return res.json({
                     success: true,
                     role: 'student',
                     student
                 });
+            } else {
+                return await recordFailedAttempt(res, student, Student, "Invalid Password.");
             }
         }
 
         // Check HR
         const hr = await HR.findOne({ email: loginId.toLowerCase() });
         if (hr) {
+            if (role && role !== 'hr' && role !== 'admin') {
+                return res.json({ success: false, message: `Access denied.` });
+            }
+            if (await checkLockout(res, hr, HR)) return;
+
             let pwdMatch = hr.password === password;
             if (!pwdMatch) {
                 try {
@@ -1193,21 +1283,30 @@ try{
                 } catch(e) {}
             }
             if (pwdMatch) {
+                await clearFailedAttempts(hr, HR);
                 return res.json({
                     success: true,
                     role: 'hr',
                     hr
                 });
+            } else {
+                return await recordFailedAttempt(res, hr, HR, "Invalid Password.");
             }
         }
 
         return res.json({ success: false, message: "Invalid credentials." });
     } else {
-        // Treat as Employee ID
+        // Treat as Employee ID - always student login
+        if (role && role !== 'student') {
+            return res.json({ success: false, message: `Access denied. Employee ID is only valid for Student role.` });
+        }
         const student = await Student.findOne({ employeeId: loginId });
         if (!student) {
             return res.json({ success: false, message: "Invalid Employee ID" });
         }
+
+        if (await checkLockout(res, student, Student)) return;
+
         let pwdMatch = student.password === password;
         if (!pwdMatch) {
             try {
@@ -1215,8 +1314,9 @@ try{
             } catch(e) {}
         }
         if (!pwdMatch) {
-            return res.json({ success: false, message: "Invalid Password" });
+            return await recordFailedAttempt(res, student, Student, "Invalid Password");
         }
+        await clearFailedAttempts(student, Student);
         await Student.findOneAndUpdate({ employeeId: loginId }, { lastActiveDate: new Date() });
         return res.json({ success: true, role: 'student', student });
     }
@@ -1772,12 +1872,26 @@ app.get("/notice-events/:domain", (req,res)=>{
 app.post("/update-notice", async(req,res)=>{
 try{
     const { domain, morningMeeting, eveningMeeting, meetingLink, importantNotice } = req.body;
+    const fs = require("fs");
+    const path = require("path");
+    const noticePath = path.join(process.cwd(), "notice.json");
 
-    await Notice.findOneAndUpdate(
-        { domain },
-        { domain, morningMeeting, eveningMeeting, meetingLink, importantNotice },
-        { upsert:true, new:true }
-    );
+    let notices = {};
+    if (fs.existsSync(noticePath)) {
+        try {
+            notices = JSON.parse(fs.readFileSync(noticePath, "utf8"));
+        } catch(e) {}
+    }
+
+    notices[domain] = {
+        domain,
+        morningMeeting,
+        eveningMeeting,
+        meetingLink,
+        importantNotice
+    };
+
+    fs.writeFileSync(noticePath, JSON.stringify(notices, null, 2), "utf8");
 
     // Broadcast SSE notice update to domain students
     const key = `coord:${domain}`;
@@ -1809,7 +1923,19 @@ try{
 
 app.get("/get-notice/:domain", async(req,res)=>{
 try{
-    const notice = await Notice.findOne({ domain:req.params.domain });
+    const fs = require("fs");
+    const path = require("path");
+    const noticePath = path.join(process.cwd(), "notice.json");
+    const domain = req.params.domain || "";
+
+    let notices = {};
+    if (fs.existsSync(noticePath)) {
+        try {
+            notices = JSON.parse(fs.readFileSync(noticePath, "utf8"));
+        } catch(e) {}
+    }
+
+    const notice = notices[domain] || notices["default"];
     res.json(notice || {});
 }catch(error){ res.json({ success:false }); }
 });
@@ -1897,8 +2023,13 @@ try{
     if(identifier.indexOf("@") !== -1){
         const dbHR = await HR.findOne({ email: identifier.toLowerCase() });
         if(dbHR){
+            if (await checkLockout(res, dbHR, HR)) return;
+
             const ok = await bcrypt.compare(password, dbHR.password);
-            if(!ok) return res.json({ success:false, message:"Invalid HR credentials" });
+            if(!ok) {
+                return await recordFailedAttempt(res, dbHR, HR, "Invalid HR credentials");
+            }
+            await clearFailedAttempts(dbHR, HR);
             return res.json({ success:true, hr:{
                 username: dbHR.username || dbHR.email,
                 email:    dbHR.email,
@@ -2466,8 +2597,23 @@ try{
 app.post("/student-login", loginLimiter, async(req,res)=>{
 try{
     const { employeeId, password } = req.body;
-    const student = await Student.findOne({ employeeId, password });
+    const student = await Student.findOne({ employeeId });
     if(!student){ return res.json({ success:false, message:"Invalid Employee ID or Password" }); }
+
+    if (await checkLockout(res, student, Student)) return;
+
+    let pwdMatch = student.password === password;
+    if (!pwdMatch) {
+        try {
+            pwdMatch = await bcrypt.compare(password, student.password);
+        } catch(e) {}
+    }
+
+    if(!pwdMatch){
+        return await recordFailedAttempt(res, student, Student, "Invalid Employee ID or Password");
+    }
+
+    await clearFailedAttempts(student, Student);
 
     // Internship end date (used by student dashboard profile modal)
     // tenure values in this app are "1 Month" | "3 Months" | "6 Months".
@@ -2543,15 +2689,23 @@ try{
         : { $or: [{ username: identifier }, { email: identifier.toLowerCase() }] };
     const dbCoord = await Coordinator.findOne(q);
     if(dbCoord){
+        if (await checkLockout(res, dbCoord, Coordinator)) return;
+
         const ok = await bcrypt.compare(password, dbCoord.password);
         if(ok){
+            if (dbCoord.verificationStatus !== "approved") {
+                return res.json({ success: false, message: "Your coordinator account application is pending HR interview & approval." });
+            }
+            await clearFailedAttempts(dbCoord, Coordinator);
             return res.json({ success:true, coordinator:{
                 username: dbCoord.username || dbCoord.email,
                 domain:   dbCoord.domain
             }});
+        } else {
+            return await recordFailedAttempt(res, dbCoord, Coordinator, "Invalid Username or Password");
         }
     }
-    return res.json({ success:false });
+    return res.json({ success:false, message: "Invalid Username or Password" });
 }catch(error){
     console.log(error);
     res.json({ success:false });
@@ -5211,6 +5365,39 @@ app.get('/api/verify-document/:id', async (req, res) => {
     }
 });
 
+const resumeStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/documents/');
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'resume-' + uniqueSuffix + '.pdf');
+    }
+});
+const resumeUpload = multer({
+    storage: resumeStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype !== 'application/pdf') {
+            return cb(new Error('Only PDF files are allowed!'), false);
+        }
+        cb(null, true);
+    }
+});
+
+app.post('/api/v2/upload-resume', function (req, res) {
+    resumeUpload.single('resume')(req, res, function (err) {
+        if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Please upload a PDF resume file.' });
+        }
+        const filePath = '/uploads/documents/' + req.file.filename;
+        return res.json({ success: true, filePath: filePath });
+    });
+});
+
 app.get('/api/v2/verify/:documentNumber', async (req, res) => {
     res.redirect(302, "/api/verify-document/" + encodeURIComponent(req.params.documentNumber || ""));
 });
@@ -5402,6 +5589,102 @@ io.on("connection", (socket) => {
             if(ack) ack({ success:false, message:"server_error" });
         }
     });
+});
+
+
+// ================= COORDINATOR ONBOARDING & HR VERIFICATION (PART 6 & 8) =================
+
+app.post("/api/v2/coordinator/check-domain", async (req, res) => {
+    try {
+        const { domain } = req.body;
+        if (!domain) {
+            return res.json({ success: false, message: "Domain name is required." });
+        }
+        const existing = await Coordinator.findOne({ domain, verificationStatus: "approved" });
+        if (existing) {
+            return res.json({ success: false, exists: true, message: `Domain "${domain}" already has an assigned active coordinator.` });
+        }
+        return res.json({ success: true, exists: false, message: "Domain is available." });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error checking domain." });
+    }
+});
+
+app.post("/api/v2/coordinator/register", async (req, res) => {
+    try {
+        const { username, email, password, name, domain, resumePdf, experience } = req.body;
+        if (!username || !email || !password || !name || !domain) {
+            return res.json({ success: false, message: "Missing required fields." });
+        }
+
+        const existing = await Coordinator.findOne({ $or: [{ username }, { email: email.toLowerCase() }] });
+        if (existing) {
+            return res.json({ success: false, message: "Username or Email already registered." });
+        }
+
+        const existingDomainCoord = await Coordinator.findOne({ domain, verificationStatus: "approved" });
+        if (existingDomainCoord) {
+            return res.json({ success: false, message: `Domain "${domain}" is already managed.` });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newCoord = new Coordinator({
+            username,
+            email: email.toLowerCase(),
+            password: hashedPassword,
+            name,
+            domain,
+            resumePdf: resumePdf || "",
+            experience: experience || "",
+            verificationStatus: "pending"
+        });
+
+        await newCoord.save();
+        return res.json({ success: true, message: "Application submitted successfully to HR Level 2 & 5." });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error in coordinator registration." });
+    }
+});
+
+app.get("/api/v2/coordinator/pending", async (req, res) => {
+    try {
+        const pending = await Coordinator.find({ verificationStatus: "pending" });
+        return res.json({ success: true, pending });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error retrieving pending applications." });
+    }
+});
+
+app.post("/api/v2/coordinator/approve", async (req, res) => {
+    try {
+        const { id, action } = req.body; // action: 'approve' or 'reject'
+        if (!id || !action) {
+            return res.json({ success: false, message: "Id and action required." });
+        }
+        
+        const status = action === "approve" ? "approved" : "rejected";
+        const coord = await Coordinator.findById(id);
+        if (!coord) {
+            return res.json({ success: false, message: "Coordinator not found." });
+        }
+
+        if (status === "approved") {
+            const existingApproved = await Coordinator.findOne({ domain: coord.domain, verificationStatus: "approved" });
+            if (existingApproved && String(existingApproved._id) !== id) {
+                return res.json({ success: false, message: `Domain "${coord.domain}" already has an approved coordinator.` });
+            }
+        }
+
+        coord.verificationStatus = status;
+        await coord.save();
+        return res.json({ success: true, message: `Coordinator application successfully ${status}.` });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error updating coordinator status." });
+    }
 });
 
 

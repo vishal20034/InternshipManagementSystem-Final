@@ -14,6 +14,9 @@ const EcosystemUserSchema = new mongoose.Schema({
   bio: { type: String, default: "" },
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
+  failedLoginAttempts: { type: Number, default: 0 },
+  lockoutUntil: { type: Date, default: null },
+  isLockedOut: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
