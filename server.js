@@ -645,7 +645,7 @@ app.use(cors());
 app.use(express.json());
 
 // Custom route to serve the logo with the correct JPEG Content-Type since the file has a .png extension but is actually a JPEG (JFIF format)
-app.get("*/ten-logo.png", (req, res) => {
+app.get(/.*ten-logo\.png$/, (req, res) => {
     res.setHeader("Content-Type", "image/jpeg");
     res.sendFile(path.join(__dirname, "public", "ten-logo.png"));
 });
@@ -887,7 +887,9 @@ setInterval(runAutoDocumentCheck, 6 * 60 * 60 * 1000);
 // ================= MONGODB =================
 
 mongoose.set('bufferCommands', false); // CRITICAL: fail fast, don't hang
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/internship")
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/internship", {
+  serverSelectionTimeoutMS: 1500
+})
 .then(async () => {
   console.log("MongoDB Connected");
   // Trigger AutoTask seeding asynchronously on startup
