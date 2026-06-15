@@ -1914,12 +1914,21 @@ button:active { transform: translateY(0); }
     </div>
     <div id="codingProblemsList">
       <!-- FEATURE 4 — Empty state shown when no problems are assigned -->
-      <div id="codingEmptyState" style="text-align:center;padding:52px 24px;color:#6a7a94;">
-        <div style="font-size:52px;margin-bottom:16px;">💻</div>
-        <h3 style="font-size:16px;font-weight:700;color:#9aa4bf;margin-bottom:8px;">No Coding Problems Yet</h3>
-        <p style="font-size:13px;color:#6a7a94;line-height:1.6;max-width:360px;margin:0 auto 20px;">Your coordinator hasn't assigned any coding problems yet. Check back soon — problems appear here once your coordinator uploads them.</p>
-        <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.18);border-radius:10px;padding:10px 18px;font-size:12px;color:#D4AF37;">
-          <span>🪙</span> Solving problems earns bonus coins!
+      <div id="codingEmptyState" style="text-align:center;padding:52px 24px;color:#e8dcc8;background:#0d1020;border:1px solid rgba(212,175,55,0.25);border-radius:14px;max-width:600px;margin:24px auto;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+        <div style="font-size:52px;margin-bottom:16px;">🧩</div>
+        <h3 style="font-size:18px;font-weight:800;color:#D4AF37;margin-bottom:8px;">No Coding Problems Yet</h3>
+        <p style="font-size:13px;color:#9aa4bf;line-height:1.6;max-width:440px;margin:0 auto 24px;">
+          Your coordinator hasn't added any problems for this week yet.
+          Check back soon — new challenges are uploaded regularly.
+        </p>
+        <div style="font-size:12px;color:#9aa4bf;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;">
+          In the meantime, sharpen your skills on these free platforms:
+        </div>
+        <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+          <a href="https://leetcode.com/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:20px;font-size:12px;color:#D4AF37;font-weight:700;text-decoration:none;transition:transform 0.2s;">💻 LeetCode</a>
+          <a href="https://www.hackerrank.com/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:20px;font-size:12px;color:#D4AF37;font-weight:700;text-decoration:none;transition:transform 0.2s;">🏆 HackerRank</a>
+          <a href="https://www.codechef.com/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:20px;font-size:12px;color:#D4AF37;font-weight:700;text-decoration:none;transition:transform 0.2s;">🍴 CodeChef</a>
+          <a href="https://www.geeksforgeeks.org/" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.25);border-radius:20px;font-size:12px;color:#D4AF37;font-weight:700;text-decoration:none;transition:transform 0.2s;">🌐 GeeksforGeeks</a>
         </div>
       </div>
     </div>
@@ -4125,16 +4134,7 @@ function applyJoinerTypeUI(type) {
     <div style="background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:14px 20px;margin-bottom:28px;font-size:14px;color:#D4AF37;font-weight:600;text-align:center;">🌅 Good Morning / Afternoon / Evening — Please submit your attendance.</div>
     <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:36px;">
       <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">01</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📋 Attendance <span style="font-size:11px;color:#e05c5c;font-weight:700;background:rgba(224,92,92,0.12);border:1px solid rgba(224,92,92,0.25);border-radius:4px;padding:2px 8px;margin-left:6px;">MANDATORY</span></span></div>
-        <ul style="margin:0;padding-left:18px;font-size:13px;color:#c8baa0;line-height:2;list-style:disc;">
-          <li>Fill out the attendance form <b>twice daily</b> — morning &amp; evening.</li>
-          <li>After submitting, share a screenshot in the group to ensure eligibility for your certificate.</li>
-          <li>📎 Attendance Form: <a href="https://docs.google.com/forms/d/e/1FAIpQLSf3qZwNUgQl7vqqTnGW4PKrMDwRWPJEMiVQ-NUI6h4NnJa8Zg/viewform" target="_blank" rel="noopener" style="color:#D4AF37;">Click here to open attendance form</a></li>
-          <li><b style="color:#e05c5c;">Missing daily attendance may lead to termination and no certificate.</b></li>
-          <li>Attendance is <b>mandatory</b> even if you have not yet received your Employee ID.</li>
-          <li>For your Employee ID: <a href="https://docs.google.com/spreadsheets/d/1GZ7kvjVHUPygtgODan-2XevEfN-_tmEQYxhn1UW9DHM/edit?gid=0#gid=0" target="_blank" rel="noopener" style="color:#D4AF37;">Find Employee ID here</a></li>
-          <li>If you don't receive your Employee ID, email <a href="mailto:hr@entrepreneurshipnetwork.net" style="color:#D4AF37;">hr@entrepreneurshipnetwork.net</a> or join the <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">support WhatsApp group</a>.</li>
-        </ul>
+        <div style="display:flex;align-items:center;gap:10px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">01</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📋 Attendance <span style="font-size:11px;color:#e05c5c;font-weight:700;background:rgba(224,92,92,0.12);border:1px solid rgba(224,92,92,0.25);border-radius:4px;padding:2px 8px;margin-left:6px;">MANDATORY</span></span></div>
       </div>
       <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800;color:#D4AF37;">02</span><span style="font-size:15px;font-weight:800;color:#f0e6c8;">📁 Onboarding Document</span></div>
@@ -4245,12 +4245,45 @@ function acknowledgeInstructions() {
 // ===== FEATURE 2 — Auto-login check + Logout =====
 (function() {
   try {
-    var stu = JSON.parse(localStorage.getItem('student') || '{}');
-    var empId = stu.employeeId || localStorage.getItem('employeeId') || localStorage.getItem('ten_employee_id') || '';
-    if (!empId) {
+    var token = localStorage.getItem('ten_token');
+    var empId = localStorage.getItem('ten_employee_id') || localStorage.getItem('employeeId');
+    if (!token || !empId) {
+      localStorage.removeItem('student');
+      localStorage.removeItem('employeeId');
+      localStorage.removeItem('ten_token');
+      localStorage.removeItem('ten_employee_id');
       window.location.href = 'login.html';
+      return;
     }
+    // Silently re-validate against the /api/v2/student/me endpoint
+    fetch('/api/v2/student/me', {
+      method: 'GET',
+      headers: { 'x-employee-id': empId }
+    })
+    .then(function(res) {
+      if (res.status === 401) {
+        localStorage.removeItem('student');
+        localStorage.removeItem('employeeId');
+        localStorage.removeItem('ten_token');
+        localStorage.removeItem('ten_employee_id');
+        window.location.href = 'login.html';
+      } else if (res.ok) {
+        return res.json();
+      }
+    })
+    .then(function(data) {
+      if (data && data.success && data.student) {
+        localStorage.setItem('student', JSON.stringify(data.student));
+      }
+    })
+    .catch(function(err) {
+      console.error('Silent auth validation failed:', err);
+    });
   } catch(e) {
+    localStorage.removeItem('student');
+    localStorage.removeItem('employeeId');
+    localStorage.removeItem('ten_token');
+    localStorage.removeItem('ten_employee_id');
     window.location.href = 'login.html';
   }
 })();
@@ -4275,7 +4308,6 @@ function _doLogout() {
 // ===== END AUTO-LOGIN / LOGOUT =====
 </script>
 
-<script src="/bot-widget.js"></script>
 <script src="ten-motion.js"></script>
 </body>
 </html>

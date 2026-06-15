@@ -2545,13 +2545,16 @@ try{
     if(dbCoord){
         const ok = await bcrypt.compare(password, dbCoord.password);
         if(ok){
+            if (dbCoord.verificationStatus !== "approved") {
+                return res.json({ success: false, message: "Your coordinator account application is pending HR interview & approval." });
+            }
             return res.json({ success:true, coordinator:{
                 username: dbCoord.username || dbCoord.email,
                 domain:   dbCoord.domain
             }});
         }
     }
-    return res.json({ success:false });
+    return res.json({ success:false, message: "Invalid Username or Password" });
 }catch(error){
     console.log(error);
     res.json({ success:false });
@@ -5211,6 +5214,39 @@ app.get('/api/verify-document/:id', async (req, res) => {
     }
 });
 
+const resumeStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/documents/');
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'resume-' + uniqueSuffix + '.pdf');
+    }
+});
+const resumeUpload = multer({
+    storage: resumeStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: function (req, file, cb) {
+        if (file.mimetype !== 'application/pdf') {
+            return cb(new Error('Only PDF files are allowed!'), false);
+        }
+        cb(null, true);
+    }
+});
+
+app.post('/api/v2/upload-resume', function (req, res) {
+    resumeUpload.single('resume')(req, res, function (err) {
+        if (err) {
+            return res.status(400).json({ success: false, message: err.message });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'Please upload a PDF resume file.' });
+        }
+        const filePath = '/uploads/documents/' + req.file.filename;
+        return res.json({ success: true, filePath: filePath });
+    });
+});
+
 app.get('/api/v2/verify/:documentNumber', async (req, res) => {
     res.redirect(302, "/api/verify-document/" + encodeURIComponent(req.params.documentNumber || ""));
 });
@@ -5402,6 +5438,102 @@ io.on("connection", (socket) => {
             if(ack) ack({ success:false, message:"server_error" });
         }
     });
+});
+
+
+// ================= COORDINATOR ONBOARDING & HR VERIFICATION (PART 6 & 8) =================
+
+app.post("/api/v2/coordinator/check-domain", async (req, res) => {
+    try {
+        const { domain } = req.body;
+        if (!domain) {
+            return res.json({ success: false, message: "Domain name is required." });
+        }
+        const existing = await Coordinator.findOne({ domain, verificationStatus: "approved" });
+        if (existing) {
+            return res.json({ success: false, exists: true, message: `Domain "${domain}" already has an assigned active coordinator.` });
+        }
+        return res.json({ success: true, exists: false, message: "Domain is available." });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error checking domain." });
+    }
+});
+
+app.post("/api/v2/coordinator/register", async (req, res) => {
+    try {
+        const { username, email, password, name, domain, resumePdf, experience } = req.body;
+        if (!username || !email || !password || !name || !domain) {
+            return res.json({ success: false, message: "Missing required fields." });
+        }
+
+        const existing = await Coordinator.findOne({ $or: [{ username }, { email: email.toLowerCase() }] });
+        if (existing) {
+            return res.json({ success: false, message: "Username or Email already registered." });
+        }
+
+        const existingDomainCoord = await Coordinator.findOne({ domain, verificationStatus: "approved" });
+        if (existingDomainCoord) {
+            return res.json({ success: false, message: `Domain "${domain}" is already managed.` });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newCoord = new Coordinator({
+            username,
+            email: email.toLowerCase(),
+            password: hashedPassword,
+            name,
+            domain,
+            resumePdf: resumePdf || "",
+            experience: experience || "",
+            verificationStatus: "pending"
+        });
+
+        await newCoord.save();
+        return res.json({ success: true, message: "Application submitted successfully to HR Level 2 & 5." });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error in coordinator registration." });
+    }
+});
+
+app.get("/api/v2/coordinator/pending", async (req, res) => {
+    try {
+        const pending = await Coordinator.find({ verificationStatus: "pending" });
+        return res.json({ success: true, pending });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error retrieving pending applications." });
+    }
+});
+
+app.post("/api/v2/coordinator/approve", async (req, res) => {
+    try {
+        const { id, action } = req.body; // action: 'approve' or 'reject'
+        if (!id || !action) {
+            return res.json({ success: false, message: "Id and action required." });
+        }
+        
+        const status = action === "approve" ? "approved" : "rejected";
+        const coord = await Coordinator.findById(id);
+        if (!coord) {
+            return res.json({ success: false, message: "Coordinator not found." });
+        }
+
+        if (status === "approved") {
+            const existingApproved = await Coordinator.findOne({ domain: coord.domain, verificationStatus: "approved" });
+            if (existingApproved && String(existingApproved._id) !== id) {
+                return res.json({ success: false, message: `Domain "${coord.domain}" already has an approved coordinator.` });
+            }
+        }
+
+        coord.verificationStatus = status;
+        await coord.save();
+        return res.json({ success: true, message: `Coordinator application successfully ${status}.` });
+    } catch (err) {
+        console.error(err);
+        res.json({ success: false, message: "Server error updating coordinator status." });
+    }
 });
 
 
