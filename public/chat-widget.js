@@ -52,7 +52,7 @@
             out.push({ id: "general", room: "general", label: "General Chat" });
             out.push({ id: "staff", room: "hr_coordinators", label: "Staff Chat" });
         } else if (role === "hr") {
-            // Removals as requested: General Chat, Staff Chat, HR Internal chat button
+            out.push({ id: "hr_center", room: "general", label: "Intern Chat Center" });
         }
         return out;
     }
@@ -61,6 +61,9 @@
         if (document.getElementById("tc-styles")) return;
         var css = [
             "#tc-dock{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:9998;align-items:flex-end;}",
+            ".tc-tab{flex:1;background:transparent;border:none;color:#9aa4bf;font-weight:700;font-size:11px;padding:8px;cursor:pointer;outline:none;text-align:center;transition:all 0.15s;border-bottom:2px solid transparent;}",
+            ".tc-tab.active{color:#f5c542;border-bottom-color:#f5c542;background:rgba(245,197,66,0.06);}",
+            ".tc-tab:hover{color:#e2eaf7;}",
             ".tc-btn{background:linear-gradient(135deg,#0d1a2e,#112240);color:#e2eaf7;border:1px solid rgba(245,197,66,0.25);padding:10px 16px;border-radius:24px;cursor:pointer;font:600 13px 'Plus Jakarta Sans','Outfit',sans-serif;display:inline-flex;align-items:center;gap:8px;box-shadow:0 6px 18px rgba(0,0,0,.35);transition:transform .15s,border-color .15s;}",
             ".tc-btn:hover{transform:translateY(-1px);border-color:#f5c542;}",
             ".tc-badge{background:#f43f5e;color:#fff;font-size:11px;font-weight:700;border-radius:10px;padding:2px 7px;display:none;}",
@@ -151,12 +154,24 @@
     function createWindow(room, label) {
         var win = document.createElement("div");
         win.className = "tc-win";
-        win.innerHTML =
-            '<div class="tc-h"><span class="t">' + escapeHtml(label) + '</span>' +
-            '<button class="x" aria-label="Close">×</button></div>' +
+        
+        var headerHtml = '<div class="tc-h"><span class="t">' + escapeHtml(label) + '</span>' +
+            '<button class="x" aria-label="Close">×</button></div>';
+            
+        if (cfg.role === "hr" && room === "general") {
+            win.dataset.currentRoom = "general";
+            headerHtml += '<div class="tc-tabs" style="display:flex;background:#0d1a2e;border-bottom:1px solid rgba(245,197,66,0.15);padding:4px;">' +
+                '<button type="button" class="tc-tab active" data-room="general">General</button>' +
+                '<button type="button" class="tc-tab" data-room="doubts">Doubts</button>' +
+                '<button type="button" class="tc-tab" data-room="feedback_support">Feedback</button>' +
+                '</div>';
+        }
+
+        win.innerHTML = headerHtml +
             '<div class="tc-msgs"></div>' +
             '<form class="tc-form"><input type="text" placeholder="Type a message…" maxlength="2000" autocomplete="off"/>' +
             '<button type="submit">Send</button></form>';
+            
         document.body.appendChild(win);
         var msgsEl = win.querySelector(".tc-msgs");
         var form = win.querySelector(".tc-form");
@@ -165,11 +180,28 @@
         win.querySelector(".x").addEventListener("click", function () {
             win.classList.remove("open"); openWin = null;
         });
+
+        if (cfg.role === "hr" && room === "general") {
+            var tabs = win.querySelectorAll(".tc-tab");
+            tabs.forEach(function (tab) {
+                tab.addEventListener("click", function () {
+                    tabs.forEach(t => t.classList.remove("active"));
+                    tab.classList.add("active");
+                    tab.innerHTML = tab.textContent.replace(" •", "").trim();
+                    
+                    var targetRoom = tab.dataset.room;
+                    win.dataset.currentRoom = targetRoom;
+                    loadHistory(targetRoom, { msgsEl: msgsEl });
+                });
+            });
+        }
+
         form.addEventListener("submit", function (e) {
             e.preventDefault();
             var t = inputEl.value.trim();
             if (!t) return;
-            socket.emit("send_message", { room: room, text: t });
+            var targetRoom = (cfg.role === "hr" && room === "general") ? (win.dataset.currentRoom || "general") : room;
+            socket.emit("send_message", { room: targetRoom, text: t });
             inputEl.value = "";
         });
         return { room: room, label: label, el: win, msgsEl: msgsEl, inputEl: inputEl };
@@ -254,6 +286,25 @@
         socket.on("connect_error", function (e) { console.warn("[TenChat] connect_error:", e.message); });
 
         socket.on("receive_message", function (m) {
+            if (cfg.role === "hr" && (m.chatRoom === "general" || m.chatRoom === "doubts" || m.chatRoom === "feedback_support")) {
+                var w = winsByRoom["general"];
+                if (w) {
+                    var empty = w.msgsEl.querySelector(".tc-empty");
+                    if (empty) empty.remove();
+                    if (m.chatRoom === w.el.dataset.currentRoom) {
+                        appendMessage(w, m);
+                    } else {
+                        var tab = w.el.querySelector('.tc-tab[data-room="' + m.chatRoom + '"]');
+                        if (tab && tab.innerHTML.indexOf("•") === -1) {
+                            tab.innerHTML = tab.textContent.trim() + ' <span style="color:#f43f5e;">•</span>';
+                        }
+                    }
+                } else {
+                    bumpBadge("general");
+                }
+                return;
+            }
+
             var w = winsByRoom[m.chatRoom];
             if (w) {
                 // Remove "no messages" placeholder if present
@@ -266,6 +317,14 @@
             }
         });
         socket.on("message_deleted", function (p) {
+            if (cfg.role === "hr" && (p.room === "general" || p.room === "doubts" || p.room === "feedback_support")) {
+                var w = winsByRoom["general"];
+                if (!w) return;
+                var el = w.msgsEl.querySelector('[data-id="' + cssEsc(p.messageId) + '"]');
+                if (el) el.remove();
+                return;
+            }
+
             var w = winsByRoom[p.room];
             if (!w) return;
             var el = w.msgsEl.querySelector('[data-id="' + cssEsc(p.messageId) + '"]');

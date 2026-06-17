@@ -229,8 +229,8 @@ router.post("/documents/upload-address-proof", requireStudent, (req, res, next) 
             fileUrl: `/uploads/documents/${req.file.filename}`
         });
     } catch (err) {
-        console.error("[DOCS] upload-address-proof error:", err.message);
-        res.status(500).json({ success: false, message: "Upload failed" });
+        console.error("[DOCS] upload-address-proof error:", err);
+        res.status(500).json({ success: false, message: "Upload failed: " + err.message });
     }
 });
 
@@ -254,8 +254,8 @@ router.post("/documents/upload-marksheet", requireStudent, (req, res, next) => {
             fileUrl: `/uploads/documents/${req.file.filename}`
         });
     } catch (err) {
-        console.error("[DOCS] upload-marksheet error:", err.message);
-        res.status(500).json({ success: false, message: "Upload failed" });
+        console.error("[DOCS] upload-marksheet error:", err);
+        res.status(500).json({ success: false, message: "Upload failed: " + err.message });
     }
 });
 

@@ -51,6 +51,40 @@ function getCollectionData(modelName) {
             fs.writeFileSync(file, JSON.stringify(defaultRecords, null, 2), 'utf8');
             return defaultRecords;
         }
+        if (modelName === 'DomainTask') {
+            const seedFile = path.join(__dirname, 'seeds', 'domainTasks.seed.js');
+            if (fs.existsSync(seedFile)) {
+                try {
+                    const text = fs.readFileSync(seedFile, 'utf8');
+                    const startIdx = text.indexOf('const ALL_TASKS = [');
+                    if (startIdx !== -1) {
+                        let endIdx = text.indexOf('// ─────────────────────────────────────────────\n// SEEDER FUNCTION', startIdx);
+                        if (endIdx === -1) {
+                            endIdx = text.indexOf('async function seed()', startIdx);
+                        }
+                        if (endIdx !== -1) {
+                            let arrayStr = text.substring(startIdx + 'const ALL_TASKS ='.length, endIdx).trim();
+                            if (arrayStr.endsWith(';')) {
+                                arrayStr = arrayStr.substring(0, arrayStr.length - 1);
+                            }
+                            let evaluated = (new Function(`return ${arrayStr}`))();
+                            if (Array.isArray(evaluated)) {
+                                evaluated = evaluated.map(t => {
+                                    if (!t._id) {
+                                        t._id = crypto.randomBytes(12).toString('hex');
+                                    }
+                                    return t;
+                                });
+                                fs.writeFileSync(file, JSON.stringify(evaluated, null, 2), 'utf8');
+                                return evaluated;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error auto-seeding DomainTasks fallback:', e);
+                }
+            }
+        }
         return [];
     }
     try {
@@ -186,7 +220,7 @@ function wrapModelWithFileFallback(model) {
                 if (typeof limitVal === 'number') {
                     matched = matched.slice(0, limitVal);
                 }
-                return matched;
+                return matched.map(item => new model(item));
             });
         }
         return originalFind.apply(this, arguments);
@@ -198,7 +232,7 @@ function wrapModelWithFileFallback(model) {
             return new FallbackQuery(async () => {
                 let items = getCollectionData(model.modelName);
                 let matched = items.find(item => matchQuery(item, query));
-                return matched || null;
+                return matched ? new model(matched) : null;
             });
         }
         return originalFindOne.apply(this, arguments);
@@ -210,7 +244,7 @@ function wrapModelWithFileFallback(model) {
             return new FallbackQuery(async () => {
                 let items = getCollectionData(model.modelName);
                 let matched = items.find(item => String(item._id) === String(id));
-                return matched || null;
+                return matched ? new model(matched) : null;
             });
         }
         return originalFindById.apply(this, arguments);
@@ -240,7 +274,7 @@ function wrapModelWithFileFallback(model) {
                         applyUpdate(newItem, update);
                         items.push(newItem);
                         saveCollectionData(model.modelName, items);
-                        return newItem;
+                        return new model(newItem);
                     }
                     return null;
                 }
@@ -248,7 +282,7 @@ function wrapModelWithFileFallback(model) {
                 applyUpdate(item, update);
                 items[index] = item;
                 saveCollectionData(model.modelName, items);
-                return item;
+                return new model(item);
             });
         }
         return originalFindOneAndUpdate.apply(this, arguments);
@@ -266,7 +300,7 @@ function wrapModelWithFileFallback(model) {
                         applyUpdate(newItem, update);
                         items.push(newItem);
                         saveCollectionData(model.modelName, items);
-                        return newItem;
+                        return new model(newItem);
                     }
                     return null;
                 }
@@ -274,7 +308,7 @@ function wrapModelWithFileFallback(model) {
                 applyUpdate(item, update);
                 items[index] = item;
                 saveCollectionData(model.modelName, items);
-                return item;
+                return new model(item);
             });
         }
         return originalFindByIdAndUpdate.apply(this, arguments);
@@ -292,7 +326,7 @@ function wrapModelWithFileFallback(model) {
             });
             items.push(...createdDocs);
             saveCollectionData(model.modelName, items);
-            return isArray ? Promise.resolve(createdDocs) : Promise.resolve(createdDocs[0]);
+            return isArray ? Promise.resolve(createdDocs.map(c => new model(c))) : Promise.resolve(new model(createdDocs[0]));
         }
         return originalCreate.apply(this, arguments);
     };
@@ -339,6 +373,30 @@ function wrapModelWithFileFallback(model) {
             return Promise.resolve({ acknowledged: true, modifiedCount: count });
         }
         return originalUpdateMany.apply(this, arguments);
+    };
+
+    const originalUpdateOne = model.updateOne;
+    model.updateOne = function(query, update, options) {
+        if (mongoose.connection.readyState !== 1) {
+            let items = getCollectionData(model.modelName);
+            let index = items.findIndex(item => matchQuery(item, query));
+            if (index === -1) {
+                if (options && options.upsert) {
+                    const newItem = { _id: generateId(), createdAt: new Date() };
+                    applyUpdate(newItem, update);
+                    items.push(newItem);
+                    saveCollectionData(model.modelName, items);
+                    return Promise.resolve({ acknowledged: true, matchedCount: 0, modifiedCount: 1, upsertedId: newItem._id });
+                }
+                return Promise.resolve({ acknowledged: true, matchedCount: 0, modifiedCount: 0 });
+            }
+            let item = items[index];
+            applyUpdate(item, update);
+            items[index] = item;
+            saveCollectionData(model.modelName, items);
+            return Promise.resolve({ acknowledged: true, matchedCount: 1, modifiedCount: 1 });
+        }
+        return originalUpdateOne.apply(this, arguments);
     };
 
     const originalInsertMany = model.insertMany;
@@ -604,7 +662,8 @@ const HR_ACCOUNTS = {
     "hrad@ten.com":      { password: "TEN@HRAD2026",  name: "HR Associate Director",      email: "hrad@ten.com", level: 5 },
     "jrdir@ten.com":     { password: "TEN@JrDir2026",  name: "Jr HR Director",            email: "jrdir@ten.com", level: 6 },
     "hrdirector@ten.com":{ password: "TEN@HRDir2026",  name: "HR Director & HRBP",         email: "hrdirector@ten.com", level: 7 },
-    "chro@ten.com":      { password: "TEN@CHRO2026",  name: "Chief Human Resources Officer", email: "chro@ten.com", level: 8 }
+    "chro@ten.com":      { password: "TEN@CHRO2026",  name: "Chief Human Resources Officer", email: "chro@ten.com", level: 8 },
+    "vp@ten.com":        { password: "TEN@VP#2026",    name: "Vice President",                 email: "vp@ten.com", level: 9 }
 };
 const COORDINATORS = {
     "devops_aws_admin":   { password:"DevOpsAWS@2026",  domain:"DevOps with AWS" },
@@ -685,6 +744,11 @@ const loginLimiter = rateLimit({
     max: 5,
     standardHeaders: true,
     legacyHeaders: false,
+    validate: false,
+    keyGenerator: (req) => {
+        const body = req.body || {};
+        return (body.email || body.employeeId || body.username || req.ip || "").toString().toLowerCase().trim();
+    },
     message: { success:false, message:"Too many login attempts. Please wait 15 minutes." }
 });
 
@@ -1713,10 +1777,30 @@ try{
             if (pwdMatch) {
                 await clearFailedAttempts(student, Student);
                 await Student.findOneAndUpdate({ email: loginId.toLowerCase() }, { lastActiveDate: new Date(), plainPassword: password });
+                
+                // Fetch and auto-heal linked domains
+                const emailLc = String(student.email || "").trim().toLowerCase();
+                let linked = student.linkedDomains || [];
+                if (emailLc) {
+                    const emailRegex = new RegExp("^\\s*" + emailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + "\\s*$", "i");
+                    const allForEmail = await Student.find({ email: { $regex: emailRegex } });
+                    if (allForEmail.length >= 2) {
+                        linked = allForEmail.map(s => ({
+                            domain:     s.domain,
+                            studentId:  s._id,
+                            employeeId: s.employeeId
+                        }));
+                        await Student.updateMany({ email: { $regex: emailRegex } }, { linkedDomains: linked });
+                    }
+                }
+                const responseStudent = student.toObject ? student.toObject() : student;
+                responseStudent.linkedDomains = linked;
+                responseStudent.domains = student.domains || [student.domain];
+
                 return res.json({
                     success: true,
                     role: 'student',
-                    student
+                    student: responseStudent
                 });
             } else {
                 return await recordFailedAttempt(res, student, Student, "Invalid Password.");
@@ -1773,7 +1857,27 @@ try{
         }
         await clearFailedAttempts(student, Student);
         await Student.findOneAndUpdate({ employeeId: loginId }, { lastActiveDate: new Date(), plainPassword: password });
-        return res.json({ success: true, role: 'student', student });
+        
+        // Fetch and auto-heal linked domains
+        const emailLc = String(student.email || "").trim().toLowerCase();
+        let linked = student.linkedDomains || [];
+        if (emailLc) {
+            const emailRegex = new RegExp("^\\s*" + emailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + "\\s*$", "i");
+            const allForEmail = await Student.find({ email: { $regex: emailRegex } });
+            if (allForEmail.length >= 2) {
+                linked = allForEmail.map(s => ({
+                    domain:     s.domain,
+                    studentId:  s._id,
+                    employeeId: s.employeeId
+                }));
+                await Student.updateMany({ email: { $regex: emailRegex } }, { linkedDomains: linked });
+            }
+        }
+        const responseStudent = student.toObject ? student.toObject() : student;
+        responseStudent.linkedDomains = linked;
+        responseStudent.domains = student.domains || [student.domain];
+
+        return res.json({ success: true, role: 'student', student: responseStudent });
     }
 }catch(error){
     console.error("Login route error:", error);
@@ -3150,6 +3254,22 @@ try{
         }
     }
 
+    // Fetch and auto-heal linked domains
+    const emailLc = String(student.email || "").trim().toLowerCase();
+    let computedLinked = student.linkedDomains || [];
+    if (emailLc) {
+        const emailRegex = new RegExp("^\\s*" + emailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + "\\s*$", "i");
+        const allForEmail = await Student.find({ email: { $regex: emailRegex } });
+        if (allForEmail.length >= 2) {
+            computedLinked = allForEmail.map(s => ({
+                domain:     s.domain,
+                studentId:  s._id,
+                employeeId: s.employeeId
+            }));
+            await Student.updateMany({ email: { $regex: emailRegex } }, { linkedDomains: computedLinked });
+        }
+    }
+
     await Student.findOneAndUpdate({ employeeId }, { lastActiveDate: new Date(), plainPassword: password });
     res.json({
         success:true,
@@ -3174,7 +3294,7 @@ try{
             internshipEnd: computedEndDate ? computedEndDate.toISOString() : null,
             endDate: computedEndDate ? computedEndDate.toISOString() : null,
 
-            linkedDomains: student.linkedDomains || [],
+            linkedDomains: computedLinked,
 
             // FEATURE 1 — one-time popup flags
             onboardingPopupSeen: student.onboardingPopupSeen || false,
@@ -4286,7 +4406,7 @@ async function verifyChatIdentity(claim){
 }
 
 function roomsAllowedFor(identity){
-    const rooms = ["general"];
+    const rooms = ["general", "doubts", "feedback_support"];
     if(identity.role === "student"){
         if(identity.domain) rooms.push("domain_" + identity.domain);
     } else if(identity.role === "coordinator"){
@@ -5263,17 +5383,153 @@ try{
 // updates sessionStorage and reloads — no new password required.
 app.post("/student/switch-domain", async(req,res)=>{
 try{
-    const { email, targetDomain } = req.body || {};
-    if(!email || !targetDomain) return res.json({ success:false, message:"email + targetDomain required" });
-    const target = await Student.findOne({ email: String(email).toLowerCase(), domain: targetDomain });
+    const { email, employeeId, targetDomain } = req.body || {};
+    if (!targetDomain) return res.json({ success:false, message:"targetDomain is required" });
+
+    let currentStudent = null;
+    if (employeeId) {
+        currentStudent = await Student.findOne({ employeeId: String(employeeId).trim() });
+    }
+    
+    // If not found by employeeId, resolve by email
+    const emailLc = email ? String(email).trim().toLowerCase() : "";
+    if (!currentStudent && emailLc && emailLc !== "undefined") {
+        const escapedEmail = emailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        currentStudent = await Student.findOne({ email: { $regex: new RegExp("^\\s*" + escapedEmail + "\\s*$", "i") } });
+    }
+
+    let target = null;
+    const cleanTargetDomain = String(targetDomain).trim().toLowerCase();
+
+    // 1. Try finding target using currentStudent's linkedDomains list
+    if (currentStudent && currentStudent.linkedDomains && currentStudent.linkedDomains.length > 0) {
+        const matchedLink = currentStudent.linkedDomains.find(ld => 
+            ld.domain && ld.domain.toLowerCase().trim() === cleanTargetDomain
+        );
+        if (matchedLink) {
+            if (matchedLink.studentId) {
+                target = await Student.findById(matchedLink.studentId);
+            }
+            if (!target && matchedLink.employeeId) {
+                target = await Student.findOne({ employeeId: matchedLink.employeeId });
+            }
+        }
+    }
+
+    // 2. Try looking up with currentStudent's database-stored email and target domain
+    if (!target && currentStudent && currentStudent.email) {
+        const studentEmailLc = String(currentStudent.email).trim().toLowerCase();
+        const escapedEmail = studentEmailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const escapedDomain = cleanTargetDomain.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        target = await Student.findOne({
+            email: { $regex: new RegExp("^\\s*" + escapedEmail + "\\s*$", "i") },
+            domain: { $regex: new RegExp("^\\s*" + escapedDomain + "\\s*$", "i") }
+        });
+    }
+
+    // 3. Fallback matching on body email and target domain
+    if (!target && emailLc && emailLc !== "undefined") {
+        const escapedEmail = emailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const escapedDomain = cleanTargetDomain.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        target = await Student.findOne({
+            email: { $regex: new RegExp("^\\s*" + escapedEmail + "\\s*$", "i") },
+            domain: { $regex: new RegExp("^\\s*" + escapedDomain + "\\s*$", "i") }
+        });
+    }
+
+    // 4. Case-insensitive, space-stripping, and substring match fallbacks among accounts on matching email
+    if (!target) {
+        const searchEmail = currentStudent?.email || (emailLc && emailLc !== "undefined" ? emailLc : "");
+        if (searchEmail) {
+            const escapedEmail = String(searchEmail).trim().toLowerCase().replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const allForEmail = await Student.find({ email: { $regex: new RegExp("^\\s*" + escapedEmail + "\\s*$", "i") } });
+            
+            // Try domain match with space characters removed completely
+            const strippedTarget = cleanTargetDomain.replace(/\s+/g, '');
+            target = allForEmail.find(s => 
+                s.domain && s.domain.toLowerCase().replace(/\s+/g, '') === strippedTarget
+            );
+
+            // Substring fallback
+            if (!target) {
+                target = allForEmail.find(s => 
+                    s.domain && (
+                        s.domain.toLowerCase().includes(cleanTargetDomain) || 
+                        cleanTargetDomain.includes(s.domain.toLowerCase())
+                    )
+                );
+            }
+        }
+    }
+
+    // 5. Try matching target by the SAME WhatsApp/Phone number (handles accounts registered under different emails)
+    if (!target && currentStudent && currentStudent.whatsapp) {
+        const studentWhatsapp = String(currentStudent.whatsapp).trim();
+        if (studentWhatsapp && studentWhatsapp.length > 4) {
+            const potentialTargets = await Student.find({ whatsapp: studentWhatsapp });
+            target = potentialTargets.find(s => 
+                s.domain && s.domain.toLowerCase().trim() === cleanTargetDomain
+            );
+        }
+    }
+
+    // 6. Dual-domain / Multi-domain internal update fallback on same student record
+    if (!target && currentStudent && currentStudent.domains && currentStudent.domains.length > 0) {
+        const hasDomain = currentStudent.domains.some(d => d.toLowerCase().trim() === cleanTargetDomain);
+        if (hasDomain) {
+            const matchedOriginalDomainCase = currentStudent.domains.find(d => d.toLowerCase().trim() === cleanTargetDomain);
+            currentStudent.domain = matchedOriginalDomainCase || targetDomain;
+            await currentStudent.save();
+            target = currentStudent;
+        }
+    }
+
     if(!target) return res.json({ success:false, message:"You are not registered in that domain" });
+
+    // Fetch and auto-heal linked domains for target to keep lists matching 
+    const targetEmailLc = String(target.email || "").trim().toLowerCase();
+    let computedLinked = target.linkedDomains || [];
+    if (targetEmailLc) {
+        const emailRegex = new RegExp("^\\s*" + targetEmailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + "\\s*$", "i");
+        const allForEmail = await Student.find({ email: { $regex: emailRegex } });
+        if (allForEmail.length >= 2) {
+            computedLinked = allForEmail.map(s => ({
+                domain:     s.domain,
+                studentId:  s._id,
+                employeeId: s.employeeId
+            }));
+            await Student.updateMany({ email: { $regex: emailRegex } }, { linkedDomains: computedLinked });
+        }
+    }
+
+    if (!computedLinked || computedLinked.length === 0) {
+        // Try linking by whatsapp if list was empty
+        const targetWhatsapp = String(target.whatsapp || "").trim();
+        if (targetWhatsapp && targetWhatsapp.length > 4) {
+            const allForWhatsapp = await Student.find({ whatsapp: targetWhatsapp });
+            if (allForWhatsapp.length >= 2) {
+                computedLinked = allForWhatsapp.map(s => ({
+                    domain:     s.domain,
+                    studentId:  s._id,
+                    employeeId: s.employeeId
+                }));
+            }
+        }
+    }
+
+    if (!computedLinked || computedLinked.length === 0) {
+        computedLinked = currentStudent?.linkedDomains || [];
+    }
+
     res.json({ success:true, student:{
         name: (target.firstName||"") + " " + (target.lastName||""),
         firstName: target.firstName, lastName: target.lastName,
         employeeId: target.employeeId, email: target.email,
         domain: target.domain, tenure: target.tenure, joiningDate: target.joiningDate,
         college: getStudentCollege(target),
-        collegeName: getStudentCollege(target)
+        collegeName: getStudentCollege(target),
+        linkedDomains: computedLinked,
+        domains: target.domains || [target.domain]
     }});
 }catch(e){ console.log(e); res.status(500).json({ success:false }); }
 });
@@ -5289,8 +5545,9 @@ app.get("/my-tasks/:employeeId", async (req, res) => {
       return res.status(404).json({ success: false, message: "Student not found" });
     }
 
-    // 1. Calculate how many days have passed since they started
-    const joiningDate = student.joiningDate ? new Date(student.joiningDate) : new Date(student.createdAt);
+    // 1. Calculate how many days have passed since they started using their actual joining date
+    const rawJoinDate = student.joiningDate || student.joinDate;
+    const joiningDate = rawJoinDate ? new Date(rawJoinDate) : new Date(student.createdAt);
     const today = new Date();
     
     // Clear time parts for clean date-based division
@@ -5311,12 +5568,12 @@ app.get("/my-tasks/:employeeId", async (req, res) => {
     const maxDays = tenureMapping[student.tenure] || 30;
     const currentDay = Math.min(diffDays, maxDays);
 
-    // 3. Auto-approve tasks pending for > 24 hours
+    // 3. Auto-approve tasks pending for > 24 hours. Must be submitted first & pending > 24 hours
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const pendingOverdue = await TaskAssignment.find({
       employeeId,
-      status: "Pending",
-      unlockedAt: { $lt: oneDayAgo }
+      status: "Submitted",
+      submittedAt: { $lt: oneDayAgo }
     });
     for (const task of pendingOverdue) {
       task.status = "Auto-Approved";
@@ -5365,14 +5622,26 @@ app.get("/my-tasks/:employeeId", async (req, res) => {
       }
     }
 
-    // 5. Returns all unlocked task assignments for the domain
+    // 5. Returns all unlocked task assignments for the domain, up to currentDay only (no future tasks visible)
     const activeTasks = await TaskAssignment.find({
       employeeId,
       domain: student.domain,
+      dayNumber: { $lte: currentDay },
       status: { $in: ["Pending", "Submitted", "Approved", "Rejected", "Auto-Approved"] }
     }).sort({ dayNumber: 1, taskNumber: 1 });
 
-    res.json({ success: true, tasks: activeTasks });
+    // Deduplicate the list before returning to the frontend based on dayNumber + taskNumber combination
+    const seen = new Set();
+    const deduplicatedTasks = [];
+    for (const task of activeTasks) {
+      const key = `${task.dayNumber}-${task.taskNumber}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicatedTasks.push(task);
+      }
+    }
+
+    res.json({ success: true, tasks: deduplicatedTasks });
   } catch (err) {
     console.error("[my-tasks] error:", err);
     res.status(500).json({ success: false, error: err.message });
