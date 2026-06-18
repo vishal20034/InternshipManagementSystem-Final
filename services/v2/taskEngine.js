@@ -81,7 +81,17 @@ async function tryUnlockNextWeek(student, approvedTaskId) {
     const { domain, durationType, weekNumber: currentWeek } = approvedTaskDoc;
 
     // Check if user is on short duration (1week or 15days) which locks maximum week progression
-    const studentDuration = student.v2DurationType || tenureToDurationType(student.tenure);
+    const domainTasks = await DomainTask.find({ domain }).select("_id durationType").lean();
+    const taskIds = domainTasks.map(t => t._id);
+    const progressRecord = await StudentTaskProgress.findOne({ studentId: student._id, taskId: { $in: taskIds } }).lean();
+
+    let studentDuration = student.v2DurationType || tenureToDurationType(student.tenure);
+    if (progressRecord) {
+        const matchingTask = domainTasks.find(t => String(t._id) === String(progressRecord.taskId));
+        if (matchingTask) {
+            studentDuration = matchingTask.durationType;
+        }
+    }
     if (studentDuration === "1week") return { unlocked: 0 };
     if (studentDuration === "15days" && currentWeek >= 2) return { unlocked: 0 };
 
@@ -161,7 +171,17 @@ async function getStudentTasks(student) {
     if (domain === "Space Intern") domain = "Space Research";
     if (domain === "Artificial Intelligence" || domain === "AI") domain = "Data Science";
 
-    const durationType = student.v2DurationType || tenureToDurationType(student.tenure);
+    const domainTasks = await DomainTask.find({ domain }).select("_id durationType").lean();
+    const taskIds = domainTasks.map(t => t._id);
+    const progressRecord = await StudentTaskProgress.findOne({ studentId: student._id, taskId: { $in: taskIds } }).lean();
+
+    let durationType = student.v2DurationType || tenureToDurationType(student.tenure);
+    if (progressRecord) {
+        const matchingTask = domainTasks.find(t => String(t._id) === String(progressRecord.taskId));
+        if (matchingTask) {
+            durationType = matchingTask.durationType;
+        }
+    }
 
     if (!domain || !durationType) return { weeks: [], domain, durationType };
 
@@ -180,7 +200,7 @@ async function getStudentTasks(student) {
 
     const [allTasks, progressList] = await Promise.all([
         DomainTask.find(queryObj).sort({ weekNumber: 1, _id: 1 }).lean(),
-        StudentTaskProgress.find({ studentId: student._id }).lean()
+        StudentTaskProgress.find({ studentId: student._id, taskId: { $in: taskIds } }).lean()
     ]);
 
     const progressMap = {};

@@ -104,7 +104,11 @@
                 try {
                     const r = await fetch("/student/switch-domain", {
                         method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ email: student.email, targetDomain: target })
+                        body: JSON.stringify({ 
+                            email: student.email, 
+                            employeeId: student.employeeId, 
+                            targetDomain: target 
+                        })
                     });
                     const d = await r.json();
                     if (d.success) {

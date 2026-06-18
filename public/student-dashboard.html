@@ -1569,7 +1569,44 @@ button:active { transform: translateY(0); }
   <!-- ══════ SECTION CARD GRID ══════ -->
   <div id="sectionCardGrid">
     <h1 class="section-cards-heading">Welcome, <span id="welcomeNameInline">Student</span> 🚀</h1>
-    <p class="section-cards-sub">Select a section to get started</p>
+    <p class="section-cards-sub" style="margin-bottom: 12px;">Select a section to get started</p>
+    
+    <!-- Unified Front-page Domain Toggle — shown only if 2 domains -->
+    <div id="mainDomainToggleWrap"
+         style="display:none;align-items:center;gap:14px;margin-bottom:28px;flex-wrap:wrap;">
+      <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">Active Domain:</span>
+      <span id="mainDomain1Chip"
+            style="font-size:12px;font-weight:700;padding:6px 14px;
+                   border-radius:20px;background:rgba(59,130,246,0.18);
+                   border:1px solid rgba(59,130,246,0.4);color:#93c5fd;
+                   transition:all 0.25s;cursor:pointer;"
+            onclick="switchToTab(0)">
+      </span>
+
+      <div onclick="flipDomainToggle()"
+           id="mainSlidingDomainToggle"
+           title="Switch domain"
+           style="width:52px;height:28px;
+                  background:linear-gradient(90deg,#1e40af,#0891b2);
+                  border-radius:14px;cursor:pointer;position:relative;
+                  border:1px solid rgba(59,130,246,0.35);
+                  transition:background 0.35s;flex-shrink:0;">
+        <div id="mainDomainToggleKnob"
+             style="width:22px;height:22px;background:white;
+                    border-radius:50%;position:absolute;
+                    top:2px;left:2px;transition:left 0.3s;
+                    box-shadow:0 2px 6px rgba(0,0,0,0.35);">
+        </div>
+      </div>
+
+      <span id="mainDomain2Chip"
+            style="font-size:12px;font-weight:700;padding:6px 14px;
+                   border-radius:20px;background:rgba(255,255,255,0.06);
+                   border:1px solid rgba(255,255,255,0.1);color:#94a3b8;
+                   transition:all 0.25s;cursor:pointer;"
+            onclick="switchToTab(1)">
+      </span>
+    </div>
     <div class="section-card-grid">
       <div class="sec-card" onclick="openSectionModal('stu-view-overview')">
         <div class="sec-card-icon">📊</div>
@@ -1889,7 +1926,7 @@ button:active { transform: translateY(0); }
       </div>
       <div style="background:rgba(212,175,55,0.05);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
         <b style="color:#D4AF37;font-size:13px;">💬 Communication &amp; Support</b>
-        <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;">Do not spam working groups. For issues: <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">Support Group</a> &nbsp;|&nbsp; For Employee ID: <a href="https://chat.whatsapp.com/JqzLUMGRkVVIGSsd8Qafl8?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">Employee ID Group</a> &nbsp;|&nbsp; Email: <a href="mailto:hr@entrepreneurshipnetwork.net" style="color:#D4AF37;font-weight:600;">hr@entrepreneurshipnetwork.net</a></p>
+        <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;">Do not spam working groups. For issues: <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">Support Group</a> &nbsp;|&nbsp; For Employee ID: <a href="https://chat.whatsapp.com/JqzLUMGRkVVIGSsd8Qafl8?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">Employee ID Group</a> &nbsp;|&nbsp; Email: <a href="mailto:hr@entrepreneurshipnetwork.net" style="color:#D4AF37;font-weight:600;">hr@entrepreneurshipnetwork.net</a> &nbsp;|&nbsp; <span id="dynamicDomainWhatsAppBlock" style="display:none;">Domain Working Group: <a id="dynamicDomainWhatsAppLink" href="#" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">Join Now</a></span></p>
       </div>
       <div style="background:rgba(212,175,55,0.08);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
         <b style="color:#D4AF37;font-size:13px;">🏆 Best Performers — Paid Projects &amp; Positions</b>
@@ -2253,39 +2290,80 @@ if(!student){
         if (typeof showWelcomeModalIfNeeded === 'function') {
           showWelcomeModalIfNeeded();
         }
+        if (window.TenExtras2) {
+          TenExtras2.injectStudent({ student: student, mountId: "ten-extras2-mount" });
+        }
       })
       .catch(function(){});
   } catch(e) {}
 })();
 
-let allDomains = (student.domains && student.domains.length > 0)
-  ? student.domains
-  : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
-      ? student.linkedDomains.map(function(ld){ return ld.domain; })
-      : [student.domain].filter(Boolean));
+let allDomains = [];
+var domainsSource = [];
+if (student) {
+  if (Array.isArray(student.domains) && student.domains.length > 0) {
+    domainsSource = student.domains;
+  } else if (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0) {
+    domainsSource = student.linkedDomains.map(function(ld) {
+      return (ld && typeof ld === 'object' && ld.domain) ? ld.domain : ld;
+    });
+  } else if (student.domain) {
+    domainsSource = [student.domain];
+  }
+}
+for (var i = 0; i < domainsSource.length; i++) {
+  var dVal = domainsSource[i];
+  if (dVal && allDomains.indexOf(dVal) === -1) {
+    allDomains.push(dVal);
+  }
+}
+
 let activeDomainIdx = allDomains.indexOf(student.domain);
 if (activeDomainIdx === -1) activeDomainIdx = 0;
 let domain = allDomains[activeDomainIdx];
 const employeeId = student.employeeId;
 
 function recalculateDomains() {
-  allDomains = (student.domains && student.domains.length > 0)
-    ? student.domains
-    : (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0
-        ? student.linkedDomains.map(function(ld){ return ld.domain; })
-        : [student.domain].filter(Boolean));
-  activeDomainIdx = allDomains.indexOf(student.domain);
+  allDomains = [];
+  var dSrc = [];
+  if (student) {
+    if (Array.isArray(student.domains) && student.domains.length > 0) {
+      dSrc = student.domains;
+    } else if (Array.isArray(student.linkedDomains) && student.linkedDomains.length > 0) {
+      dSrc = student.linkedDomains.map(function(ld) {
+        return (ld && typeof ld === 'object' && ld.domain) ? ld.domain : ld;
+      });
+    } else if (student.domain) {
+      dSrc = [student.domain];
+    }
+  }
+  for (var i = 0; i < dSrc.length; i++) {
+    var dVal = typeof getMatchedDomain === 'function' ? getMatchedDomain(dSrc[i]) : dSrc[i];
+    if (dVal && allDomains.indexOf(dVal) === -1) {
+      allDomains.push(dVal);
+    }
+  }
+  var activeDom = typeof getMatchedDomain === 'function' ? getMatchedDomain(domain || student.domain) : (domain || student.domain);
+  activeDomainIdx = allDomains.indexOf(activeDom);
   if (activeDomainIdx === -1) activeDomainIdx = 0;
   domain = allDomains[activeDomainIdx];
 }
 
 // ── DOMAIN TOGGLE SETUP ─────────────────────────────────────────
 function setupDomainToggle() {
-  if (allDomains.length < 2) return;  // only show if 2 domains
-
   const wrap  = document.getElementById("domainToggleWrap");
+  const mainWrap = document.getElementById("mainDomainToggleWrap");
+  
+  if (allDomains.length < 2) {
+    if (wrap) wrap.style.display = "none";
+    if (mainWrap) mainWrap.style.display = "none";
+    return;  // only show if 2 domains
+  }
+
   const chip1 = document.getElementById("domain1Chip");
   const chip2 = document.getElementById("domain2Chip");
+  const mainChip1 = document.getElementById("mainDomain1Chip");
+  const mainChip2 = document.getElementById("mainDomain2Chip");
 
   if (chip1 && chip2 && wrap) {
     chip1.textContent = allDomains[0];
@@ -2293,8 +2371,17 @@ function setupDomainToggle() {
       chip2.textContent = allDomains[1];
     }
     wrap.style.display = "flex";
-    updateToggleVisuals();
   }
+
+  if (mainChip1 && mainChip2 && mainWrap) {
+    mainChip1.textContent = allDomains[0];
+    if (allDomains.length > 1) {
+      mainChip2.textContent = allDomains[1];
+    }
+    mainWrap.style.display = "flex";
+  }
+
+  updateToggleVisuals();
 }
 
 function updateToggleVisuals() {
@@ -2302,94 +2389,142 @@ function updateToggleVisuals() {
   const chip2 = document.getElementById("domain2Chip");
   const knob  = document.getElementById("domainToggleKnob");
 
-  if (!chip1 || !chip2 || !knob) return;
+  const mainChip1 = document.getElementById("mainDomain1Chip");
+  const mainChip2 = document.getElementById("mainDomain2Chip");
+  const mainKnob  = document.getElementById("mainDomainToggleKnob");
 
-  if (activeDomainIdx === 0) {
-    knob.style.left = "2px";
-    chip1.style.background = "rgba(59,130,246,0.18)";
-    chip1.style.borderColor = "rgba(59,130,246,0.4)";
-    chip1.style.color       = "#93c5fd";
-    chip2.style.background  = "rgba(255,255,255,0.06)";
-    chip2.style.borderColor = "rgba(255,255,255,0.1)";
-    chip2.style.color       = "#94a3b8";
-  } else {
-    knob.style.left = "28px";
-    chip2.style.background  = "rgba(59,130,246,0.18)";
-    chip2.style.borderColor = "rgba(59,130,246,0.4)";
-    chip2.style.color       = "#93c5fd";
-    chip1.style.background  = "rgba(255,255,255,0.06)";
-    chip1.style.borderColor = "rgba(255,255,255,0.1)";
-    chip1.style.color       = "#94a3b8";
+  function styleSwitch(c1, c2, kn, idx) {
+    if (!c1 || !c2 || !kn) return;
+    if (idx === 0) {
+      kn.style.left = "2px";
+      c1.style.background = "rgba(59,130,246,0.18)";
+      c1.style.borderColor = "rgba(59,130,246,0.4)";
+      c1.style.color       = "#93c5fd";
+      c2.style.background  = "rgba(255,255,255,0.06)";
+      c2.style.borderColor = "rgba(255,255,255,0.1)";
+      c2.style.color       = "#94a3b8";
+    } else {
+      kn.style.left = "28px";
+      c2.style.background  = "rgba(59,130,246,0.18)";
+      c2.style.borderColor = "rgba(59,130,246,0.4)";
+      c2.style.color       = "#93c5fd";
+      c1.style.background  = "rgba(255,255,255,0.06)";
+      c1.style.borderColor = "rgba(255,255,255,0.1)";
+      c1.style.color       = "#94a3b8";
+    }
   }
+
+  styleSwitch(chip1, chip2, knob, activeDomainIdx);
+  styleSwitch(mainChip1, mainChip2, mainKnob, activeDomainIdx);
 }
 
 function flipDomainToggle() {
   switchToTab(activeDomainIdx === 0 ? 1 : 0);
 }
 
-function switchToTab(idx) {
+function updateDomainUI() {
+  // Update domainText display
+  const domainTextEl = document.getElementById("domainText");
+  if (domainTextEl) {
+    domainTextEl.innerText = "Domain : " + domain;
+  }
+
+  // Get domain configuration
+  const dCfg = domainConfig[domain] || { icon: "🎓", color: "#3b82f6", short: domain };
+
+  // Apply domain colour to accent elements
+  document.documentElement.style.setProperty("--domain-color", dCfg.color);
+  document.documentElement.style.setProperty("--domain-color-bg", dCfg.color + "18");
+
+  // Set domain icon in hero card
+  const domainIconEl = document.getElementById("domainIcon");
+  if (domainIconEl) {
+    domainIconEl.innerText = dCfg.icon;
+  }
+
+  // Set profile info domain badge
+  const profileDomainEl = document.getElementById("profileDomain");
+  if (profileDomainEl) {
+    profileDomainEl.textContent = domain;
+  }
+  const pmDomainEl = document.getElementById("pmDomain");
+  if (pmDomainEl) {
+    pmDomainEl.textContent = domain;
+  }
+
+  // Update toggle visuals
+  updateToggleVisuals();
+}
+
+async function switchToTab(idx) {
   if (idx === activeDomainIdx) return;
   const target = allDomains[idx];
   if (!target) return;
-  
-  Swal.fire({
-    title: 'Switching Domain...',
-    html: 'Preparing your workspace for <b>' + target + '</b>',
-    background: '#0e1428',
-    color: '#F0EEE8',
-    allowOutsideClick: false,
-    didOpen: function() {
-      Swal.showLoading();
-    }
-  });
 
-  fetch("/student/switch-domain", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: student.email, targetDomain: target })
-  })
-  .then(res => res.json())
-  .then(d => {
+  try {
+    const r = await fetch("/student/switch-domain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        email: student.email, 
+        employeeId: student.employeeId, 
+        targetDomain: target 
+      })
+    });
+    const d = await r.json();
     if (d.success) {
-      const next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
+      // Retain existing linked fields to keep the switcher populated across transitions
+      const next = Object.assign({}, student, d.student, { 
+        linkedDomains: student.linkedDomains,
+        domains: student.domains
+      });
       localStorage.setItem("student", JSON.stringify(next));
       localStorage.setItem("employeeId", next.employeeId);
       sessionStorage.setItem("student", JSON.stringify(next));
-      
-      Swal.fire({
-         icon: 'success',
-         title: 'Workspace Loaded! 🎉',
-         text: 'Successfully switched to ' + target,
-         background: '#0e1428',
-         color: '#F0EEE8',
-         confirmButtonColor: '#D4AF37',
-         timer: 1500,
-         timerProgressBar: true,
-         showConfirmButton: false
-      }).then(function() {
-         window.location.reload();
+
+      activeDomainIdx = idx;
+      student = next;
+      domain = target;
+
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1500,
+        timerProgressBar: true,
+        background: '#0e1428',
+        color: '#F0EEE8'
       });
+      
+      Toast.fire({
+        icon: 'success',
+        title: 'Workspace Switched',
+        text: 'Switched to ' + target
+      });
+
+      // Simple, fast page reload to cleanly initialize the other domain's data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } else {
       Swal.fire({
-         icon: 'error',
-         title: 'Failed to switch domain',
-         text: d.message || "Could not switch domain.",
-         background: '#0e1428',
-         color: '#F0EEE8',
-         confirmButtonColor: '#D4AF37'
+        icon: 'error',
+        title: 'Switch Failed',
+        text: d.message || 'Could not switch domain.',
+        background: '#101820',
+        color: '#ffffff'
       });
     }
-  })
-  .catch(err => {
+  } catch(err) {
+    console.error(err);
     Swal.fire({
-       icon: 'error',
-       title: 'Network Error',
-       text: "Could not connect to the server.",
-       background: '#0e1428',
-       color: '#F0EEE8',
-       confirmButtonColor: '#D4AF37'
+      icon: 'error',
+      title: 'Error',
+      text: 'Communication with server failed.',
+      background: '#101820',
+      color: '#ffffff'
     });
-  });
+  }
 }
 
 // ── Domain visual config (icon + accent colour) for professional domain branding ──
@@ -2572,6 +2707,25 @@ function renderCoordinatorTasks(fileUrl="", fileName=""){
 
   // Show file download card
   if(hasFile){
+    const fileTaskTitle = "Coordinator Task File: " + (fileName || "Coordinator Task File");
+    const submission = (window._studentSubmissions || []).find(sub => sub.task && sub.task.trim().toLowerCase() === fileTaskTitle.trim().toLowerCase());
+    let btnHtml = "";
+    if (submission) {
+      btnHtml = `
+        <button class="primary-btn" disabled 
+                style="background:rgba(16,185,129,0.1) !important; color:#34d399 !important; border:1px solid rgba(16,185,129,0.25) !important; cursor:not-allowed; opacity:0.85;">
+          ✓ Submitted (${submission.status})
+        </button>
+      `;
+    } else {
+      btnHtml = `
+        <button class="primary-btn" onclick="openCoordinatorFileSubmission('${(fileName || "Coordinator Task File").replace(/'/g, "\\'")}')"
+                style="background:transparent;border:1px solid #00c853;color:#00c853;">
+          Submit Task →
+        </button>
+      `;
+    }
+
     html += `
     <div class="task-card" style="border-left:3px solid #00c853;margin-bottom:12px;">
       <div class="task-card-header">
@@ -2584,28 +2738,42 @@ function renderCoordinatorTasks(fileUrl="", fileName=""){
            style="display:inline-block;text-decoration:none;padding:10px 20px;">
           ⬇ Download File
         </a>
-        <button class="primary-btn" onclick="openCoordinatorFileSubmission('${(fileName || "Coordinator Task File").replace(/'/g, "\\'")}')"
-                style="background:transparent;border:1px solid #00c853;color:#00c853;">
-          Submit Task →
-        </button>
+        ${btnHtml}
       </div>
     </div>`;
   }
 
   // Show text tasks
   if(hasTasks){
-    html += coordTasks.map((task, index) => `
-    <div class="task-card" style="border-left:3px solid #f59e0b;margin-bottom:12px;">
-      <div class="task-card-header">
-        <span class="task-number" style="background:#f59e0b20;color:#f59e0b;">TASK ${index+1}</span>
-      </div>
-      <h3>${task}</h3>
-      <div style="margin-top:14px;">
-        <button class="primary-btn" onclick="openCoordinatorTaskSubmission(${index})">
-          Submit Task →
-        </button>
-      </div>
-    </div>`).join("");
+    html += coordTasks.map((task, index) => {
+      const textTaskTitle = "Coordinator Task " + (index + 1) + ": " + task;
+      const submission = (window._studentSubmissions || []).find(sub => sub.task && sub.task.trim().toLowerCase() === textTaskTitle.trim().toLowerCase());
+      let btnHtml = "";
+      if (submission) {
+        btnHtml = `
+          <button class="primary-btn" disabled 
+                  style="background:rgba(16,185,129,0.1) !important; color:#34d399 !important; border:1px solid rgba(16,185,129,0.25) !important; cursor:not-allowed; opacity:0.85;">
+            ✓ Submitted (${submission.status})
+          </button>
+        `;
+      } else {
+        btnHtml = `
+          <button class="primary-btn" onclick="openCoordinatorTaskSubmission(${index})">
+            Submit Task →
+          </button>
+        `;
+      }
+      return `
+      <div class="task-card" style="border-left:3px solid #f59e0b;margin-bottom:12px;">
+        <div class="task-card-header">
+          <span class="task-number" style="background:#f59e0b20;color:#f59e0b;">TASK ${index+1}</span>
+        </div>
+        <h3>${task}</h3>
+        <div style="margin-top:14px;">
+          ${btnHtml}
+        </div>
+      </div>`;
+    }).join("");
   }
 
   container.innerHTML = html;
@@ -2646,7 +2814,14 @@ async function loadAndRenderTasks() {
     const data = await res.json();
 
     if (data.success && data.tasks && data.tasks.length > 0) {
-      renderTaskCards(data.tasks);
+      const filteredTasks = data.tasks.filter(function(t) {
+        return t.domain && t.domain.toLowerCase() === domain.toLowerCase();
+      });
+      if (filteredTasks.length > 0) {
+        renderTaskCards(filteredTasks);
+      } else {
+        renderHardcodedTasks();
+      }
     } else {
       // Fallback to hardcoded tasks if backend returns nothing
       renderHardcodedTasks();
@@ -2734,15 +2909,31 @@ function renderHardcodedTasks() {
     return;
   }
 
-  container.innerHTML = tasks.map((task, index) => `
-    <div class="task-card">
-      <div class="task-card-header">
-        <span class="task-number">Task ${index + 1}</span>
-      </div>
-      <h3>${task}</h3>
-      <p>Complete this task and submit your work with a GitHub link, screenshot, and PDF documentation.</p>
-      <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task →</button>
-    </div>`).join("");
+  container.innerHTML = tasks.map((task, index) => {
+    const submission = (window._studentSubmissions || []).find(sub => sub.task && sub.task.trim().toLowerCase() === task.trim().toLowerCase());
+    let btnHtml = "";
+    if (submission) {
+      btnHtml = `
+        <button class="primary-btn" disabled 
+                style="background:rgba(16,185,129,0.1) !important; color:#34d399 !important; border:1px solid rgba(16,185,129,0.25) !important; cursor:not-allowed; opacity:0.85;">
+          ✓ Submitted (${submission.status})
+        </button>
+      `;
+    } else {
+      btnHtml = `
+        <button class="primary-btn" onclick="openSubmissionModal(${index})">Submit Task →</button>
+      `;
+    }
+    return `
+      <div class="task-card">
+        <div class="task-card-header">
+          <span class="task-number">Task ${index + 1}</span>
+        </div>
+        <h3>${task}</h3>
+        <p>Complete this task and submit your work with a GitHub link, screenshot, and PDF documentation.</p>
+        ${btnHtml}
+      </div>`;
+  }).join("");
 }
 
 function closeSubmissionModal(){
@@ -4276,188 +4467,18 @@ function updateAttRing(pct) {
 }
 
 function setupDomainSwitcher() {
-  var linked = Array.isArray(student.linkedDomains) ? student.linkedDomains : [];
-  if (linked.length < 2) return;
-
-  // Render Fast Header Toggle Buttons
+  // Hide gold buttons in topbar
   var btn1 = document.getElementById("domainToggleBtn");
   var btn2 = document.getElementById("domainToggleBtn2");
-
-  var currentIndex = linked.findIndex(function(ld) {
-    return ld.domain === student.domain;
-  });
-  var nextIndex = (currentIndex + 1) % linked.length;
-  var nextDomain = linked[nextIndex].domain;
-
-  // Format short display names (e.g. Web Development -> Web Dev)
-  var shortName = nextDomain;
-  if (shortName.toLowerCase().indexOf("development") !== -1) {
-    shortName = shortName.replace(/development/gi, "Dev");
-  }
-  if (shortName.length > 15) {
-    shortName = shortName.substring(0, 12) + "...";
-  }
-
-  if (btn1) {
-    btn1.style.display = "flex";
-    btn1.innerHTML = '🔄<span class="domain-btn-text" style="margin-left:5px;">Switch: ' + shortName + '</span>';
-    btn1.setAttribute("title", "Switch workspace to " + nextDomain);
-  }
-  if (btn2) {
-    btn2.style.display = "flex";
-    btn2.innerHTML = '🔄<span class="domain-btn-text" style="margin-left:5px;">Switch: ' + shortName + '</span>';
-    btn2.setAttribute("title", "Switch workspace to " + nextDomain);
-  }
+  if (btn1) btn1.style.display = "none";
+  if (btn2) btn2.style.display = "none";
 
   var wrapper = document.getElementById("customDomainSwitcher");
-  if (!wrapper) return;
-
-  wrapper.style.display = "block";
-  
-  var selectHtml = '<select id="domainSelectDropdown" style="background:#0c1326;color:#D4AF37;border:1px solid rgba(212,175,55,0.6);border-radius:12px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;outline:none;box-shadow:0 0 8px rgba(212,175,55,0.1);transition:all 0.3s;max-width:180px;">';
-  
-  linked.forEach(function(ld) {
-    var isSelected = (ld.domain === student.domain);
-    selectHtml += '<option value="' + ld.domain + '" ' + (isSelected ? 'selected' : '') + '>Switch to: ' + ld.domain + '</option>';
-  });
-  
-  selectHtml += '</select>';
-  wrapper.innerHTML = selectHtml;
-
-  var selectEl = document.getElementById("domainSelectDropdown");
-  if (selectEl) {
-    selectEl.addEventListener("change", async function(e) {
-      var target = e.target.value;
-      if (target === student.domain) return;
-      
-      Swal.fire({
-        title: 'Switching Domain...',
-        html: 'Preparing your workspace for <b>' + target + '</b>',
-        background: '#0e1428',
-        color: '#F0EEE8',
-        allowOutsideClick: false,
-        didOpen: function() {
-          Swal.showLoading();
-        }
-      });
-
-      try {
-        var res = await fetch("/student/switch-domain", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: student.email, targetDomain: target })
-        });
-        var d = await res.json();
-        if (d.success) {
-          var next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
-          localStorage.setItem("student", JSON.stringify(next));
-          localStorage.setItem("employeeId", next.employeeId);
-          sessionStorage.setItem("student", JSON.stringify(next));
-          
-          Swal.fire({
-            icon: 'success',
-            title: 'Workspace Loaded! 🎉',
-            text: 'Successfully switched to ' + target,
-            background: '#0e1428',
-            color: '#F0EEE8',
-            confirmButtonColor: '#D4AF37',
-            timer: 1500,
-            timerProgressBar: true,
-            showConfirmButton: false
-          }).then(function() {
-            window.location.reload();
-          });
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Failed to switch domain',
-            text: d.message || "Could not switch domain.",
-            background: '#0e1428',
-            color: '#F0EEE8',
-            confirmButtonColor: '#D4AF37'
-          });
-        }
-      } catch (err) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Network Error',
-          text: "Could not connect to the server.",
-          background: '#0e1428',
-          color: '#F0EEE8',
-          confirmButtonColor: '#D4AF37'
-        });
-      }
-    });
-  }
+  if (wrapper) wrapper.style.display = "none";
 }
 
 async function toggleNextDomain() {
-  var linked = Array.isArray(student.linkedDomains) ? student.linkedDomains : [];
-  if (linked.length < 2) return;
-
-  var currentIndex = linked.findIndex(function(ld) {
-    return ld.domain === student.domain;
-  });
-  var nextIndex = (currentIndex + 1) % linked.length;
-  var target = linked[nextIndex].domain;
-
-  Swal.fire({
-    title: 'Switching Domain...',
-    html: 'Loading your workspace for <b>' + target + '</b>',
-    background: '#0e1428',
-    color: '#F0EEE8',
-    allowOutsideClick: false,
-    didOpen: function() {
-      Swal.showLoading();
-    }
-  });
-
-  try {
-    var res = await fetch("/student/switch-domain", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: student.email, targetDomain: target })
-    });
-    var d = await res.json();
-    if (d.success) {
-      var next = Object.assign({}, student, d.student, { linkedDomains: student.linkedDomains });
-      localStorage.setItem("student", JSON.stringify(next));
-      localStorage.setItem("employeeId", next.employeeId);
-      sessionStorage.setItem("student", JSON.stringify(next));
-      
-      Swal.fire({
-        icon: 'success',
-        title: 'Workspace Loaded! 🎉',
-        text: 'Successfully switched to ' + target,
-        background: '#0e1428',
-        color: '#F0EEE8',
-        confirmButtonColor: '#D4AF37',
-        timer: 1500,
-        timerProgressBar: true,
-        showConfirmButton: false
-      }).then(function() {
-        window.location.reload();
-      });
-    } else {
-      Swal.fire({
-        icon: 'error',
-        title: 'Failed to switch domain',
-        text: d.message || "Could not switch domain.",
-        background: '#0e1428',
-        color: '#F0EEE8',
-        confirmButtonColor: '#D4AF37'
-      });
-    }
-  } catch (err) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Network Error',
-      text: "Could not connect to the server.",
-      background: '#0e1428',
-      color: '#F0EEE8',
-      confirmButtonColor: '#D4AF37'
-    });
-  }
+  // Hidden now
 }
 
 populateProfileCard();
@@ -4984,6 +5005,7 @@ function updateDashboardAfterOnboarding(stuData) {
 
   applyJoinerTypeUI(stuData.joinerType);
   updateGoogleLinksVisibility();
+  updateDomainWhatsAppLinks(stuData);
 
   if (typeof loadAttendance === 'function') {
      loadAttendance();
@@ -5005,6 +5027,49 @@ function updateGoogleLinksVisibility() {
     if (formBox) {
        formBox.style.display = 'none';
     }
+  }
+}
+
+function updateDomainWhatsAppLinks(stu) {
+  if (!stu) {
+    try {
+      stu = JSON.parse(localStorage.getItem('student') || '{}');
+    } catch(e) { return; }
+  }
+  if (!stu || !stu.domain) return;
+
+  function getDomainWhatsAppLink(domain) {
+    const d = (domain || "").trim().toLowerCase();
+    if (d === "web development" || d.includes("web dev") || d.includes("frontend")) return "https://chat.whatsapp.com/web-dev-ten";
+    if (d === "mern stack" || d === "mern stack development" || d.includes("mern")) return "https://chat.whatsapp.com/mern-ten";
+    if (d === "python development" || d.includes("python")) return "https://chat.whatsapp.com/python-ten";
+    if (d === "data science" || d === "artificial intelligence" || d.includes("data science") || d.includes("artificial intelligence") || d === "ai" || d.includes("ai dev")) return "https://chat.whatsapp.com/data-ai-ten";
+    if (d === "cyber security" || d.includes("cyber") || d.includes("security")) return "https://chat.whatsapp.com/cyber-ten";
+    if (d === "business development" || d === "business analyst" || d.includes("business") || d.includes("analyst")) return "https://chat.whatsapp.com/biz-bd-ten";
+    if (d === "human resources" || d === "hr management" || d === "hr" || d.includes("human resource") || d.includes("hr ")) return "https://chat.whatsapp.com/hr-ten";
+    if (d === "space intern" || d === "space research" || d.includes("space")) return "https://chat.whatsapp.com/space-ten";
+    if (d === "digital marketing" || d.includes("marketing") || d.includes("digital")) return "https://chat.whatsapp.com/digital-mkt-ten";
+    return "https://chat.whatsapp.com/ten-internship-general";
+  }
+
+  const link = getDomainWhatsAppLink(stu.domain);
+
+  // 1. Update the Support link bar on the dashboard
+  const dynamicBlock = document.getElementById('dynamicDomainWhatsAppBlock');
+  const dynamicLink = document.getElementById('dynamicDomainWhatsAppLink');
+  if (dynamicBlock && dynamicLink) {
+    dynamicLink.href = link;
+    dynamicLink.textContent = "Join " + stu.domain + " Group";
+    dynamicBlock.style.display = 'inline';
+  }
+
+  // 2. Update the onboarding wizard links if present
+  const wizardBlock = document.getElementById('wizardDomainWhatsAppBlock');
+  const wizardLink = document.getElementById('wizardDomainWhatsAppLink');
+  if (wizardBlock && wizardLink) {
+    wizardLink.href = link;
+    wizardLink.textContent = "Join " + stu.domain + " Group";
+    wizardBlock.style.display = 'list-item';
   }
 }
 </script>
@@ -5048,6 +5113,7 @@ function updateGoogleLinksVisibility() {
           <li>For any issues: <a href="https://chat.whatsapp.com/G96gO4moBmADuYhNVLkn1u?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">Open Support Group</a></li>
           <li><b style="color:#e05c5c;">Any misconduct or spamming may lead to termination.</b></li>
           <li>For Employee ID issues: <a href="https://chat.whatsapp.com/JqzLUMGRkVVIGSsd8Qafl8?mode=gi_t" target="_blank" rel="noopener" style="color:#D4AF37;">Employee ID Support Group</a></li>
+          <li id="wizardDomainWhatsAppBlock" style="display:none;"><b style="color:#D4AF37;">Your Domain Working Group:</b> <a id="wizardDomainWhatsAppLink" href="#" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:700;">Join Now</a></li>
         </ul>
       </div>
       <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(212,175,55,0.18);border-radius:12px;padding:20px 24px;">
@@ -5185,6 +5251,9 @@ function _doLogout() {
 }
 // ===== END AUTO-LOGIN / LOGOUT =====
 document.addEventListener("DOMContentLoaded", function() {
+  try {
+    updateDomainWhatsAppLinks();
+  } catch(e) {}
   setTimeout(function() {
     if (typeof showWelcomeModalIfNeeded === "function") {
       showWelcomeModalIfNeeded();

@@ -145,7 +145,9 @@ router.get("/student/me", requireStudent, async (req, res) => {
         const emailLc = String(me.email || "").trim().toLowerCase();
         let currentLinked = me.linkedDomains || [];
         if (emailLc) {
-            const allForEmail = await Student.find({ email: emailLc });
+            const escapedEmail = emailLc.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            const emailRegex = new RegExp("^" + escapedEmail + "$", "i");
+            const allForEmail = await Student.find({ email: { $regex: emailRegex } });
             if (allForEmail.length >= 2) {
                 const updatedLinked = allForEmail.map(s => ({
                     domain:     s.domain,
@@ -154,7 +156,7 @@ router.get("/student/me", requireStudent, async (req, res) => {
                 }));
                 // If links are stale or count mismatch, push correct linkedDomains to DB
                 if (!currentLinked || currentLinked.length !== updatedLinked.length) {
-                    await Student.updateMany({ email: emailLc }, { linkedDomains: updatedLinked });
+                    await Student.updateMany({ email: { $regex: emailRegex } }, { linkedDomains: updatedLinked });
                     currentLinked = updatedLinked;
                 }
             }
@@ -183,6 +185,7 @@ router.get("/student/me", requireStudent, async (req, res) => {
                 collegeName:        me.collegeName || me.college || "",
                 employeeId:         me.employeeId,
                 domain:             me.domain,
+                domains:            me.domains || [me.domain],
                 tenure:             me.tenure,
                 joiningDate:        me.joiningDate,
                 internshipEnd:      meEndDate,
@@ -729,18 +732,26 @@ router.post("/student/onboard", requireStudent, async (req, res) => {
 router.get("/student/status", requireStudent, async (req, res) => {
     try {
         const student = req.student;
+        let domain = student.domain;
+        if (domain === "HR") domain = "HR Management";
+        if (domain === "Business Development") domain = "Business Analyst";
+        if (domain === "Space Intern") domain = "Space Research";
+        if (domain === "Artificial Intelligence" || domain === "AI") domain = "Data Science";
+
+        const domainTasks = await DomainTask.find({ domain }).select("_id").lean();
+        const taskIds = domainTasks.map(t => t._id);
 
         const [progressStats, sampleProgress, coinData] = await Promise.all([
             StudentTaskProgress.aggregate([
-                { $match: { studentId: student._id } },
+                { $match: { studentId: student._id, taskId: { $in: taskIds } } },
                 { $group: { _id: "$status", count: { $sum: 1 } } }
             ]),
-            StudentTaskProgress.findOne({ studentId: student._id }).populate("taskId", "durationType").lean(),
+            StudentTaskProgress.findOne({ studentId: student._id, taskId: { $in: taskIds } }).populate("taskId", "durationType").lean(),
             coinService.getBalance(student._id)
         ]);
 
-        const v2Onboarded  = !!sampleProgress;
-        const durationType = (sampleProgress?.taskId?.durationType) || taskEngine.tenureToDurationType(student.tenure);
+        const v2Onboarded  = !!(student.v2Onboarded || sampleProgress);
+        const durationType = (sampleProgress?.taskId?.durationType) || student.v2DurationType || taskEngine.tenureToDurationType(student.tenure);
 
         const stats = {};
         for (const s of progressStats) stats[s._id] = s.count;
@@ -774,8 +785,17 @@ router.get("/student/status", requireStudent, async (req, res) => {
 router.get("/tasks/my-tasks", requireStudent, async (req, res) => {
     try {
         const student = req.student;
+        let domain = student.domain;
+        if (domain === "HR") domain = "HR Management";
+        if (domain === "Business Development") domain = "Business Analyst";
+        if (domain === "Space Intern") domain = "Space Research";
+        if (domain === "Artificial Intelligence" || domain === "AI") domain = "Data Science";
 
-        if (!student.v2Onboarded) {
+        const domainTasks = await DomainTask.find({ domain }).select("_id").lean();
+        const taskIds = domainTasks.map(t => t._id);
+        const progressCount = await StudentTaskProgress.countDocuments({ studentId: student._id, taskId: { $in: taskIds } });
+
+        if (progressCount === 0) {
             await taskEngine.assignTasksForStudent(student);
         }
 
