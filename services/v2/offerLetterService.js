@@ -31,19 +31,30 @@ async function generateOfferLetterPDF(data, outputPath) {
             const W = 595.28; // A4 width
             const H = 841.89; // A4 height
 
+            // Premium Corporate Colors
+            const NAVY = "#0A1628";
+            const GOLD = "#C9A84C";
+            const DARK_TEXT = "#1A1A2E";
+            const MUTED_TEXT = "#475569";
+            const LIGHT_BG = "#FDFBF7";
+
             // ── Background watermark ──
-            drawLogo(doc, W / 2, H / 2, 260, 0.08, "#C9A84C");
+            drawLogo(doc, W / 2, H / 2, 240, 0.03, GOLD);
 
-            // ── Outer double-ruled border ──
-            doc.rect(15, 15, W - 30, H - 30).lineWidth(3).strokeColor("#C9A84C").stroke();
-            doc.rect(20, 20, W - 40, H - 40).lineWidth(1).strokeColor("#C9A84C").stroke();
+            // ── Top Header Band (Solid Elegant Navy & Gold) ──
+            doc.rect(0, 0, W, 8).fill(NAVY);
+            doc.rect(0, 8, W, 3).fill(GOLD);
 
-            // ── Top Header Section ──
-            drawLogo(doc, 75, 60, 24, 1, "#C9A84C");
-            doc.fillColor("#C9A84C").font("Helvetica-Bold").fontSize(16)
-                .text("THE ENTREPRENEURSHIP NETWORK", 110, 50, { width: 300 });
-            doc.fillColor("#666666").font("Helvetica").fontSize(8)
-                .text("Empowering the next generation of professionals", 110, 68, { width: 300 });
+            // ── Thin Elegant Double Border ──
+            doc.rect(15, 20, W - 30, H - 35).lineWidth(1).strokeColor(GOLD).stroke();
+            doc.rect(18, 23, W - 36, H - 41).lineWidth(0.5).strokeColor(NAVY).stroke();
+
+            // ── Top Header Section (Left: Logo + Name, Right: Ref/Date) ──
+            drawLogo(doc, 50, 60, 24, 1, GOLD);
+            doc.fillColor(NAVY).font("Helvetica-Bold").fontSize(15)
+                .text("THE ENTREPRENEURSHIP NETWORK", 80, 50, { width: 320 });
+            doc.fillColor(MUTED_TEXT).font("Helvetica-Oblique").fontSize(8)
+                .text("Empowering the next generation of professionals", 80, 66, { width: 320 });
 
             // Right: Date & Ref
             const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -52,67 +63,67 @@ async function generateOfferLetterPDF(data, outputPath) {
             const studentIdShort = data.employeeId ? data.employeeId.slice(-5) : "STUDENT";
             const refStr = `Ref: TEN/OL/${yearStr}/${studentIdShort}`;
 
-            doc.fillColor("#666666").font("Helvetica").fontSize(9)
-                .text(`Date: ${dateStr}`, W - 200, 52, { width: 150, align: "right" })
-                .text(refStr, W - 200, 66, { width: 150, align: "right" });
+            doc.fillColor(MUTED_TEXT).font("Helvetica-Bold").fontSize(8.5)
+                .text(`Date: ${dateStr}`, W - 180, 50, { width: 130, align: "right" });
+            doc.font("Helvetica").text(refStr, W - 180, 64, { width: 130, align: "right" });
 
             // Gold divider line
-            doc.moveTo(40, 95).lineTo(W - 40, 95).lineWidth(1.5).strokeColor("#C9A84C").stroke();
+            doc.moveTo(40, 95).lineTo(W - 40, 95).lineWidth(1).strokeColor(GOLD).stroke();
 
             // ── Title ──
-            doc.fillColor("#1a1a1a").font("Times-Bold").fontSize(18)
-                .text("INTERNSHIP OFFER LETTER", 0, 115, { width: W, align: "center", characterSpacing: 1 });
-            doc.moveTo(W / 2 - 120, 134).lineTo(W / 2 + 120, 134).lineWidth(1).strokeColor("#1a1a1a").stroke();
+            doc.fillColor(NAVY).font("Times-Bold").fontSize(18)
+                .text("INTERNSHIP OFFER LETTER", 0, 115, { width: W, align: "center", characterSpacing: 1.5 });
+            doc.moveTo(W / 2 - 100, 134).lineTo(W / 2 + 100, 134).lineWidth(1).strokeColor(NAVY).stroke();
 
             // ── Salutation ──
             const studentName = data.studentName || "Candidate Name";
-            doc.fillColor("#1a1a1a").font("Times-Roman").fontSize(11)
+            doc.fillColor(DARK_TEXT).font("Times-Roman").fontSize(11)
                 .text("Dear ", 50, 155, { continued: true })
                 .font("Times-Bold").text(studentName, { continued: true })
                 .font("Times-Roman").text(",");
 
             // ── Body 1 ──
-            const bodyOpts = { width: W - 100, align: "justify", lineGap: 4 };
+            const bodyOpts = { width: W - 100, align: "justify", lineGap: 4.5 };
             doc.y = 175;
             doc.font("Times-Roman").fontSize(11);
             doc.text("We are pleased to offer you a position as an intern at ", 50, doc.y, { ...bodyOpts, continued: true });
-            doc.font("Times-Bold").text("The Entrepreneurship Network (TEN)", { continued: true });
-            doc.font("Times-Roman").text(". After reviewing your application and profile, we are confident that you will make a meaningful contribution to our network. This letter formally confirms the details of your internship engagement.", { continued: false });
+            doc.font("Times-Bold").fillColor(NAVY).text("The Entrepreneurship Network (TEN)", { continued: true });
+            doc.font("Times-Roman").fillColor(DARK_TEXT).text(". After reviewing your application and profile, we are confident that you will make a meaningful contribution to our network. This letter formally confirms the details of your internship engagement.", { continued: false });
 
-            // ── HIGHLIGHT BOX (Gold border, beige background, with data table) ──
+            // ── HIGHLIGHT BOX (Gold border, cream background, with details table) ──
             const boxY = doc.y + 15;
             const boxH = 145;
             const boxW = W - 100;
             const boxX = 50;
 
             // Draw box background
-            doc.rect(boxX, boxY, boxW, boxH).fill("#FDFAF4");
+            doc.rect(boxX, boxY, boxW, boxH).fill(LIGHT_BG);
             // Draw box border
-            doc.rect(boxX, boxY, boxW, boxH).lineWidth(1).strokeColor("#C9A84C").stroke();
-            doc.rect(boxX, boxY, 4, boxH).fill("#C9A84C");
+            doc.rect(boxX, boxY, boxW, boxH).lineWidth(1).strokeColor(GOLD).stroke();
+            doc.rect(boxX, boxY, 4, boxH).fill(GOLD);
 
             // Draw Table Rows inside the Highlight Box
-            doc.fillColor("#1a1a1a").font("Times-Roman").fontSize(10);
+            doc.fillColor(DARK_TEXT).font("Times-Roman").fontSize(10);
             const rowData = [
                 { label: "Intern Name", value: studentName },
                 { label: "Domain", value: data.domain || "Intern" },
                 { label: "Duration", value: data.durationText || "45 Days" },
                 { label: "Start Date", value: data.startDate || today },
                 { label: "End Date", value: data.endDate || "N/A" },
-                { label: "Mode", value: "Remote" },
+                { label: "Mode", value: "Remote (Work from Home)" },
                 { label: "Cohort", value: data.cohort || "Active Cohort" }
             ];
 
             let curY = boxY + 12;
             for (const row of rowData) {
-                doc.font("Times-Bold").fillColor("#555555").text(row.label, boxX + 25, curY, { width: 150 });
-                doc.font("Times-Roman").fillColor("#1a1a1a").text(row.value, boxX + 180, curY, { width: boxW - 200 });
+                doc.font("Times-Bold").fillColor(MUTED_TEXT).text(row.label, boxX + 25, curY, { width: 150 });
+                doc.font("Times-Roman").fillColor(DARK_TEXT).text(row.value, boxX + 180, curY, { width: boxW - 200 });
                 curY += 17;
             }
 
             // ── Body 2 ──
             doc.y = boxY + boxH + 15;
-            doc.font("Times-Roman").fontSize(11).fillColor("#1a1a1a");
+            doc.font("Times-Roman").fontSize(11).fillColor(DARK_TEXT);
             doc.text("During your internship, you will be expected to complete weekly tasks, engage with your assigned coordinator, and maintain a professional standard of work. Upon successful completion of all requirements and a minimum attendance of 80%, you will be eligible for a Certificate of Completion.", 50, doc.y, bodyOpts);
 
             doc.moveDown(0.8);
@@ -123,21 +134,21 @@ async function generateOfferLetterPDF(data, outputPath) {
             doc.font("Times-Roman").fontSize(11).text("Yours sincerely,", 50, sigY - 20);
 
             // Cursive signature
-            doc.font("DancingScript-Regular").fontSize(18).fillColor("#000000").text("Kamlesh Gupta", 50, sigY - 2);
+            doc.font("DancingScript-Regular").fontSize(19).fillColor(DARK_TEXT).text("Kamlesh Gupta", 50, sigY - 2);
             // Printed details
-            doc.font("Times-Bold").fontSize(9.5).text("Kamlesh Gupta", 50, sigY + 15);
-            doc.font("Times-Roman").fontSize(8.5).fillColor("#555555")
+            doc.font("Times-Bold").fontSize(10).fillColor(NAVY).text("Kamlesh Gupta", 50, sigY + 15);
+            doc.font("Times-Roman").fontSize(8.5).fillColor(MUTED_TEXT)
                 .text("Director", 50, sigY + 28)
                 .text("The Entrepreneurship Network", 50, sigY + 40);
 
-            // Circular Seal on the right
+            // Circular Seal on the right (Navy/Gold styled)
             drawCircularSeal(doc, W - 100, sigY + 15, 33);
 
             // ── Standard Footer ──
-            doc.rect(20, 775, W - 40, 0.5).fillColor("#ccc").fill();
-            doc.fillColor("#888888").font("Times-Roman").fontSize(8)
+            doc.rect(20, 775, W - 40, 0.5).fillColor("#E2E8F0").fill();
+            doc.fillColor(MUTED_TEXT).font("Times-Roman").fontSize(8)
                 .text("The Entrepreneurship Network  ·  hr@entrepreneurshipnetwork.net  ·  www.entrepreneurshipnetwork.net", 0, 785, { width: W, align: "center" });
-            doc.fillColor("#aaaaaa").font("Times-Roman").fontSize(7)
+            doc.fillColor("#94A3B8").font("Times-Roman").fontSize(7)
                 .text("This is a digitally generated offer letter. For verification contact hr@entrepreneurshipnetwork.net", 0, 797, { width: W, align: "center" });
 
             // ── Append Company Policy & Procedure Manual (27 Pages) ──
@@ -476,40 +487,40 @@ async function generateOfferLetterPDF(data, outputPath) {
                 doc.addPage({ size: "A4", margin: 0 });
 
                 // ── Background watermark ──
-                drawLogo(doc, W / 2, H / 2, 260, 0.08, "#000000");
+                drawLogo(doc, W / 2, H / 2, 240, 0.02, "#0A1628");
 
-                // ── Outer double-ruled border ──
-                doc.rect(15, 15, W - 30, H - 30).lineWidth(3).strokeColor("#000000").stroke();
-                doc.rect(20, 20, W - 40, H - 40).lineWidth(1).strokeColor("#000000").stroke();
+                // ── Outer elegant double border ──
+                doc.rect(15, 15, W - 30, H - 30).lineWidth(0.75).strokeColor("#C9A84C").stroke();
+                doc.rect(18, 18, W - 36, H - 36).lineWidth(0.5).strokeColor("#0A1628").stroke();
 
                 // ── Top Centered Logo + Wordmark ──
-                drawLogo(doc, W / 2, 45, 30, 0.8, "#000000");
-                doc.fillColor("#000000").font("Caveat-Bold").fontSize(13)
-                    .text("The Entrepreneurship Network", 0, 65, { width: W, align: "center" });
+                drawLogo(doc, W / 2, 43, 24, 1, "#C9A84C");
+                doc.fillColor("#0A1628").font("Caveat-Bold").fontSize(13)
+                    .text("The Entrepreneurship Network", 0, 63, { width: W, align: "center" });
 
                 // ── A line under the header ──
-                doc.moveTo(40, 80).lineTo(W - 40, 80).lineWidth(1).strokeColor("#000000").stroke();
+                doc.moveTo(40, 77).lineTo(W - 40, 77).lineWidth(0.75).strokeColor("#C9A84C").stroke();
 
                 if (page.isCover) {
                     // Big title for cover page
-                    doc.font("Times-Bold").fontSize(28)
+                    doc.font("Times-Bold").fontSize(28).fillColor("#0A1628")
                         .text(page.title, 50, 250, { width: W - 100, align: "center", lineGap: 10 });
                     
                     doc.moveDown(2);
-                    doc.font("Times-Bold").fontSize(13).fillColor("#000000")
+                    doc.font("Times-Bold").fontSize(13).fillColor("#C9A84C")
                         .text(page.paragraphs[0], 50, doc.y, { width: W - 100, align: "center" });
 
                     doc.moveDown(1.5);
-                    doc.font("Times-Roman").fontSize(11).fillColor("#222222")
+                    doc.font("Times-Roman").fontSize(11).fillColor("#1A1A2E")
                         .text(page.paragraphs[1], 50, doc.y, { width: W - 100, align: "center", lineGap: 4 });
                     
                     doc.moveDown(1.5);
-                    doc.font("Times-Roman").fontSize(11).fillColor("#222222")
+                    doc.font("Times-Roman").fontSize(11).fillColor("#1A1A2E")
                         .text(page.paragraphs[2], 50, doc.y, { width: W - 100, align: "center", lineGap: 4 });
                 } else {
                     // Title
-                    doc.font("Times-Bold").fontSize(16).fillColor("#000000")
-                        .text(page.title, 50, 95, { width: W - 100, align: "center" });
+                    doc.font("Times-Bold").fontSize(16).fillColor("#0A1628")
+                        .text(page.title, 50, 92, { width: W - 100, align: "center" });
                     
                     doc.moveDown(1.2);
                     
@@ -517,22 +528,22 @@ async function generateOfferLetterPDF(data, outputPath) {
                     for (const para of page.paragraphs) {
                         if (para.startsWith("**") && para.endsWith("**")) {
                             doc.moveDown(0.5);
-                            doc.font("Times-Bold").fontSize(11).fillColor("#000000")
+                            doc.font("Times-Bold").fontSize(11).fillColor("#0A1628")
                                 .text(para.replace(/\*\*/g, ""), 50, doc.y, { width: W - 100 });
                         } else if (para.startsWith("**")) {
                             doc.moveDown(0.5);
                             const lines = para.split("\n\n");
                             const boldPart = lines[0].replace(/\*\*/g, "");
-                            doc.font("Times-Bold").fontSize(11).fillColor("#000000")
+                            doc.font("Times-Bold").fontSize(11).fillColor("#0A1628")
                                 .text(boldPart, 50, doc.y, { width: W - 100 });
                             
                             if (lines.length > 1) {
                                 const restPart = lines.slice(1).join("\n\n");
-                                doc.font("Times-Roman").fontSize(10).fillColor("#222222")
+                                doc.font("Times-Roman").fontSize(10).fillColor("#1A1A2E")
                                     .text(restPart, 50, doc.y, bodyOpts);
                             }
                         } else {
-                            doc.font("Times-Roman").fontSize(10).fillColor("#222222")
+                            doc.font("Times-Roman").fontSize(10).fillColor("#1A1A2E")
                                 .text(para, 50, doc.y, bodyOpts);
                         }
                         doc.moveDown(0.8);
@@ -540,10 +551,10 @@ async function generateOfferLetterPDF(data, outputPath) {
                 }
 
                 // Standard Footer for Manual Pages
-                doc.rect(20, 775, W - 40, 0.5).fillColor("#ccc").fill();
-                doc.fillColor("#666666").font("Times-Roman").fontSize(8)
+                doc.rect(20, 775, W - 40, 0.5).fillColor("#E2E8F0").fill();
+                doc.fillColor("#475569").font("Times-Roman").fontSize(8)
                     .text("The Entrepreneurship Network  ·  Company Policy & Procedure Manual", 50, 785);
-                doc.fillColor("#333333").font("Times-Bold").fontSize(8)
+                doc.fillColor("#0A1628").font("Times-Bold").fontSize(8)
                     .text(page.pageNum, W - 110, 785, { width: 60, align: "right" });
             }
 
