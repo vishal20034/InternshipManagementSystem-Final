@@ -1,138 +1,120 @@
-// NEW FEATURE: Offer Letter PDF Generation Service
 "use strict";
 
 const DocumentHistory = require("../../models/DocumentHistory");
 const PDFDocument = require("pdfkit");
 const fs          = require("fs");
 const path        = require("path");
+const {
+    ensureFonts,
+    registerFonts,
+    drawLogo,
+    drawCircularSeal,
+    todayFormatted
+} = require("./pdfHelpers");
 
 /**
- * Generates an offer letter PDF for a student.
+ * Generates an Internship Offer Letter PDF for a student.
  * @param {Object} data - Student data for the offer letter
  * @param {string} outputPath - Full path where PDF should be saved
  * @returns {Promise<string>} resolves with outputPath on success
  */
 async function generateOfferLetterPDF(data, outputPath) {
+    await ensureFonts();
     return new Promise((resolve, reject) => {
         try {
-            const doc  = new PDFDocument({ size: "A4", margin: 0, info: { Title: "Internship Offer Letter — TEN" } });
+            const doc = new PDFDocument({ size: "A4", margin: 0, info: { Title: "Internship Offer Letter — TEN" } });
             const stream = fs.createWriteStream(outputPath);
             doc.pipe(stream);
 
-            const W = 595.28; // A4 width in pts
-            const gold   = "#C9A84C";
-            const navy   = "#0A1628";
-            const white  = "#FFFFFF";
-            const cream  = "#F8F5ED";
-            const textDark = "#1A1A2E";
+            registerFonts(doc);
 
-            // ── Header band ──
-            doc.rect(0, 0, W, 90).fill(navy);
-            doc.rect(0, 90, W, 4).fill(gold);
+            const W = 595.28; // A4 width
+            const H = 841.89; // A4 height
 
-            // Org name
-            doc.fillColor(gold).font("Helvetica-Bold").fontSize(18)
-                .text("THE ENTREPRENEURSHIP NETWORK", 50, 28, { width: W - 100, align: "center" });
-            doc.fillColor(white).font("Helvetica").fontSize(10)
-                .text("TEN — Shaping Tomorrow's Entrepreneurs", 50, 52, { width: W - 100, align: "center" });
-            doc.fillColor(gold).font("Helvetica").fontSize(9)
-                .text("hr@entrepreneurshipnetwork.net  |  www.entrepreneurshipnetwork.net", 50, 70, { width: W - 100, align: "center" });
+            // ── Background watermark ──
+            drawLogo(doc, W / 2, H / 2, 260, 0.08, "#000000");
 
-            // ── Title ──
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(15)
-                .text("INTERNSHIP OFFER LETTER", 50, 110, { width: W - 100, align: "center" });
-            doc.moveTo(100, 132).lineTo(W - 100, 132).lineWidth(0.8).strokeColor(gold).stroke();
+            // ── Outer double-ruled border ──
+            doc.rect(15, 15, W - 30, H - 30).lineWidth(3).strokeColor("#000000").stroke();
+            doc.rect(20, 20, W - 40, H - 40).lineWidth(1).strokeColor("#000000").stroke();
 
-            // ── Reference & Date ──
-            const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-            doc.fillColor("#555").font("Helvetica").fontSize(9)
-                .text(`Date: ${data.dateIssued || today}`, 50, 142);
-            doc.text(`Ref: ${data.documentNumber || "TEN/OL/" + Date.now().toString().slice(-6)}`, 50, 156);
+            // ── Top Centered Logo + Wordmark ──
+            drawLogo(doc, W / 2, 50, 42, 1, "#000000");
+            doc.fillColor("#000000").font("Caveat-Bold").fontSize(17)
+                .text("The Entrepreneurship Network", 0, 76, { width: W, align: "center" });
 
-            // ── Addressee box ──
-            doc.rect(50, 174, W - 100, 70).fillAndStroke(cream, gold);
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(11)
-                .text(`To,`, 66, 184);
-            doc.font("Helvetica").fontSize(11)
-                .text(`${data.studentName || "Student Name"}`, 66, 198)
-                .text(`${data.collegeName || "College Name"}`, 66, 213)
-                .text(`Employee ID: ${data.employeeId || "N/A"}`, 66, 228);
+            // ── Underlined Title ──
+            doc.fillColor("#000000").font("Times-Bold").fontSize(13)
+                .text("Internship Offer Letter with The Entrepreneurship Network", 40, 115, { width: W - 80, align: "center" });
+            doc.moveTo(80, 131).lineTo(W - 80, 131).lineWidth(1).strokeColor("#000000").stroke();
 
-            // ── Subject ──
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(10)
-                .text("Subject: Internship Offer — Virtual Internship Program", 50, 258);
-            doc.moveTo(50, 272).lineTo(W - 50, 272).lineWidth(0.5).strokeColor("#ccc").stroke();
+            // ── Metadata Block (Left-aligned near top) ──
+            const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+            const docNum = data.documentNumber || `TEN/OL/${Date.now().toString().slice(-5)}`;
+            const empId = data.employeeId || "TEN/HR/00000";
 
-            // ── Salutation & body ──
-            const name   = data.studentName  || "Candidate";
-            const domain = data.domain       || data.role || "the assigned domain";
-            const dur    = data.durationText || data.tenure || "the internship period";
-            const start  = data.startDate    || "the joining date";
-            const end    = data.endDate      || "the completion date";
+            doc.fillColor("#000000").font("Times-Roman").fontSize(10)
+                .text(`Date: ${data.dateIssued || today}`, 50, 150)
+                .text(`Employee ID: ${empId}`, 50, 164)
+                .text(`Document No.: ${docNum}`, 50, 178);
 
-            const bodyOpts = { width: W - 100, align: "justify", lineGap: 4 };
-            doc.fillColor(textDark).font("Helvetica").fontSize(10.5).text(
-                `Dear ${name},`, 50, 282
-            );
+            // ── Candidate Address Block ──
+            const studentName = data.studentName || "Candidate Name";
+            const college = data.collegeName || data.college || "Not Provided";
+            doc.font("Times-Bold").fontSize(11).text(studentName, 50, 202);
+            doc.font("Times-Roman").fontSize(10).text(college, 50, 216);
+
+            // ── Salutation ──
+            const firstName = studentName.split(" ")[0] || studentName;
+            doc.font("Times-Roman").fontSize(10.5).text(`Dear ${firstName},`, 50, 240);
+
+            // ── Body Paragraphs (Serif, Justified, Bold Variables) ──
+            const role = data.domain || data.role || "Intern";
+            const joinDate = data.startDate || today;
+            const bodyOpts = { width: W - 100, align: "justify", lineGap: 5 };
+
             doc.moveDown(0.5);
-            doc.text(
-                `We are pleased to offer you an internship position at The Entrepreneurship Network (TEN) as a ${domain} Intern. After reviewing your application and qualifications, we believe you will be a valuable addition to our program.`,
-                50, doc.y, bodyOpts
-            );
-            doc.moveDown(0.6);
-            doc.text(
-                `This offer is for a virtual internship engagement for a duration of ${dur}, commencing from ${start} to ${end}. During this period, you will be working under the mentorship of our domain experts and coordinators.`,
-                50, doc.y, bodyOpts
-            );
-            doc.moveDown(0.6);
-            doc.text(
-                `As part of your internship, you will be required to complete assigned tasks, maintain regular attendance via our online portal, participate in assessments, and uphold the standards of conduct set forth by TEN.`,
-                50, doc.y, bodyOpts
-            );
-            doc.moveDown(0.6);
-            doc.text(
-                `This internship is a fantastic opportunity to gain real-world exposure, develop professional skills, and build your career network. We look forward to your active participation and contributions.`,
-                50, doc.y, bodyOpts
-            );
-            doc.moveDown(0.6);
-            doc.text(
-                `Please report to the TEN Student Portal (https://virtualinternships.entrepreneurshipnetwork.net) on the first day. Your Employee ID is ${data.employeeId || "as shared separately"}.`,
-                50, doc.y, bodyOpts
-            );
-            doc.moveDown(0.6);
-            doc.text("We wish you a rewarding and enriching internship experience.", 50, doc.y, bodyOpts);
+            doc.font("Times-Roman").fontSize(10.5);
+            
+            // Build first paragraph text with custom inline bolding
+            doc.text("We are delighted & excited to welcome you to ", 50, doc.y, { ...bodyOpts, continued: true });
+            doc.font("Times-Bold").text("The Entrepreneurship Network", { continued: true });
+            doc.font("Times-Roman").text(" as a ", { continued: true });
+            doc.font("Times-Bold").text(role, { continued: true });
+            doc.font("Times-Roman").text(", we believe that our team is our biggest strength and we take pride in hiring only the best and the brightest. We are confident that you would play a significant role in the overall success of the venture and wish you the most enjoyable, learning packed and truly meaningful internship experience with ", { continued: true });
+            doc.font("Times-Bold").text("The Entrepreneurship Network", { continued: true });
+            doc.font("Times-Roman").text(". The candidate is duly informed that he/she will not be eligible for any fixed stipend over the course of his/her internship. Your joining date is ", { continued: true });
+            doc.font("Times-Bold").text(joinDate, { continued: false });
 
-            // ── Terms box ──
-            const termsY = doc.y + 14;
-            if (termsY < 650) {
-                doc.rect(50, termsY, W - 100, 54).fillAndStroke("rgba(201,168,76,0.05)", gold);
-                doc.fillColor(gold).font("Helvetica-Bold").fontSize(8.5).text("TERMS & CONDITIONS", 62, termsY + 8);
-                doc.fillColor(textDark).font("Helvetica").fontSize(8).text(
-                    "1. This offer is contingent upon maintaining satisfactory attendance and task completion.\n2. Internship may be terminated in case of misconduct or non-compliance with TEN policies.\n3. Certificates will be issued upon successful completion of the internship program.",
-                    62, termsY + 20, { width: W - 124, lineGap: 3 }
-                );
-            }
+            doc.moveDown(1.2);
+            
+            // Second paragraph text
+            doc.font("Times-Roman").text("We look forward to you joining with us. The Company Policies manual is attached below, please go through it thoroughly. Please do not hesitate to call us for any information you may need. Also, ", doc.x, doc.y, { ...bodyOpts, continued: true });
+            doc.font("Times-Bold").text("please sign the duplicate of this offer as your acceptance and forward the same to us on hr@entrepreneurshipnetwork.net.", { continued: false });
 
-            // ── Signature area ──
-            const sigY = 720;
-            doc.moveTo(50, sigY).lineTo(200, sigY).lineWidth(0.8).strokeColor("#333").stroke();
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(9.5).text("Kamlesh Gupta", 50, sigY + 5);
-            doc.font("Helvetica").fontSize(8.5).fillColor("#555")
+            doc.moveDown(1.5);
+            doc.font("Times-Bold").fontSize(11).text("Congratulations!", 50, doc.y);
+
+            // ── Signature and Seal Block ──
+            const sigY = 660;
+
+            // Cursive signature
+            doc.font("DancingScript-Regular").fontSize(18).fillColor("#000000").text("Kamlesh Gupta", 50, sigY - 12);
+            // Printed lines
+            doc.font("Times-Bold").fontSize(9.5).text("Kamlesh Gupta", 50, sigY + 5);
+            doc.font("Times-Roman").fontSize(8.5).fillColor("#555555")
                 .text("Director", 50, sigY + 18)
                 .text("The Entrepreneurship Network", 50, sigY + 30);
 
-            doc.moveTo(W - 200, sigY).lineTo(W - 50, sigY).lineWidth(0.8).strokeColor("#333").stroke();
-            doc.fillColor(textDark).font("Helvetica-Bold").fontSize(9.5).text("HR Department", W - 200, sigY + 5);
-            doc.font("Helvetica").fontSize(8.5).fillColor("#555")
-                .text("Human Resources", W - 200, sigY + 18)
-                .text("The Entrepreneurship Network", W - 200, sigY + 30);
+            // Circular Seal to the right
+            drawCircularSeal(doc, W - 100, sigY + 12, 35);
 
-            // ── Footer ──
-            doc.rect(0, 800, W, 42).fill(navy);
-            doc.fillColor(gold).font("Helvetica").fontSize(8)
-                .text("The Entrepreneurship Network  ·  hr@entrepreneurshipnetwork.net  ·  www.entrepreneurshipnetwork.net", 0, 816, { width: W, align: "center" });
-            doc.fillColor(white).font("Helvetica").fontSize(7)
-                .text("This is a digitally generated offer letter. For verification contact hr@entrepreneurshipnetwork.net", 0, 828, { width: W, align: "center" });
+            // ── Standard Footer ──
+            doc.rect(20, 775, W - 40, 0.5).fillColor("#ccc").fill();
+            doc.fillColor("#888888").font("Times-Roman").fontSize(8)
+                .text("The Entrepreneurship Network  ·  hr@entrepreneurshipnetwork.net  ·  www.entrepreneurshipnetwork.net", 0, 785, { width: W, align: "center" });
+            doc.fillColor("#aaaaaa").font("Times-Roman").fontSize(7)
+                .text("This is a digitally generated offer letter. For verification contact hr@entrepreneurshipnetwork.net", 0, 797, { width: W, align: "center" });
 
             doc.end();
             stream.on("finish", () => resolve(outputPath));
@@ -145,10 +127,6 @@ async function generateOfferLetterPDF(data, outputPath) {
 
 /**
  * Logs an offer-letter send into the Document Send History.
- * Delegates to the shared DocumentHistory.logSend helper.
- * @param {Object} entry - student / document info
- * @param {string} [method] - 'manual' | 'automation'
- * @returns {Promise<Object|null>} the created DocumentHistory record or null on failure
  */
 function logOfferLetterSend(entry = {}, method = "manual") {
     return DocumentHistory.logSend({ ...entry, documentType: "Offer Letter", documentKey: "offer_letter" }, method);

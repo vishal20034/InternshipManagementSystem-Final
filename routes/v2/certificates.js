@@ -562,153 +562,57 @@ function buildCertEmailHTML(name, certType) {
 }
 
 async function buildCertPDF(student, certType) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    const doc = new PDFDocument({ size: 'A4', margin: 70, bufferPages: true });
-    doc.on('data', chunk => chunks.push(chunk));
-    doc.on('end',  ()    => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
-  
-    const gold  = '#b45309';
-    const dark  = '#1a1a2e';
-    const gray  = '#64748b';
-    const name  = student.name || student.fullName || 'Student';
-    const empId = student.employeeId || '';
-    const dom   = student.domain || '';
-    const dur   = student.internshipDuration || '45 Days';
-    const att   = student.attendancePercentage || 0;
-    const perf  = student.performanceScore     || 0;
-    const now   = new Date().toLocaleDateString('en-IN', { year:'numeric', month:'long', day:'numeric' });
-  
-    // ── Header ──
-    doc.fontSize(9).fillColor(gray).text('THE ENTREPRENEURSHIP NETWORK', { align:'center' });
-    doc.moveDown(0.2);
-    doc.fontSize(8).fillColor(gray).text('virtualinternships.entrepreneurshipnetwork.net', { align:'center' });
-    doc.moveDown(0.5);
-  
-    // Gold divider
-    doc.moveTo(70, doc.y).lineTo(525, doc.y).lineWidth(2).strokeColor(gold).stroke();
-    doc.moveDown(0.8);
-  
-    // Title
-    const titles = {
-      LOC:   'LETTER OF COMPLETION',
-      LOR:   'LETTER OF RECOMMENDATION',
-      STAR:  'STAR PERFORMER CERTIFICATE',
-      OFFER: 'INTERNSHIP OFFER LETTER',
-    };
-    doc.fontSize(24).fillColor(dark).font('Helvetica-Bold')
-       .text(titles[certType], { align:'center' });
-    doc.moveDown(1.2);
-  
-    // Body
-    doc.fontSize(12).fillColor('#374151').font('Helvetica')
-       .text('This is to certify that', { align:'center' });
-    doc.moveDown(0.4);
-    doc.fontSize(20).font('Helvetica-Bold').fillColor(dark)
-       .text(name, { align:'center' });
-    doc.moveDown(0.3);
-    doc.fontSize(11).font('Helvetica').fillColor(gray)
-       .text(`Employee ID: ${empId}`, { align:'center' });
-    doc.moveDown(1);
-  
-    if (certType === 'LOC') {
-      doc.fontSize(12).fillColor('#374151')
-         .text('has successfully completed the Virtual Internship Program in', { align:'center' });
-      doc.moveDown(0.4);
-      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
-         .text(dom, { align:'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica').fillColor(gray)
-         .text(`Duration: ${dur}  |  Attendance: ${att}%`, { align:'center' });
-  
-    } else if (certType === 'LOR') {
-      doc.fontSize(12).fillColor('#374151')
-         .text('is hereby recommended for outstanding performance during the Virtual Internship in', { align:'center' });
-      doc.moveDown(0.4);
-      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
-         .text(dom, { align:'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica').fillColor(gray)
-         .text(`Attendance: ${att}%  |  Performance Score: ${perf}%`, { align:'center' });
-  
-    } else if (certType === 'STAR') {
-      doc.fontSize(12).fillColor('#374151')
-         .text('has been awarded the Star Performer distinction for exceptional contribution to', { align:'center' });
-      doc.moveDown(0.4);
-      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
-         .text('The Entrepreneurship Network', { align:'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica').fillColor(gray)
-         .text(`Domain: ${dom}`, { align:'center' });
-  
-    } else if (certType === 'OFFER') {
-      doc.fontSize(12).fillColor('#374151')
-         .text('is hereby offered a Virtual Internship position in', { align:'center' });
-      doc.moveDown(0.4);
-      doc.fontSize(15).font('Helvetica-Bold').fillColor(dark)
-         .text(dom, { align:'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(11).font('Helvetica').fillColor(gray)
-         .text(`Duration: ${dur}  |  Mode: Virtual / Remote`, { align:'center' });
-    }
-  
-    doc.moveDown(1.5);
-    doc.moveTo(70, doc.y).lineTo(525, doc.y).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
-    doc.moveDown(1);
-  
-    // Issuance info
-    doc.fontSize(11).fillColor(gray)
-       .text(`Date of Issue: ${now}`, 300, doc.y, { align:'right', width:225 });
-    doc.moveDown(0.4);
-    doc.fontSize(10).fillColor(gray)
-       .text('Authorized by: TEN HR Team', { align:'right' });
-  
-    doc.moveDown(2);
-  
-    // ── Fine / Eligibility Notice box ──
-    const noticeY = doc.y;
-    doc.rect(70, noticeY, 455, certType === 'OFFER' ? 80 : 110)
-       .lineWidth(0.5).strokeColor('#e2e8f0').stroke();
-    doc.moveDown(0.3);
-    
-    doc.fontSize(8).fillColor(gray).font('Helvetica-Bold')
-       .text('CERTIFICATE ELIGIBILITY CRITERIA & FINE POLICY', 80, noticeY + 10);
-    doc.font('Helvetica').fillColor(gray);
-  
-    if (certType === 'LOC') {
-      doc.fontSize(8).text(
-        '• LOC is issued when attendance ≥ 75%.\n' +
-        '• If attendance < 75%, a ₹100 fine must be paid to receive this certificate.\n' +
-        '• Fine payment unlocks certificate issuance within 24 hours.\n' +
-        '• Pay fine from: My Documents → Outstanding Fines section in the student portal.',
-        80, noticeY + 22, { width: 435, lineGap: 3 }
-      );
-    } else if (certType === 'LOR') {
-      doc.fontSize(8).text(
-        '• LOR is issued when both Attendance ≥ 75% AND Performance ≥ 75%.\n' +
-        '• If either criterion is not met, a ₹50 fine must be paid to receive this certificate.\n' +
-        '• Fine payment unlocks certificate issuance within 24 hours.\n' +
-        '• Pay fine from: My Documents → Outstanding Fines section in the student portal.',
-        80, noticeY + 22, { width: 435, lineGap: 3 }
-      );
-    } else if (certType === 'STAR') {
-      doc.fontSize(8).text(
-        '• Star Performer Certificate is awarded to students who contribute a genuine idea + implementation to improve TEN.\n' +
-        '• Submit your contribution from My Documents → Star Performer section.\n' +
-        '• HR reviews submissions and approves manually. No fine applies for this certificate.',
-        80, noticeY + 22, { width: 435, lineGap: 3 }
-      );
-    } else if (certType === 'OFFER') {
-      doc.fontSize(8).text(
-        '• Offer Letter is issued after HR reviews and approves your uploaded Address Proof and College Marksheet.\n' +
-        '• Upload documents from My Documents → Upload Documents tab. HR processes within 24 hours.',
-        80, noticeY + 22, { width: 435, lineGap: 3 }
-      );
-    }
-  
-    doc.end();
-  });
+  const fs = require("fs");
+  const path = require("path");
+  const os = require("os");
+  const { generateOfferLetterPDF } = require("../../services/v2/offerLetterService");
+  const { generateLOCPDF } = require("../../services/v2/locService");
+  const { generateLORPDF } = require("../../services/v2/lorService");
+  const { generateStarCertificate } = require("../../services/v2/certificateService");
+
+  const fmtDate = (d) => {
+    if (!d) return "";
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return d;
+    return dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  };
+
+  const mapData = {
+    studentName: student.name || student.fullName || "Student Name",
+    collegeName: student.collegeName || student.college || "College Name",
+    employeeId: student.employeeId || "TEN/HR/00000",
+    domain: student.domain || student.role || "Intern",
+    startDate: fmtDate(student.startDate || student.joiningDate),
+    endDate: fmtDate(student.endDate || student.completionDate || student.internshipEndDate),
+    gender: student.gender || "Not Provided",
+    durationText: student.internshipDuration || student.duration || "45 Days",
+    degreeCourse: student.degreeCourse || student.course || "Course / Degree",
+    universityName: student.universityName || student.collegeName || student.college || "University / Institute",
+    department: student.department || student.domain || "Human Resource"
+  };
+
+  const tempFile = path.join(os.tmpdir(), `cert_${certType}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.pdf`);
+
+  if (certType === 'OFFER') {
+    await generateOfferLetterPDF(mapData, tempFile);
+  } else if (certType === 'LOC') {
+    await generateLOCPDF(mapData, tempFile);
+  } else if (certType === 'LOR') {
+    await generateLORPDF(mapData, tempFile);
+  } else if (certType === 'STAR') {
+    await generateStarCertificate(mapData, tempFile);
+  } else {
+    throw new Error(`Unsupported certificate type: ${certType}`);
+  }
+
+  const pdfBuffer = fs.readFileSync(tempFile);
+  try {
+    fs.unlinkSync(tempFile);
+  } catch (err) {
+    console.error(`[Cert] Temp file cleanup error:`, err.message);
+  }
+
+  return pdfBuffer;
 }
 
 async function generateAndSaveCert(studentId, certType, studentData = null, sentBy = "System") {
