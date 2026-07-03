@@ -934,6 +934,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         </div>
         <div class="form-group-hr"><label class="form-label">Date of Letter</label><input class="form-input" id="ol-date" type="date"></div>
         <button class="doc-btn" onclick="generateOfferLetter()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="generateOfferLetter(false, true)" style="background:rgba(79,70,229,0.1);border-color:rgba(79,70,229,0.35);color:#818cf8;margin-bottom:8px;">🔍 Preview in Portal</button>
         <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
         <!-- Multi-select summary bar — shown when students are selected -->
         <div id="multiSelectSummary" style="display:none;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:10px;padding:12px 16px;margin-top:10px;">
@@ -971,6 +972,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
         </div>
         <div class="form-group-hr"><label class="form-label">Date of Issue</label><input class="form-input" id="loc-issue" type="date"></div>
         <button class="doc-btn" onclick="generateLOC()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="generateLOC(false, true)" style="background:rgba(79,70,229,0.1);border-color:rgba(79,70,229,0.35);color:#818cf8;margin-bottom:8px;">🔍 Preview in Portal</button>
         <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
       </div>
     </div>
@@ -996,7 +998,8 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
           <div class="form-group-hr"><label class="form-label">Start Date</label><input class="form-input" id="lor-start" type="date"></div>
           <div class="form-group-hr"><label class="form-label">End Date</label><input class="form-input" id="lor-end" type="date"></div>
         </div>
-        <button class="doc-btn" onclick="generateLOR()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn" onclick="generateLORManual()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="generateLORManual(false, true)" style="background:rgba(79,70,229,0.1);border-color:rgba(79,70,229,0.35);color:#818cf8;margin-bottom:8px;">🔍 Preview in Portal</button>
         <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
       </div>
     </div>
@@ -1014,6 +1017,7 @@ tr:last-child td{border-bottom:none;}tr:hover td{background:rgba(245,197,66,0.02
           <div class="form-group-hr"><label class="form-label">Tenure (display on cert)</label><input class="form-input" id="star-tenure" placeholder="e.g. 3/11/2026 - 6/11/2026"></div>
         </div>
         <button class="doc-btn" onclick="generateStarCert()">📥 Generate &amp; Download PDF</button>
+        <button class="doc-btn secondary" onclick="generateStarCert(false, true)" style="background:rgba(79,70,229,0.1);border-color:rgba(79,70,229,0.35);color:#818cf8;margin-bottom:8px;">🔍 Preview in Portal</button>
         <button class="doc-btn secondary" onclick="autofillFromStudent()">🔍 Auto-fill from Student</button>
       </div>
     </div>
@@ -3041,7 +3045,7 @@ async function openAttHistory(encId, name){
 }
 
 /* OFFER LETTER */
-async function generateOfferLetter(silent = false){
+async function generateOfferLetter(silent = false, previewMode = false){
   let name=document.getElementById('ol-name').value.trim();
   let college=document.getElementById('ol-college').value.trim();
   const empId=document.getElementById('ol-empid').value.trim();
@@ -3049,15 +3053,32 @@ async function generateOfferLetter(silent = false){
   const role=document.getElementById('ol-role').value.trim(),jf=fmtDate(document.getElementById('ol-joining').value),lf=fmtDate(document.getElementById('ol-date').value);
   if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
   if(!docNo) docNo=generateTenDocumentNumber('offer_letter');
-  try{
-    const rr=await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,college:college,document_key:'offer_letter',document_type_label:'Offer Letter',document_number:docNo,sent_by:'HR Portal (Manual)'})});
-    const dd=await rr.json();
-    if(dd && dd.success && dd.documentNumber) docNo=dd.documentNumber;
-  }catch(e){}
+  if(!previewMode){
+    try{
+      const rr=await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,college:college,document_key:'offer_letter',document_type_label:'Offer Letter',document_number:docNo,sent_by:'HR Portal (Manual)'})});
+      const dd=await rr.json();
+      if(dd && dd.success && dd.documentNumber) docNo=dd.documentNumber;
+    }catch(e){}
+  }
   const docId = generateUniqueDocId('offer', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
-  const w=window.open('','_blank');
+  let w;
+  if(previewMode){
+    document.getElementById('reviewTotalCount').textContent = '1';
+    document.getElementById('reviewProgress').textContent = 'Manual Draft Preview';
+    document.getElementById('reviewStudentName').textContent = name;
+    document.getElementById('reviewStudentInfo').textContent = `${empId || 'No Employee ID'} · ${role || 'No Role'}`;
+    const docSel = document.getElementById('reviewDocType');
+    if(docSel) docSel.value = 'offer';
+    document.getElementById('certReviewModal').classList.add('open');
+    const frame = document.getElementById('reviewPreviewFrame');
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    w = { document: doc };
+    doc.open();
+  } else {
+    w=window.open('','_blank');
+  }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Offer Letter - ${name}</title>
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -3135,16 +3156,33 @@ ${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80"
 }
 
 /* LOC */
-async function generateLOC(silent = false){
+async function generateLOC(silent = false, previewMode = false){
   const name=document.getElementById('loc-name').value.trim(),college=document.getElementById('loc-college').value.trim(),empId=document.getElementById('loc-empid').value.trim(),docNo=document.getElementById('loc-docno').value.trim()||'TEN/CT/—',role=document.getElementById('loc-role').value.trim(),course=document.getElementById('loc-course').value.trim()||'CSE',sd=fmtDate(document.getElementById('loc-start').value),ed=fmtDate(document.getElementById('loc-end').value),id_=fmtDate(document.getElementById('loc-issue').value);
   if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
-  try{
-    await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,college:college,document_key:'loc',document_type_label:'Letter of Completion',document_number:docNo,sent_by:'HR Portal (Manual)'})});
-  }catch(e){}
+  if(!previewMode){
+    try{
+      await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,college:college,document_key:'loc',document_type_label:'Letter of Completion',document_number:docNo,sent_by:'HR Portal (Manual)'})});
+    }catch(e){}
+  }
   const docId = generateUniqueDocId('loc', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
-  const w=window.open('','_blank');
+  let w;
+  if(previewMode){
+    document.getElementById('reviewTotalCount').textContent = '1';
+    document.getElementById('reviewProgress').textContent = 'Manual Draft Preview';
+    document.getElementById('reviewStudentName').textContent = name;
+    document.getElementById('reviewStudentInfo').textContent = `${empId || 'No Employee ID'} · ${role || 'No Role'}`;
+    const docSel = document.getElementById('reviewDocType');
+    if(docSel) docSel.value = 'loc';
+    document.getElementById('certReviewModal').classList.add('open');
+    const frame = document.getElementById('reviewPreviewFrame');
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    w = { document: doc };
+    doc.open();
+  } else {
+    w=window.open('','_blank');
+  }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOC - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;font-family:'EB Garamond',Georgia,serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:210mm;min-height:280mm;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 100%);margin:0 auto;padding:28px 34px;position:relative;border:3px solid #c9a227;display:flex;flex-direction:column;align-items:center}.cert::before{content:"";position:absolute;inset:8px;border:1px solid rgba(201,162,39,0.3)}.cert::after{content:"THE ENTREPRENEURSHIP NETWORK";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:80px;color:rgba(201,162,39,0.04);font-weight:900;letter-spacing:16px;pointer-events:none;white-space:nowrap}.la{text-align:center;margin-bottom:8px}.la img{max-height:72px;margin-bottom:12px}.ls{font-size:46px;color:#c9a227}.on{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:#c9a227;font-weight:700;margin-top:4px}.ctb{font-family:'Cinzel',serif;font-size:56px;font-weight:700;color:#fff;letter-spacing:3px;text-align:center;margin:8px 0}.cst{font-family:'Cinzel',serif;font-size:18px;color:#c9a227;letter-spacing:6px;text-align:center;margin-bottom:18px}.meta-bar{display:flex;justify-content:center;gap:30px;font-size:11px;color:#c9a227;margin-bottom:18px;padding:8px 16px;border:1px solid rgba(201,162,39,0.2);border-radius:4px;background:rgba(201,162,39,0.05);text-align:center;flex-wrap:wrap}.meta-bar span{white-space:nowrap}.bt{font-size:14px;color:#e0e0e0;line-height:1.95;text-align:justify;width:100%;margin-bottom:14px}.bt strong{color:#f5c542}.details-box{width:100%;padding:16px 20px;border:1px solid rgba(201,162,39,0.25);border-radius:6px;background:rgba(201,162,39,0.04);margin-bottom:16px}.details-box h4{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:#c9a227;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;text-align:center}.details-box table{width:100%;border-collapse:collapse;font-size:12px;color:#e0e0e0}.details-box td{padding:7px 12px;border-bottom:1px solid rgba(201,162,39,0.12)}.details-box td:first-child{font-weight:600;color:#c9a227;width:180px}.terms-box{width:100%;padding:14px 18px;border:1px solid rgba(201,162,39,0.2);border-radius:6px;margin-bottom:16px}.terms-box h4{font-family:'Cinzel',serif;font-size:12px;color:#c9a227;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}.terms-box ol{margin-left:16px;font-size:11px;color:#ccc;line-height:2}.br{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding-top:14px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sa{text-align:right}.sn{font-family:'Dancing Script',cursive;font-size:34px;color:#f5c542;display:block}.sl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sd{font-size:12px;color:#e0e0e0;font-weight:600}.verify-box{width:100%;margin-top:20px;padding:12px 16px;border:1px solid rgba(201,162,39,0.3);border-radius:6px;background:rgba(201,162,39,0.05);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#c9a227;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#f5c542;background:rgba(201,162,39,0.1);border:1px solid rgba(201,162,39,0.3);border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#999;margin-top:2px}.verify-box .vlink a{color:#f5c542}.verify-box img{border:1px solid rgba(201,162,39,0.3);border-radius:4px}@media print{body{background:#fff}.np{display:none}.cert{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
 <div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'EB Garamond',serif">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px;font-family:'EB Garamond',serif">Save as PDF → send to student email</span></div>
 <div class="cert"><div class="la"><img src="/ten-logo.png" alt="TEN logo"><div class="on">The Entrepreneurship Network</div></div>
@@ -3180,23 +3218,40 @@ ${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80"
 }
 
 /* LOR */
-async function generateLOR(silent = false){
+async function generateLORManual(silent = false, previewMode = false){
   let name=document.getElementById('lor-name').value.trim();
   const empId=document.getElementById('lor-empid').value.trim();
   let docNo=document.getElementById('lor-docno').value.trim();
   const role=document.getElementById('lor-role').value.trim(),dl=fmtDate(document.getElementById('lor-date').value),sd=fmtDate(document.getElementById('lor-start').value),ed=fmtDate(document.getElementById('lor-end').value),gv=document.getElementById('lor-gender').value;
   if(!name||!role){if(!silent)Swal.fire({title:'Missing Info',text:'Enter name and role.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
   if(!docNo) docNo=generateTenDocumentNumber('lor');
-  try{
-    const rr=await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,document_key:'lor',document_type_label:'Letter of Recommendation',document_number:docNo,sent_by:'HR Portal (Manual)'})});
-    const dd=await rr.json();
-    if(dd && dd.success && dd.documentNumber) docNo=dd.documentNumber;
-  }catch(e){}
+  if(!previewMode){
+    try{
+      const rr=await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,document_key:'lor',document_type_label:'Letter of Recommendation',document_number:docNo,sent_by:'HR Portal (Manual)'})});
+      const dd=await rr.json();
+      if(dd && dd.success && dd.documentNumber) docNo=dd.documentNumber;
+    }catch(e){}
+  }
   const docId = generateUniqueDocId('lor', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
   const pr=gv==='him'?{sub:'he',obj:'him',adj:'Male'}:gv==='her'?{sub:'she',obj:'her',adj:'Female'}:{sub:'they',obj:'them',adj:'Individual'};
-  const w=window.open('','_blank');
+  let w;
+  if(previewMode){
+    document.getElementById('reviewTotalCount').textContent = '1';
+    document.getElementById('reviewProgress').textContent = 'Manual Draft Preview';
+    document.getElementById('reviewStudentName').textContent = name;
+    document.getElementById('reviewStudentInfo').textContent = `${empId || 'No Employee ID'} · ${role || 'No Role'}`;
+    const docSel = document.getElementById('reviewDocType');
+    if(docSel) docSel.value = 'lor';
+    document.getElementById('certReviewModal').classList.add('open');
+    const frame = document.getElementById('reviewPreviewFrame');
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    w = { document: doc };
+    doc.open();
+  } else {
+    w=window.open('','_blank');
+  }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LOR - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'EB Garamond',Georgia,serif;background:#fff;color:#1a1a1a;font-size:14px;line-height:1.7}.np{background:#1a1a2e;padding:16px;text-align:center;position:fixed;top:0;left:0;right:0;z-index:10}.page{width:210mm;min-height:297mm;margin:56px auto 0;padding:20mm 24mm 24mm;background:#fff;position:relative}.page::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.page::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-35deg);font-size:90px;color:rgba(201,162,39,0.04);font-weight:900;letter-spacing:16px;pointer-events:none;white-space:nowrap}.header{text-align:center;margin-bottom:28px;border-bottom:3px double #1a1a2e;padding-bottom:20px}.header img{max-height:80px;margin-bottom:10px}.org-name{font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:#1a1a2e;margin-bottom:4px}.org-sub{font-size:10px;color:#666;letter-spacing:2px;text-transform:uppercase}.title{text-align:center;font-size:20px;font-weight:700;letter-spacing:2px;color:#8B0000;text-transform:uppercase;border:2px solid #c9a227;padding:10px;margin:14px 0 20px;background:rgba(245,197,66,0.06)}.meta-bar{display:flex;justify-content:space-between;font-size:12px;color:#444;margin:18px 0;padding:10px 14px;background:#fafafa;border:1px solid #e8e8e8;border-radius:4px}.subj{text-align:center;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:2px;text-decoration:underline;margin:14px 0 18px}.body-text{text-align:justify;font-size:14px;line-height:1.95;margin-bottom:16px;text-indent:30px}.body-text:first-of-type{text-indent:0}.qualities{margin:18px 0;padding:16px 20px;border:1px solid #e8e8e8;border-radius:6px;background:#fafafa}.qualities h4{font-size:13px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;color:#333}.qualities ul{margin-left:18px;font-size:13px;line-height:2;color:#444}.sig-area{display:flex;justify-content:space-between;margin-top:36px;gap:40px}.sig-block{text-align:center}.sig-line{border-bottom:1px solid #333;width:200px;margin:0 auto 6px}.sig-name{font-family:'Dancing Script',cursive;font-size:32px;color:#1a1a2e}.sig-title{font-size:12px;font-weight:600;color:#333}.sig-org{font-size:11px;color:#666}.footer{margin-top:24px;padding-top:12px;border-top:2px solid #c9a227;display:flex;justify-content:space-between;align-items:flex-end;font-size:10px;color:#666}.verify-box{margin-top:24px;padding:12px 16px;border:1px solid #c9a227;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}.verify-box img{border:1px solid #ddd;border-radius:4px}@media print{.np{display:none}.page{margin:0;box-shadow:none}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
 <div class="np"><button onclick="window.print()" style="background:#D4AF37;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'EB Garamond',serif">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px;font-family:'EB Garamond',serif">Save as PDF → send to student email</span></div>
 <div class="page">
@@ -3234,16 +3289,33 @@ ${qrDataUrl ? `<div style="text-align:center"><img src="${qrDataUrl}" width="80"
 }
 
 /* STAR PERFORMER */
-async function generateStarCert(silent = false){
+async function generateStarCert(silent = false, previewMode = false){
   const name=document.getElementById('star-name').value.trim(),empId=document.getElementById('star-empid').value.trim(),certId=document.getElementById('star-certid').value.trim()||'TEN/DOC/—',tenure=document.getElementById('star-tenure').value.trim();
   if(!name){if(!silent)Swal.fire({title:'Missing Info',text:'Enter student name.',icon:'warning',background:'#0c1220',color:'#f0eee8'});return;}
-  try{
-    await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,document_key:'star',document_type_label:'Star Performer Certificate',document_number:certId,sent_by:'HR Portal (Manual)'})});
-  }catch(e){}
+  if(!previewMode){
+    try{
+      await fetch('/api/v2/hr/document-history/log',{method:'POST',headers:{'Content-Type':'application/json',Authorization:hrToken},body:JSON.stringify({employee_id:empId,student_name:name,document_key:'star',document_type_label:'Star Performer Certificate',document_number:certId,sent_by:'HR Portal (Manual)'})});
+    }catch(e){}
+  }
   const docId = generateUniqueDocId('star', empId);
   const verifyUrl = 'https://virtualinternships.entrepreneurshipnetwork.net/verify?id=' + docId;
   const qrDataUrl = await generateQRDataUrl(verifyUrl);
-  const w=window.open('','_blank');
+  let w;
+  if(previewMode){
+    document.getElementById('reviewTotalCount').textContent = '1';
+    document.getElementById('reviewProgress').textContent = 'Manual Draft Preview';
+    document.getElementById('reviewStudentName').textContent = name;
+    document.getElementById('reviewStudentInfo').textContent = `${empId || 'No Employee ID'} · Star Performer`;
+    const docSel = document.getElementById('reviewDocType');
+    if(docSel) docSel.value = 'star';
+    document.getElementById('certReviewModal').classList.add('open');
+    const frame = document.getElementById('reviewPreviewFrame');
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    w = { document: doc };
+    doc.open();
+  } else {
+    w=window.open('','_blank');
+  }
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Star Performer - ${name}</title><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#111;font-family:'EB Garamond',Georgia,serif}.np{background:#1a1a2e;padding:16px;text-align:center}.cert{width:297mm;height:200mm;background:#fff;margin:0 auto;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-direction:column}.bl{position:absolute;left:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.br2{position:absolute;right:0;top:0;bottom:0;width:38px;background:linear-gradient(180deg,#111,#2a2a2a,#111)}.bl::before,.br2::before{content:"";position:absolute;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#c9a227,#f5c542,#c9a227)}.bl::before{left:7px}.br2::before{right:7px}.tr{position:absolute;top:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.btr{position:absolute;bottom:0;left:38px;right:38px;height:5px;background:linear-gradient(90deg,#c9a227,#f5c542,#c9a227)}.content{padding:16px 70px;text-align:center;width:100%}.content img{max-height:72px;margin-bottom:16px}.cs{font-family:'Dancing Script',cursive;font-size:50px;color:#1a1a1a;display:block}.cst{font-family:'Cinzel',serif;font-size:14px;font-weight:900;letter-spacing:6px;text-transform:uppercase;color:#1a1a1a;margin-bottom:8px}.at{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#999;margin-bottom:3px}.stn{font-family:'Cinzel Decorative','Cinzel',serif;font-size:36px;font-weight:900;color:#1a1a1a;display:block;margin:4px 0 6px}.nu{border-bottom:2px solid #c9a227;width:60%;margin:0 auto 12px}.awtxt{font-size:13px;color:#444;line-height:1.7;max-width:520px;margin:0 auto 10px;text-align:center}.mr{font-size:12px;font-weight:700;color:#333;margin-bottom:14px;letter-spacing:1px}.br3{display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:auto;padding:0 8px}.sc{width:88px;height:88px;border:3px solid #c9a227;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:9px;color:#c9a227;font-weight:700;text-align:center}.sga{text-align:right}.sgn{font-family:'Dancing Script',cursive;font-size:34px;color:#1a1a1a;display:block}.sgl{border-bottom:1px solid #c9a227;margin-bottom:5px}.sgd{font-size:12px;color:#333;font-weight:600}.cid{font-size:10px;color:#999;letter-spacing:1px;margin-top:10px}.desc{margin-top:8px;padding:0 20px;font-size:12px;color:#555;line-height:1.7;text-align:justify;max-width:600px;margin-left:auto;margin-right:auto}.verify-box{margin-top:16px;padding:12px 16px;border:1px solid #c9a227;border-radius:6px;background:#fffdf5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:600px;margin-left:auto;margin-right:auto}.verify-box .vlabel{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#999;margin-bottom:3px}.verify-box .vid{font-family:'Courier New',monospace;font-size:11px;color:#333;background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:3px 8px;display:inline-block}.verify-box .vlink{font-size:9px;color:#1a5fb4;margin-top:2px}.verify-box img{border:1px solid #ddd;border-radius:4px}@media print{body{background:#fff}.np{display:none}.cert{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>
 <div class="np"><button onclick="window.print()" style="background:#f5c542;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'EB Garamond',serif">🖨️ Print / Save as PDF</button><span style="color:#aaa;margin-left:16px;font-size:13px;font-family:'EB Garamond',serif">Save as PDF → send to student email</span></div>
 <div class="cert"><div class="bl"></div><div class="br2"></div><div class="tr"></div><div class="btr"></div>
@@ -3457,7 +3529,7 @@ function genCert(i,type){
   const obj={firstName:s.name||'',lastName:'',employeeId:s.employeeId||'',domain:s.domain||'',college:collegeValue(s),collegeName:collegeValue(s),tenure:s.tenure||'',joiningDate:s.joiningDate||''};
   prefillDocForms(obj);
   if(type==='loc') generateLOC();
-  else if(type==='lor') generateLOR();
+  else if(type==='lor') generateLORManual();
   else if(type==='star') generateStarCert();
 }
 function shareCertOnLinkedIn(i){
