@@ -588,7 +588,8 @@ async function buildCertPDF(student, certType) {
     durationText: student.internshipDuration || student.duration || "45 Days",
     degreeCourse: student.degreeCourse || student.course || "Course / Degree",
     universityName: student.universityName || student.collegeName || student.college || "University / Institute",
-    department: student.department || student.domain || "Human Resource"
+    department: student.department || student.domain || "Human Resource",
+    cohort: student.cohort || (student.joiningDate ? (new Date(student.joiningDate).toLocaleString('en-US', { month: 'long', year: 'numeric' }) + " Cohort") : "Active Cohort")
   };
 
   const tempFile = path.join(os.tmpdir(), `cert_${certType}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.pdf`);
@@ -637,6 +638,30 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
     [fields.dateField]:  new Date(),
   });
   console.log(`[Cert] ✓ ${certType} saved to DB for student ${studentId}`);
+
+  // Write physical file to filesystem so that existsSync and student portal downloads work
+  try {
+    const empIdClean = student.employeeId ? student.employeeId.replace(/\//g, "-") : studentId;
+    let destDir = '';
+    let destPath = '';
+    
+    if (certType === 'OFFER') {
+      destDir = path.join(__dirname, "../../uploads/offer-letters");
+      destPath = path.join(destDir, `${empIdClean}_offer_letter.pdf`);
+    } else {
+      destDir = path.join(__dirname, "../../uploads/certificates");
+      destPath = path.join(destDir, `${empIdClean}_${certType.toLowerCase()}.pdf`);
+    }
+    
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(destPath, pdfBuffer);
+    console.log(`[Cert] Physical file written to disk: ${destPath}`);
+  } catch (fsWriteErr) {
+    console.error(`[Cert] Failed to write physical PDF file to disk:`, fsWriteErr.message);
+  }
   
   const emailResult = await sendCertificateEmail(student.email, student.name || student.fullName || 'Student', certType, pdfBuffer);
   
