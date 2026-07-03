@@ -1,12 +1,8 @@
 "use strict";
 
-/**
- * Shared PDFKit rendering helpers used by offerLetterService, locService,
- * lorService, and certificateService.
- *
- * Centralises the TEN header band, footer band, signature block, and common
- * colour palette so each document service only defines its own unique content.
- */
+const fs = require("fs");
+const path = require("path");
+const https = require("https");
 
 const COLORS = Object.freeze({
     gold:     "#C9A84C",
@@ -17,97 +13,378 @@ const COLORS = Object.freeze({
 });
 
 const A4_WIDTH = 595.28;
+const A4_HEIGHT = 841.89;
 
 /**
- * Render the standard TEN header band (navy bg + gold/white text).
- * @param {PDFDocument} doc
- * @param {object}      [opts]
- * @param {number}      [opts.width=595.28]
+ * Downloads a file from a URL as a buffer.
  */
-function renderHeader(doc, { width = A4_WIDTH } = {}) {
-    const W = width;
-    doc.rect(0, 0, W, 90).fill(COLORS.navy);
-    doc.rect(0, 90, W, 4).fill(COLORS.gold);
-
-    doc.fillColor(COLORS.gold).font("Helvetica-Bold").fontSize(18)
-        .text("THE ENTREPRENEURSHIP NETWORK", 50, 28, { width: W - 100, align: "center" });
-    doc.fillColor(COLORS.white).font("Helvetica").fontSize(10)
-        .text("TEN \u2014 Shaping Tomorrow's Entrepreneurs", 50, 52, { width: W - 100, align: "center" });
-    doc.fillColor(COLORS.gold).font("Helvetica").fontSize(9)
-        .text("hr@entrepreneurshipnetwork.net  |  www.entrepreneurshipnetwork.net", 50, 70, { width: W - 100, align: "center" });
+function fetchFontBuffer(url) {
+    return new Promise((resolve, reject) => {
+        https.get(url, (res) => {
+            if (res.statusCode !== 200) {
+                reject(new Error(`Failed to fetch font: status code ${res.statusCode}`));
+                return;
+            }
+            const chunks = [];
+            res.on("data", (chunk) => chunks.push(chunk));
+            res.on("end", () => resolve(Buffer.concat(chunks)));
+            res.on("error", reject);
+        }).on("error", reject);
+    });
 }
 
 /**
- * Render the document title + gold divider at y=110.
- * @param {PDFDocument} doc
- * @param {string}      title
- * @param {object}      [opts]
- * @param {number}      [opts.width=595.28]
+ * Ensures Google Fonts Caveat and Dancing Script are available on disk.
  */
-function renderTitle(doc, title, { width = A4_WIDTH } = {}) {
-    const W = width;
-    doc.fillColor(COLORS.textDark).font("Helvetica-Bold").fontSize(15)
-        .text(title, 50, 110, { width: W - 100, align: "center" });
-    doc.moveTo(100, 132).lineTo(W - 100, 132).lineWidth(0.8).strokeColor(COLORS.gold).stroke();
+async function ensureFonts() {
+    const fontsDir = path.join(__dirname, "fonts");
+    if (!fs.existsSync(fontsDir)) {
+        fs.mkdirSync(fontsDir, { recursive: true });
+    }
+
+    const caveatPath = path.join(fontsDir, "Caveat-Bold.ttf");
+    const dancingPath = path.join(fontsDir, "DancingScript-Regular.ttf");
+
+    if (!fs.existsSync(caveatPath)) {
+        try {
+            console.log("Downloading Caveat-Bold font from Google Fonts GitHub repo...");
+            const buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/Caveat-Bold.ttf");
+            fs.writeFileSync(caveatPath, buf);
+            console.log("Caveat-Bold font saved successfully.");
+        } catch (e) {
+            console.error("Failed to download Caveat-Bold font, using standard fallback:", e.message);
+        }
+    }
+
+    if (!fs.existsSync(dancingPath)) {
+        try {
+            console.log("Downloading DancingScript-Regular font from Google Fonts GitHub repo...");
+            const buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/dancingscript/DancingScript-Regular.ttf");
+            fs.writeFileSync(dancingPath, buf);
+            console.log("DancingScript-Regular font saved successfully.");
+        } catch (e) {
+            console.error("Failed to download DancingScript-Regular font, using standard fallback:", e.message);
+        }
+    }
 }
 
 /**
- * Render reference number + date lines (y=142).
- * @param {PDFDocument} doc
- * @param {object}      data
- * @param {string}      data.dateIssued
- * @param {string}      data.documentNumber
- * @param {string}      refPrefix - e.g. "TEN/OL/"
+ * Registers the downloaded custom fonts on the doc instance if available.
  */
-function renderRefDate(doc, data, refPrefix) {
-    const today = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-    doc.fillColor("#555").font("Helvetica").fontSize(9)
-        .text(`Date: ${data.dateIssued || today}`, 50, 142);
-    doc.text(`Ref: ${data.documentNumber || refPrefix + Date.now().toString().slice(-6)}`, 50, 156);
+function registerFonts(doc) {
+    const fontsDir = path.join(__dirname, "fonts");
+    const caveatPath = path.join(fontsDir, "Caveat-Bold.ttf");
+    const dancingPath = path.join(fontsDir, "DancingScript-Regular.ttf");
+
+    if (fs.existsSync(caveatPath)) {
+        doc.registerFont("Caveat-Bold", caveatPath);
+    } else {
+        doc.registerFont("Caveat-Bold", "Helvetica-Bold");
+    }
+
+    if (fs.existsSync(dancingPath)) {
+        doc.registerFont("DancingScript-Regular", dancingPath);
+    } else {
+        doc.registerFont("DancingScript-Regular", "Times-Italic");
+    }
 }
 
 /**
- * Render the dual-column signature area (Director + HR Department).
- * @param {PDFDocument} doc
- * @param {object}      [opts]
- * @param {number}      [opts.y=710]
- * @param {number}      [opts.width=595.28]
- * @param {string}      [opts.directorName="Kamlesh Gupta"]
+ * Draws a perfect infinity symbol at (x, y) with specified dimensions.
  */
-function renderSignatureBlock(doc, { y = 710, width = A4_WIDTH, directorName = "Kamlesh Gupta" } = {}) {
-    const W = width;
-    doc.moveTo(50, y).lineTo(220, y).lineWidth(0.8).strokeColor("#333").stroke();
-    doc.fillColor(COLORS.textDark).font("Helvetica-Bold").fontSize(9.5).text(directorName, 50, y + 5);
-    doc.font("Helvetica").fontSize(8.5).fillColor("#555")
-        .text("Director", 50, y + 18)
-        .text("The Entrepreneurship Network", 50, y + 30);
-
-    doc.moveTo(W - 220, y).lineTo(W - 50, y).lineWidth(0.8).strokeColor("#333").stroke();
-    doc.fillColor(COLORS.textDark).font("Helvetica-Bold").fontSize(9.5).text("HR Department", W - 220, y + 5);
-    doc.font("Helvetica").fontSize(8.5).fillColor("#555")
-        .text("Human Resources", W - 220, y + 18)
-        .text("The Entrepreneurship Network", W - 220, y + 30);
+function drawInfinity(doc, x, y, w, h, color = "#000000") {
+    doc.save();
+    doc.translate(x, y);
+    doc.lineWidth(h * 0.15 || 1.5);
+    doc.strokeColor(color);
+    doc.moveTo(0, 0);
+    // Right loop
+    doc.bezierCurveTo(w * 0.25, h * 0.5, w * 0.5, h * 0.5, w * 0.5, 0);
+    doc.bezierCurveTo(w * 0.5, -h * 0.5, w * 0.25, -h * 0.5, 0, 0);
+    // Left loop
+    doc.bezierCurveTo(-w * 0.25, h * 0.5, -w * 0.5, h * 0.5, -w * 0.5, 0);
+    doc.bezierCurveTo(-w * 0.5, -h * 0.5, -w * 0.25, -h * 0.5, 0, 0);
+    doc.stroke();
+    doc.restore();
 }
 
 /**
- * Render the navy footer band (y=800).
- * @param {PDFDocument} doc
- * @param {string}      docTypeName - e.g. "offer letter", "Letter of Completion"
- * @param {object}      [opts]
- * @param {number}      [opts.width=595.28]
+ * Draws the cupped hands forming a heart shape.
  */
-function renderFooter(doc, docTypeName, { width = A4_WIDTH } = {}) {
-    const W = width;
-    doc.rect(0, 800, W, 42).fill(COLORS.navy);
-    doc.fillColor(COLORS.gold).font("Helvetica").fontSize(8)
-        .text("The Entrepreneurship Network  \u00B7  hr@entrepreneurshipnetwork.net  \u00B7  www.entrepreneurshipnetwork.net", 0, 816, { width: W, align: "center" });
-    doc.fillColor(COLORS.white).font("Helvetica").fontSize(7)
-        .text(`This is a digitally generated ${docTypeName}. For verification contact hr@entrepreneurshipnetwork.net`, 0, 828, { width: W, align: "center" });
+function drawCuppedHandsHeart(doc, x, y, w, h, fill = false, color = "#000000") {
+    doc.save();
+    doc.translate(x, y);
+    doc.fillColor(color);
+    doc.strokeColor(color);
+    doc.lineWidth(1.5);
+
+    // Left hand path
+    doc.beginPath();
+    doc.moveTo(0, h * 0.4);
+    doc.bezierCurveTo(-w * 0.45, h * 0.35, -w * 0.5, -h * 0.1, -w * 0.1, -h * 0.25);
+    doc.bezierCurveTo(-w * 0.05, -h * 0.2, -w * 0.1, -h * 0.1, -w * 0.15, -h * 0.05);
+    doc.bezierCurveTo(-w * 0.25, h * 0.05, -w * 0.2, h * 0.2, 0, h * 0.4);
+    if (fill) doc.fill(); else doc.stroke();
+
+    // Right hand path
+    doc.beginPath();
+    doc.moveTo(0, h * 0.4);
+    doc.bezierCurveTo(w * 0.45, h * 0.35, w * 0.5, -h * 0.1, w * 0.1, -h * 0.25);
+    doc.bezierCurveTo(w * 0.05, -h * 0.2, w * 0.1, -h * 0.1, w * 0.15, -h * 0.05);
+    doc.bezierCurveTo(w * 0.25, h * 0.05, w * 0.2, h * 0.2, 0, h * 0.4);
+    if (fill) doc.fill(); else doc.stroke();
+
+    // Thumbs curving inward to create the heart cleavage
+    doc.beginPath();
+    doc.moveTo(-w * 0.08, -h * 0.03);
+    doc.bezierCurveTo(-w * 0.04, -h * 0.08, 0, -h * 0.02, 0, h * 0.15);
+    doc.bezierCurveTo(0, -h * 0.02, w * 0.04, -h * 0.08, w * 0.08, -h * 0.03);
+    doc.stroke();
+
+    doc.restore();
 }
 
 /**
- * Return a today-formatted string using en-IN locale.
+ * Shared hands + infinity logo drawing utility.
  */
+function drawLogo(doc, x, y, size = 60, opacity = 1, color = "#000000") {
+    doc.save();
+    doc.opacity(opacity);
+    drawInfinity(doc, x, y - size * 0.25, size * 0.5, size * 0.25, color);
+    drawCuppedHandsHeart(doc, x, y + size * 0.12, size * 0.75, size * 0.75, false, color);
+    doc.restore();
+}
+
+/**
+ * Renders text along a circle arc.
+ */
+function drawCurvedText(doc, text, centerX, centerY, radius, startAngle) {
+    doc.save();
+    const chars = text.split("");
+    const len = chars.length;
+    const step = 0.13; // spacing in radians
+    const totalAngle = (len - 1) * step;
+    let angle = startAngle - totalAngle / 2;
+
+    doc.fontSize(5.5).font("Helvetica-Bold").fillColor("#000000");
+    for (let i = 0; i < len; i++) {
+        const char = chars[i];
+        const cx = centerX + radius * Math.cos(angle);
+        const cy = centerY + radius * Math.sin(angle);
+        
+        doc.save();
+        doc.translate(cx, cy);
+        doc.rotate(angle + Math.PI / 2);
+        doc.text(char, -2.5, -2.5);
+        doc.restore();
+        
+        angle += step;
+    }
+    doc.restore();
+}
+
+/**
+ * Draws the brand circular seal.
+ */
+function drawCircularSeal(doc, x, y, radius = 35) {
+    doc.save();
+    // Circular bounds
+    doc.circle(x, y, radius).lineWidth(1.5).strokeColor("#000000").stroke();
+    doc.circle(x, y, radius - 4).lineWidth(0.5).strokeColor("#000000").stroke();
+    doc.circle(x, y, radius - 8).lineWidth(1).dash(2, { space: 2 }).strokeColor("#000000").stroke();
+    doc.undash();
+
+    // Curved Brand Name
+    drawCurvedText(doc, "\u00A9LIMITLESS TECHNOLOGIES", x, y, radius - 13, -Math.PI / 2);
+
+    // Inner text label
+    doc.fillColor("#000000").font("Helvetica-Bold").fontSize(7)
+        .text("TEN", x - 10, y - 3, { width: 20, align: "center" });
+
+    doc.restore();
+}
+
+/**
+ * Draws the star-medal badge.
+ */
+function drawStarMedal(doc, x, y, radius = 25) {
+    doc.save();
+    // Ribbon tails
+    doc.fillColor("#D4AF37");
+    doc.beginPath();
+    doc.moveTo(x - 8, y);
+    doc.lineTo(x - 14, y + 35);
+    doc.lineTo(x - 5, y + 30);
+    doc.lineTo(x, y);
+    doc.closePath();
+    doc.fill();
+
+    doc.beginPath();
+    doc.moveTo(x, y);
+    doc.lineTo(x + 5, y + 30);
+    doc.lineTo(x + 14, y + 35);
+    doc.lineTo(x + 8, y);
+    doc.closePath();
+    doc.fill();
+
+    // Medal circles
+    doc.circle(x, y, radius).fill("#D4AF37");
+    doc.circle(x, y, radius - 2.5).lineWidth(1).strokeColor("#FFFFFF").stroke();
+
+    // Draw 5-point star
+    doc.save();
+    doc.translate(x, y);
+    doc.fillColor("#FFFFFF");
+    doc.beginPath();
+    const r_outer = radius * 0.55;
+    const r_inner = radius * 0.22;
+    for (let i = 0; i < 5; i++) {
+        const angle_outer = (i * 2 * Math.PI) / 5 - Math.PI / 2;
+        const angle_inner = ((i * 2 + 1) * Math.PI) / 5 - Math.PI / 2;
+        doc.lineTo(r_outer * Math.cos(angle_outer), r_outer * Math.sin(angle_outer));
+        doc.lineTo(r_inner * Math.cos(angle_inner), r_inner * Math.sin(angle_inner));
+    }
+    doc.closePath();
+    doc.fill();
+    doc.restore();
+    doc.restore();
+}
+
+/**
+ * Draws botanical leafy branches for the LOR decoration.
+ */
+function drawBotanicalDecoration(doc, x, y, scale = 1, mirror = false) {
+    doc.save();
+    doc.translate(x, y);
+    if (mirror) doc.scale(-scale, scale); else doc.scale(scale, scale);
+
+    // green leaf branch stem
+    doc.strokeColor("#2D6A4F").lineWidth(1.5);
+    doc.beginPath();
+    doc.moveTo(0, 0);
+    doc.quadraticCurveTo(20, 20, 45, 5);
+    doc.stroke();
+
+    // leaves
+    doc.fillColor("#40916C");
+    doc.beginPath();
+    doc.ellipse(12, 10, 5, 2.5, Math.PI / 4).fill();
+    doc.ellipse(22, 13, 6, 3, Math.PI / 6).fill();
+    doc.ellipse(32, 10, 5, 2.5, 0).fill();
+
+    // small gold flowers
+    doc.fillColor("#E8B923");
+    doc.circle(6, 2, 2.5).fill();
+    doc.circle(26, 20, 2).fill();
+    doc.restore();
+}
+
+/**
+ * Draws the angled ribbon corner decoration for the Star Performer template.
+ */
+function drawAngledRibbonCorner(doc, W, H, corner = "top-left") {
+    doc.save();
+    const grad = doc.linearGradient(0, 0, 100, 100);
+    grad.stop(0, "#8B5A2B").stop(1, "#B5651D");
+    doc.fillColor(grad);
+
+    doc.beginPath();
+    if (corner === "top-left") {
+        doc.moveTo(15, 80);
+        doc.lineTo(80, 15);
+        doc.lineTo(110, 15);
+        doc.lineTo(15, 110);
+    } else if (corner === "top-right") {
+        doc.moveTo(W - 15, 80);
+        doc.lineTo(W - 80, 15);
+        doc.lineTo(W - 110, 15);
+        doc.lineTo(W - 15, 110);
+    } else if (corner === "bottom-left") {
+        doc.moveTo(15, H - 80);
+        doc.lineTo(80, H - 15);
+        doc.lineTo(110, H - 15);
+        doc.lineTo(15, H - 110);
+    } else if (corner === "bottom-right") {
+        doc.moveTo(W - 15, H - 80);
+        doc.lineTo(W - 80, H - 15);
+        doc.lineTo(W - 110, H - 15);
+        doc.lineTo(W - 15, H - 110);
+    }
+    doc.closePath();
+    doc.fill();
+    doc.restore();
+}
+
+/**
+ * Draws a rosette ribbon medal graphic.
+ */
+function drawRosetteMedal(doc, x, y, radius = 35) {
+    doc.save();
+    // Ribbon tails
+    doc.fillColor("#D4AF37");
+    doc.beginPath();
+    doc.moveTo(x - 12, y);
+    doc.lineTo(x - 22, y + 55);
+    doc.lineTo(x - 8, y + 45);
+    doc.lineTo(x, y);
+    doc.closePath();
+    doc.fill();
+
+    doc.beginPath();
+    doc.moveTo(x, y);
+    doc.lineTo(x + 8, y + 45);
+    doc.lineTo(x + 22, y + 55);
+    doc.lineTo(x + 12, y);
+    doc.closePath();
+    doc.fill();
+
+    // Multi-petal starburst
+    doc.fillColor("#D4AF37");
+    for (let angle = 0; angle < Math.PI; angle += Math.PI / 8) {
+        doc.save();
+        doc.translate(x, y);
+        doc.rotate(angle);
+        doc.rect(-radius, -radius, radius * 2, radius * 2).fill();
+        doc.restore();
+    }
+
+    // Embed circular seal
+    drawCircularSeal(doc, x, y, radius * 0.82);
+    doc.restore();
+}
+
+/**
+ * Dynamic pronoun extraction helper.
+ */
+function getPronouns(gender) {
+    const g = String(gender || "").toLowerCase();
+    if (g === "female" || g === "she" || g === "her") {
+        return {
+            subject: "she",
+            object: "her",
+            possessive: "her",
+            possessivePronoun: "hers",
+            genderNoun: "female"
+        };
+    } else if (g === "male" || g === "he" || g === "him") {
+        return {
+            subject: "he",
+            object: "him",
+            possessive: "his",
+            possessivePronoun: "his",
+            genderNoun: "male"
+        };
+    } else {
+        return {
+            subject: "they",
+            object: "them",
+            possessive: "their",
+            possessivePronoun: "theirs",
+            genderNoun: "individual"
+        };
+    }
+}
+
 function todayFormatted() {
     return new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
 }
@@ -115,10 +392,17 @@ function todayFormatted() {
 module.exports = {
     COLORS,
     A4_WIDTH,
-    renderHeader,
-    renderTitle,
-    renderRefDate,
-    renderSignatureBlock,
-    renderFooter,
-    todayFormatted,
+    A4_HEIGHT,
+    ensureFonts,
+    registerFonts,
+    drawLogo,
+    drawInfinity,
+    drawCuppedHandsHeart,
+    drawCircularSeal,
+    drawStarMedal,
+    drawBotanicalDecoration,
+    drawAngledRibbonCorner,
+    drawRosetteMedal,
+    getPronouns,
+    todayFormatted
 };
