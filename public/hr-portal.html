@@ -2684,25 +2684,41 @@ async function bulkGenerateDocs() {
     else if (activeTab.includes('Star'))                                         docType = 'star';
     const docLabels   = { offer:'Offer Letter', loc:'LOC', lor:'LOR', star:'Star Performer' };
     const confirmed   = await Swal.fire({
-        title: 'Generate ' + docLabels[docType],
-        html:  `Generate <b>${docLabels[docType]}</b> for <b>${selectedStudentsForDocs.length}</b> student(s)?<br><small style="color:#9a8a6a">Each document opens in a new tab — Print/Save as PDF from there.</small>`,
-        icon: 'question', showCancelButton: true, confirmButtonText: '📥 Generate All',
+        title: 'Generate & Send ' + docLabels[docType],
+        html:  `Generate and send <b>${docLabels[docType]}</b> to the student's portal & email for <b>${selectedStudentsForDocs.length}</b> selected student(s)?`,
+        icon: 'question', showCancelButton: true, confirmButtonText: '📥 Generate & Send All',
         confirmButtonColor: '#D4AF37', background: '#0c1220', color: '#f0eee8'
     });
     if (!confirmed.isConfirmed) return;
     closeStudentPicker();
-    let opened = 0;
+    
+    Swal.fire({
+        title: 'Generating and Syncing Documents...', allowOutsideClick: false, showConfirmButton: false,
+        html: `<div id="genProgressText">Generating & sending 0 of ${selectedStudentsForDocs.length}...</div>`,
+        background: '#0c1220', color: '#f0eee8', didOpen: () => Swal.showLoading()
+    });
+    
+    let sent = 0, failed = 0;
     for (const student of selectedStudentsForDocs) {
-        await new Promise(r => setTimeout(r, 420 * opened));
-        prefillDocForms(student);
-        await new Promise(r => setTimeout(r, 150));
-        if (docType === 'offer')     await generateOfferLetter(true);
-        else if (docType === 'loc')  await generateLOC(true);
-        else if (docType === 'lor')  await generateLOR(true);
-        else if (docType === 'star') await generateStarCert(true);
-        opened++;
+        try {
+            const r = await fetch('/hr/send-documents-now', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: hrToken },
+                body: JSON.stringify({ employeeId: student.employeeId, docType })
+            });
+            const d = await r.json();
+            if (d.success) sent++; else failed++;
+        } catch(e) { failed++; }
+        const el = document.getElementById('genProgressText');
+        if (el) el.textContent = 'Generating & sending ' + (sent + failed) + ' of ' + selectedStudentsForDocs.length + '...';
+        await new Promise(r => setTimeout(r, 450));
     }
-    showHRToast('✅ ' + opened + ' document(s) opened!', 'success');
+    
+    Swal.fire({
+        title: 'Generation Report',
+        html:  `<b style="color:#10b981;">✅ Successfully Generated & Sent to Students: ${sent}</b>${failed > 0 ? `<br><b style="color:#f43f5e;">❌ Failed: ${failed}</b>` : ''}`,
+        icon: sent > 0 ? 'success' : 'error', background: '#0c1220', color: '#f0eee8'
+    });
 }
 
 async function bulkEmailDocs() {
