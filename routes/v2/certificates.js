@@ -536,7 +536,7 @@ async function sendCertificateEmail(toEmail, studentName, certType, pdfBuffer) {
 }
 
 function buildCertEmailHTML(name, certType) {
-  const labels = { LOC:'Letter of Completion', LOR:'Letter of Recommendation', STAR:'Star Performer Certificate', OFFER:'Offer Letter' };
+  const labels = { LOC:'Letter of Completion', LOR:'Letter of Recommendation', STAR:'Star Performer Certificate', OFFER:'Offer Letter', LOP:'Letter of Promotion' };
   return `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0a0a19;color:#e2e8f0;padding:40px;border-radius:16px;">
       <h2 style="color:#f59e0b;text-align:center;">🎓 TEN Internship Network</h2>
@@ -569,6 +569,7 @@ async function buildCertPDF(student, certType) {
   const { generateLOCPDF } = require("../../services/v2/locService");
   const { generateLORPDF } = require("../../services/v2/lorService");
   const { generateStarCertificate } = require("../../services/v2/certificateService");
+  const { generateLetterOfPromotionPDF } = require("../../services/v2/promotionLetterService");
 
   const fmtDate = (d) => {
     if (!d) return "";
@@ -589,7 +590,13 @@ async function buildCertPDF(student, certType) {
     degreeCourse: student.degreeCourse || student.course || "Course / Degree",
     universityName: student.universityName || student.collegeName || student.college || "University / Institute",
     department: student.department || student.domain || "Human Resource",
-    cohort: student.cohort || (student.joiningDate ? (new Date(student.joiningDate).toLocaleString('en-US', { month: 'long', year: 'numeric' }) + " Cohort") : "Active Cohort")
+    cohort: student.cohort || (student.joiningDate ? (new Date(student.joiningDate).toLocaleString('en-US', { month: 'long', year: 'numeric' }) + " Cohort") : "Active Cohort"),
+    // Letter of Promotion specific fields
+    fullName: student.name || student.fullName || "Student Name",
+    institute: student.collegeName || student.college || "",
+    oldRole: student.lopOldRole || student.domain || "Intern",
+    newRole: student.lopNewRole || "Senior Intern",
+    effectiveDate: fmtDate(student.lopEffectiveDate) || fmtDate(new Date())
   };
 
   const tempFile = path.join(os.tmpdir(), `cert_${certType}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.pdf`);
@@ -602,6 +609,8 @@ async function buildCertPDF(student, certType) {
     await generateLORPDF(mapData, tempFile);
   } else if (certType === 'STAR') {
     await generateStarCertificate(mapData, tempFile);
+  } else if (certType === 'LOP') {
+    await generateLetterOfPromotionPDF(mapData, tempFile);
   } else {
     throw new Error(`Unsupported certificate type: ${certType}`);
   }
@@ -629,6 +638,7 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
     LOR:   { pdfField: 'lorPdfBase64',   statusField: 'lorStatus',   dateField: 'lorIssuedAt' },
     STAR:  { pdfField: 'starPdfBase64',  statusField: 'starStatus',  dateField: 'starIssuedAt' },
     OFFER: { pdfField: 'offerPdfBase64', statusField: 'offerLetterStatus', dateField: 'offerLetterGeneratedAt' },
+    LOP:   { pdfField: 'lopPdfBase64',   statusField: 'lopStatus',   dateField: 'lopIssuedAt' },
   };
   const fields = fieldMap[certType];
   
@@ -696,7 +706,8 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
       LOC: 'Letter of Completion', 
       LOR: 'Letter of Recommendation', 
       STAR: 'Star Performer Certificate', 
-      OFFER: 'Offer Letter' 
+      OFFER: 'Offer Letter',
+      LOP: 'Letter of Promotion'
     };
 
     await DocumentHistory.create({
@@ -740,7 +751,8 @@ async function generateAndSaveCert(studentId, certType, studentData = null, sent
       LOC: "Letter of Completion",
       LOR: "Letter of Recommendation",
       STAR: "Star Performer Certificate",
-      OFFER: "Offer Letter"
+      OFFER: "Offer Letter",
+      LOP: "Letter of Promotion"
     };
     const docLabel = notifLabels[certType] || certType;
     await Notification.notifyStudent(student, {
@@ -903,6 +915,33 @@ router.post('/star-submit', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+// POST /api/v2/certificates/issue-lop — HR issues a Letter of Promotion
+// Body: { studentId, oldRole, newRole, effectiveDate, department, gender? }
+router.post('/issue-lop', async (req, res) => {
+  try {
+    const { studentId, oldRole, newRole, effectiveDate, department, gender } = req.body || {};
+    if (!studentId) {
+      return res.status(400).json({ success: false, message: 'studentId is required' });
+    }
+    const update = { lopStatus: 'pending' };
+    if (oldRole)       update.lopOldRole       = oldRole;
+    if (newRole)       update.lopNewRole       = newRole;
+    if (effectiveDate) update.lopEffectiveDate = new Date(effectiveDate);
+    if (department)    update.lopDepartment    = department;
+    if (gender !== undefined) update.gender    = gender;
+    await Student.findByIdAndUpdate(studentId, update);
+
+    const studentObj = await Student.findById(studentId);
+    if (!studentObj) return res.status(404).json({ success: false, message: 'Student not found' });
+
+    const result = await generateAndSaveCert(studentId, 'LOP', studentObj, req.body.sentBy || 'HR Portal');
+    res.json({ success: true, ...result });
+  } catch (e) {
+    console.error('[Issue-LOP] Error:', e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
   
 // GET /api/v2/certificates/my-certs
 router.get('/my-certs', async (req, res) => {
@@ -917,7 +956,7 @@ router.get('/download/:type', async (req, res) => {
     const student = await Student.findOne({ employeeId }).lean();
     if (!student) return res.status(404).json({ error: 'Not found' });
   
-    const pdfMap = { LOC:'locPdfBase64', LOR:'lorPdfBase64', STAR:'starPdfBase64', OFFER:'offerPdfBase64' };
+    const pdfMap = { LOC:'locPdfBase64', LOR:'lorPdfBase64', STAR:'starPdfBase64', OFFER:'offerPdfBase64', LOP:'lopPdfBase64' };
     const b64 = student[pdfMap[type]];
     if (!b64) {
       try {

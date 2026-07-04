@@ -108,6 +108,19 @@ const studentsSchema = new mongoose.Schema({
     starStatus:              { type: String, enum: ['not_submitted','pending_review','approved','issued','rejected'], default: 'not_submitted' },
     starIssuedAt:            { type: Date,   default: null },
     starContribution:        { type: String, default: null },
+
+    // Letter of Promotion (LOP)
+    lopPdfBase64:            { type: String, default: null },
+    lopStatus:               { type: String, enum: ['not_eligible','pending','issued'], default: 'not_eligible' },
+    lopIssuedAt:             { type: Date,   default: null },
+    lopOldRole:              { type: String, default: null },
+    lopNewRole:              { type: String, default: null },
+    lopEffectiveDate:        { type: Date,   default: null },
+    lopDepartment:           { type: String, default: null },
+
+    // Gender — drives correct pronouns in generated documents.
+    // Empty / undefined values fall back to neutral "they/them/their".
+    gender:                  { type: String, enum: ['male','female','',null], default: '' },
       
     offerPdfBase64:          { type: String, default: null },
     offerLetterStatus:       { type: String, enum: ['not_uploaded','pending','under_review','approved','rejected','issued'], default: 'not_uploaded' },

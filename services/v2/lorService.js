@@ -9,9 +9,9 @@ const {
     registerFonts,
     drawLogo,
     drawBotanicalDecoration,
-    getPronouns,
     todayFormatted
 } = require("./pdfHelpers");
+const { resolvePronouns } = require("./documentTextHelpers");
 
 /**
  * Generates a Letter of Recommendation (LOR) PDF for a student.
@@ -73,7 +73,7 @@ async function generateLORPDF(data, outputPath) {
             doc.moveTo(50, 210).lineTo(170, 210).lineWidth(1).strokeColor("#1A1A2E").stroke();
 
             // ── 8. 3 Detailed Paragraphs (Pronoun-aware) ──
-            const p = getPronouns(data.gender);
+            const p = resolvePronouns(data.gender);
             const name = data.studentName || "Candidate Name";
             const role = data.domain || data.role || "Intern";
             const start = data.startDate || "Start Date";
