@@ -9,9 +9,9 @@ const {
     registerFonts,
     drawLogo,
     drawRosetteMedal,
-    getPronouns,
     todayFormatted
 } = require("./pdfHelpers");
+const { resolvePronouns } = require("./documentTextHelpers");
 
 /**
  * Generates a Letter of Completion (LOC) Certificate PDF for a student.
@@ -95,7 +95,7 @@ async function generateLOCPDF(data, outputPath) {
                 .text(`Date Of Issue:- ${issueDate}`, 50, 366);
 
             // ── 5. Justified Narrative Body (Pronoun Aware) ──
-            const p = getPronouns(data.gender);
+            const p = resolvePronouns(data.gender);
             const name = data.studentName || "Candidate Name";
             const course = data.degreeCourse || data.collegeName || "Course / Degree";
             const uni = data.universityName || data.collegeName || "University / Institute";

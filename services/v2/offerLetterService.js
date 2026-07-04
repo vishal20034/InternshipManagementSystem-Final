@@ -11,6 +11,7 @@ const {
     drawCircularSeal,
     todayFormatted
 } = require("./pdfHelpers");
+const { buildSalutation } = require("./documentTextHelpers");
 
 /**
  * Generates an Internship Offer Letter PDF for a student.
@@ -64,12 +65,10 @@ async function generateOfferLetterPDF(data, outputPath) {
                 .text("INTERNSHIP OFFER LETTER", 0, 115, { width: W, align: "center", characterSpacing: 1 });
             doc.moveTo(W / 2 - 120, 134).lineTo(W / 2 + 120, 134).lineWidth(1).strokeColor("#1a1a1a").stroke();
 
-            // ── Salutation ──
+            // ── Salutation (single-line, built via shared helper) ──
             const studentName = data.studentName || "Candidate Name";
-            doc.fillColor("#1a1a1a").font("Times-Roman").fontSize(11)
-                .text("Dear ", 50, 155, { continued: true })
-                .font("Times-Bold").text(studentName, { continued: true })
-                .font("Times-Roman").text(",");
+            doc.fillColor("#1a1a1a").font("Times-Bold").fontSize(11)
+                .text(buildSalutation(studentName), 50, 155, { width: W - 100, lineBreak: false });
 
             // ── Body 1 ──
             const bodyOpts = { width: W - 100, align: "justify", lineGap: 4 };
