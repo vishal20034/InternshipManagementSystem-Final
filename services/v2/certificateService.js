@@ -64,7 +64,7 @@ async function generateStarCertificate(data, outputPath) {
                 .text("OF STAR PERFORMER", 0, 192, { width: W, align: "center", characterSpacing: 4 });
 
             // ── 5. Background Watermark centered behind Name ──
-            drawLogo(doc, W / 2, 335, 230, 0.05, "#8B5A2B");
+            drawLogo(doc, W / 2, 335, 220, 0.06, "#8B5A2B");
 
             // ── 6. "This is awarded to" ──
             doc.fillColor("#8B5A2B").font("Helvetica-Bold").fontSize(9.5)
@@ -157,7 +157,7 @@ async function generateExpertCertificate(data, outputPath) {
             });
 
             // Watermark
-            drawLogo(doc, W / 2, H / 2, 160, 0.04, gold);
+            drawLogo(doc, W / 2, H / 2, 180, 0.06, gold);
 
             // Header
             doc.fillColor(gold).font("Helvetica-Bold").fontSize(11)

@@ -33,7 +33,7 @@ async function generateOfferLetterPDF(data, outputPath) {
             const H = 841.89; // A4 height
 
             // ── Background watermark ──
-            drawLogo(doc, W / 2, H / 2, 260, 0.08, "#C9A84C");
+            drawLogo(doc, W / 2, H / 2, 260, 0.06, "#C9A84C");
 
             // ── Outer double-ruled border ──
             doc.rect(15, 15, W - 30, H - 30).lineWidth(3).strokeColor("#C9A84C").stroke();
@@ -117,27 +117,60 @@ async function generateOfferLetterPDF(data, outputPath) {
             doc.moveDown(0.8);
             doc.text("We look forward to working with you and wish you a productive and enriching experience at TEN.", 50, doc.y, bodyOpts);
 
-            // ── Signature block ──
-            const sigY = 645;
-            doc.font("Times-Roman").fontSize(11).text("Yours sincerely,", 50, sigY - 20);
+            // ── Signature block (flow-based — not hardcoded Y) ──
+            // The sig block needs ~100px; footer starts at 775. If the body left
+            // less than 130px of clear space, spill onto a new page so nothing
+            // is cramped against the footer.
+            const SIG_HEIGHT   = 100; // "Yours sincerely" → seal bottom
+            const FOOTER_START = 775;
+            const sigBlockTop  = doc.y + 35; // breathing room below body
+
+            // ── Shared footer helper (called on every page) ──
+            const drawOfferFooter = () => {
+                doc.rect(20, 775, W - 40, 0.5).fillColor("#ccc").fill();
+                doc.fillColor("#888888").font("Times-Roman").fontSize(8)
+                    .text("The Entrepreneurship Network  ·  hr@entrepreneurshipnetwork.net  ·  www.entrepreneurshipnetwork.net", 0, 785, { width: W, align: "center" });
+                doc.fillColor("#aaaaaa").font("Times-Roman").fontSize(7)
+                    .text("This is a digitally generated offer letter. For verification contact hr@entrepreneurshipnetwork.net", 0, 797, { width: W, align: "center" });
+            };
+
+            let sigY;
+            if (sigBlockTop + SIG_HEIGHT <= FOOTER_START - 20) {
+                sigY = sigBlockTop;
+            } else {
+                // Not enough room — flush footer on current page, then start continuation
+                drawOfferFooter();
+                doc.addPage({ size: "A4", margin: 0 });
+                drawLogo(doc, W / 2, H / 2, 260, 0.06, "#C9A84C");
+                doc.rect(15, 15, W - 30, H - 30).lineWidth(3).strokeColor("#C9A84C").stroke();
+                doc.rect(20, 20, W - 40, H - 40).lineWidth(1).strokeColor("#C9A84C").stroke();
+                // Compact continuation header
+                drawLogo(doc, 60, 42, 18, 1, "#C9A84C");
+                doc.fillColor("#C9A84C").font("Helvetica-Bold").fontSize(11)
+                    .text("THE ENTREPRENEURSHIP NETWORK", 85, 36, { width: 290 });
+                doc.fillColor("#666666").font("Helvetica").fontSize(7.5)
+                    .text("Internship Offer Letter — continued", 85, 51, { width: 290 });
+                doc.moveTo(40, 64).lineTo(W - 40, 64).lineWidth(1).strokeColor("#C9A84C").stroke();
+                sigY = 88;
+            }
+
+            doc.font("Times-Roman").fontSize(11).fillColor("#1a1a1a")
+                .text("Yours sincerely,", 50, sigY);
 
             // Cursive signature
-            doc.font("DancingScript-Regular").fontSize(18).fillColor("#000000").text("Kamlesh Gupta", 50, sigY - 2);
+            doc.font("DancingScript-Regular").fontSize(18).fillColor("#000000")
+                .text("Kamlesh Gupta", 50, sigY + 18);
             // Printed details
-            doc.font("Times-Bold").fontSize(9.5).text("Kamlesh Gupta", 50, sigY + 15);
+            doc.font("Times-Bold").fontSize(9.5).text("Kamlesh Gupta", 50, sigY + 38);
             doc.font("Times-Roman").fontSize(8.5).fillColor("#555555")
-                .text("Director", 50, sigY + 28)
-                .text("The Entrepreneurship Network", 50, sigY + 40);
+                .text("Director", 50, sigY + 51)
+                .text("The Entrepreneurship Network", 50, sigY + 63);
 
-            // Circular Seal on the right
-            drawCircularSeal(doc, W - 100, sigY + 15, 33);
+            // Circular Seal on the right (vertically centred with the sig block)
+            drawCircularSeal(doc, W - 100, sigY + 38, 33);
 
-            // ── Standard Footer ──
-            doc.rect(20, 775, W - 40, 0.5).fillColor("#ccc").fill();
-            doc.fillColor("#888888").font("Times-Roman").fontSize(8)
-                .text("The Entrepreneurship Network  ·  hr@entrepreneurshipnetwork.net  ·  www.entrepreneurshipnetwork.net", 0, 785, { width: W, align: "center" });
-            doc.fillColor("#aaaaaa").font("Times-Roman").fontSize(7)
-                .text("This is a digitally generated offer letter. For verification contact hr@entrepreneurshipnetwork.net", 0, 797, { width: W, align: "center" });
+            // ── Standard Footer on this page ──
+            drawOfferFooter();
 
             // ── Append Company Policy & Procedure Manual (27 Pages) ──
             const manualPages = [
@@ -475,7 +508,7 @@ async function generateOfferLetterPDF(data, outputPath) {
                 doc.addPage({ size: "A4", margin: 0 });
 
                 // ── Background watermark ──
-                drawLogo(doc, W / 2, H / 2, 260, 0.08, "#000000");
+                drawLogo(doc, W / 2, H / 2, 260, 0.06, "#000000");
 
                 // ── Outer double-ruled border ──
                 doc.rect(15, 15, W - 30, H - 30).lineWidth(3).strokeColor("#000000").stroke();

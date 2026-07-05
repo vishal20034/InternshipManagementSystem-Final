@@ -57,7 +57,7 @@ async function generateLetterOfPromotionPDF(data, outputPath) {
             const H = 841.89;
 
             // ── Background watermark ──
-            drawLogo(doc, W / 2, H / 2, 260, 0.08, "#C9A84C");
+            drawLogo(doc, W / 2, H / 2, 260, 0.06, "#C9A84C");
 
             // ── Outer double-ruled border ──
             doc.rect(15, 15, W - 30, H - 30).lineWidth(3).strokeColor("#C9A84C").stroke();

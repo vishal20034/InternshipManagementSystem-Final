@@ -145,13 +145,39 @@ function drawCuppedHandsHeart(doc, x, y, w, h, fill = false, color = "#000000") 
 }
 
 /**
- * Shared hands + infinity logo drawing utility.
+ * Draws the TEN logo using the real brand image asset.
+ * Falls back to a text monogram if the asset file is unavailable.
+ * Signature is kept identical to the old vector version so every caller
+ * continues working without modification.
  */
 function drawLogo(doc, x, y, size = 60, opacity = 1, color = "#000000") {
+    // Dark-on-transparent PNG works on all backgrounds (white bg is invisible
+    // on light pages; at low opacity the dark marks show as a tasteful watermark)
+    const logoFile = path.join(__dirname, "..", "..", "public", "assets", "TEN_logo_dark_transparent.png");
     doc.save();
     doc.opacity(opacity);
-    drawInfinity(doc, x, y - size * 0.25, size * 0.5, size * 0.25, color);
-    drawCuppedHandsHeart(doc, x, y + size * 0.12, size * 0.75, size * 0.75, false, color);
+    try {
+        if (fs.existsSync(logoFile)) {
+            // Center the image on (x, y)
+            doc.image(logoFile, x - size / 2, y - size / 2, { width: size });
+        } else {
+            // Text-monogram fallback — lineBreak:false + explicit coords so
+            // doc.text() does NOT advance doc.y (flow cursor stays unchanged)
+            const savedY = doc.y;
+            doc.fillColor(color).font("Helvetica-Bold")
+                .fontSize(Math.max(size * 0.35, 8))
+                .text("TEN", x - size * 0.3, y - size * 0.2,
+                      { width: size * 0.6, align: "center", lineBreak: false });
+            doc.y = savedY;
+        }
+    } catch (_e) {
+        const savedY = doc.y;
+        doc.fillColor(color).font("Helvetica-Bold")
+            .fontSize(Math.max(size * 0.35, 8))
+            .text("TEN", x - size * 0.3, y - size * 0.2,
+                  { width: size * 0.6, align: "center", lineBreak: false });
+        doc.y = savedY;
+    }
     doc.restore();
 }
 
