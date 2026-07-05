@@ -90,59 +90,13 @@ function registerFonts(doc) {
 }
 
 /**
- * Draws a perfect infinity symbol at (x, y) with specified dimensions.
+ * Every real call site in this codebase passes one of these exact gold
+ * hex colors when it wants the logo to read as gold-on-dark — mapped here
+ * so no caller needs to change.
  */
-function drawInfinity(doc, x, y, w, h, color = "#000000") {
-    doc.save();
-    doc.translate(x, y);
-    doc.lineWidth(h * 0.15 || 1.5);
-    doc.strokeColor(color);
-    doc.moveTo(0, 0);
-    // Right loop
-    doc.bezierCurveTo(w * 0.25, h * 0.5, w * 0.5, h * 0.5, w * 0.5, 0);
-    doc.bezierCurveTo(w * 0.5, -h * 0.5, w * 0.25, -h * 0.5, 0, 0);
-    // Left loop
-    doc.bezierCurveTo(-w * 0.25, h * 0.5, -w * 0.5, h * 0.5, -w * 0.5, 0);
-    doc.bezierCurveTo(-w * 0.5, -h * 0.5, -w * 0.25, -h * 0.5, 0, 0);
-    doc.stroke();
-    doc.restore();
-}
-
-/**
- * Draws the cupped hands forming a heart shape.
- */
-function drawCuppedHandsHeart(doc, x, y, w, h, fill = false, color = "#000000") {
-    doc.save();
-    doc.translate(x, y);
-    doc.fillColor(color);
-    doc.strokeColor(color);
-    doc.lineWidth(1.5);
-
-    // Left hand path
-    doc.beginPath();
-    doc.moveTo(0, h * 0.4);
-    doc.bezierCurveTo(-w * 0.45, h * 0.35, -w * 0.5, -h * 0.1, -w * 0.1, -h * 0.25);
-    doc.bezierCurveTo(-w * 0.05, -h * 0.2, -w * 0.1, -h * 0.1, -w * 0.15, -h * 0.05);
-    doc.bezierCurveTo(-w * 0.25, h * 0.05, -w * 0.2, h * 0.2, 0, h * 0.4);
-    if (fill) doc.fill(); else doc.stroke();
-
-    // Right hand path
-    doc.beginPath();
-    doc.moveTo(0, h * 0.4);
-    doc.bezierCurveTo(w * 0.45, h * 0.35, w * 0.5, -h * 0.1, w * 0.1, -h * 0.25);
-    doc.bezierCurveTo(w * 0.05, -h * 0.2, w * 0.1, -h * 0.1, w * 0.15, -h * 0.05);
-    doc.bezierCurveTo(w * 0.25, h * 0.05, w * 0.2, h * 0.2, 0, h * 0.4);
-    if (fill) doc.fill(); else doc.stroke();
-
-    // Thumbs curving inward to create the heart cleavage
-    doc.beginPath();
-    doc.moveTo(-w * 0.08, -h * 0.03);
-    doc.bezierCurveTo(-w * 0.04, -h * 0.08, 0, -h * 0.02, 0, h * 0.15);
-    doc.bezierCurveTo(0, -h * 0.02, w * 0.04, -h * 0.08, w * 0.08, -h * 0.03);
-    doc.stroke();
-
-    doc.restore();
-}
+const GOLD_TONES = new Set(["#C9A84C", "#D4AF37", "#8B5A2B", "#E8B923"]);
+const LOGO_NAVY = path.join(__dirname, "..", "..", "public", "assets", "TEN_logo_dark_transparent.png");
+const LOGO_GOLD = path.join(__dirname, "..", "..", "public", "assets", "TEN_logo_gold_for_navy_bg.png");
 
 /**
  * Draws the TEN logo using the real brand image asset.
@@ -151,9 +105,9 @@ function drawCuppedHandsHeart(doc, x, y, w, h, fill = false, color = "#000000") 
  * continues working without modification.
  */
 function drawLogo(doc, x, y, size = 60, opacity = 1, color = "#000000") {
-    // Dark-on-transparent PNG works on all backgrounds (white bg is invisible
-    // on light pages; at low opacity the dark marks show as a tasteful watermark)
-    const logoFile = path.join(__dirname, "..", "..", "public", "assets", "TEN_logo_dark_transparent.png");
+    // Pick the navy or gold mark depending on the caller's intended color,
+    // so it reads correctly whether it's placed on a light or dark background.
+    const logoFile = GOLD_TONES.has((color || "").toUpperCase()) ? LOGO_GOLD : LOGO_NAVY;
     doc.save();
     doc.opacity(opacity);
     try {
@@ -422,8 +376,6 @@ module.exports = {
     ensureFonts,
     registerFonts,
     drawLogo,
-    drawInfinity,
-    drawCuppedHandsHeart,
     drawCircularSeal,
     drawStarMedal,
     drawBotanicalDecoration,
