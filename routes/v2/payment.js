@@ -75,6 +75,51 @@ router.post('/create-order', async (req, res) => {
     const amount = parseFloat(req.body.amount);
     if (!amount || amount < 1) return res.status(400).json({ success: false, message: 'Invalid amount (minimum ₹1)' });
 
+    const payMethod = req.body.method || (req.body.directUpi ? 'upi' : 'gateway');
+    if (payMethod === 'upi') {
+      const invoiceRef  = req.body.invoiceRef  || ('INV-' + employeeId + '-' + Date.now());
+      const description = req.body.description || '';
+      const orderId     = 'PAY-' + employeeId + '-' + Date.now();
+      const mobile      = sanitizeMobile(student.phone || student.mobile || '');
+      
+      const paymentProvider = require('../../services/v2/paymentProvider');
+      const upiPaymentData = await paymentProvider.generateManualUpiPayment({
+        amount: amount,
+        orderId: orderId,
+        purpose: description || 'Direct UPI Payment'
+      });
+
+      const payment = new Payment({
+        orderId,
+        invoiceRef,
+        studentId:      student._id,
+        employeeId,
+        amount:         amount,
+        provider:       'upi',
+        purpose:        description || 'Direct UPI Payment',
+        amountRupees:   amount,
+        amountPaisa:    Math.round(amount * 100),
+        status:         'pending',
+        paymentUrl:     '',
+        customerName:   student.name   || '',
+        customerEmail:  student.email  || '',
+        customerMobile: mobile,
+        description,
+        mode:           'manual'
+      });
+      await payment.save();
+
+      return res.json({
+        success: true,
+        orderId,
+        mode: 'manual',
+        upiId: upiPaymentData.upiId,
+        payeeName: upiPaymentData.payeeName,
+        qrCodeDataUrl: upiPaymentData.qrCodeDataUrl,
+        instructions: upiPaymentData.instructions
+      });
+    }
+
     const invoiceRef  = req.body.invoiceRef  || ('INV-' + employeeId + '-' + Date.now());
     const description = req.body.description || '';
     const amountPaisa = Math.round(amount * 100);
@@ -291,7 +336,7 @@ router.post('/utr-confirm', async (req, res) => {
     const employeeId = req.headers['x-employee-id'];
     if (!employeeId) return res.status(401).json({ success: false, message: 'Unauthorised' });
 
-    const { utr, amount, description } = req.body;
+    const { utr, amount, description, orderId } = req.body;
     if (!utr || String(utr).trim().length < 6) {
       return res.status(400).json({ success: false, message: 'Invalid UTR' });
     }
@@ -299,27 +344,51 @@ router.post('/utr-confirm', async (req, res) => {
     const student = await Student.findOne({ employeeId });
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
-    const orderId = 'UPIPAY-' + employeeId + '-' + Date.now();
-    const cleanAmount = parseFloat(amount) || 0;
+    let payment;
+    if (orderId) {
+      payment = await Payment.findOne({ orderId });
+    }
 
-    const payment = new Payment({
-      orderId,
-      invoiceRef:     'UTR-' + String(utr).trim(),
-      studentId:      student._id,
-      employeeId,
-      amount:         cleanAmount,
-      provider:       'manual',
-      purpose:        description || 'Direct UPI Payment',
-      amountRupees:   cleanAmount,
-      amountPaisa:    Math.round(cleanAmount * 100),
-      status:         'pending_verification',
-      txnUtr:         String(utr).trim(),
-      customerName:   student.name  || '',
-      customerEmail:  student.email || '',
-      description:    description   || 'Direct UPI Payment',
-      paymentUrl:     ''
-    });
-    await payment.save();
+    if (payment) {
+      payment.status = 'pending_verification';
+      payment.txnUtr = String(utr).trim();
+      payment.mode = 'manual';
+      payment.invoiceRef = 'UTR-' + String(utr).trim();
+      if (description) {
+        payment.purpose = description;
+        payment.description = description;
+      }
+      if (amount) {
+        const cleanAmount = parseFloat(amount) || 0;
+        payment.amount = cleanAmount;
+        payment.amountRupees = cleanAmount;
+        payment.amountPaisa = Math.round(cleanAmount * 100);
+      }
+      await payment.save();
+    } else {
+      const generatedOrderId = 'UPIPAY-' + employeeId + '-' + Date.now();
+      const cleanAmount = parseFloat(amount) || 0;
+
+      payment = new Payment({
+        orderId:        generatedOrderId,
+        invoiceRef:     'UTR-' + String(utr).trim(),
+        studentId:      student._id,
+        employeeId,
+        amount:         cleanAmount,
+        provider:       'manual',
+        purpose:        description || 'Direct UPI Payment',
+        amountRupees:   cleanAmount,
+        amountPaisa:    Math.round(cleanAmount * 100),
+        status:         'pending_verification',
+        txnUtr:         String(utr).trim(),
+        customerName:   student.name  || '',
+        customerEmail:  student.email || '',
+        description:    description   || 'Direct UPI Payment',
+        paymentUrl:     '',
+        mode:           'manual'
+      });
+      await payment.save();
+    }
 
     try {
       await new Notification({
@@ -390,6 +459,79 @@ router.get('/hr-all-payments', async (req, res) => {
     return res.json({ success: true, total: payments.length, payments });
   } catch (err) {
     console.error('[PAYMENT] hr-all-payments error:', err.message);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /api/v2/payment/hr-verify
+router.post('/hr-verify', async (req, res) => {
+  try {
+    const auth = req.headers.authorization || '';
+    if (!auth.startsWith('Bearer hr_')) {
+      return res.status(403).json({ success: false, message: 'HR access required' });
+    }
+
+    const hrUsername = auth.replace('Bearer hr_', '').trim() || 'HR';
+    const { orderId, approve, reason } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required' });
+    }
+
+    const payment = await Payment.findOne({ orderId });
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'Payment record not found' });
+    }
+
+    if (payment.status === 'success' && approve) {
+      return res.status(400).json({ success: false, message: 'Payment is already marked as successful' });
+    }
+
+    if (approve) {
+      payment.status = 'success';
+      payment.verifiedBy = hrUsername;
+      payment.verifiedAt = new Date();
+      payment.rejectionReason = null;
+      await payment.save();
+
+      // Create success notification for student
+      try {
+        await new Notification({
+          title:            '💳 Payment Approved!',
+          message:          `Your manual payment of ₹${payment.amountRupees || payment.amount} (UTR: ${payment.txnUtr}) has been approved and verified.`,
+          type:             'success',
+          from:             'System',
+          targetType:       'student',
+          targetEmployeeId: payment.employeeId
+        }).save();
+      } catch (_) {}
+
+      console.log(`[PAYMENT] Approved by ${hrUsername} | orderId: ${orderId}`);
+      return res.json({ success: true, message: 'Payment approved successfully.' });
+    } else {
+      payment.status = 'failed';
+      payment.verifiedBy = hrUsername;
+      payment.verifiedAt = new Date();
+      payment.rejectionReason = reason || 'Verification failed';
+      await payment.save();
+
+      // Create failure notification for student
+      try {
+        await new Notification({
+          title:            '❌ Payment Rejected',
+          message:          `Your manual payment verification failed. Reason: ${reason || 'Invalid UTR / Transfer details'}.`,
+          type:             'error',
+          from:             'System',
+          targetType:       'student',
+          targetEmployeeId: payment.employeeId
+        }).save();
+      } catch (_) {}
+
+      console.log(`[PAYMENT] Rejected by ${hrUsername} | orderId: ${orderId} | Reason: ${reason}`);
+      return res.json({ success: true, message: 'Payment rejected successfully.' });
+    }
+  } catch (err) {
+    console.error('[PAYMENT] hr-verify error:', err.message);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 });
