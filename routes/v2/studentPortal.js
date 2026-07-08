@@ -309,9 +309,48 @@ router.post("/student/complete-onboarding", requireStudent, async (req, res) => 
             const actualJoiningDate = joiningDate || student.joiningDate || student.createdAt;
             if (actualJoiningDate) {
                 const Attendance = require("../../models/Attendance");
-                const { calculateAttendancePercentage } = require("../../utils/attendanceUtils");
                 const emp = updates.employeeId || student.employeeId;
-                const presentCount = await Attendance.countDocuments({ employeeId: emp, status: "present" });
+                
+                // Retroactively insert Present attendance records for each day from actualJoiningDate to today (inclusive)
+                const start = new Date(actualJoiningDate);
+                start.setHours(0,0,0,0);
+                const end = new Date();
+                end.setHours(0,0,0,0);
+                
+                let cur = new Date(start);
+                while (cur <= end) {
+                    const yr = cur.getFullYear();
+                    const mo = String(cur.getMonth() + 1).padStart(2, '0');
+                    const dy = String(cur.getDate()).padStart(2, '0');
+                    const dateKey = `${yr}-${mo}-${dy}`;
+                    
+                    try {
+                        await Attendance.findOneAndUpdate(
+                            { employeeId: emp, dateKey, markedBy: "self" },
+                            {
+                                $setOnInsert: {
+                                    studentId: student._id,
+                                    employeeId: emp,
+                                    domain: student.domain || "",
+                                    date: new Date(cur),
+                                    dateKey,
+                                    status: "Present",
+                                    markedBy: "self"
+                                }
+                            },
+                            { upsert: true, new: true }
+                        );
+                    } catch (err) {
+                        console.error("[ONBOARDING] Retroactive attendance insertion error:", err.message);
+                    }
+                    cur.setDate(cur.getDate() + 1);
+                }
+
+                const { calculateAttendancePercentage } = require("../../utils/attendanceUtils");
+                const presentCount = await Attendance.countDocuments({
+                    employeeId: emp,
+                    status: { $in: ["Present", "present"] }
+                });
                 const calculatedAttendance = calculateAttendancePercentage({
                     joiningDate: actualJoiningDate,
                     tenure: student.tenure,
