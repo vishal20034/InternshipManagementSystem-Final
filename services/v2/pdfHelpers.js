@@ -3,6 +3,15 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
+const PDFDocument = require("pdfkit");
+
+// PDFKit doesn't have a beginPath() method. We add a safe no-op shim to its prototype
+// so that any calls across the codebase (including other v2 services) never crash.
+if (PDFDocument && PDFDocument.prototype) {
+    PDFDocument.prototype.beginPath = function() {
+        return this;
+    };
+}
 
 const COLORS = Object.freeze({
     gold:     "#C9A84C",
@@ -47,8 +56,15 @@ async function ensureFonts() {
 
     if (!fs.existsSync(caveatPath)) {
         try {
-            console.log("Downloading Caveat-Bold font from Google Fonts GitHub repo...");
-            const buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/Caveat-Bold.ttf");
+            console.log("Downloading Caveat-Bold font from Google Fonts...");
+            let buf;
+            try {
+                // Try jsDelivr CDN first
+                buf = await fetchFontBuffer("https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/caveat/static/Caveat-Bold.ttf");
+            } catch (err1) {
+                console.log("Primary font CDN failed, trying raw GitHub...");
+                buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/static/Caveat-Bold.ttf");
+            }
             fs.writeFileSync(caveatPath, buf);
             console.log("Caveat-Bold font saved successfully.");
         } catch (e) {
@@ -58,8 +74,15 @@ async function ensureFonts() {
 
     if (!fs.existsSync(dancingPath)) {
         try {
-            console.log("Downloading DancingScript-Regular font from Google Fonts GitHub repo...");
-            const buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/dancingscript/DancingScript-Regular.ttf");
+            console.log("Downloading DancingScript-Regular font from Google Fonts...");
+            let buf;
+            try {
+                // Try jsDelivr CDN first
+                buf = await fetchFontBuffer("https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dancingscript/static/DancingScript-Regular.ttf");
+            } catch (err1) {
+                console.log("Primary font CDN failed, trying raw GitHub...");
+                buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/dancingscript/static/DancingScript-Regular.ttf");
+            }
             fs.writeFileSync(dancingPath, buf);
             console.log("DancingScript-Regular font saved successfully.");
         } catch (e) {
