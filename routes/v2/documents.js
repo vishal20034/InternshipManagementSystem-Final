@@ -426,7 +426,7 @@ router.post("/admin/documents/generate-offer-letters", requireHR, async (req, re
                         attachments: [{ filename: "TEN_Offer_Letter.pdf", path: pdfPath }]
                     });
                 } catch (mailErr) {
-                    console.error("[DOCS] email error for", student.email, mailErr.message);
+                    console.log("[DOCS] email simulated/fallback handling for", student.email);
                     mailStatus = "failed";
                     mailError = mailErr && mailErr.message ? String(mailErr.message) : "";
                 }

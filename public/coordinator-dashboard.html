@@ -1944,8 +1944,10 @@ async function loadSubmissions(){
       if(dur==="3 Months"){ totalDays=60; reqDays=45; }
       if(dur==="6 Months"){ totalDays=120; reqDays=90; }
       const attCount = sub.attendanceCount || 0;
-      const attPct = Math.round((attCount/totalDays)*100);
-      const attStatus = attCount >= reqDays ? "✅ 75%+ Met" : `${attPct}% (${attCount}/${totalDays})`;
+      const attPct = (sub.attendancePercentage !== undefined && sub.attendancePercentage !== null)
+        ? sub.attendancePercentage
+        : Math.round((attCount/totalDays)*100);
+      const attStatus = attPct >= 75 ? `✅ ${attPct}% Met` : `${attPct}% (${attCount}/${totalDays})`;
 
       return `
       <div class="${cardClass}">
@@ -2875,8 +2877,10 @@ function renderSubmissions(submissions){
     if(dur==="3 Months"){ totalDays=60; reqDays=45; }
     if(dur==="6 Months"){ totalDays=120; reqDays=90; }
     const attCount = sub.attendanceCount || 0;
-    const attPct = Math.round((attCount/totalDays)*100);
-    const attStatus = attCount >= reqDays ? "✅ 75%+ Met" : `${attPct}% (${attCount}/${totalDays})`;
+    const attPct = (sub.attendancePercentage !== undefined && sub.attendancePercentage !== null)
+      ? sub.attendancePercentage
+      : Math.round((attCount/totalDays)*100);
+    const attStatus = attPct >= 75 ? `✅ ${attPct}% Met` : `${attPct}% (${attCount}/${totalDays})`;
     return `
     <div class="${cardClass}">
       <div class="card-top">

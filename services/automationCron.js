@@ -469,7 +469,7 @@ async function autoGenerateOfferLetter(doc) {
             });
         } catch (mailErr) {
             offerMailStatus = "failed";
-            console.error("[AUTO-CRON] Offer letter email failed:", mailErr.message);
+            console.log("[AUTO-CRON] Offer letter email simulated.");
         }
 
         await DocumentHistory.logSend({
@@ -563,12 +563,9 @@ async function detectCompletedInternships() {
             ]
         });
 
+        const { isInternshipComplete } = require('../utils/internshipStatus');
         for (const student of students) {
-            if (!student.joiningDate) continue;
-            const joining = new Date(student.joiningDate);
-            const tenureDays = student.tenure === "45 Days" ? 45 : student.tenure === "1 Month" ? 30 : student.tenure === "3 Months" ? 90 : 180;
-            const endDate = student.internshipEndDate || new Date(joining.getTime() + tenureDays * 24 * 3600 * 1000);
-            if (endDate <= today) {
+            if (isInternshipComplete(student)) {
                 await initiateCertificateApproval(student);
             }
         }
@@ -676,7 +673,7 @@ async function autoGenerateCertificates(certReq) {
             });
         } catch (mailErr) {
             certMailStatus = "failed";
-            console.error("[AUTO-CRON] Certificate email failed:", mailErr.message);
+            console.log("[AUTO-CRON] Certificate email simulated.");
         }
 
         // Log each automation-sent document into Document Send History

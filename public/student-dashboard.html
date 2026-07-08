@@ -1915,6 +1915,11 @@ button:active { transform: translateY(0); }
       <div style="background:rgba(212,175,55,0.05);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
         <b style="color:#D4AF37;font-size:13px;">📋 Attendance (Mandatory)</b>
         <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;">Fill the attendance form twice daily (morning &amp; evening). Screenshot and share in group if allowed.</p>
+        <div style="margin-top: 10px;">
+          <a href="https://forms.gle/attendanceFormPlaceholder" target="_blank" rel="noopener" style="display: inline-block; background: #D4AF37; color: #0c1220; font-weight: bold; font-size: 11px; padding: 6px 12px; border-radius: 6px; text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='#f5c542'" onmouseout="this.style.background='#D4AF37'">
+            📝 Submit Attendance Google Form
+          </a>
+        </div>
       </div>
       <div style="background:rgba(212,175,55,0.05);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
         <b style="color:#D4AF37;font-size:13px;">📁 Onboarding Documents</b>
@@ -1931,6 +1936,35 @@ button:active { transform: translateY(0); }
       <div style="background:rgba(212,175,55,0.08);border-left:3px solid #D4AF37;border-radius:0 8px 8px 0;padding:14px 18px;">
         <b style="color:#D4AF37;font-size:13px;">🏆 Best Performers — Paid Projects &amp; Positions</b>
         <p style="font-size:13px;color:#9a8a6a;margin:6px 0 0;line-height:1.8;">Top performers get paid projects &amp; positions. <a href="https://docs.google.com/document/d/e/2PACX-1vRZAg2cRitRTvw3GO7HWbUUGCiCJ44Jqg7WQOPC4N0pCidzTWKuyvqGp8rptrvXyJsBTryjm1a6b45i/pub" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ AI Development Playbook</a> &nbsp;|&nbsp; <a href="https://www.entrepreneurshipnetwork.net/Layers" target="_blank" rel="noopener" style="color:#D4AF37;font-weight:600;">→ Performance Layers</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- WhatsApp Community Groups Box (Only shown to 'whatsapp' or 'new' joiner types) -->
+  <div id="whatsappCommunityGroupsBox" style="display:none; margin-top: 20px; background:rgba(14,20,40,0.95); border:1px solid rgba(212,175,55,0.18); border-radius:16px; padding:28px 32px;">
+    <h3 style="font-size:17px;font-weight:800;color:#D4AF37;margin-bottom:8px;">💬 WhatsApp Community Groups</h3>
+    <p style="font-size:13px;color:#9a8a6a;margin-bottom:18px;line-height:1.6;">Join your respective official WhatsApp groups below to stay connected with coordinators and community members.</p>
+    
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
+      <!-- Card 1 -->
+      <div style="background:rgba(212,175,55,0.05); border:1px solid rgba(212,175,55,0.15); border-radius:12px; padding:16px; text-align: center;">
+        <b style="color:#D4AF37; font-size:14px; display:block; margin-bottom:8px;">TEN Community Group</b>
+        <p style="font-size:12px; color:#9a8a6a; margin-bottom:14px; line-height:1.5;">Join the general student community to network and get updates.</p>
+        <a href="https://chat.whatsapp.com/communityGroup" target="_blank" rel="noopener" style="display:inline-block; background:#D4AF37; color:#0c1220; font-weight:bold; font-size:11px; padding:6px 12px; border-radius:6px; text-decoration:none;">Join Group</a>
+      </div>
+      
+      <!-- Card 2 -->
+      <div style="background:rgba(212,175,55,0.05); border:1px solid rgba(212,175,55,0.15); border-radius:12px; padding:16px; text-align: center;">
+        <b style="color:#D4AF37; font-size:14px; display:block; margin-bottom:8px;">Python/Web Dev Specific</b>
+        <p style="font-size:12px; color:#9a8a6a; margin-bottom:14px; line-height:1.5;">Domain-specific channel for developers and tech discussion.</p>
+        <a href="https://chat.whatsapp.com/domainSpecificGroup" target="_blank" rel="noopener" style="display:inline-block; background:#D4AF37; color:#0c1220; font-weight:bold; font-size:11px; padding:6px 12px; border-radius:6px; text-decoration:none;">Join Group</a>
+      </div>
+      
+      <!-- Card 3 -->
+      <div style="background:rgba(212,175,55,0.05); border:1px solid rgba(212,175,55,0.15); border-radius:12px; padding:16px; text-align: center;">
+        <b style="color:#D4AF37; font-size:14px; display:block; margin-bottom:8px;">Coordinator Advisory</b>
+        <p style="font-size:12px; color:#9a8a6a; margin-bottom:14px; line-height:1.5;">Get direct support and guidance from regional coordinator heads.</p>
+        <a href="https://chat.whatsapp.com/coordinatorAdvisory" target="_blank" rel="noopener" style="display:inline-block; background:#D4AF37; color:#0c1220; font-weight:bold; font-size:11px; padding:6px 12px; border-radius:6px; text-decoration:none;">Join Group</a>
       </div>
     </div>
   </div>
@@ -2982,9 +3016,18 @@ async function submitTask(){
     if(pdf){ formData.append("pdf",pdf); }
 
     const response = await fetch("/submit-task",{method:"POST",body:formData});
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseErr) {
+      if (response.status === 413) {
+        data = { success: false, message: "File is too large! Maximum limit is 10MB." };
+      } else {
+        data = { success: false, message: "Server error occurred during task submission." };
+      }
+    }
 
-    if(data.success){
+    if(response.ok && data.success){
       Swal.fire({icon:"success",title:"Task Submitted",text:"Your task uploaded successfully 🚀",background:"#101820",color:"#ffffff",confirmButtonColor:"#00c853"});
       closeSubmissionModal();
       
@@ -5019,13 +5062,20 @@ function applyJoinerTypeUI(type) {
 function updateGoogleLinksVisibility() {
   var stu = JSON.parse(localStorage.getItem('student') || '{}');
   var formBox = document.getElementById('googleFormAttendanceBox');
-  if (stu.joinerType === 'whatsapp') {
+  var waBox = document.getElementById('whatsappCommunityGroupsBox');
+  if (stu.joinerType === 'whatsapp' || stu.joinerType === 'new') {
     if (formBox) {
-       formBox.style.display = 'none';
+       formBox.style.display = 'block';
+    }
+    if (waBox) {
+       waBox.style.display = 'block';
     }
   } else {
     if (formBox) {
        formBox.style.display = 'none';
+    }
+    if (waBox) {
+       waBox.style.display = 'none';
     }
   }
 }

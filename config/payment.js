@@ -5,6 +5,16 @@ const expert_price = 100;
 const nano_price = 1000;
 const fellowship_price = 2500;
 
+const BUSINESS_UPI = {
+  upiId: 'paytmqr5k0ods@ptys',
+  payeeName: 'Limitless Technologies',
+  phone: '8595986120'
+};
+
+const FINE_AMOUNTS = {
+  low_attendance: 400
+};
+
 module.exports = {
     PAYMENT_ENABLED: process.env.PAYMENT_ENABLED === 'true' || false,
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
@@ -20,7 +30,9 @@ module.exports = {
         fellowship: fellowship_price * 100
     },
     PAYMENT_SETU_API_KEY: process.env.PAYMENTSETU_API_KEY || '',
-    PAYMENTSETU_BASE_URL: process.env.PAYMENTSETU_BASE_URL || 'https://paymentsetu.com/api'
+    PAYMENTSETU_BASE_URL: process.env.PAYMENTSETU_BASE_URL || 'https://paymentsetu.com/api',
+    BUSINESS_UPI,
+    FINE_AMOUNTS
 };
 
 // All payment execution wrapped like this:

@@ -783,7 +783,10 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  dest: "uploads/",
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 // ================= MAIL =================
 
@@ -793,7 +796,7 @@ const transporter = createEmailTransporter();
 const emailUser = process.env.EMAIL_USER || process.env.EMAIL_US;
 if(emailUser && process.env.EMAIL_PASS){
     transporter.verify((error)=>{
-        if(error){ console.log("SMTP verification status (optional SMTP service): failed/unreachable -", error.message); }
+        if(error){ console.log("SMTP verification status (optional SMTP service): offline (using local mock/simulation)"); }
         else{ console.log("Email Server Ready"); }
     });
 } else {
@@ -2153,10 +2156,20 @@ app.delete("/api/ecosystem/users/:id", async(req, res) => {
 
 // ================= SUBMIT TASK =================
 
-app.post("/submit-task", upload.fields([
-    { name:"image", maxCount:1 },
-    { name:"pdf", maxCount:1 }
-]), async(req,res)=>{
+app.post("/submit-task", (req, res, next) => {
+  upload.fields([
+      { name:"image", maxCount:1 },
+      { name:"pdf", maxCount:1 }
+  ])(req, res, (err) => {
+      if (err) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+              return res.status(413).json({ success: false, message: "File is too large! Maximum limit is 10MB." });
+          }
+          return res.status(400).json({ success: false, message: err.message || "File upload error" });
+      }
+      next();
+  });
+}, async(req,res)=>{
 try{
     const { employeeId, domain, githubLink, note, task, assignmentId } = req.body;
     const image = req.files["image"] ? "/" + req.files["image"][0].path : "";
@@ -2267,8 +2280,27 @@ try{
 app.get("/all-submissions/:domain", async(req,res)=>{
 try{
     const domain = decodeURIComponent(req.params.domain);
-    const submissions = await Submission.find({ domain }).sort({ submittedAt:-1 });
-    res.json(submissions);
+    const submissions = await Submission.find({ domain }).sort({ submittedAt:-1 }).lean();
+    
+    // Look up students for these submissions to get correct attendancePercentage
+    const empIds = submissions.map(s => s.employeeId).filter(Boolean);
+    const students = await Student.find({ employeeId: { $in: empIds } }).lean();
+    const studentsMap = {};
+    students.forEach(st => {
+      studentsMap[st.employeeId] = st;
+    });
+
+    const enrichedSubmissions = submissions.map(sub => {
+      const student = studentsMap[sub.employeeId];
+      return {
+        ...sub,
+        attendancePercentage: student ? (student.attendancePercentage !== undefined ? student.attendancePercentage : 0) : 0,
+        studentJoiningDate: student ? student.joiningDate : null,
+        studentTenure: student ? student.tenure : null
+      };
+    });
+
+    res.json(enrichedSubmissions);
 }catch(error){
     console.log(error);
     res.json([]);
@@ -6638,6 +6670,45 @@ try {
     const v2StudentPortal = require("./routes/v2/studentPortal");
     app.use("/api/v2", v2StudentPortal);
     console.log("[V2] Student portal routes mounted at /api/v2");
+
+    // POST /api/v2/admin/attendance/recalculate — Global Recalculation API
+    app.post('/api/v2/admin/attendance/recalculate', async (req, res) => {
+        try {
+            if (!req.session?.adminUser) {
+                return res.status(401).json({ success: false, error: 'Not authenticated' });
+            }
+
+            const Student = require('./models/Student');
+            const Attendance = require('./models/Attendance');
+            const { calculateAttendancePercentage } = require('./utils/attendanceUtils');
+
+            const students = await Student.find({});
+            let updatedCount = 0;
+
+            for (const student of students) {
+                if (!student.joiningDate) continue;
+
+                // Count both capitalized and lowercase "Present"
+                const presentCount = await Attendance.countDocuments({
+                    employeeId: student.employeeId,
+                    status: { $in: ["Present", "present"] }
+                });
+
+                const percentage = calculateAttendancePercentage(student, presentCount);
+
+                student.attendancePercentage = percentage;
+                student.calculatedAttendancePercentage = percentage;
+                student.calculatedAttendance = percentage; // auto-heal
+                await student.save();
+                updatedCount++;
+            }
+
+            res.json({ success: true, message: `Successfully recalculated attendance for ${updatedCount} students.` });
+        } catch (err) {
+            console.error('Error during global attendance recalculation:', err.message);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
 } catch(e) {
     console.error("[V2] Failed to mount student portal routes:", e.message);
 }

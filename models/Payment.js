@@ -11,7 +11,7 @@ const PaymentSchema = new mongoose.Schema({
   providerOrderId: { type: String },
   providerPaymentId: { type: String },
   webhookVerified: { type: Boolean, default: false },
-  mode: { type: String, enum: ['manual', 'gateway'], default: 'manual' },
+  mode: { type: String, enum: ['manual', 'gateway', 'upi', 'razorpay', 'paymentsetu'], default: 'manual' },
   verifiedBy: { type: String, default: null },
   verifiedAt: { type: Date, default: null },
   rejectionReason: { type: String, default: null },

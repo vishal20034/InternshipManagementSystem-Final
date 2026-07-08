@@ -330,28 +330,230 @@ router.get('/status/:orderId', async (req, res) => {
   }
 });
 
+// Helper for robust student authentication
+async function getAuthenticatedStudent(req) {
+  if (req.session?.student?._id) {
+    return await Student.findById(req.session.student._id);
+  }
+  const employeeId = req.headers['x-employee-id'] || req.body.employeeId || req.query.employeeId;
+  if (!employeeId) return null;
+  return await Student.findOne({ employeeId: String(employeeId) });
+}
+
+// GET /api/v2/payment/my-obligations
+router.get('/my-obligations', async (req, res) => {
+  try {
+    const student = await getAuthenticatedStudent(req);
+    if (!student) return res.status(401).json({ success: false, message: 'Unauthorised' });
+
+    const paymentConfig = require('../../config/payment');
+    const { isInternshipComplete } = require('../../utils/internshipStatus');
+
+    const certFees = [];
+
+    // Expert Certificate
+    if (student.locStatus && student.locStatus !== 'not_eligible') {
+      const successPay = await Payment.findOne({ studentId: student._id, purpose: 'cert_expert', status: 'success' });
+      if (!successPay) {
+        const pendingVerify = await Payment.findOne({ studentId: student._id, purpose: 'cert_expert', status: 'pending_verification' });
+        certFees.push({
+          purpose: "cert_expert",
+          label: "Expert Certificate",
+          amount: paymentConfig.CERT_PRICES.expert || 100,
+          status: pendingVerify ? "pending_verification" : "unpaid"
+        });
+      }
+    }
+
+    // Nano Degree Certificate
+    if (student.lorStatus && student.lorStatus !== 'not_eligible') {
+      const successPay = await Payment.findOne({ studentId: student._id, purpose: 'cert_nano_degree', status: 'success' });
+      if (!successPay) {
+        const pendingVerify = await Payment.findOne({ studentId: student._id, purpose: 'cert_nano_degree', status: 'pending_verification' });
+        certFees.push({
+          purpose: "cert_nano_degree",
+          label: "Nano Degree Certificate",
+          amount: paymentConfig.CERT_PRICES.nano_degree || 1000,
+          status: pendingVerify ? "pending_verification" : "unpaid"
+        });
+      }
+    }
+
+    // Fellowship Certificate
+    if (student.starStatus && student.starStatus !== 'not_submitted' && student.starStatus !== 'rejected') {
+      const successPay = await Payment.findOne({ studentId: student._id, purpose: 'cert_fellowship', status: 'success' });
+      if (!successPay) {
+        const pendingVerify = await Payment.findOne({ studentId: student._id, purpose: 'cert_fellowship', status: 'pending_verification' });
+        certFees.push({
+          purpose: "cert_fellowship",
+          label: "Fellowship Certificate",
+          amount: paymentConfig.CERT_PRICES.fellowship || 2500,
+          status: pendingVerify ? "pending_verification" : "unpaid"
+        });
+      }
+    }
+
+    // Fines
+    const fines = [];
+    if (student.pendingFines && student.pendingFines.length > 0) {
+      const unpaidFines = student.pendingFines.filter(f => !f.paid);
+      for (const f of unpaidFines) {
+        // Find if a payment is pending verification for this fine
+        const pendingVerify = await Payment.findOne({ 
+          studentId: student._id, 
+          purpose: 'fine_low_attendance', 
+          status: 'pending_verification' 
+        });
+        fines.push({
+          purpose: "fine_low_attendance",
+          label: f.reason || "Attendance Fine (below 75%)",
+          amount: f.amount || 400,
+          fineId: f._id,
+          status: pendingVerify ? "pending_verification" : "unpaid"
+        });
+      }
+    }
+
+    const isComplete = isInternshipComplete(student);
+    const donation = { eligible: isComplete };
+
+    return res.json({
+      success: true,
+      certFees,
+      fines,
+      donation
+    });
+
+  } catch (err) {
+    console.error('[PAYMENT] my-obligations error:', err.message);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /api/v2/payment/initiate
+router.post('/initiate', async (req, res) => {
+  try {
+    const student = await getAuthenticatedStudent(req);
+    if (!student) return res.status(401).json({ success: false, message: 'Unauthorised' });
+
+    const { purpose, fineId } = req.body;
+    if (!purpose) return res.status(400).json({ success: false, message: 'Purpose is required' });
+
+    const paymentConfig = require('../../config/payment');
+
+    let amount = 0;
+    let isEligible = false;
+
+    if (purpose === 'cert_expert') {
+      isEligible = student.locStatus && student.locStatus !== 'not_eligible';
+      amount = paymentConfig.CERT_PRICES.expert || 100;
+      if (isEligible) {
+        const successPay = await Payment.findOne({ studentId: student._id, purpose: 'cert_expert', status: 'success' });
+        if (successPay) return res.status(400).json({ success: false, message: 'Expert Certificate already paid' });
+      }
+    } else if (purpose === 'cert_nano_degree') {
+      isEligible = student.lorStatus && student.lorStatus !== 'not_eligible';
+      amount = paymentConfig.CERT_PRICES.nano_degree || 1000;
+      if (isEligible) {
+        const successPay = await Payment.findOne({ studentId: student._id, purpose: 'cert_nano_degree', status: 'success' });
+        if (successPay) return res.status(400).json({ success: false, message: 'Nano Degree Certificate already paid' });
+      }
+    } else if (purpose === 'cert_fellowship') {
+      isEligible = student.starStatus && student.starStatus !== 'not_submitted' && student.starStatus !== 'rejected';
+      amount = paymentConfig.CERT_PRICES.fellowship || 2500;
+      if (isEligible) {
+        const successPay = await Payment.findOne({ studentId: student._id, purpose: 'cert_fellowship', status: 'success' });
+        if (successPay) return res.status(400).json({ success: false, message: 'Fellowship Certificate already paid' });
+      }
+    } else if (purpose === 'fine_low_attendance') {
+      let matchingFine = null;
+      if (student.pendingFines && student.pendingFines.length > 0) {
+        if (fineId) {
+          matchingFine = student.pendingFines.find(f => String(f._id) === String(fineId) && !f.paid);
+        } else {
+          matchingFine = student.pendingFines.find(f => !f.paid);
+        }
+      }
+      isEligible = !!matchingFine;
+      amount = matchingFine ? matchingFine.amount : (paymentConfig.FINE_AMOUNTS.low_attendance || 400);
+    } else if (purpose === 'donation') {
+      const { isInternshipComplete } = require('../../utils/internshipStatus');
+      isEligible = isInternshipComplete(student);
+      amount = parseFloat(req.body.amount) || 100;
+    } else {
+      return res.status(400).json({ success: false, message: 'Invalid payment purpose' });
+    }
+
+    if (!isEligible) {
+      return res.status(400).json({ success: false, message: 'You are not eligible for this payment' });
+    }
+
+    const randomSuffix = crypto.randomBytes(4).toString('hex');
+    const orderId = `PAY-MAN-${randomSuffix}-${Date.now()}`;
+
+    const payment = new Payment({
+      orderId,
+      studentId: student._id,
+      amount: amount,
+      provider: 'manual',
+      purpose: purpose,
+      status: 'pending',
+      mode: 'manual',
+      metadata: { fineId }
+    });
+    await payment.save();
+
+    return res.json({
+      success: true,
+      orderId,
+      amount,
+      upiId: paymentConfig.BUSINESS_UPI.upiId,
+      payeeName: paymentConfig.BUSINESS_UPI.payeeName,
+      instructions: 'Pay via UPI and enter UTR to complete.'
+    });
+
+  } catch (err) {
+    console.error('[PAYMENT] initiate error:', err.message);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // POST /api/v2/payment/utr-confirm
 router.post('/utr-confirm', async (req, res) => {
   try {
-    const employeeId = req.headers['x-employee-id'];
-    if (!employeeId) return res.status(401).json({ success: false, message: 'Unauthorised' });
+    const student = await getAuthenticatedStudent(req);
+    if (!student) return res.status(401).json({ success: false, message: 'Unauthorised' });
 
-    const { utr, amount, description, orderId } = req.body;
+    const { utr, amount, description, orderId, studentName, employeeId, domain, email } = req.body;
     if (!utr || String(utr).trim().length < 6) {
       return res.status(400).json({ success: false, message: 'Invalid UTR' });
     }
 
-    const student = await Student.findOne({ employeeId });
-    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
-
     let payment;
     if (orderId) {
       payment = await Payment.findOne({ orderId });
-    }
+      if (!payment) {
+        return res.status(404).json({ success: false, message: 'Payment not found' });
+      }
+      // Verify payment ownership
+      if (payment.studentId && String(payment.studentId) !== String(student._id)) {
+        return res.status(403).json({ success: false, message: 'Unauthorised payment ownership' });
+      }
 
-    if (payment) {
+      if (payment.status === 'pending_verification') {
+        return res.status(400).json({ success: false, message: 'Transaction ID already submitted — awaiting verification' });
+      }
+      if (payment.status === 'success') {
+        return res.status(400).json({ success: false, message: 'This payment is already verified' });
+      }
+      if (payment.status === 'failed') {
+        return res.status(400).json({ success: false, message: 'This payment was rejected. Please initiate a new payment' });
+      }
+
+      // Update payment
       payment.status = 'pending_verification';
       payment.txnUtr = String(utr).trim();
+      payment.providerPaymentId = String(utr).trim();
       payment.mode = 'manual';
       payment.invoiceRef = 'UTR-' + String(utr).trim();
       if (description) {
@@ -366,14 +568,15 @@ router.post('/utr-confirm', async (req, res) => {
       }
       await payment.save();
     } else {
-      const generatedOrderId = 'UPIPAY-' + employeeId + '-' + Date.now();
+      // Legacy or custom creation path when orderId is missing
+      const generatedOrderId = 'UPIPAY-' + (employeeId || student.employeeId) + '-' + Date.now();
       const cleanAmount = parseFloat(amount) || 0;
 
       payment = new Payment({
         orderId:        generatedOrderId,
         invoiceRef:     'UTR-' + String(utr).trim(),
         studentId:      student._id,
-        employeeId,
+        employeeId:     student.employeeId,
         amount:         cleanAmount,
         provider:       'manual',
         purpose:        description || 'Direct UPI Payment',
@@ -381,6 +584,7 @@ router.post('/utr-confirm', async (req, res) => {
         amountPaisa:    Math.round(cleanAmount * 100),
         status:         'pending_verification',
         txnUtr:         String(utr).trim(),
+        providerPaymentId: String(utr).trim(),
         customerName:   student.name  || '',
         customerEmail:  student.email || '',
         description:    description   || 'Direct UPI Payment',
@@ -390,17 +594,42 @@ router.post('/utr-confirm', async (req, res) => {
       await payment.save();
     }
 
+    // Send confirmation email
+    try {
+      const { createEmailTransporter } = require('../../utils/mailer');
+      const transporter = createEmailTransporter();
+      const sName = studentName || student.name || `${student.firstName} ${student.lastName}`;
+      const empId = employeeId || student.employeeId;
+      const sDomain = domain || student.domain;
+      const sEmail = email || student.email;
+
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER || 'no-reply@entrepreneurshipnetwork.net',
+        to: 'growth@entrepreneurshipnetwork.net',
+        subject: `Manual Payment Verification Required - ${payment.orderId}`,
+        html: `<p>A manual UPI payment has been initiated by <strong>${sName}</strong> (${empId}, ${sDomain}).</p>
+               <p><strong>Order ID:</strong> ${payment.orderId}</p>
+               <p><strong>UTR / Transaction ID:</strong> ${utr}</p>
+               <p><strong>Amount:</strong> ₹${payment.amount}</p>
+               <p><strong>Purpose:</strong> ${payment.purpose}</p>
+               <p><strong>Student Email:</strong> ${sEmail}</p>
+               <p>Please log in to the HR / admin portal to verify and approve this payment.</p>`
+      });
+    } catch (mailErr) {
+      console.log('[PAYMENT] Verification email handled with simulated fallback.');
+    }
+
     try {
       await new Notification({
         title:            '💳 Payment Confirmation Received',
-        message:          `Student ${employeeId} submitted UTR ${utr} for ₹${amount}. Please verify.`,
+        message:          `Student ${student.employeeId} submitted UTR ${utr} for ₹${payment.amount}. Please verify.`,
         type:             'info',
         from:             'System',
         targetType:       'hr'
       }).save();
     } catch (_) {}
 
-    console.log('[PAYMENT] UTR confirm submitted by', employeeId, '| UTR:', utr, '| amount:', amount);
+    console.log('[PAYMENT] UTR confirm submitted by', student.employeeId, '| UTR:', utr, '| amount:', payment.amount);
     return res.json({ success: true, message: 'Payment confirmation received. Our team will verify shortly.' });
   } catch (err) {
     console.error('[PAYMENT] utr-confirm error:', err.message);

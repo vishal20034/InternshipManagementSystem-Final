@@ -308,27 +308,18 @@ router.post("/student/complete-onboarding", requireStudent, async (req, res) => 
 
             const actualJoiningDate = joiningDate || student.joiningDate || student.createdAt;
             if (actualJoiningDate) {
-                const start = new Date(actualJoiningDate);
-                const today = new Date();
-                
-                const tenureDaysMap = {
-                    "1 Week": 7,
-                    "15 Days": 15,
-                    "1 Month": 30,
-                    "45 Days": 45,
-                    "3 Months": 90,
-                    "6 Months": 180
-                };
-                const totalDays = tenureDaysMap[student.tenure] || 30;
-                const end = new Date(start);
-                end.setDate(end.getDate() + totalDays - 1);
-
-                const workingDaysPassed = countDaysExcludingSundaysLocal(start, today);
-                const totalWorkingDaysInTenure = countDaysExcludingSundaysLocal(start, end);
-                const calculatedAttendance = Math.min(100, Math.round((workingDaysPassed / Math.max(totalWorkingDaysInTenure, 1)) * 100));
+                const Attendance = require("../../models/Attendance");
+                const { calculateAttendancePercentage } = require("../../utils/attendanceUtils");
+                const emp = updates.employeeId || student.employeeId;
+                const presentCount = await Attendance.countDocuments({ employeeId: emp, status: "present" });
+                const calculatedAttendance = calculateAttendancePercentage({
+                    joiningDate: actualJoiningDate,
+                    tenure: student.tenure,
+                    v2DurationType: student.v2DurationType
+                }, presentCount);
 
                 updates.calculatedAttendance = calculatedAttendance;
-                // Also update the general attendancePercentage field for consistency
+                updates.calculatedAttendancePercentage = calculatedAttendance;
                 updates.attendancePercentage = calculatedAttendance;
             }
         } else {

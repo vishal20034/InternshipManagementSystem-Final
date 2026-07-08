@@ -43,6 +43,26 @@ function fetchFontBuffer(url) {
 }
 
 /**
+ * Attempts to download a font from a list of URLs sequentially.
+ */
+async function fetchFontFromList(urls) {
+    let lastError;
+    for (const url of urls) {
+        try {
+            console.log(`Attempting to download font from: ${url}`);
+            const buf = await fetchFontBuffer(url);
+            if (buf && buf.length > 0) {
+                return buf;
+            }
+        } catch (err) {
+            console.warn(`Failed download from ${url}: ${err.message}`);
+            lastError = err;
+        }
+    }
+    throw lastError || new Error("All font URLs failed to fetch.");
+}
+
+/**
  * Ensures Google Fonts Caveat and Dancing Script are available on disk.
  */
 async function ensureFonts() {
@@ -56,15 +76,14 @@ async function ensureFonts() {
 
     if (!fs.existsSync(caveatPath)) {
         try {
-            console.log("Downloading Caveat-Bold font from Google Fonts...");
-            let buf;
-            try {
-                // Try jsDelivr CDN first
-                buf = await fetchFontBuffer("https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/caveat/static/Caveat-Bold.ttf");
-            } catch (err1) {
-                console.log("Primary font CDN failed, trying raw GitHub...");
-                buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/static/Caveat-Bold.ttf");
-            }
+            console.log("Downloading Caveat-Bold font...");
+            const caveatUrls = [
+                "https://raw.githubusercontent.com/googlefonts/caveat/main/fonts/ttf/Caveat-Bold.ttf",
+                "https://raw.githubusercontent.com/Jomimoses/images/master/Caveat-Bold.ttf",
+                "https://cdn.jsdelivr.net/gh/googlefonts/caveat@main/fonts/ttf/Caveat-Bold.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/static/Caveat-Bold.ttf"
+            ];
+            const buf = await fetchFontFromList(caveatUrls);
             fs.writeFileSync(caveatPath, buf);
             console.log("Caveat-Bold font saved successfully.");
         } catch (e) {
@@ -74,15 +93,15 @@ async function ensureFonts() {
 
     if (!fs.existsSync(dancingPath)) {
         try {
-            console.log("Downloading DancingScript-Regular font from Google Fonts...");
-            let buf;
-            try {
-                // Try jsDelivr CDN first
-                buf = await fetchFontBuffer("https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/dancingscript/static/DancingScript-Regular.ttf");
-            } catch (err1) {
-                console.log("Primary font CDN failed, trying raw GitHub...");
-                buf = await fetchFontBuffer("https://raw.githubusercontent.com/google/fonts/main/ofl/dancingscript/static/DancingScript-Regular.ttf");
-            }
+            console.log("Downloading DancingScript-Regular font...");
+            const dancingUrls = [
+                "https://raw.githubusercontent.com/ioBroker/ioBroker.vis-google-fonts/master/widgets/google-fonts/fonts/Dancing_Script/DancingScript-Regular.ttf",
+                "https://raw.githubusercontent.com/googlefonts/DancingScript/main/fonts/ttf/DancingScript-Regular.ttf",
+                "https://raw.githubusercontent.com/googlefonts/DancingScript/master/fonts/ttf/DancingScript-Regular.ttf",
+                "https://cdn.jsdelivr.net/gh/ioBroker/ioBroker.vis-google-fonts@master/widgets/google-fonts/fonts/Dancing_Script/DancingScript-Regular.ttf",
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/dancingscript/static/DancingScript-Regular.ttf"
+            ];
+            const buf = await fetchFontFromList(dancingUrls);
             fs.writeFileSync(dancingPath, buf);
             console.log("DancingScript-Regular font saved successfully.");
         } catch (e) {
