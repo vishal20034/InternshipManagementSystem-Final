@@ -129,6 +129,8 @@ const studentsSchema = new mongoose.Schema({
     documentsSubmittedAt:    { type: Date,   default: null },
       
     attendancePercentage:    { type: Number, default: 0 },
+    calculatedAttendancePercentage: { type: Number, default: null },
+    attendanceLastCalculated: { type: Date, default: null },
     performanceScore:        { type: Number, default: 0 },
     internshipCompleted:     { type: Boolean, default: false },
     internshipCompletedAt:   { type: Date,   default: null },

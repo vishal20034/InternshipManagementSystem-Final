@@ -6739,6 +6739,13 @@ app.use("/uploads/certificates", expressModule.static("uploads/certificates"));
 app.use("/uploads/documents",    expressModule.static("uploads/documents"));
 app.use("/uploads/offer-letters", expressModule.static("uploads/offer-letters"));
 
+// Admin Portal — Internal Only
+const { requireAdmin } = require('./middleware/adminAuth');
+const adminPortalRoutes = require('./routes/adminPortal');
+app.use('/api/admin-internal', adminPortalRoutes);
+app.get('/ten-admin/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ten-admin-login.html')));
+app.get('/ten-admin', requireAdmin, (req, res) => res.sendFile(path.join(__dirname, 'public', 'ten-admin.html')));
+
 // ================= SERVER =================
 
 // (PORT already declared earlier)
