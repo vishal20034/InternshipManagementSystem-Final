@@ -703,6 +703,17 @@ app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 
+const session = require('express-session');
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'ten-admin-secret-key-123',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false,
+        maxAge: 30 * 60 * 1000 // 30 minutes
+    }
+}));
+
 // Custom route to serve the logo with the correct JPEG Content-Type since the file has a .png extension but is actually a JPEG (JFIF format)
 app.get(/.*ten-logo\.png$/, (req, res) => {
     res.setHeader("Content-Type", "image/jpeg");
