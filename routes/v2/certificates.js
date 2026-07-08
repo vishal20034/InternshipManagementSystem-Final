@@ -499,16 +499,8 @@ const PDFDocument         = require("pdfkit");
 const cron                = require("node-cron");
 
 // Find the existing transporter and make it fault-tolerant
-const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',
-  host:    process.env.EMAIL_HOST,
-  port:    parseInt(process.env.EMAIL_PORT) || 587,
-  secure:  process.env.EMAIL_SECURE === 'true',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const { createEmailTransporter } = require("../../utils/mailer");
+const transporter = createEmailTransporter();
 
 async function sendCertificateEmail(toEmail, studentName, certType, pdfBuffer) {
   try {

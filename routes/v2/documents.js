@@ -73,11 +73,9 @@ async function requireHR(req, res, next) {
 }
 
 // ── Mailer helper ──
+const { createEmailTransporter } = require("../../utils/mailer");
 function createTransporter() {
-    return nodemailer.createTransport({
-        service: "gmail",
-        auth: { user: process.env.EMAIL_US, pass: process.env.EMAIL_PASS }
-    });
+    return createEmailTransporter();
 }
 
 // ════════════════════════════════

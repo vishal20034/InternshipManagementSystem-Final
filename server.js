@@ -776,17 +776,11 @@ const upload = multer({ dest: "uploads/" });
 
 // ================= MAIL =================
 
-const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+const { createEmailTransporter } = require("./utils/mailer");
+const transporter = createEmailTransporter();
 
-if(process.env.EMAIL_USER && process.env.EMAIL_PASS){
+const emailUser = process.env.EMAIL_USER || process.env.EMAIL_US;
+if(emailUser && process.env.EMAIL_PASS){
     transporter.verify((error)=>{
         if(error){ console.log("SMTP verification status (optional SMTP service): failed/unreachable -", error.message); }
         else{ console.log("Email Server Ready"); }

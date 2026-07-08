@@ -23,11 +23,9 @@ try { fs.mkdirSync(offerLetterDir,  { recursive: true }); } catch (_) {}
 try { fs.mkdirSync(certificatesDir, { recursive: true }); } catch (_) {}
 
 // ── Mail helper ──
+const { createEmailTransporter } = require("../utils/mailer");
 function createTransporter() {
-    return nodemailer.createTransport({
-        service: "gmail",
-        auth: { user: process.env.EMAIL_US, pass: process.env.EMAIL_PASS }
-    });
+    return createEmailTransporter();
 }
 
 // ════════════════════════════════════════════════════
