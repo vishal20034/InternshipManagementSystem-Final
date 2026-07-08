@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const AuditLogSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
+  userId: { type: String, required: false },
   actionType: { type: String, required: true },
   performedBy: { type: String, required: true },
   description: { type: String, default: "" },

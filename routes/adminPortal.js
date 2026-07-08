@@ -548,6 +548,7 @@ router.post('/notifications/broadcast', requireAdminAPI, async (req, res) => {
     }
 
     await AuditLog.create({
+      userId: req.session.adminUser?.username || 'admin',
       actionType: 'notification_broadcast',
       performedBy: 'admin',
       description: `Admin broadcast: "${title}" → ${targetType} (${sent} students)`
@@ -632,6 +633,7 @@ router.post('/attendance/recalculate-all', requireAdminAPI, async (req, res) => 
     }
 
     await AuditLog.create({
+      userId: req.session.adminUser?.username || 'admin',
       actionType: 'attendance_recalculate_all',
       performedBy: 'admin',
       description: `Recalculated attendance for ${updated} students. Errors: ${errors}`
