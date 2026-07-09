@@ -156,9 +156,7 @@ const PURPOSE_LABELS = {
   cert_nano_degree: 'Nano Degree Certificate (₹1000)',
   cert_fellowship: 'Fellowship Certificate (₹2500)',
   fine_low_attendance: 'Attendance Fine (₹400)',
-  donation: 'Program Donation',
-  'TEN Internship Payment': 'TEN Internship Payment',
-  tenure_payment: 'TEN Internship Payment'
+  donation: 'Program Donation'
 };
 
 router.post('/payments/verify/:paymentId', requireAdminAPI, async (req, res) => {
@@ -338,65 +336,13 @@ router.get('/students/:id', requireAdminAPI, async (req, res) => {
 
 router.put('/students/:id', requireAdminAPI, async (req, res) => {
   try {
-    const oldStudent = await Student.findById(req.params.id);
-    if (!oldStudent) return res.status(404).json({ error: 'Student not found' });
-
-    const ALLOWED = ['name', 'email', 'domain', 'tenure', 'joiningDate', 'whatsapp', 'gender', 'college', 'collegeName', 'employeeId', 'joinerType'];
+    const ALLOWED = ['name', 'email', 'domain', 'tenure', 'joiningDate', 'whatsapp', 'gender', 'college', 'collegeName'];
     const update = {};
     for (const key of ALLOWED) {
       if (req.body[key] !== undefined) update[key] = req.body[key];
     }
-
-    const oldEmployeeId = oldStudent.employeeId;
-    const newEmployeeId = req.body.employeeId;
-
-    if (newEmployeeId && newEmployeeId !== oldEmployeeId) {
-      const existing = await Student.findOne({ employeeId: newEmployeeId });
-      if (existing) {
-        return res.status(400).json({ error: 'This Employee ID is already registered by another student.' });
-      }
-    }
-
     const student = await Student.findByIdAndUpdate(req.params.id, { $set: update }, { new: true });
     if (!student) return res.status(404).json({ error: 'Student not found' });
-
-    // Cascade employeeId updates if it was changed
-    if (newEmployeeId && newEmployeeId !== oldEmployeeId) {
-      const Attendance = require('../models/Attendance');
-      const Submission = require('../models/Submission');
-      const Payment = require('../models/Payment');
-      const Notification = require('../models/Notification');
-      const DocumentHistory = require('../models/DocumentHistory');
-
-      await Promise.all([
-        Attendance.updateMany({ employeeId: oldEmployeeId }, { $set: { employeeId: newEmployeeId } }),
-        Submission.updateMany({ employeeId: oldEmployeeId }, { $set: { employeeId: newEmployeeId } }),
-        Payment.updateMany({ employeeId: oldEmployeeId }, { $set: { employeeId: newEmployeeId } }),
-        Notification.updateMany({ targetEmployeeId: oldEmployeeId }, { $set: { targetEmployeeId: newEmployeeId } }),
-        DocumentHistory.updateMany({ employeeId: oldEmployeeId }, { $set: { employeeId: newEmployeeId } })
-      ]);
-    }
-
-    // Retroactive Attendance Recalculation if joiningDate, tenure, or joinerType changed
-    const tenureChanged = req.body.tenure !== undefined && req.body.tenure !== oldStudent.tenure;
-    const dateChanged = req.body.joiningDate !== undefined && req.body.joiningDate !== oldStudent.joiningDate;
-    const joinerChanged = req.body.joinerType !== undefined && req.body.joinerType !== oldStudent.joinerType;
-
-    if (tenureChanged || dateChanged || joinerChanged || (newEmployeeId && newEmployeeId !== oldEmployeeId)) {
-      const Attendance = require('../models/Attendance');
-      const { calculateAttendancePercentage } = require('../utils/attendanceUtils');
-      const presentCount = await Attendance.countDocuments({
-        employeeId: student.employeeId,
-        status: { $in: ["Present", "present"] }
-      });
-      const calculatedAttendance = calculateAttendancePercentage(student, presentCount);
-      
-      student.calculatedAttendance = calculatedAttendance;
-      student.calculatedAttendancePercentage = calculatedAttendance;
-      student.attendancePercentage = calculatedAttendance;
-      await student.save();
-    }
-
     await AuditLog.create({
       userId: student._id,
       actionType: 'student_updated',
